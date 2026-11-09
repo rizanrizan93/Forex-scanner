@@ -215,10 +215,12 @@ def goldapi_spot_cached(symbol):
 
 @st.cache_data(ttl=60, show_spinner=False)
 def load_external_macro_inputs():
-    """CNBC fast batch PRIMARY; Yahoo only if CNBC symbol missing.
+    """CNBC primary with time-verified fallback for missing and stale DXY.
 
-    Avoid 8 simultaneous Yahoo hits (429 observed in live probe).
-    Futures may legally be exchange-delayed; still show last quote with time.
+    A provider returning a symbol does NOT mean its market observation is live.
+    Only a genuinely fresh, source-timestamped Yahoo DXY may replace stale
+    CNBC DXY; the fallback never refreshes timestamps artificially.
+    Futures remain display-only and may be exchange-delayed.
     """
     fred_codes = sorted(FRED_SERIES)
     tasks = [("fred", code) for code in fred_codes] + [
@@ -238,14 +240,31 @@ def load_external_macro_inputs():
     fast = dict(fast or {})
     market = {code: fast[code] for code in YAHOO_SYMBOLS if code in fast}
     missing = [code for code in sorted(YAHOO_SYMBOLS) if code not in market]
-    # Yahoo fallback ONLY for absent symbols, never for existing delayed futures
-    # (which are already the best legally available no-key reference quote).
+    # The original presence-only condition left a stale CNBC DXY in place,
+    # producing exactly 41% coverage (Treasury valid, DXY ineligible).
+    # Recheck the source timestamp rather than marking CNBC as unavailable.
+    stale_dxy = (
+        ["DX-Y.NYB"]
+        if "DX-Y.NYB" in market and
+        not quote_freshness(market["DX-Y.NYB"])["eligible"]
+        else []
+    )
+    fallback_candidates = sorted(set(missing + stale_dxy))
     fallback_errors: dict[str, str] = {}
-    if missing:
+    recovered: list[str] = []
+    if fallback_candidates:
         with ThreadPoolExecutor(max_workers=3) as pool:
-            attempts = list(pool.map(lambda code: _safe(market_quote, code), missing))
-        for code, (q, err) in zip(missing, attempts):
-            if q is not None:
+            attempts = list(pool.map(
+                lambda code: _safe(market_quote, code), fallback_candidates
+            ))
+        for code, (q, err) in zip(fallback_candidates, attempts):
+            # Yahoo's quote must be independently eligible; never substitute
+            # an old vendor price just because HTTP returned successfully.
+            if q is not None and quote_freshness(q)["eligible"]:
+                market[code] = q
+                recovered.append(code)
+            elif code not in market and q is not None:
+                # Keep a stale reference visible as historical only.
                 market[code] = q
             if err:
                 fallback_errors[code] = err
@@ -270,6 +289,10 @@ def load_external_macro_inputs():
             "cnbc_count": len(fast),
             "cnbc_error": fast_err,
             "yahoo_missing": missing,
+            "yahoo_stale_dxy_recovery_attempted": bool(stale_dxy),
+            "yahoo_recovered": recovered,
+            "dxy_cnbc_fresh": quote_freshness(fast.get("DX-Y.NYB"))["eligible"],
+            "dxy_market_fresh": quote_freshness(market.get("DX-Y.NYB"))["eligible"],
             "yahoo_errors": fallback_errors,
             "dia_wti_error": outcomes[("oil", "WTI")][1],
             "dia_brent_error": outcomes[("oil", "Brent")][1],
@@ -439,9 +462,10 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     brent = _spot_oil_or_fred("Brent", "BZ=F", "DCOILBRENTEU", feeds)
     gold = (feeds.get("spot") or {}).get("XAU_SPOT")
     silver = (feeds.get("spot") or {}).get("XAG_SPOT")
+    selected_dxy = _selected_dxy(macro_eval, feeds)
     result = analyze_gold_macro(
         yields=yield_rows,
-        dxy=_selected_dxy(macro_eval, feeds),
+        dxy=selected_dxy,
         pce_yoy=pce, cpi_yoy=cpi,
         oil={"WTI": wti, "Brent": brent},
         metals={"Gold": gold, "Silver": silver},
@@ -478,6 +502,28 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     b.metric("Indeks arah makro", "—" if result["score"] is None
              else f"{result['score']:+d} / 100")
     c.metric("Cakupan feed", f"{result['coverage_pct']}%")
+    dxy_status = quote_freshness(selected_dxy)
+    if result["state"] == "WAIT_DATA":
+        st.error(
+            "Kesimpulan gabungan belum valid: " +
+            (", ".join(result["missing"]) if result["missing"] else "feed inti tidak lengkap") +
+            ". Ini adalah kegagalan kualitas data, bukan indikasi bearish/bullish."
+        )
+        st.caption(
+            "Status DXY: " + dxy_status["status"] +
+            " · sumber " + str((selected_dxy or {}).get("source") or "tidak ada") +
+            " · waktu observasi WIB " + str(dxy_status.get("observed_wib") or "—") +
+            " · usia " + str(dxy_status.get("age_minutes") if dxy_status.get("age_minutes") is not None else "—") +
+            " menit. CNBC " + str(provider_status.get("cnbc_count") or 0) +
+            " simbol terunduh bukan berarti semua quote segar."
+        )
+        if provider_status.get("yahoo_stale_dxy_recovery_attempted"):
+            st.caption(
+                "Fallback Yahoo DXY dicoba karena CNBC DXY tidak segar; " +
+                ("berhasil dengan timestamp valid."
+                 if "DX-Y.NYB" in provider_status.get("yahoo_recovered", [])
+                 else "belum menghasilkan quote yang lolos batas 5 menit.")
+            )
     # Explicit oil verdict belongs to the combined XAU macro conclusion,
     # not only the lower-level oil diagnostics.
     oil_component = explain_oil_component(result)
