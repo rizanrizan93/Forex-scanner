@@ -32,6 +32,11 @@ def _utc(value: Any) -> datetime | None:
     return stamp.astimezone(UTC) if stamp.tzinfo else None
 
 
+def _wib(value: Any) -> str:
+    stamp = _utc(value)
+    return stamp.astimezone(WIB).strftime("%d/%m %H:%M:%S WIB") if stamp else "—"
+
+
 def _number(value: Any) -> float | None:
     if value is None or isinstance(value, bool):
         return None
