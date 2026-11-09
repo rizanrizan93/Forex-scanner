@@ -1,0 +1,52 @@
+name: XAU M15 Broker Readonly Feed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '9 * * * 0-5'
+  workflow_run:
+    workflows: ['cTrader LIVE Read-Only Monitor']
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/collect_xau_m15_readonly.py'
+      - 'scripts/publish_xau_m15_readonly.py'
+      - 'src/fx_scanner/xau_m15_market_feed.py'
+      - 'src/fx_scanner/xau_m15_macro_forecast.py'
+      - 'tests/test_xau_m15_broker_feed.py'
+      - '.github/workflows/xau-m15-market-readonly.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: xau-m15-broker-readonly-publisher
+  cancel-in-progress: false
+
+jobs:
+  market:
+    if: github.repository == 'rizanrizan93/Forex-scanner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 59
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      GITHUB_TOKEN: ${{ github.token }}
+      XAU_M15_LOOP_SECONDS: ${{ github.event_name == 'push' && '420' || '3300' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install existing view-only cTrader client and test dependencies
+        run: pip install -e '.[ctrader]' pytest==9.0.2
+      - name: Validate broker candle boundary and read-only regression
+        run: PYTHONPATH=src:. python -m pytest -q tests/test_xau_m15_broker_feed.py tests/test_xau_m15_macro_forecast.py
+      - name: Publish only fresh M1/M15 broker candles; never trade
+        shell: bash
+        run: PYTHONPATH=src:. python -u scripts/publish_xau_m15_readonly.py
