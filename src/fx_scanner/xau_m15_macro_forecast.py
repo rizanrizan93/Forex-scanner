@@ -12,6 +12,8 @@ from math import isfinite
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .xau_macro_gold_consensus import explain_oil_component
+
 WIB = ZoneInfo("Asia/Jakarta")
 SNAPSHOT_CONTRACT = "RIZAN_XAU_MANUAL_REVERSAL_MAP_V2"
 SNAPSHOT_SOURCE = "CTRADER_MARKET_DATA_READ_ONLY"
@@ -353,6 +355,9 @@ def render_macro_m15_forecast(
         for key, label in labels
     ]
     st.caption("Kontribusi faktor makro — " + " | ".join(parts))
+    oil_component = explain_oil_component(macro_result)
+    st.write("**WTI + Brent → arah XAU (komponen skor makro):** " + oil_component["headline"])
+    st.caption(oil_component["detail"])
     st.caption("Status geopolitik: " + forecast["geo_status"] + ". " + forecast["reason"])
     st.caption(
         "CPI/PCE, kebijakan Fed, dan oil menjadi konteks; Fed yang tercermin "
