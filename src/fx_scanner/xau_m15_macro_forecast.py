@@ -57,6 +57,7 @@ def _fresh(timestamp: Any, now: datetime, max_age: int) -> bool:
 
 
 FAST_CONTRACT = "RIZAN_XAU_M15_BROKER_READONLY_V1"
+M15_BUILD = "M15-R2-20261109-RELOAD"
 
 
 def validate_fast_m15_snapshot(snapshot: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
@@ -269,6 +270,7 @@ def render_macro_m15_forecast(
     end = _utc(forecast["candle_end"]).astimezone(WIB)
 
     st.subheader("PREDIKSI ARAH XAUUSD · CANDLE M15")
+    st.caption("Engine " + M15_BUILD + " · pembacaan cTrader LIVE 7903, read-only")
     st.caption(
         f"Interval candle {start:%d/%m/%Y %H:%M}–{end:%H:%M} WIB · "
         f"tersisa {forecast['seconds_remaining'] // 60:02d}:"
