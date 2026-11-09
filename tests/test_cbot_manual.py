@@ -108,3 +108,12 @@ def test_btc_unverified_feed_is_never_reported_as_wait():
  assert r['status']=='DATA_TERLAMBAT'
  assert r['signal'] is None and not r['areas']
  assert 'gagal diverifikasi' in r['reason']
+
+
+def test_btc_monitor_retry_is_bounded_after_feed_failure():
+ script=load_script('run_cbot_manual')
+ assert script.btc_poll_due(100,None,0.,100.)
+ assert not script.btc_poll_due(100,None,700.,699.)
+ assert script.btc_poll_due(100,None,700.,700.)
+ assert not script.btc_poll_due(100,100,0.,9999.)
+ assert script.btc_poll_due(101,100,0.,10000.)
