@@ -414,11 +414,16 @@ def _selected_dxy(macro_eval, feeds):
     return dxy
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=20, show_spinner=False)
 def load_macro_m15_snapshot_readonly():
-    """Independent public cTrader M15 snapshot. Never fetch broker order state."""
-    from .manual_reversal_dashboard import fetch_manual_map
-    return fetch_manual_map()
+    """Prefer dedicated LIVE 7903 broker M15; legacy manual map only if fresh."""
+    from .xau_m15_market_feed import fetch_fast_m15
+    try:
+        return fetch_fast_m15()
+    except (OSError, ValueError, KeyError, TypeError, TimeoutError):
+        # Older manual feed is a fallback, NEVER a timestamp-refresh mechanism.
+        from .manual_reversal_dashboard import fetch_manual_map
+        return fetch_manual_map()
 
 
 def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
