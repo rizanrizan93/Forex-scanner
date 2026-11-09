@@ -100,7 +100,10 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                                 render_frozen_core()
                                 render_cross_asset("XAUUSD")
                             if label in {"Hierarki zona", "Makro"}:
-                                @st.fragment(run_every="60s")
+                                # M15 forecast must update within the first minutes
+                                # of a candle, rather than wait for a 60s UI rerun.
+                                interval = "15s" if label == "Makro" else "60s"
+                                @st.fragment(run_every=interval)
                                 def independent_panel(path=path):
                                     runpy.run_path(str(ROOT / path), run_name="__main__")
                                 independent_panel()
