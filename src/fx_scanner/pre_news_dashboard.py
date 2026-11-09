@@ -105,6 +105,37 @@ def render_pre_news_dashboard():
         cols = st.columns(2)
         cols[0].metric("Bias XAU setelah konfirmasi makro", view["xau_bias"])
         cols[1].metric("Keselarasan bukti", view["conviction"])
+        # The attribution worker is a DIFFERENT scoring model from the Macro
+        # tab's signed -100..+100 intraday composite. Display both honestly.
+        attribution_rows = [
+            row for row in (snapshot.get("heartbeats") or [])
+            if row.get("worker_name") == "ctrader_demo_xau_macro_attribution_v357"
+        ]
+        if attribution_rows:
+            worker = max(attribution_rows, key=lambda row: str(row.get("observed_at") or ""))
+            evaluation = (worker.get("details") or {}).get("evaluation") or {}
+            score = evaluation.get("macro_score")
+            at = timestamp(worker.get("observed_at"))
+            age = (datetime.now(UTC) - at).total_seconds() if at else float("inf")
+            active = bool(worker.get("healthy")) and 0 <= age <= 600
+            try:
+                text_score = f"{float(score):.2f}/100" if score is not None else "—"
+            except (ValueError, TypeError, OverflowError):
+                text_score = "—"
+            if text_score != "—":
+                st.metric("Engine attribution Treasury/DXY · skala 0–100",
+                          text_score + ("" if active else " (historis)"))
+                st.caption("Berbeda dari Indeks arah makro pada tab Makro (skala −100 sampai +100). "
+                           "Skor attribution bukan probabilitas hasil CPI atau kenaikan emas. "
+                           + ("Feed attribution segar." if active else "Heartbeat attribution sudah terlambat."))
+        excluded = view.get("unpublished_components") or []
+        if excluded:
+            st.info(
+                "BLS: headline/core CPI YoY Oktober 2026 tidak diterbitkan "
+                "karena indeks Oktober 2025 tidak tersedia. "
+                "Dikeluarkan dari perhitungan hot/cool: " + ", ".join(excluded) +
+                ". Yang dihitung adalah komponen CPI MoM yang memang dirilis."
+            )
         st.caption("Makro DXY/US2Y/US10Y/real yield menjadi konfirmasi terpisah. Jika belum segar, bias makro ditahan; forecast 3 sumber tetap terlihat sebagai skenario pra-rilis.")
         status_map = view.get("calendar_source_status") or {}
         online = sum(
