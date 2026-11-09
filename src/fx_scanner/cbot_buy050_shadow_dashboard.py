@@ -83,8 +83,18 @@ def evaluate_shadow(payload, *, now=None):
                 and candidate.get("confidence") == "TECHNICAL_GEOMETRY_ONLY"
             ):
                 accepted = candidate
-        results[symbol] = {"status": row.get("status", "WAIT") if fresh else "DATA_TERLAMBAT",
-                           "reason": str(row.get("reason") or "")[:210] if fresh else "Data shadow sudah kedaluwarsa.",
+        state = row.get("status", "WAIT") if fresh else "DATA_TERLAMBAT"
+        reason = str(row.get("reason") or "")[:210] if fresh else "Data shadow sudah kedaluwarsa."
+        # A fresh publisher timestamp must not turn a stale per-symbol candle
+        # into a reassuring NO_SIGNAL. Never synthesize an entry or level.
+        if fresh and state == "NO_SIGNAL":
+            bar = stamp(row.get("bar_at"))
+            bar_age = (now - bar).total_seconds() if bar else float("inf")
+            max_age = 3660 if symbol == "BTCUSD" else 120
+            if not -30 <= bar_age <= max_age:
+                state = "DATA_TERLAMBAT"
+                reason = "Candle strategi belum cukup baru untuk menyatakan tidak ada sinyal."
+        results[symbol] = {"status": state, "reason": reason,
                            "candidate": accepted, "bar_at": row.get("bar_at") if fresh else None}
     return {"fresh": fresh, "age_seconds": age, "as_of": payload.get("as_of"), "symbols": results}
 
