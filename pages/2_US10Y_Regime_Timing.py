@@ -31,11 +31,19 @@ import fx_scanner.xau_macro_daily_regime as _macro_daily  # noqa: E402
 import fx_scanner.xau_oil_macro_context as _macro_oil  # noqa: E402
 import fx_scanner.xau_geopolitical_safehaven as _macro_geo  # noqa: E402
 import fx_scanner.xau_macro_gold_consensus as _macro_core  # noqa: E402
+# Reload source modules BEFORE the display module: the display module imports
+# their callable objects via "from ... import". Omitting them kept old M15
+# forecast functions alive after a GitHub deployment on long-lived sessions.
+import fx_scanner.xau_m15_macro_forecast as _m15_engine  # noqa: E402
+import fx_scanner.xau_m15_market_feed as _m15_feed  # noqa: E402
 import fx_scanner.xau_macro_risk_monitor as _macro_ui  # noqa: E402
 
 
 def _refresh_macro_code_if_changed() -> None:
-    modules = (_macro_quotes, _macro_health, _macro_daily, _macro_oil, _macro_geo, _macro_core, _macro_ui)
+    modules = (
+        _macro_quotes, _macro_health, _macro_daily, _macro_oil, _macro_geo,
+        _macro_core, _m15_engine, _m15_feed, _macro_ui,
+    )
     signature = tuple(
         (str(module.__file__), Path(module.__file__).stat().st_mtime_ns,
          Path(module.__file__).stat().st_size)
