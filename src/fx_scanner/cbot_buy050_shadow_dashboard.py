@@ -150,7 +150,16 @@ def render_shadow(payload, *, now=None, primary_snapshot=None):
             c.metric("TP skenario", f"{cand['tp']:,.{digits}f}")
             st.warning("Belum terkonfirmasi oleh terminal LIVE. Filter makro, data broker, margin, basket, dan weekend tetap wajib lulus.")
         else:
-            st.caption(row["reason"] or "Belum ada kandidat teknis baru yang memenuhi jendela strategi.")
+            if row["status"] == "PORTFOLIO_EXPOSURE_BLOCK":
+                st.caption("Ada eksposur posisi atau pending order yang tidak dapat direkonsiliasi "
+                           "sepenuhnya sebagai posisi BUY050. Ini dapat mencakup order manual "
+                           "atau strategi berbeda; bukan bukti cBot berhenti. "
+                           "Skenario entry ditahan sampai identitas eksposur jelas.")
+            elif row["status"] == "BTC_WEEKEND_LOCK":
+                st.caption("Shadow membaca guard akhir pekan dari checkpoint native. "
+                           "Konfirmasi status terkini dari data terbaru dan cTrader.")
+            else:
+                st.caption(row["reason"] or "Belum ada kandidat teknis baru yang memenuhi jendela strategi.")
     st.caption("Tidak ada fungsi order, stop/start, atau pengubahan parameter cBot pada modul ini.")
 
 
