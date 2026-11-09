@@ -51,6 +51,54 @@ def _sign(value: float, deadband: float) -> int:
     return (1 if value >= deadband else -1 if value <= -deadband else 0)
 
 
+def explain_oil_component(macro_result: dict[str, Any] | None) -> dict[str, str | bool]:
+    """Explain the WTI+Brent score cluster; 0-point valid != missing data.
+
+    This is presentation-only. It never alters votes, weights or execution.
+    """
+    macro = macro_result or {}
+    oil = macro.get("oil_assessment") or {}
+    breakdown = macro.get("score_breakdown") or {}
+    points = _num(breakdown.get("Oil"))
+    counted = (macro.get("oil_score_counted") is True
+               and points is not None and _num(macro.get("score")) is not None)
+    if not counted:
+        if _num(macro.get("score")) is None:
+            headline = "BELUM MASUK INDEKS — Treasury/DXY belum memadai"
+        else:
+            headline = "BELUM VALID — bukan vote netral"
+        detail = (
+            "WTI/Brent tidak diberi arah atau poin sebelum pasangan sumber, "
+            "timestamp, dan baseline perubahan lolos validasi. "
+            "Bobot efektif 0% pada skor gabungan. "
+            + str(oil.get("score_reason") or "")
+        )
+        return {"headline": headline, "detail": detail, "counted": False}
+
+    trend = str(oil.get("trend") or "UNKNOWN")
+    headline = {
+        "NAIK": "BEARISH XAU BERSYARAT — risiko inflasi energi meningkat",
+        "TURUN": "BULLISH XAU BERSYARAT — tekanan inflasi energi mereda",
+        "MIXED/FLAT": "NETRAL — WTI/Brent mixed atau belum melewati ambang",
+    }.get(trend, "TIDAK ADA ARAH OIL TERKONFIRMASI")
+    values = []
+    for name, key in (("WTI", "wti"), ("Brent", "brent")):
+        pct = _num((oil.get(key) or {}).get("pct"))
+        values.append(f"{name} {pct:+.2f}%" if pct is not None else f"{name} —")
+    detail = (
+        " | ".join(values)
+        + f" · status {oil.get('status') or 'TIDAK TERSEDIA'}"
+        + f" · bobot {int(macro.get('oil_weight_pct') or 0)}%"
+        + f" · kontribusi {points:+.1f} poin ke skor makro."
+        + " Minyak adalah satu cluster; bobotnya tidak dihitung ulang pada M15."
+    )
+    if trend in {"NAIK", "TURUN"}:
+        detail += " Bias minyak melalui inflasi/Fed bersyarat konfirmasi yield/DXY; bukan sinyal entry."
+    else:
+        detail += " Kontribusi 0 poin berarti data valid tetapi belum directional."
+    return {"headline": headline, "detail": detail, "counted": True}
+
+
 def analyze_gold_macro(
     *,
     yields: dict[str, dict[str, Any]],
