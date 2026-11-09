@@ -50,6 +50,46 @@ def _fresh(timestamp: Any, now: datetime, max_age: int) -> bool:
     return 0 <= age <= max_age
 
 
+
+FAST_CONTRACT = "RIZAN_XAU_M15_BROKER_READONLY_V1"
+
+
+def validate_fast_m15_snapshot(snapshot: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+    """Strict broker-only closed-bar contract. Publication time is never price time."""
+    now = (now or datetime.now(UTC)).astimezone(UTC)
+    if (not isinstance(snapshot, dict)
+            or set(snapshot) != {
+                "contract", "symbol", "source", "account_suffix", "as_of",
+                "price_observed_at", "price", "latest_closed_m15",
+                "timeframe_fresh", "execution_authority", "execution_influence"
+            }
+            or snapshot["contract"] != FAST_CONTRACT
+            or snapshot["symbol"] != "XAUUSD"
+            or snapshot["account_suffix"] != "7903"
+            or snapshot["source"] != SNAPSHOT_SOURCE
+            or snapshot["execution_authority"] is not False
+            or snapshot["execution_influence"] is not False):
+        raise ValueError("XAU_M15_FAST_CONTRACT_INVALID")
+    published_at = _utc(snapshot.get("as_of"))
+    price_at = _utc(snapshot.get("price_observed_at"))
+    m15 = snapshot.get("latest_closed_m15")
+    closed = _utc(m15.get("closed_at")) if isinstance(m15, dict) else None
+    start = now.replace(minute=15 * (now.minute // 15), second=0, microsecond=0)
+    quote = _number(snapshot.get("price"))
+    close = _number(m15.get("close")) if isinstance(m15, dict) else None
+    if (not _fresh(published_at, now, MAX_PUBLICATION_AGE_SECONDS)
+            or not _fresh(price_at, now, MAX_PRICE_AGE_SECONDS)
+            or closed != start
+            or price_at is None or price_at < closed
+            or not isinstance(m15, dict) or set(m15) != {"close", "closed_at"}
+            or snapshot.get("timeframe_fresh") != {"M15": True}
+            or quote is None or close is None or quote <= 0 or close <= 0):
+        raise ValueError("XAU_M15_FAST_CANDLE_STALE_OR_INVALID")
+    if abs(100 * (quote / close - 1)) > 1.5:
+        raise ValueError("XAU_M15_FAST_PRICE_GAP_GT_1P5_PCT")
+    return snapshot
+
+
 def forecast_m15_xau(
     macro_result: dict[str, Any] | None,
     candle_snapshot: dict[str, Any] | None,
@@ -92,14 +132,22 @@ def forecast_m15_xau(
         "model": "M15_CANDLE_MACRO_CONFIRMATION_V1_UNCALIBRATED",
     }
 
-    if (snapshot.get("contract") != SNAPSHOT_CONTRACT
+    fast = snapshot.get("contract") == FAST_CONTRACT
+    if fast:
+        try:
+            validate_fast_m15_snapshot(snapshot, now=now)
+        except ValueError as exc:
+            result["reason"] = "Feed broker M15 khusus belum valid: " + str(exc)
+            return result
+
+    if (snapshot.get("contract") not in (SNAPSHOT_CONTRACT, FAST_CONTRACT)
             or snapshot.get("symbol") != "XAUUSD"
             or snapshot.get("source") != SNAPSHOT_SOURCE
             or snapshot.get("execution_authority") is not False
             or snapshot.get("execution_influence") is not False):
         result["reason"] = "Snapshot candle cTrader read-only tidak tersedia/kontrak tidak valid."
         return result
-    if snapshot.get("fresh") is not True:
+    if not fast and snapshot.get("fresh") is not True:
         result["reason"] = "Snapshot cTrader M15 stale; pasar mungkin tutup atau feed berhenti."
         return result
     if (not _fresh(snapshot.get("as_of"), now, MAX_PUBLICATION_AGE_SECONDS)
@@ -117,6 +165,7 @@ def forecast_m15_xau(
         result["reason"] = "Menunggu penutupan M15 yang tepat pada awal candle berjalan."
         return result
 
+    result["data_source"] = "cTrader LIVE 7903 · M1 + M15 closed" if fast else "cTrader reversal/legacy"
     result["price"] = price
     result["reference_close"] = last_close
     delta_pct = 100.0 * (price / last_close - 1.0)
