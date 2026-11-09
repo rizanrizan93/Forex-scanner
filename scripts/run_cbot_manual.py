@@ -7,6 +7,10 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'));sys.
 from fx_scanner.cbot_manual import project,validate
 from run_reversal_feed import github_api
 FOLDER=ROOT/'artifacts/cbot_manual';BRANCH='cbot-manual-snapshots'
+BTC_RETRY_SECONDS=600.0
+
+def btc_poll_due(hour,last_success_hour,retry_at,monotonic_now):
+ return hour!=last_success_hour and monotonic_now>=retry_at
 def verify():
  manifest=json.loads((ROOT/'cbot_manual/SOURCE_MANIFEST.json').read_text())
  for path,sha in manifest['files'].items():
@@ -26,17 +30,23 @@ def publish(payload):
  if exists:github_api('PATCH','git/refs/heads/'+BRANCH,{'sha':c['sha'],'force':False})
  else:github_api('POST','git/refs',{'ref':'refs/heads/'+BRANCH,'sha':c['sha']})
 def loop():
- verify();FOLDER.mkdir(parents=True,exist_ok=True);last_hour=None;btc=None;start=time.monotonic();failures=0
+ verify();FOLDER.mkdir(parents=True,exist_ok=True);last_hour=None;btc=None;btc_retry_after=0.0;start=time.monotonic();failures=0
  while time.monotonic()-start<float(os.environ.get('CBOT_MONITOR_SECONDS','19800')):
   tick=time.monotonic()
   try:
    hour=int(time.time()//3600);options=['-i',os.environ['CBOT_SSH_KEY'],'-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+os.environ['CBOT_SSH_HOSTS'],'-o','ConnectTimeout=15']
    remote=os.environ['CBOT_READER_PATH']
+   poll_btc=btc_poll_due(hour,last_hour,btc_retry_after,time.monotonic())
    if not remote.startswith('/tmp/rizan-monitor.') or not remote.endswith('/read_cbot_native.py') or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-' for c in remote):raise ValueError('REMOTE_READER_PATH_INVALID')
-   result=subprocess.run(['ssh',*options,'Rizanrizan@202.74.74.172','sudo -n /usr/bin/python3 '+remote+(' --btc' if hour!=last_hour else '')],capture_output=True,text=True,timeout=150,check=True)
+   result=subprocess.run(['ssh',*options,'Rizanrizan@202.74.74.172','sudo -n /usr/bin/python3 '+remote+(' --btc' if poll_btc else '')],capture_output=True,text=True,timeout=150,check=True)
    native=json.loads(result.stdout)
    if native.get('btc_feed_error'):print('CBOT_BTC_FEED_UNAVAILABLE '+native['btc_feed_error']+' category='+native.get('btc_feed_error_category','UNKNOWN'),flush=True)
-   if 'btc_feed' in native:btc=native.pop('btc_feed');last_hour=hour
+   if poll_btc:
+    if 'btc_feed' in native:
+     btc=native.pop('btc_feed');last_hour=hour;btc_retry_after=0.0
+    else:
+     # Fail closed: discard an older BTC packet and avoid hammering VPS/Bitstamp.
+     btc=None;btc_retry_after=time.monotonic()+BTC_RETRY_SECONDS
    if btc:native['btc_feed']=btc
    (FOLDER/'native.json').write_text(json.dumps(native,allow_nan=False))
    subprocess.run([sys.executable,str(ROOT/'scripts/collect_cbot_manual.py'),str(FOLDER/'market.json')],check=True,timeout=180,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
