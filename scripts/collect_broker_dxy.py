@@ -37,7 +37,9 @@ def main(output):
     def collect():
         yield request('ProtoOAApplicationAuthReq',clientId=credentials['CTRADER_CLIENT_ID'],clientSecret=credentials['CTRADER_CLIENT_SECRET'])
         grants=yield request('ProtoOAGetAccountListByAccessTokenReq',accessToken=credentials['CTRADER_ACCESS_TOKEN'])
-        accounts=[a for a in grants.ctidTraderAccount if a.isLive and str(a.traderLogin).endswith('4480')]
+        # Read-only macro context must use the same authorised LIVE 7903 account
+        # as the active scanner, never the retired 4480 binding.
+        accounts=[a for a in grants.ctidTraderAccount if a.isLive and str(a.traderLogin).endswith('7903')]
         if len(accounts)!=1:
             raise RuntimeError('DXY_READ_ONLY_ACCOUNT_BINDING_MISMATCH')
         account=accounts[0].ctidTraderAccountId

@@ -104,7 +104,8 @@ jobs:
             tests/test_xau_treasury_session_v399.py \
             tests/test_pre_news_runtime.py \
             tests/test_pre_news_source_fusion.py \
-            tests/test_pre_news_secondary_calendar.py
+            tests/test_pre_news_secondary_calendar.py \
+            tests/test_dxy_broker_context.py
       - name: Validate configuration
         run: python -c "from fx_scanner.config import load_project_config; load_project_config(None); print('Macro configuration valid')"
       - name: Publish Pre-News continuously every four minutes

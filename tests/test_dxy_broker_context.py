@@ -68,3 +68,23 @@ def test_protocol_reader_has_no_order_or_position_messages():
     tree=ast.parse(p.read_text())
     requests={node.args[0].value for node in ast.walk(tree) if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=='request' and node.args}
     assert requests=={'ProtoOAApplicationAuthReq','ProtoOAGetAccountListByAccessTokenReq','ProtoOAAccountAuthReq','ProtoOASymbolsListReq','ProtoOAGetTrendbarsReq'}
+
+
+
+def test_dxy_collector_is_pinned_to_active_live_7903_only():
+    import ast
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts/collect_broker_dxy.py"
+    tree = ast.parse(path.read_text())
+    suffixes = [
+        node.args[0].value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "endswith"
+        and node.args and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
+    ]
+    assert suffixes == ["7903"]
+    assert not any(x in {"4480"} for x in suffixes)
