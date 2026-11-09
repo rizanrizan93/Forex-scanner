@@ -10,7 +10,7 @@ on:
     branches: [main]
   push:
     branches: [main]
-    paths: [".github/workflows/forexrizan-dashboard-bridge-watchdog.yml", "scripts/rizan_bridge_watchdog.py", "scripts/buy050_publication_watchdog.py", "tests/test_buy050_publication_watchdog.py", "scripts/buy050_auxiliary_watchdog.py", "tests/test_buy050_auxiliary_watchdog.py"]
+    paths: [".github/workflows/forexrizan-dashboard-bridge-watchdog.yml", "scripts/rizan_bridge_watchdog.py", "scripts/buy050_publication_watchdog.py", "tests/test_buy050_publication_watchdog.py", "scripts/buy050_auxiliary_watchdog.py", "tests/test_buy050_auxiliary_watchdog.py", "scripts/xau_m15_market_watchdog.py", "tests/test_xau_m15_market_watchdog.py"]
   schedule:
     - cron: "*/5 * * * *"
 
@@ -47,3 +47,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/buy050_auxiliary_watchdog.py
+      - name: Verify XAU M15 independent market feed watchdog
+        if: always()
+        run: python -m pip install pytest==9.0.2 && python -m pytest -q tests/test_xau_m15_market_watchdog.py
+      - name: Recover stale XAU M15 read-only feed
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/xau_m15_market_watchdog.py
