@@ -40,4 +40,5 @@ jobs:
             tests/test_pre_news_secondary_calendar.py \
             tests/test_pre_news_expectation.py \
             tests/test_pre_news_transport.py \
-            tests/test_pre_news_runtime.py
+            tests/test_pre_news_runtime.py \
+            tests/test_pre_news_cpi_2026.py
