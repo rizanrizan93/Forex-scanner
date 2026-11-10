@@ -117,6 +117,10 @@ def render_timeline(raw,*,now=None):
         st.warning("Audit belum diperbarui dalam 15 menit. Riwayat ditampilkan sebagai arsip, bukan status LIVE.")
     if not view["continuous_coverage_confirmed"]:
         st.info("Cakupan belum kontinu: sinyal pada jeda antar-job atau saat pembacaan gagal mungkin tidak tertangkap langsung. Jangan artikan riwayat kosong sebagai tidak ada sinyal.")
+    gap = view["unobserved_gap_s"]
+    if gap is not None and gap > 60:
+        st.warning(f"CELAH MONITORING {gap / 60:.1f} menit · jeda sebelum job berikutnya "
+                   "dapat menyembunyikan perubahan sinyal. Audit ini bukan streaming 24/7.")
     if not view["broker_open_positions_observed"]:
         st.caption("Rekonsiliasi posisi broker pada publikasi ini belum tersedia. Tidak ada keputusan FILLED/REJECTED yang dapat dipastikan.")
     if view["broker_deals_verified"]:
@@ -127,7 +131,9 @@ def render_timeline(raw,*,now=None):
         st.caption("Histori order broker belum lengkap. Terminal journal native juga belum terhubung.")
     st.caption("Posisi terbuka merupakan bukti positif; tidak ditemukannya posisi bukan bukti order gagal atau sinyal terlewat.")
     if not view["events"]:
-        st.caption("Belum ada perubahan checkpoint atau posisi BUY050 baru yang tercatat pada riwayat audit.")
+        st.caption("Tidak ada peristiwa yang teramati pada sampel audit ini. "
+                   "Ini BUKAN bukti bahwa strategi tidak memberi sinyal ataupun "
+                   "bahwa tidak ada order di luar jendela pemantauan.")
     else:
         display=[]
         for item in view["events"][:24]:
