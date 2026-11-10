@@ -60,6 +60,8 @@ def _result(phase: str, why: str) -> dict[str, Any]:
         "phase": phase,
         "decision": "WAIT",
         "bias": "NEUTRAL",
+        "hot_cool_risk": "UNDETERMINED",
+        "release_triggers": [],
         "macro_score_xau": None,
         "score_xau": None,
         "score_unit": "signed_heuristic_-100_100",
@@ -190,6 +192,19 @@ def evaluate_entry_guidance(
             "cukup baru (≤180 detik) untuk konfirmasi saat entry."
         )
     cluster = list(view.get("event_cluster") or [])
+    # Express *conditional* hot/cool actual triggers using the pre-release
+    # published consensus. These are thresholds, not model predictions.
+    inflation_mom = {"CPI_MOM", "CORE_CPI_MOM", "PPI_MOM", "CORE_PPI_MOM"}
+    for row in cluster:
+        component = str(row.get("event_component") or "")
+        forecast = _value(row.get("forecast"))
+        if component in inflation_mom and forecast is not None:
+            out["release_triggers"].append({
+                "component": component,
+                "forecast": forecast,
+                "hot_if_actual_at_least": round(forecast + .1, 2),
+                "cool_if_actual_at_most": round(forecast - .1, 2),
+            })
     out["forecast_verified"] = bool(view.get("forecast_quorum_met"))
     if not post:
         if current >= event_at:
@@ -204,6 +219,10 @@ def evaluate_entry_guidance(
             return out
         side = "SELL" if score < 0 else "BUY"
         out["bias"] = side
+        out["hot_cool_risk"] = (
+            "HOT-RISK MACRO (POTENSI BEARISH XAU)" if side == "SELL" else
+            "COOL-RISK MACRO (POTENSI BULLISH XAU)"
+        )
         out["confidence"] = "MODERATE" if out["macro_confirmed"] else "LOW"
         out["decision"] = f"{side} BIAS — TUNGGU RILIS"
         out["reason"] = (
@@ -250,6 +269,9 @@ def evaluate_entry_guidance(
         return out
     side = "SELL" if signs == {1} else "BUY"
     out["bias"] = side
+    out["hot_cool_risk"] = (
+        "HOT SURPRISE ACTUAL" if side == "SELL" else "COOL SURPRISE ACTUAL"
+    )
     out["news_verified"] = verified
     if (current - event_at).total_seconds() > POST_ENTRY_WINDOW_S:
         out["decision"] = "WAIT — JENDELA SPIKE NEWS SELESAI"
