@@ -1,0 +1,41 @@
+name: Package XAU RC1 v1.3.0
+
+on:
+  push:
+    branches: ["freeze/xau-rc1-1025-primary"]
+    paths:
+      - ".github/workflows/package-xau-rc1-v130.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: freeze/xau-rc1-1025-primary
+      - name: Verify committed algo hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED=$(awk '{print $1}' cbot_sources/archive/xau-rc1-v1.3.0/SHA256.txt)
+          ACTUAL=$(sha256sum cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo | awk '{print $1}')
+          test "$EXPECTED" = "$ACTUAL"
+          test -s cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo
+          test -s cbot_sources/archive/xau-rc1-v1.3.0/tests/contract_parity.json
+          test -s cbot_sources/archive/xau-rc1-v1.3.0/tests/fixture_results.json
+      - name: Upload verified RC1 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: RizanXAU_RC1_v1.3.0_verified
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo
+            cbot_sources/archive/xau-rc1-v1.3.0/SHA256.txt
+            cbot_sources/archive/xau-rc1-v1.3.0/config.json
+            cbot_sources/archive/xau-rc1-v1.3.0/PARITY_REPORT.md
+            cbot_sources/archive/xau-rc1-v1.3.0/tests/contract_parity.json
+            cbot_sources/archive/xau-rc1-v1.3.0/tests/fixture_results.json
