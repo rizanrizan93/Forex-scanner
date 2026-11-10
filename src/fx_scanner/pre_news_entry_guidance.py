@@ -14,6 +14,8 @@ MAX_PUBLISH_AGE_S = 660
 MAX_MACRO_AGE_S = 660
 MAX_DXY_AGE_S = 900
 MAX_YIELD_AGE_S = 1200
+CONFIRMATION_MAX_AGE_S = 180
+POST_ENTRY_WINDOW_S = 600
 MIN_EFFECTIVE_NEWS_SCORE = 35
 
 
@@ -171,13 +173,22 @@ def evaluate_entry_guidance(
         } for label, value, weight, detail in components)
     else:
         score = 0.0
-    out["macro_confirmed"] = bool(dxy_ok and yield_ok and
-        ((dxy_pct > .05 and yield_bps > 1.0) or
-         (dxy_pct < -.05 and yield_bps < -1.0)))
+    out["macro_confirmed"] = bool(
+        dxy_ok and yield_ok and
+        dxy_age is not None and 0 <= dxy_age <= CONFIRMATION_MAX_AGE_S
+        and yield_age is not None and 0 <= yield_age <= CONFIRMATION_MAX_AGE_S
+        and ((dxy_pct > .05 and yield_bps > 1.0) or
+             (dxy_pct < -.05 and yield_bps < -1.0))
+    )
     if not dxy_ok:
         out["warnings"].append("DXY intraday tidak cukup segar untuk konfirmasi berita.")
     if not yield_ok:
-        out["warnings"].append("Yield US10Y intraday tidak cukup segar untuk konfirmasi berita.")
+        out["warnings"].append("Yield US10Y intraday tidak cukup segar untuk konteks berita.")
+    if dxy_ok and yield_ok and not out["macro_confirmed"]:
+        out["warnings"].append(
+            "DXY/yield dapat dipakai sebagai konteks arah, tetapi belum "
+            "cukup baru (≤180 detik) untuk konfirmasi saat entry."
+        )
     cluster = list(view.get("event_cluster") or [])
     out["forecast_verified"] = bool(view.get("forecast_quorum_met"))
     if not post:
@@ -240,6 +251,15 @@ def evaluate_entry_guidance(
     side = "SELL" if signs == {1} else "BUY"
     out["bias"] = side
     out["news_verified"] = verified
+    if (current - event_at).total_seconds() > POST_ENTRY_WINDOW_S:
+        out["decision"] = "WAIT — JENDELA SPIKE NEWS SELESAI"
+        out["reason"] = (
+            f"Surprise data masih mendukung {side}, tetapi rilis sudah "
+            "lewat lebih dari 10 menit. Analisis price-action terbaru "
+            "diperlukan untuk setup lanjutan."
+        )
+        out["confidence"] = "LOW"
+        return out
     out["confidence"] = "MODERATE" if verified else "LOW"
     out["evidence"].extend({
         "name": str(row.get("event_component") or row.get("title")),
