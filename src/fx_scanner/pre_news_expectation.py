@@ -189,7 +189,14 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             and number(e.get("actual")) is not None
             for e in recent_cluster
         )
-        if official_seen or release_state in {"EVENT_WINDOW", "POST_EVENT_DISCOVERY"}:
+        corroborated_seen = any(
+            int(e.get("actual_source_count") or 0) >= 2
+            and str(e.get("source_agreement") or "") == "MULTI_SOURCE_AGREE"
+            and number(e.get("actual")) is not None
+            for e in recent_cluster
+        )
+        if (official_seen or corroborated_seen
+                or release_state in {"EVENT_WINDOW", "POST_EVENT_DISCOVERY"}):
             result.update(
                 state="POST_NEWS_PENDING", event=recent_cluster[0],
                 event_time_wib=latest.astimezone(ZoneInfo("Asia/Jakarta")).isoformat(),
@@ -211,6 +218,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 result["news_conclusion_status"] = "STALE"
                 return result
             verified: list[dict[str, Any]] = []
+            official_components = 0
             for e in recent_cluster:
                 component = str(
                     e.get("event_component")
@@ -221,7 +229,13 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                     continue
                 actual, forecast = number(e.get("actual")), number(e.get("forecast"))
                 official = str(e.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
-                if (not official or actual is None or forecast is None or
+                corroborated = (
+                    int(e.get("actual_source_count") or 0) >= 2
+                    and str(e.get("source_agreement") or "") == "MULTI_SOURCE_AGREE"
+                    and len(e.get("actual_quotes") or []) >= 2
+                )
+                if (not (official or corroborated)
+                        or actual is None or forecast is None or
                         _source_conflict(e) or
                         not _comparable_inflation_quote(component, actual, forecast)):
                     continue
@@ -237,6 +251,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                     "source": e.get("source"),
                 }
                 verified.append(row)
+                if official:
+                    official_components += 1
             result["event_cluster"] = verified
             # CPI requires headline and core MoM; no fabricated October-2026 YoY.
             required = (
@@ -255,7 +271,9 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 result["state"] = "POST_NEWS"
                 result["news_conclusion_components"] = len(verified)
                 result["news_conclusion_status"] = (
-                    "OFFICIAL_VERIFIED" if complete else "PARTIAL_ACTUAL"
+                    "PARTIAL_ACTUAL" if not complete else
+                    "OFFICIAL_VERIFIED" if official_components == len(verified) else
+                    "MULTI_SOURCE_CORROBORATED"
                 )
                 if signs == {1}:
                     result["news_conclusion"] = (
@@ -282,9 +300,14 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                     f'{row["forecast"]:.2f}% (Δ {row["surprise"]:+.2f}pp)'
                     for row in verified
                 )
+                provenance = (
+                    "Actual resmi BLS" if official_components == len(verified) else
+                    "Actual konsisten dari sedikitnya 2 kalender independen; "
+                    "konfirmasi BLS otomatis belum tersedia"
+                )
                 result["news_conclusion_basis"] = (
-                    "Actual terverifikasi dari sumber resmi, dibandingkan forecast "
-                    "yang diterima sebelum rilis: " + comparisons + ". "
+                    provenance + ", dibandingkan forecast "
+                    "pra-rilis: " + comparisons + ". "
                     + ("" if complete else "Komponen rilis belum lengkap. ")
                     + "Arah harga tetap perlu konfirmasi DXY, US2Y dan struktur."
                 )
