@@ -124,25 +124,26 @@ def render_pre_news_dashboard():
                 conclusion = "RISIKO BULLISH XAU (MAKRO) — ACTUAL BELUM DIRILIS"
             else:
                 conclusion = "PRA-RILIS — ARAH SPIKE BELUM TERVERIFIKASI"
-        st.metric("KESIMPULAN NEWS XAUUSD", conclusion)
-        st.caption(view["news_conclusion_basis"])
         if view["state"].startswith("POST_NEWS"):
-            st.caption("MODE PASCA-RILIS: actual resmi vs forecast. "
-                       "Tidak menggunakan forecast-vs-previous sebagai prediksi spike.")
+            st.metric("HASIL RILIS EKONOMI", conclusion)
+            st.caption(view["news_conclusion_basis"])
+            st.caption("MODE PASCA-RILIS: actual vs forecast; cek status sumber sebelum entry.")
         else:
+            st.caption("Konteks konsensus (bukan panduan entry): " + conclusion)
+            st.caption(view["news_conclusion_basis"])
             st.caption("MODE PRA-RILIS: forecast-vs-previous adalah ekspektasi "
-                       "perubahan inflasi, BUKAN prediksi pasti hot/cool actual.")
+                       "perubahan inflasi, bukan prediksi actual hot/cool.")
         st.caption(
             "VALIDATED = semua komponen sudah memenuhi 3 forecast independen. "
             "INDIKASI SEMENTARA = sebagian komponen hanya memiliki 2 sumber "
             "atau masih ada komponen yang belum tervalidasi; bukan izin entry."
         )
-        st.metric("Status forecast sebelum rilis", view["forecast_risk"])
+        st.caption("Diagnostik forecast konsensus: " + str(view["forecast_risk"]))
         st.caption(
-            "COOL RISK = data USD diperkirakan mendingin → bias awal bullish XAU. "
-            "HOT RISK = data USD diperkirakan memanas → bias awal bearish XAU. "
-            "Minimal 3 forecast numerik dari 6 sumber yang didukung untuk setiap komponen rilis. "
-            "Ini bukan prediksi surprise aktual atau sinyal order."
+            "HOT/COOL pada forecast hanya mengukur estimasi perubahan dari Previous. "
+            "Panduan BUY/SELL/WAIT dihitung terpisah memakai kondisi makro; "
+            "sesudah rilis memakai actual-vs-forecast. Quorum numerik minimal 3 sumber "
+            "per komponen tetap dipantau."
         )
         cols = st.columns(2)
         cols[0].metric("Status validasi makro", view["state"])
