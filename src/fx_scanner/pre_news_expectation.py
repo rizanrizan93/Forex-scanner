@@ -105,6 +105,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     events = [dict(e) for e in risk.get("upcoming_events") or []]
     if risk.get("focal_event"):
         events.append(dict(risk["focal_event"]))
+    if risk.get("latest_released_event"):
+        events.append(dict(risk["latest_released_event"]))
     upcoming = []
     seen = set()
     for event in events:
@@ -142,6 +144,131 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         "reasons": reasons, "components": [], "event_cluster": [],
         "unpublished_components": [],
     }
+    # A completed release is not a pre-release forecast. Give its verified
+    # actual-versus-consensus surprise priority over a stale COOL/HOT tilt.
+    # This does not rewrite historical pre-release predictions.
+    recent: list[tuple[datetime, dict[str, Any]]] = []
+    for e in events:
+        scheduled = timestamp(e.get("scheduled_at"))
+        if (scheduled is None or e.get("currency", "USD") != "USD"
+                or e.get("category") not in SUPPORTED):
+            continue
+        age = (current - scheduled).total_seconds()
+        if 0 < age <= 4 * 3600:
+            recent.append((scheduled, e))
+    if recent:
+        latest = max(at for at, _e in recent)
+        recent_cluster = [e for at, e in recent if at == latest]
+        # The worker explicitly reports an in-progress/released event; a past
+        # focal record alone may instead be an obsolete fixture/calendar item.
+        release_state = str(risk.get("state") or "")
+        official_seen = any(
+            str(e.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
+            and number(e.get("actual")) is not None
+            for e in recent_cluster
+        )
+        if official_seen or release_state in {"EVENT_WINDOW", "POST_EVENT_DISCOVERY"}:
+            result.update(
+                state="POST_NEWS_PENDING", event=recent_cluster[0],
+                event_time_wib=latest.astimezone(ZoneInfo("Asia/Jakarta")).isoformat(),
+                minutes_to_event=round((latest-current).total_seconds()/60, 1),
+                scenarios=_scenarios(recent_cluster[0]["category"]),
+                forecast_risk="PRA-RILIS SELESAI",
+                news_conclusion_status="WAITING_ACTUAL",
+                news_conclusion="MENUNGGU ACTUAL RESMI — BELUM ADA BIAS XAU",
+                news_conclusion_basis=(
+                    "Rilis telah lewat; forecast-vs-previous tidak boleh dipakai "
+                    "untuk menyimpulkan spike. Menunggu actual resmi dan konsensus numerik."
+                ),
+            )
+            if not fresh(event_hb.get("observed_at"), current, 600) or (
+                snapshot.get("publication_fresh") is False or
+                not event_hb.get("healthy")
+            ):
+                result["news_conclusion"] = "DATA RILIS TERLAMBAT — TUNGGU UPDATE"
+                result["news_conclusion_status"] = "STALE"
+                return result
+            verified: list[dict[str, Any]] = []
+            for e in recent_cluster:
+                component = str(
+                    e.get("event_component")
+                    or canonical_event_key(str(e.get("title") or ""))
+                )
+                if _unpublished_oct_2026_cpi_yoy(e, latest):
+                    result["unpublished_components"].append(component)
+                    continue
+                actual, forecast = number(e.get("actual")), number(e.get("forecast"))
+                official = str(e.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
+                if (not official or actual is None or forecast is None or
+                        _source_conflict(e) or
+                        not _comparable_inflation_quote(component, actual, forecast)):
+                    continue
+                surprise = round(actual - forecast, 6)
+                sign = 1 if surprise > 1e-9 else -1 if surprise < -1e-9 else 0
+                if e["category"] in INVERSE:
+                    sign *= -1
+                row = {
+                    "title": e.get("title"), "event_component": component,
+                    "category": e["category"], "actual": actual,
+                    "forecast": forecast, "previous": number(e.get("previous")),
+                    "surprise": surprise, "hawkish_tilt": sign,
+                    "source": e.get("source"),
+                }
+                verified.append(row)
+            result["event_cluster"] = verified
+            # CPI requires headline and core MoM; no fabricated October-2026 YoY.
+            required = (
+                {"CPI_MOM", "CORE_CPI_MOM"}
+                if latest.date() == OCT_2026_CPI_RELEASE
+                and any(e.get("category") == "CPI" for e in recent_cluster)
+                else set()
+            )
+            complete = bool(verified) and (
+                not required or required.issubset({
+                    row["event_component"] for row in verified
+                })
+            )
+            signs = {row["hawkish_tilt"] for row in verified} - {0}
+            if verified:
+                result["state"] = "POST_NEWS"
+                result["news_conclusion_components"] = len(verified)
+                result["news_conclusion_status"] = (
+                    "OFFICIAL_VERIFIED" if complete else "PARTIAL_ACTUAL"
+                )
+                if signs == {1}:
+                    result["news_conclusion"] = (
+                        "HOT SURPRISE — BEARISH XAU"
+                        + ("" if complete else " (ACTUAL PARSIAL)")
+                    )
+                    if complete:
+                        result["xau_bias"] = "BEARISH_XAU"
+                elif signs == {-1}:
+                    result["news_conclusion"] = (
+                        "COOL SURPRISE — BULLISH XAU"
+                        + ("" if complete else " (ACTUAL PARSIAL)")
+                    )
+                    if complete:
+                        result["xau_bias"] = "BULLISH_XAU"
+                elif signs == {1, -1}:
+                    result["news_conclusion"] = "MIXED SURPRISE — XAU NETRAL"
+                    result["xau_bias"] = "NEUTRAL_MIXED"
+                else:
+                    result["news_conclusion"] = "INLINE ACTUAL — XAU NETRAL"
+                    result["xau_bias"] = "NEUTRAL_MIXED"
+                comparisons = ", ".join(
+                    f'{row["event_component"]} {row["actual"]:.2f}% vs '
+                    f'{row["forecast"]:.2f}% (Δ {row["surprise"]:+.2f}pp)'
+                    for row in verified
+                )
+                result["news_conclusion_basis"] = (
+                    "Actual terverifikasi dari sumber resmi, dibandingkan forecast "
+                    "yang diterima sebelum rilis: " + comparisons + ". "
+                    + ("" if complete else "Komponen rilis belum lengkap. ")
+                    + "Arah harga tetap perlu konfirmasi DXY, US2Y dan struktur."
+                )
+                result["conviction"] = "NEWS_ONLY"
+                result["expectation"] = "POST_RELEASE_ACTUAL"
+            return result
     if "CALENDAR_STALE_MISSING_OR_UNHEALTHY" in reasons:
         result["news_gate"] = "UNAVAILABLE_STALE_CALENDAR"
         result["news_gate_action"] = "UNAVAILABLE"
@@ -408,5 +535,16 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     result["conviction"] = "LOW" if not direction else "MEDIUM" if pressures.count(direction) >= 3 else "LOW"
     if conflict:
         reasons.append("CONSENSUS_MACRO_DIVERGENCE")
+        # Primary headline must not advertise a bullish spike while fresh
+        # DXY/yield evidence contradicts a declining CPI consensus.
+        if expected == -1:
+            result["news_conclusion"] = (
+                "MIXED — COOL FORECAST vs HAWKISH MACRO; RISIKO HOT SURPRISE"
+            )
+            result["news_conclusion_status"] = "MACRO_DIVERGENCE"
+            result["news_conclusion_basis"] = (
+                "Forecast lebih rendah dari previous bukan actual dan bukan "
+                "prediksi spike bullish. Makro segar bertentangan; tahan arah."
+            )
     result["next_step"] = "H1 bias → M15 struktur/reversal → M5 timing; cek revisi dan respons yield/DXY setelah rilis."
     return result
