@@ -267,14 +267,16 @@ render_gold_macro_conclusion(macro_eval, load_h15_daily, event_risk=event_risk)
 def render_live_cash_quote() -> None:
     live_cash = None
     live_error = None
-    try:
-        live_cash = load_live_cash_us10y()
-    except Exception as exc:
-        live_error = _safe_error(exc)
-
     closed_market = treasury_session_status()["status"] in {
         "MARKET_HOLIDAY", "WEEKEND_CLOSED", "EARLY_CLOSE",
     }
+    # Avoid polling a cash quote during a known scheduled closure. This is a
+    # UI-only calendar guard; broker / cBot execution is completely separate.
+    if not closed_market:
+        try:
+            live_cash = load_live_cash_us10y()
+        except Exception as exc:
+            live_error = _safe_error(exc)
     if closed_market:
         health = treasury_session_status()["status"].replace("_", " ")
         fallback = "N/A"
