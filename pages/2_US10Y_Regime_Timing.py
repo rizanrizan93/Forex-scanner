@@ -394,14 +394,14 @@ try:
         and official.get("delta") is not None
         and (daily.get("gold_bias") == "UNAVAILABLE" or official_day > worker_day)
     ):
-            display_only = dict(macro_eval)
-            display_only["components"] = {
-                **dict(macro_eval.get("components") or {}), "US10Y": official,
-            }
-            summary = yield_regime_summary(display_only)
-            daily = dict(summary.get("daily") or {})
-            intraday = dict(summary.get("intraday") or {})
-            h15_display_active = True
+        display_only = dict(macro_eval)
+        display_only["components"] = {
+            **dict(macro_eval.get("components") or {}), "US10Y": official,
+        }
+        summary = yield_regime_summary(display_only)
+        daily = dict(summary.get("daily") or {})
+        intraday = dict(summary.get("intraday") or {})
+        h15_display_active = True
 except Exception as exc:
     h15_display_error = _safe_error(exc)
 
