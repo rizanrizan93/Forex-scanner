@@ -56,6 +56,10 @@ def test_forecast_cooling_does_not_force_bullish_when_macro_hawkish():
     assert result["decision"] == "SELL BIAS — TUNGGU RILIS"
     assert result["score_xau"] < -35
     assert result["bias"] == "SELL"
+    assert result["hot_cool_risk"] == "HOT-RISK MACRO (POTENSI BEARISH XAU)"
+    assert len(result["release_triggers"]) == 2
+    assert result["release_triggers"][0]["hot_if_actual_at_least"] == .5
+    assert result["release_triggers"][1]["cool_if_actual_at_most"] == .2
     assert result["confidence"] == "MODERATE"
     assert not result["trade_ready"] and not result["execution_authority"]
     assert "BELUM diketahui" in result["reason"]
@@ -110,6 +114,7 @@ def test_hot_ppi_post_release_means_sell_setup_not_automatic_entry():
     result = evaluate_entry_guidance(view, snap, now=AFTER)
     assert result["decision"] == "SELL SETUP — KONFIRMASI M1/M5"
     assert result["news_verified"] is True
+    assert result["hot_cool_risk"] == "HOT SURPRISE ACTUAL"
     assert result["confidence"] == "MODERATE"
     assert result["trade_ready"] is False
     assert result["execution_influence"] is False
