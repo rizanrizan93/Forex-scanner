@@ -85,7 +85,22 @@ def render_pre_news_dashboard():
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
-        st.metric("KESIMPULAN NEWS XAUUSD", view["news_conclusion"])
+        # A forecast below Previous does NOT predict Actual below consensus.
+        # Keep a separate, explicitly conditional pre-release macro-risk headline.
+        conclusion = view["news_conclusion"]
+        if view["state"] == "PRE_NEWS":
+            fresh_pressure = [
+                row.get("hawkish_pressure")
+                for row in view.get("components") or []
+                if row.get("fresh") and row.get("name") in {"DXY", "US2Y", "US10Y"}
+            ]
+            if fresh_pressure.count(1) >= 2 and fresh_pressure.count(-1) == 0:
+                conclusion = "RISIKO BEARISH XAU (MAKRO) — ACTUAL BELUM DIRILIS"
+            elif fresh_pressure.count(-1) >= 2 and fresh_pressure.count(1) == 0:
+                conclusion = "RISIKO BULLISH XAU (MAKRO) — ACTUAL BELUM DIRILIS"
+            else:
+                conclusion = "PRA-RILIS — ARAH SPIKE BELUM TERVERIFIKASI"
+        st.metric("KESIMPULAN NEWS XAUUSD", conclusion)
         st.caption(view["news_conclusion_basis"])
         if view["state"].startswith("POST_NEWS"):
             st.caption("MODE PASCA-RILIS: actual resmi vs forecast. "
