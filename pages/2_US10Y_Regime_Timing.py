@@ -383,10 +383,17 @@ daily = dict(summary.get("daily") or {})
 intraday = dict(summary.get("intraday") or {})
 h15_display_active = False
 h15_display_error = None
-if daily.get("gold_bias") == "UNAVAILABLE":
-    try:
-        official = dict(load_h15_daily().get("US10Y") or {})
-        if official.get("freshness") == "FRESH" and official.get("delta") is not None:
+# Prefer a newer official H.15 date if the published macro-worker/FRED
+# snapshot is a session behind. Equal-date worker data retains precedence.
+try:
+    official = dict(load_h15_daily().get("US10Y") or {})
+    official_day = str(official.get("observed_at") or "")[:10]
+    worker_day = str(daily.get("observed_at") or "")[:10]
+    if (
+        official.get("freshness") == "FRESH"
+        and official.get("delta") is not None
+        and (daily.get("gold_bias") == "UNAVAILABLE" or official_day > worker_day)
+    ):
             display_only = dict(macro_eval)
             display_only["components"] = {
                 **dict(macro_eval.get("components") or {}), "US10Y": official,
@@ -395,8 +402,8 @@ if daily.get("gold_bias") == "UNAVAILABLE":
             daily = dict(summary.get("daily") or {})
             intraday = dict(summary.get("intraday") or {})
             h15_display_active = True
-    except Exception as exc:
-        h15_display_error = _safe_error(exc)
+except Exception as exc:
+    h15_display_error = _safe_error(exc)
 
 
 # Do not promote quote ages or the worker's previous-session yield to
