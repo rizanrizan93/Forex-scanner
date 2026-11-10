@@ -219,6 +219,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 return result
             verified: list[dict[str, Any]] = []
             official_components = 0
+            preliminary_components = 0
             for e in recent_cluster:
                 component = str(
                     e.get("event_component")
@@ -234,7 +235,13 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                     and str(e.get("source_agreement") or "") == "MULTI_SOURCE_AGREE"
                     and len(e.get("actual_quotes") or []) >= 2
                 )
-                if (not (official or corroborated)
+                provisional = (
+                    int(e.get("actual_source_count") or 0) == 1
+                    and int(e.get("forecast_source_count") or 0) >= 3
+                    and str(e.get("source_agreement") or "") == "MULTI_SOURCE_AGREE"
+                    and len(e.get("actual_quotes") or []) == 1
+                )
+                if (not (official or corroborated or provisional)
                         or actual is None or forecast is None or
                         _source_conflict(e) or
                         not _comparable_inflation_quote(component, actual, forecast)):
@@ -253,6 +260,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 verified.append(row)
                 if official:
                     official_components += 1
+                if provisional and not (official or corroborated):
+                    preliminary_components += 1
             result["event_cluster"] = verified
             # CPI requires headline and core MoM; no fabricated October-2026 YoY.
             required = (
@@ -270,25 +279,33 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             if verified:
                 result["state"] = "POST_NEWS"
                 result["news_conclusion_components"] = len(verified)
+                preliminary = preliminary_components > 0
                 result["news_conclusion_status"] = (
                     "PARTIAL_ACTUAL" if not complete else
+                    "PROVISIONAL_ACTUAL_SINGLE_SOURCE" if preliminary else
                     "OFFICIAL_VERIFIED" if official_components == len(verified) else
                     "MULTI_SOURCE_CORROBORATED"
                 )
+                suffix = (
+                    " (DATA AWAL — 1 SUMBER)" if preliminary else
+                    "" if complete else " (ACTUAL PARSIAL)"
+                )
                 if signs == {1}:
                     result["news_conclusion"] = (
-                        "HOT SURPRISE — BEARISH XAU"
-                        + ("" if complete else " (ACTUAL PARSIAL)")
+                        "HOT SURPRISE — BEARISH XAU" + suffix
                     )
                     if complete:
-                        result["xau_bias"] = "BEARISH_XAU"
+                        result["xau_bias"] = (
+                            "BEARISH_XAU_PRELIMINARY" if preliminary else "BEARISH_XAU"
+                        )
                 elif signs == {-1}:
                     result["news_conclusion"] = (
-                        "COOL SURPRISE — BULLISH XAU"
-                        + ("" if complete else " (ACTUAL PARSIAL)")
+                        "COOL SURPRISE — BULLISH XAU" + suffix
                     )
                     if complete:
-                        result["xau_bias"] = "BULLISH_XAU"
+                        result["xau_bias"] = (
+                            "BULLISH_XAU_PRELIMINARY" if preliminary else "BULLISH_XAU"
+                        )
                 elif signs == {1, -1}:
                     result["news_conclusion"] = "MIXED SURPRISE — XAU NETRAL"
                     result["xau_bias"] = "NEUTRAL_MIXED"
@@ -301,8 +318,10 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                     for row in verified
                 )
                 provenance = (
+                    "Actual awal dari satu sumber kalender; BELUM terverifikasi BLS" 
+                    if preliminary else
                     "Actual resmi BLS" if official_components == len(verified) else
-                    "Actual konsisten dari sedikitnya 2 kalender independen; "
+                    "Actual konsisten dari sedikitnya 2 kalender berbeda; "
                     "konfirmasi BLS otomatis belum tersedia"
                 )
                 result["news_conclusion_basis"] = (
@@ -311,7 +330,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                     + ("" if complete else "Komponen rilis belum lengkap. ")
                     + "Arah harga tetap perlu konfirmasi DXY, US2Y dan struktur."
                 )
-                result["conviction"] = "NEWS_ONLY"
+                result["conviction"] = "LOW_PROVISIONAL" if preliminary else "NEWS_ONLY"
                 result["expectation"] = "POST_RELEASE_ACTUAL"
             return result
     if "CALENDAR_STALE_MISSING_OR_UNHEALTHY" in reasons:
