@@ -33,6 +33,7 @@ from .pre_news_additional_providers import (
     TradingEconomicsCalendarProvider,
 )
 from .pre_news_source_fusion import FusedConsensus, SourceQuote, canonical_event_key, fuse_consensus
+from .pre_news_official_cpi import OFFICIAL_CPI_URL, parse_official_cpi_release
 from .providers.news import ForexFactoryCalendarProvider
 from .providers.transport import UrllibHttpTransport, HttpTransportError
 from .storage.supabase_operational import SupabaseOperationalStore
@@ -263,6 +264,32 @@ def _overlay_employment_actuals(
                 source_url=source_url or event.source_url,
             )
         )
+    return tuple(sorted(out, key=lambda event: event.scheduled_at))
+
+
+def _overlay_cpi_actuals(
+    events: Iterable[RiskEvent], actuals: dict[str, Any]
+) -> tuple[RiskEvent, ...]:
+    """Overlay BLS monthly CPI actuals without inventing any YoY figure."""
+    release_at = actuals.get("release_at")
+    if not isinstance(release_at, datetime):
+        return tuple(events)
+    out: list[RiskEvent] = []
+    for event in events:
+        key = canonical_event_key(event.title)
+        if (event.category != "CPI" or
+                abs((event.scheduled_at - release_at).total_seconds()) > 120 or
+                key not in {"CPI_MOM", "CORE_CPI_MOM"} or
+                actuals.get(key) is None):
+            out.append(event)
+            continue
+        out.append(replace(
+            event,
+            actual=float(actuals[key]),
+            source="BLS_OFFICIAL_CPI_RELEASE",
+            source_tier="OFFICIAL_ACTUAL_WITH_FUSED_CONSENSUS",
+            source_url=str(actuals.get("source_url") or OFFICIAL_CPI_URL),
+        ))
     return tuple(sorted(out, key=lambda event: event.scheduled_at))
 
 
@@ -524,10 +551,34 @@ def run() -> int:
         except Exception as exc:
             source_status["TRADING_ECONOMICS"] = _provider_failure(exc)
 
+    # Read the official BLS CPI release only when an aligned CPI event has
+    # actually passed. Never use a previous month's release as today's actual.
+    bls_cpi_actuals: dict[str, Any] = {}
+    if any(
+        e.category == "CPI"
+        and 0 <= (now - e.scheduled_at).total_seconds() <= 24 * 3600
+        for e in events
+    ):
+        try:
+            response = transport.get(
+                OFFICIAL_CPI_URL, allowed_host="www.bls.gov",
+                headers={"Accept": "text/html,*/*;q=0.1"},
+            )
+            bls_cpi_actuals = parse_official_cpi_release(
+                response.body, now=now, source_url=OFFICIAL_CPI_URL,
+            )
+            source_status["BLS_CPI_RELEASE"] = (
+                "OK:CURRENT" if bls_cpi_actuals else "OK:NO_CURRENT_RELEASE"
+            )
+        except Exception as exc:
+            source_status["BLS_CPI_RELEASE"] = _provider_failure(exc)
+
     aligned = _align_secondary_events(events, max_hours=max_align_hours)
     fused_events, fusion_metadata = _fuse_events(aligned)
     if bls_release_actuals:
         fused_events = _overlay_employment_actuals(fused_events, bls_release_actuals)
+    if bls_cpi_actuals:
+        fused_events = _overlay_cpi_actuals(fused_events, bls_cpi_actuals)
     risk = _enrich_risk(evaluate_event_risk(fused_events, now=now), fusion_metadata)
 
     official_count = sum(event.source_tier.startswith("OFFICIAL") for event in fused_events)
