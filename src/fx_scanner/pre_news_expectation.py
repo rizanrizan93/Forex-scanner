@@ -195,7 +195,14 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             and number(e.get("actual")) is not None
             for e in recent_cluster
         )
-        if (official_seen or corroborated_seen
+        preliminary_seen = any(
+            int(e.get("actual_source_count") or 0) == 1
+            and int(e.get("forecast_source_count") or 0) >= 3
+            and str(e.get("source_agreement") or "") == "MULTI_SOURCE_AGREE"
+            and number(e.get("actual")) is not None
+            for e in recent_cluster
+        )
+        if (official_seen or corroborated_seen or preliminary_seen
                 or release_state in {"EVENT_WINDOW", "POST_EVENT_DISCOVERY"}):
             result.update(
                 state="POST_NEWS_PENDING", event=recent_cluster[0],
