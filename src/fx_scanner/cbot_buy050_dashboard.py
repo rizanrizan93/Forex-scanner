@@ -29,6 +29,17 @@ def _wib(value):
     return t.astimezone(WIB).strftime("%d/%m %H:%M:%S WIB") if t else "—"
 
 
+def _lag_label(age_seconds):
+    """Age of a source observation; never substitute page refresh time."""
+    if age_seconds == float("inf"):
+        return "timestamp tidak tersedia"
+    if age_seconds < -30:
+        return "timestamp di masa depan"
+    if age_seconds < 60:
+        return f"{max(0, int(age_seconds))} detik"
+    return f"{age_seconds / 60:.1f} menit"
+
+
 def evaluate_snapshot(raw, *, now=None):
     """Reject spoofed/old contracts and distinguish publication from LIVE readiness."""
     now = now or datetime.now(timezone.utc)
@@ -57,8 +68,17 @@ def evaluate_snapshot(raw, *, now=None):
         and health.get("profile_ok") is True and -30 <= health_age <= 120
     )
     status = {}
+    lease_fresh = {}
     for r in rows:
         symbol = r["symbol"]
+        touched = _time(r.get("lease_touched_at"))
+        lease_age = (now - touched).total_seconds() if touched else None
+        # A published lease_active flag is only useful with its own source
+        # timestamp. Older source contracts omit that field: do not invent
+        # freshness for them, but reject any explicitly stale lease.
+        lease_fresh[symbol] = (
+            -30 <= lease_age <= 120 if lease_age is not None else None
+        )
         if not snapshot_fresh:
             state = "DATA_TERLAMBAT"
         elif r.get("unrecognized_checkpoint") is True:
@@ -67,6 +87,8 @@ def evaluate_snapshot(raw, *, now=None):
             state = "IDENTITAS_BERMASALAH"
         elif not bridge_ready or r.get("lease_active") is not True:
             state = "BELUM_TERHUBUNG"
+        elif lease_fresh[symbol] is False:
+            state = "LEASE_TERLAMBAT"
         elif r.get("fault") is True or r.get("quarantined") is True or r.get("exit_pending") is True:
             state = "BLOKIR_NATIVE"
         elif r.get("checkpoint_basket") is True or r.get("pending_intent") is True:
@@ -78,7 +100,7 @@ def evaluate_snapshot(raw, *, now=None):
         "payload": raw, "observed_at": observed,
         "fresh": snapshot_fresh, "bridge_ready": bridge_ready,
         "health_age_seconds": health_age, "age_seconds": age,
-        "statuses": status,
+        "statuses": status, "lease_freshness": lease_fresh,
     }
 
 
@@ -123,7 +145,7 @@ def render_snapshot(raw, *, now=None):
         "bukan streaming terminal maupun konfirmasi order."
     )
     if not model["fresh"]:
-        st.error("DATA TERLAMBAT · publikasi BUY050 lebih dari 15 menit. "
+        st.error("DATA TERLAMBAT · publikasi BUY050 sudah di luar batas 15 menit. "
                  "Status LIVE saat ini tidak dapat diverifikasi; ini tidak membuktikan cBot mati.")
     elif not model["bridge_ready"]:
         st.warning("Bridge belum dapat dikonfirmasi baru dan sehat. Jangan tafsirkan ini sebagai sinyal entry.")
@@ -131,7 +153,10 @@ def render_snapshot(raw, *, now=None):
         st.info("Bridge BUY050 teramati; kesehatan koneksi tidak membuktikan cBot dapat mengirim order.")
     rows = p["symbols"]
     count = sum(model["statuses"][s] in ("TERPANTAU", "CHECKPOINT_AKTIF", "BLOKIR_NATIVE") for s in SYMBOLS)
-    st.metric("Checkpoint terverifikasi", (str(count) if model["fresh"] else "—") + "/3")
+    st.metric("Checkpoint identitas terpantau", (str(count) if model["fresh"] else "—") + "/3")
+    st.caption("Usia publikasi: " + _lag_label(model["age_seconds"]) +
+               " · usia heartbeat bridge: " + _lag_label(model["health_age_seconds"]) +
+               ". Refresh halaman bukan pembaruan data broker.")
     historical_connected = (p.get("bridge") or {}).get("connected")
     if not model["fresh"] and type(historical_connected) is int:
         st.caption(f"Snapshot terakhir melaporkan {historical_connected}/3 koneksi bridge; "
@@ -141,10 +166,11 @@ def render_snapshot(raw, *, now=None):
                "Parameter ini milik profil monitor BUY050, belum tentu sama dengan .algo baru. "
                "Periksa parameter aktual pada cTrader.")
     labels = {
-        "TERPANTAU": "TERPANTAU · belum ada kandidat entry terverifikasi",
+        "TERPANTAU": "TERPANTAU · checkpoint valid, sinyal diperiksa terpisah",
         "CHECKPOINT_AKTIF": "CHECKPOINT AKTIF · periksa posisi/intent di cTrader",
         "BLOKIR_NATIVE": "BLOKIR · fault, quarantine, atau exit pending",
         "BELUM_TERHUBUNG": "WAIT · lease/bridge belum terverifikasi",
+        "LEASE_TERLAMBAT": "WAIT · heartbeat lease sudah kedaluwarsa",
         "IDENTITAS_BERMASALAH": "BLOCK · checkpoint/profil tidak cocok",
         "DATA_TERLAMBAT": "WAIT · data terlambat",
         "ALGO_PERLU_VERIFIKASI": "BLOCK · format checkpoint baru perlu verifikasi",
@@ -159,6 +185,9 @@ def render_snapshot(raw, *, now=None):
             st.warning("Ditemukan checkpoint lain untuk instrumen dan akun ini yang tidak cocok "
                        "dengan identitas BUY050 tersimpan. Sinkronisasi kontrak algo/bridge "
                        "perlu diperiksa; status otomatis tidak dinyatakan aktif.")
+        if model["fresh"] and model["statuses"][symbol] == "LEASE_TERLAMBAT":
+            st.warning("Lease aktif pada snapshot, tetapi waktu heartbeat lease tidak "
+                       "memenuhi batas 120 detik. Jangan simpulkan cBot siap entry.")
         if model["fresh"] and item.get("checkpoint_present") is True:
             st.write("Checkpoint versi:", item.get("checkpoint_version") if type(item.get("checkpoint_version")) is int else "—")
             st.write("Candle terakhir native:", _wib(item.get("last_bar_at")))
@@ -195,21 +224,26 @@ def _render():
     def cached(slot):
         return _fetch(slot)
 
+    primary_snapshot = None
     try:
         now = datetime.now(timezone.utc)
         primary_snapshot = cached(int(now.timestamp() // 45))
         render_snapshot(primary_snapshot, now=now)
-    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+    except (OSError, ValueError, TypeError, KeyError, TimeoutError) as exc:
+        # Keep independent audit feeds visible even when primary monitor fails.
+        # Passing None to the shadow panel prevents LIVE verification of
+        # candidate geometry without a healthy primary checkpoint.
+        primary_snapshot = None
         st.subheader("cBots · BUY050 RuntimeGuard")
         st.warning(
             "WAIT · snapshot BUY050 belum tersedia atau tidak valid. "
             "Strategi lama V1.3.0 tidak digunakan sebagai pengganti. "
             "Tidak ada entry, SL atau TP LIVE yang dapat dipastikan dari monitor ini."
         )
-        st.caption("Profil lama BUY050 tidak dapat diverifikasi. Cek versi .algo serta "
-                   "koneksi cTrader sebelum menganggap status monitor mencerminkan LIVE.")
-        return
-
+        st.caption("Kategori kegagalan monitor: " + type(exc).__name__ +
+                   ". Panel shadow dan audit di bawah tetap independen, "
+                   "tetapi tidak boleh mengonfirmasi order LIVE.")
+    
     # Optional secondary audit panels must never erase an otherwise valid
     # primary read-only checkpoint status if their separate feeds fail.
     try:
