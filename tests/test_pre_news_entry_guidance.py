@@ -72,6 +72,16 @@ def test_dovish_macro_creates_conditional_buy_bias():
     assert result["score_xau"] > 35
 
 
+def test_optional_legacy_incomplete_still_shows_low_confidence_macro_scenario():
+    view, snap = fixture(BEFORE)
+    view["state"] = "DATA INCOMPLETE"
+    view["forecast_quorum_met"] = False
+    result = evaluate_entry_guidance(view, snap, now=BEFORE)
+    assert result["decision"] == "SELL BIAS — TUNGGU RILIS"
+    assert result["confidence"] == "LOW"
+    assert result["execution_authority"] is False
+
+
 def test_neutral_macro_abstains_and_forecast_only_not_trade():
     view, snap = fixture(BEFORE, dxy=0.0, yield_bps=0.0, macro=0.0)
     result = evaluate_entry_guidance(view, snap, now=BEFORE)
