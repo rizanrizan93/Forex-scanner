@@ -133,6 +133,27 @@ def test_post_missing_actual_does_not_reuse_pre_forecast(status):
     assert result["news_verified"] is False
 
 
+def test_news_spike_entry_window_expires_after_ten_minutes():
+    later = RELEASE + timedelta(minutes=11)
+    view, snap = fixture(later)
+    result = evaluate_entry_guidance(view, snap, now=later)
+    assert result["decision"] == "WAIT — JENDELA SPIKE NEWS SELESAI"
+    assert result["bias"] == "SELL"
+    assert result["trade_ready"] is False
+
+
+def test_intraday_quotes_older_than_three_minutes_are_context_not_confirmation():
+    view, snap = fixture(BEFORE)
+    age = (BEFORE - timedelta(minutes=6)).isoformat()
+    macro = snap["heartbeats"][1]["details"]["evaluation"]
+    macro["dxy_intraday"]["current_at"] = age
+    macro["intraday_yield_context"]["current_at"] = age
+    result = evaluate_entry_guidance(view, snap, now=BEFORE)
+    assert result["bias"] == "SELL"
+    assert result["macro_confirmed"] is False
+    assert result["confidence"] == "LOW"
+
+
 def test_no_lookahead_at_same_instant_as_release():
     view, snap = fixture(BEFORE)
     view["state"] = "POST_NEWS"
