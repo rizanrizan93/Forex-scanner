@@ -105,6 +105,22 @@ def test_missing_core_actual_is_explicitly_partial():
     assert "ACTUAL PARSIAL" in result["news_conclusion"]
 
 
+def test_single_actual_with_three_forecast_sources_is_preliminary_hot():
+    data = _snapshot(official=False)
+    for item in data["heartbeats"][0]["details"]["risk"]["upcoming_events"]:
+        item["actual_source_count"] = 1
+        item["actual_quotes"] = [{"source": "SHOWMYTRADES", "actual": item["actual"]}]
+        item["forecast_source_count"] = 3
+        item["source_agreement"] = "MULTI_SOURCE_AGREE"
+    data["heartbeats"][0]["details"]["risk"]["state"] = "CLEAR"
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["state"] == "POST_NEWS"
+    assert view["news_conclusion_status"] == "PROVISIONAL_ACTUAL_SINGLE_SOURCE"
+    assert "HOT SURPRISE — BEARISH XAU" in view["news_conclusion"]
+    assert view["xau_bias"] == "BEARISH_XAU_PRELIMINARY"
+    assert "BELUM terverifikasi BLS" in view["news_conclusion_basis"]
+
+
 def test_no_actual_after_release_is_not_false_cool_bullish_signal():
     result = evaluate_pre_news(_snapshot(actuals=False), now=NOW)
     assert result["news_conclusion_status"] == "WAITING_ACTUAL"
