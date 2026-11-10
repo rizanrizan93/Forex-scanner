@@ -88,6 +88,7 @@ def render_pre_news_dashboard():
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
         guidance = evaluate_entry_guidance(view, snapshot, now=datetime.now(UTC))
         st.metric("PANDUAN ARAH ENTRY NEWS", guidance["decision"])
+        st.caption("Klasifikasi hot/cool: " + guidance["hot_cool_risk"])
         stats = st.columns(2)
         stats[0].metric(
             "Skor arah XAU (-100 bearish, +100 bullish)",
@@ -96,6 +97,13 @@ def render_pre_news_dashboard():
         )
         stats[1].metric("Keyakinan analisis", guidance["confidence"])
         st.caption(guidance["reason"])
+        if guidance["release_triggers"]:
+            with st.expander("Ambang HOT/COOL yang dihitung dari forecast", expanded=False):
+                st.dataframe(guidance["release_triggers"], hide_index=True, width="stretch")
+                st.caption(
+                    "Ambang ±0,1 poin persentase adalah skenario kondisional "
+                    "kejutan angka bulanan, bukan jaminan arah atau probabilitas."
+                )
         st.markdown("**Pemicu entry:** " + guidance["trigger"])
         st.caption("Invalidasi: " + guidance["invalidated_by"])
         if guidance["warnings"]:
