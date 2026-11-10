@@ -169,6 +169,28 @@ def test_intraday_quotes_older_than_three_minutes_are_context_not_confirmation()
     assert result["confidence"] == "LOW"
 
 
+def test_one_macro_input_cannot_issue_unsupported_entry_bias():
+    view, snap = fixture(BEFORE)
+    evaluation = snap["heartbeats"][1]["details"]["evaluation"]
+    evaluation["macro_score"] = None
+    evaluation["intraday_yield_context"]["available"] = False
+    result = evaluate_entry_guidance(view, snap, now=BEFORE)
+    assert result["decision"] == "WAIT"
+    assert result["confidence"] == "INSUFFICIENT"
+
+
+def test_post_news_old_quotes_keep_confidence_low():
+    view, snap = fixture(AFTER)
+    past = (AFTER - timedelta(minutes=5)).isoformat()
+    evaluation = snap["heartbeats"][1]["details"]["evaluation"]
+    evaluation["dxy_intraday"]["current_at"] = past
+    evaluation["intraday_yield_context"]["current_at"] = past
+    result = evaluate_entry_guidance(view, snap, now=AFTER)
+    assert result["decision"] == "SELL SETUP — KONFIRMASI M1/M5"
+    assert result["confidence"] == "LOW"
+    assert result["trade_ready"] is False
+
+
 def test_no_lookahead_at_same_instant_as_release():
     view, snap = fixture(BEFORE)
     view["state"] = "POST_NEWS"
