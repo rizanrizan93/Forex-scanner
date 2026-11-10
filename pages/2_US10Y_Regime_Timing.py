@@ -20,6 +20,9 @@ from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
 from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
+from fx_scanner.xau_treasury_schedule import (  # noqa: E402
+    treasury_session_status, fred_daily_release_key, next_h15_release, WIB,
+)
 
 # Long-running Streamlit sessions can retain imported modules after a Git
 # deployment updates their .py files. Refresh ONLY the read-only XAU macro
@@ -175,9 +178,14 @@ def load_macro():
     return fetch_pre_news_snapshot()
 
 
-@st.cache_data(ttl=900, show_spinner=False)
-def load_h15_daily():
+@st.cache_data(ttl=7 * 86400, show_spinner=False)
+def _load_h15_by_release(release_key):
     return fetch_h15_daily_rows()
+
+
+def load_h15_daily():
+    # Federal Reserve H.15 is official daily reference, not intraday polling.
+    return _load_h15_by_release(fred_daily_release_key())
 
 
 st.set_page_config(page_title="RIZAN US10Y", layout="wide")
@@ -186,12 +194,39 @@ st.caption(
     "Daily FRED (fallback Federal Reserve H.15) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
-st.caption("Versi dashboard: RIZAN Macro V3.2 DAILY REGIME FALLBACK · Intraday + H.15/FRED Treasury & DXY last session · read-only")
+st.caption("Versi dashboard: RIZAN Macro V3.3 TREASURY HOLIDAY + OFFICIAL DAILY RELEASE · read-only")
+treasury_calendar = treasury_session_status()
+calendar_state = treasury_calendar["status"]
+if calendar_state == "MARKET_HOLIDAY":
+    st.info(
+        "MARKET HOLIDAY • " + treasury_calendar["label"] + " ("
+        + treasury_calendar["ny_date"] + " waktu New York). "
+        "Pasar Treasury AS dijadwalkan tutup. Yield cash lama bukan feed LIVE; "
+        "Daily FRED tetap menjadi backdrop historis."
+    )
+elif calendar_state == "PRE_HOLIDAY":
+    st.info(
+        "PRE-HOLIDAY • sesi AS berikutnya libur (" + str(treasury_calendar["holiday_tomorrow"])
+        + "). Sekarang di New York masih " + treasury_calendar["ny_time"]
+        + "; quote intraday tetap harus lolos freshness."
+    )
+elif calendar_state in {"WEEKEND_CLOSED", "EARLY_CLOSE"}:
+    st.info(
+        calendar_state.replace("_", " ") + " • " + treasury_calendar["ny_time"]
+        + ". Yield cash sebelumnya hanya referensi, bukan LIVE."
+    )
+st.caption(
+    "FRED Treasury daily: fetch sekali per siklus rilis H.15 (16:15 ET, buffer hingga 16:45 ET), "
+    "bukan setiap refresh 15–20 detik. Siklus data " + fred_daily_release_key()
+    + " · rilis H.15 berikutnya "
+    + next_h15_release().astimezone(WIB).strftime("%d/%m %H:%M WIB")
+    + ". FRED dapat terlambat dari H.15."
+)
 
 if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
     load_live_cash_us10y.clear()
-    load_h15_daily.clear()
+    _load_h15_by_release.clear()
     fred_history.clear()
     market_quote.clear()
     cnbc_macro_quotes_cached.clear()
@@ -237,7 +272,17 @@ def render_live_cash_quote() -> None:
     except Exception as exc:
         live_error = _safe_error(exc)
 
-    if live_cash and live_cash.get("fresh"):
+    closed_market = treasury_session_status()["status"] in {
+        "MARKET_HOLIDAY", "WEEKEND_CLOSED", "EARLY_CLOSE",
+    }
+    if closed_market:
+        health = treasury_session_status()["status"].replace("_", " ")
+        fallback = "N/A"
+        health_detail = (
+            "Treasury cash tidak memiliki sesi aktif sesuai kalender pasar AS. "
+            "Quote tersimpan tidak boleh dianggap intraday LIVE."
+        )
+    elif live_cash and live_cash.get("fresh"):
         health = "CNBC OK"
         fallback = "TIDAK"
         health_detail = (
@@ -264,6 +309,17 @@ def render_live_cash_quote() -> None:
     else:
         h3.metric("Usia data", "—")
     st.caption("Health detail: " + health_detail)
+
+    if closed_market:
+        st.info(
+            "Treasury cash market sedang libur/tutup. Data CNBC terakhir"
+            + (" " + fmt(live_cash.get("current"), "%")
+               + " · " + wib(live_cash.get("current_at")) if live_cash else " tidak tersedia")
+            + " hanya referensi historis, tidak digunakan untuk tekanan intraday."
+        )
+        if live_error:
+            st.caption("Diagnosis sumber (non-trading): " + live_error)
+        return
 
     if live_cash and live_cash.get("fresh"):
         st.success(
@@ -341,6 +397,17 @@ if daily.get("gold_bias") == "UNAVAILABLE":
         h15_display_error = _safe_error(exc)
 
 
+# Do not promote quote ages or the worker's previous-session yield to
+# intraday pressure during a scheduled bond-market holiday or weekend.
+if calendar_state in {"MARKET_HOLIDAY", "WEEKEND_CLOSED", "EARLY_CLOSE"}:
+    intraday = {**intraday, "gold_bias": "UNAVAILABLE", "state": calendar_state,
+                "current": None, "rebound_from_low_bps": None}
+    summary = {
+        **summary, "alignment": "INTRADAY_UNAVAILABLE",
+        "decision_note": "Sesi Treasury AS ditutup sesuai kalender; bias harian tetap kontekstual, bukan trigger entry.",
+    }
+    proxy_active = False
+
 c1, c2 = st.columns(2)
 with c1:
     st.markdown("### US10Y Daily Regime")
@@ -359,6 +426,7 @@ with c1:
         ),
     )
     st.caption("Tanggal observasi daily: " + str(daily.get("observed_at") or "—")[:10])
+    st.caption("Fetch official daily per rilis; pada holiday/weekend mempertahankan observasi terakhir, tanpa mencapnya LIVE.")
     st.caption("Sumber harian: " + str(daily.get("source") or "UNAVAILABLE"))
     st.caption(
         "Fungsi: menentukan backdrop 1–beberapa hari. Yield harian turun = tailwind XAU; "
@@ -437,6 +505,9 @@ with st.expander("Detail sumber"):
             "live_cash_cache_seconds": 10,
             "live_cash_max_age_seconds": LIVE_CASH_MAX_AGE_SECONDS,
             "fallback_policy": "LAST_VALID_CASH_THEN_ZN_DIRECTION_PROXY_FAIL_CLOSED",
+            "treasury_calendar": treasury_calendar,
+            "fred_daily_release_key": fred_daily_release_key(),
+            "fred_network_refresh_policy": "ONCE_PER_H15_RELEASE_CYCLE_1645_ET",
             "alignment": alignment,
         }
     )
