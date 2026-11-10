@@ -158,7 +158,29 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             recent.append((scheduled, e))
     if recent:
         latest = max(at for at, _e in recent)
-        recent_cluster = [e for at, e in recent if at == latest]
+        # The feed repeats focal/latest-released rows inside upcoming_events.
+        # Keep one observation per economic component, preferring official actuals.
+        deduped: dict[str, dict[str, Any]] = {}
+        for at, row in recent:
+            if at != latest:
+                continue
+            component = str(
+                row.get("event_component")
+                or canonical_event_key(str(row.get("title") or ""))
+            )
+            prior = deduped.get(component)
+            verified = (
+                str(row.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
+                and number(row.get("actual")) is not None
+            )
+            if prior is None or (
+                verified and not (
+                    str(prior.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
+                    and number(prior.get("actual")) is not None
+                )
+            ):
+                deduped[component] = row
+        recent_cluster = list(deduped.values())
         # The worker explicitly reports an in-progress/released event; a past
         # focal record alone may instead be an obsolete fixture/calendar item.
         release_state = str(risk.get("state") or "")
