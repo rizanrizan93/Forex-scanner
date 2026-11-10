@@ -20,6 +20,7 @@ import streamlit as st
 from .xau_macro_gold_consensus import analyze_gold_macro, explain_oil_component
 from .xau_m15_macro_forecast import render_macro_m15_forecast
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
+from .xau_treasury_schedule import fred_daily_release_key
 from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
 from .xau_macro_spot_news_v2 import fetch_dia_spot, fetch_geopolitical_rss
 from .xau_macro_daily_regime import (
@@ -75,8 +76,7 @@ def _fetch(url, host):
     return raw
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def fred_history(series):
+def _download_fred_history(series):
     if series not in FRED_SERIES:
         raise ValueError("Unapproved FRED series")
     start = (datetime.now(UTC) - timedelta(days=490)).date().isoformat()
@@ -94,6 +94,41 @@ def fred_history(series):
     if not records:
         raise ValueError("FRED series without numeric observations")
     return sorted(records.items())
+
+
+# Daily Treasury series are fetched only once per official H.15 publication
+# cycle, never every Streamlit rerun. FRED mirrors H.15 with a publication lag:
+# the release key switches at 16:45 ET (30 minutes after the 16:15 ET release).
+# A manual refresh can explicitly invalidate this cache if FRED is late.
+_DAILY_TREASURY_SERIES = frozenset({"DGS2", "DGS10", "DFII10"})
+
+
+@st.cache_data(ttl=7 * 86400, show_spinner=False)
+def _fred_daily_by_release(series, release_key):
+    if series not in _DAILY_TREASURY_SERIES:
+        raise ValueError("Not a daily Treasury series")
+    return _download_fred_history(series)
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def _fred_other_cached(series):
+    return _download_fred_history(series)
+
+
+def fred_history(series):
+    """Official DAILY data stays cached until next eligible H.15 release."""
+    if series in _DAILY_TREASURY_SERIES:
+        return _fred_daily_by_release(series, fred_daily_release_key())
+    return _fred_other_cached(series)
+
+
+def _clear_fred_history():
+    _fred_daily_by_release.clear()
+    _fred_other_cached.clear()
+
+
+# Maintain the existing button/API used by the read-only macro dashboard.
+fred_history.clear = _clear_fred_history
 
 
 @st.cache_data(ttl=60, show_spinner=False)
