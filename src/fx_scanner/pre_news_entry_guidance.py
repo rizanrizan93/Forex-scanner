@@ -182,6 +182,9 @@ def evaluate_entry_guidance(
         } for label, value, weight, detail in components)
     else:
         score = 0.0
+    if len(components) < 2:
+        out["reason"] = "Minimal dua bukti makro diperlukan sebelum memberi bias entry."
+        return out
     out["macro_confirmed"] = bool(
         dxy_ok and yield_ok and
         dxy_age is not None and 0 <= dxy_age <= CONFIRMATION_MAX_AGE_S
@@ -289,7 +292,7 @@ def evaluate_entry_guidance(
         )
         out["confidence"] = "LOW"
         return out
-    out["confidence"] = "MODERATE" if verified else "LOW"
+    out["confidence"] = "LOW"
     out["evidence"].extend({
         "name": str(row.get("event_component") or row.get("title")),
         "actual": row.get("actual"), "forecast": row.get("forecast"),
