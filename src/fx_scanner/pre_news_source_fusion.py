@@ -158,6 +158,8 @@ class FusedConsensus:
     forecast_sources: tuple[str, ...]
     forecast_quotes: tuple[tuple[str, float, float | None], ...]
     rejected_quote_sources: tuple[str, ...]
+    actual_source_count: int = 0
+    actual_quotes: tuple[tuple[str, float], ...] = ()
 
     @property
     def source_conflict(self) -> bool:
@@ -258,6 +260,18 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
         for source in forecast_sources
     )
 
+    actual_by_source: dict[str, float] = {}
+    for row in rows:
+        if row.actual is None:
+            continue
+        if not _comparable_inflation_quote(row.canonical_key, row.actual, None):
+            rejected_quote_sources.add(row.source)
+            continue
+        prior_actual = actual_by_source.get(row.source)
+        if prior_actual is not None and abs(prior_actual - row.actual) > 1e-9:
+            conflicts.append("DUPLICATE_SOURCE_ACTUAL_CONFLICT")
+        else:
+            actual_by_source[row.source] = row.actual
     official_actuals = [
         row.actual
         for row in rows
@@ -269,7 +283,7 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
             conflicts.append("OFFICIAL_ACTUAL_CONFLICT")
     else:
         actual, actual_conflict = _fuse_numeric(
-            [row.actual for row in rows if row.actual is not None], field="actual"
+            list(actual_by_source.values()), field="actual"
         )
         if actual_conflict:
             conflicts.append("ACTUAL_CONFLICT")
@@ -297,6 +311,8 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
         forecast_sources=forecast_sources,
         forecast_quotes=forecast_quotes,
         rejected_quote_sources=tuple(sorted(rejected_quote_sources)),
+        actual_source_count=len(actual_by_source),
+        actual_quotes=tuple(sorted(actual_by_source.items())),
     )
 
 
