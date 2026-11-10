@@ -1,6 +1,13 @@
 name: Pre-News 3-Source Forecast Regression
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/pre_news_*.py"
+      - "src/fx_scanner/demo_xau_event_risk_v193.py"
+      - "tests/test_pre_news_*.py"
+      - ".github/workflows/pre-news-forecast-ci.yml"
   pull_request:
     paths:
       - "src/fx_scanner/pre_news_*.py"
@@ -29,6 +36,8 @@ jobs:
           python -m pip install scipy==1.17.0 numba==0.63.1
       - name: Syntax validation of modified Pre-News modules
         run: |
+          python -m py_compile src/fx_scanner/pre_news_entry_guidance.py
+          python -m py_compile src/fx_scanner/pre_news_official_cpi.py
           python -m py_compile src/fx_scanner/pre_news_expectation.py
           python -m py_compile src/fx_scanner/pre_news_source_fusion.py
           python -m py_compile src/fx_scanner/pre_news_dashboard.py
@@ -41,4 +50,6 @@ jobs:
             tests/test_pre_news_expectation.py \
             tests/test_pre_news_transport.py \
             tests/test_pre_news_runtime.py \
-            tests/test_pre_news_cpi_2026.py
+            tests/test_pre_news_cpi_2026.py \
+            tests/test_pre_news_official_cpi_after_release.py \
+            tests/test_pre_news_entry_guidance.py
