@@ -135,7 +135,9 @@ def render_shadow(payload, *, now=None, primary_snapshot=None):
     st.markdown("#### Sinyal teknis native BUY050 · XAU / EUR / BTC")
     st.caption("Sinyal shadow berasal dari referensi C# frozen BUY050, bukan hash binary .algo terbaru yang dipastikan berjalan di cTrader. "
                "Periode publikasi bergantung pada runner GitHub; kandidat XAU/EUR 60 detik dan BTC 5 detik dapat terlewat.")
-    st.caption("Data shadow " + _wib(model["as_of"]))
+    st.caption("Data shadow " + _wib(model["as_of"]) +
+               " · usia publikasi " + f"{max(0, model['age_seconds']) / 60:.1f} menit" +
+               " · data publikasi tidak sama dengan streaming cTrader.")
     if not model["fresh"]:
         st.warning("Snapshot shadow terlambat. Semua arah dan level entry/SL/TP LIVE tidak terverifikasi.")
         st.caption("Feed shadow sedang menunggu pembaruan independen; ini bukan bukti cBot mati atau tidak ada sinyal.")
@@ -147,6 +149,10 @@ def render_shadow(payload, *, now=None, primary_snapshot=None):
     for symbol in SYMBOLS:
         row = model["symbols"][symbol]
         st.markdown("**" + symbol + " · " + row["status"] + "**")
+        if row["bar_at"]:
+            st.caption("Candle sumber shadow: " + _wib(row["bar_at"]))
+        elif row["status"] == "PORTFOLIO_EXPOSURE_BLOCK":
+            st.caption("Candle tidak dievaluasi karena guard eksposur akun berjalan lebih dahulu.")
         cand = row["candidate"] if allowed[symbol] else None
         if row["candidate"] and not allowed[symbol]:
             st.warning("Kandidat teknis disembunyikan: identitas/lease/checkpoint LIVE belum terverifikasi.")
@@ -161,10 +167,20 @@ def render_shadow(payload, *, now=None, primary_snapshot=None):
             st.warning("Belum terkonfirmasi oleh terminal LIVE. Filter makro, data broker, margin, basket, dan weekend tetap wajib lulus.")
         else:
             if row["status"] == "PORTFOLIO_EXPOSURE_BLOCK":
-                st.caption("Ada eksposur posisi atau pending order yang tidak dapat direkonsiliasi "
-                           "sepenuhnya sebagai posisi BUY050. Ini dapat mencakup order manual "
-                           "atau strategi berbeda; bukan bukti cBot berhenti. "
-                           "Skenario entry ditahan sampai identitas eksposur jelas.")
+                st.warning("GUARD AKUN · posisi atau pending order sedang terdeteksi. "
+                           "Ini dapat berupa posisi manual atau strategi lain. "
+                           "Mesin shadow menghentikan pemeriksaan sinyal SEBELUM menghitung "
+                           "setup instrumen ini. Tidak dapat disimpulkan NO_SIGNAL atau missed order.")
+                st.caption("Periksa eksposur dan label order di terminal cTrader. "
+                           "Tidak ada order yang diubah atau ditutup oleh dashboard.")
+            elif row["status"] == "BTC_FEED_MISSING":
+                st.warning("BTC · feed seed/extension strategi belum tervalidasi. "
+                           "Tidak boleh menganggap belum ada sinyal.")
+            elif row["status"] == "INSUFFICIENT_HISTORY":
+                st.warning("Riwayat candle M1 belum memadai untuk memproses setup. "
+                           "Status bukan NO_SIGNAL.")
+            elif row["status"] in ("SHADOW_ERROR", "DATA_TERLAMBAT"):
+                st.warning("Penghitungan sinyal belum tervalidasi: " + row["reason"])
             elif row["status"] == "BTC_WEEKEND_LOCK":
                 st.caption("Shadow membaca guard akhir pekan dari checkpoint native. "
                            "Konfirmasi status terkini dari data terbaru dan cTrader.")
