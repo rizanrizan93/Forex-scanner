@@ -100,6 +100,23 @@ class Buy050DashboardTests(unittest.TestCase):
         p["symbols"][2]["lease_active"] = False
         self.assertEqual(evaluate_snapshot(p, now=NOW)["statuses"]["BTCUSD"], "BELUM_TERHUBUNG")
 
+    def test_explicitly_old_lease_cannot_claim_live_readiness(self):
+        p = sample()
+        p["symbols"][0]["lease_touched_at"] = (NOW - timedelta(minutes=4)).isoformat()
+        p["symbols"][1]["lease_touched_at"] = (NOW - timedelta(seconds=20)).isoformat()
+        view = evaluate_snapshot(p, now=NOW)
+        self.assertEqual(view["statuses"]["XAUUSD"], "LEASE_TERLAMBAT")
+        self.assertEqual(view["lease_freshness"]["XAUUSD"], False)
+        self.assertEqual(view["statuses"]["EURUSD"], "TERPANTAU")
+        self.assertEqual(view["lease_freshness"]["EURUSD"], True)
+        self.assertIsNone(view["lease_freshness"]["BTCUSD"])
+
+    def test_explicitly_future_lease_is_unverified(self):
+        p = sample()
+        p["symbols"][2]["lease_touched_at"] = (NOW + timedelta(minutes=5)).isoformat()
+        view = evaluate_snapshot(p, now=NOW)
+        self.assertEqual(view["statuses"]["BTCUSD"], "LEASE_TERLAMBAT")
+
     def test_reader_identifies_exact_frozen_keys(self):
         x = checkpoint_symbol("TPX_13bfa137:1237903:XAUUSD")
         e = checkpoint_symbol("TPE_13bfa137:1237903:EURUSD")
