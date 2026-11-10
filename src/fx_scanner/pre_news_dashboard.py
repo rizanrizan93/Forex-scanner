@@ -85,14 +85,20 @@ def render_pre_news_dashboard():
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
-        st.metric("KESIMPULAN PRE-NEWS XAUUSD", view["news_conclusion"])
+        st.metric("KESIMPULAN NEWS XAUUSD", view["news_conclusion"])
         st.caption(view["news_conclusion_basis"])
+        if view["state"].startswith("POST_NEWS"):
+            st.caption("MODE PASCA-RILIS: actual resmi vs forecast. "
+                       "Tidak menggunakan forecast-vs-previous sebagai prediksi spike.")
+        else:
+            st.caption("MODE PRA-RILIS: forecast-vs-previous adalah ekspektasi "
+                       "perubahan inflasi, BUKAN prediksi pasti hot/cool actual.")
         st.caption(
             "VALIDATED = semua komponen sudah memenuhi 3 forecast independen. "
             "INDIKASI SEMENTARA = sebagian komponen hanya memiliki 2 sumber "
             "atau masih ada komponen yang belum tervalidasi; bukan izin entry."
         )
-        st.metric("Status validasi 3 sumber", view["forecast_risk"])
+        st.metric("Status forecast sebelum rilis", view["forecast_risk"])
         st.caption(
             "COOL RISK = data USD diperkirakan mendingin → bias awal bullish XAU. "
             "HOT RISK = data USD diperkirakan memanas → bias awal bearish XAU. "
@@ -103,7 +109,10 @@ def render_pre_news_dashboard():
         cols[0].metric("Status validasi makro", view["state"])
         cols[1].metric("Ekspektasi terkonfirmasi", view["expectation"])
         cols = st.columns(2)
-        cols[0].metric("Bias XAU setelah konfirmasi makro", view["xau_bias"])
+        cols[0].metric(
+            "Bias XAU dari actual resmi" if view["state"] == "POST_NEWS"
+            else "Bias XAU setelah konfirmasi makro", view["xau_bias"]
+        )
         cols[1].metric("Keselarasan bukti", view["conviction"])
         # The attribution worker is a DIFFERENT scoring model from the Macro
         # tab's signed -100..+100 intraday composite. Display both honestly.
@@ -146,6 +155,8 @@ def render_pre_news_dashboard():
             f"Status koneksi penyedia: {online}/{len(FORECAST_SOURCES)} aktif. "
             "Angka ini bukan jumlah forecast yang cocok untuk event terpilih."
         )
+        if "BLS_CPI_RELEASE" in status_map:
+            st.caption("BLS CPI aktual: " + str(status_map["BLS_CPI_RELEASE"]))
         with st.expander("Status keenam penyedia forecast"):
             st.dataframe(
                 [{
@@ -158,10 +169,27 @@ def render_pre_news_dashboard():
         if event:
             st.write(str(event.get("title")) + " · " + str(view["event_time_wib"]) + " WIB")
             st.caption("Sumber kalender: " + str(event.get("source") or "Belum tersedia") + " · " + str(event.get("source_tier") or "Belum terverifikasi"))
-            st.metric("Menuju rilis", _countdown(view["minutes_to_event"]))
-            st.caption(f'{view["minutes_to_event"]:,.1f} menit hingga rilis resmi (WIB)')
+            if view["minutes_to_event"] is not None and view["minutes_to_event"] < 0:
+                st.metric("Rilis telah berlalu", f'{abs(view["minutes_to_event"]):,.1f} menit')
+            else:
+                st.metric("Menuju rilis", _countdown(view["minutes_to_event"]))
+                st.caption(f'{view["minutes_to_event"]:,.1f} menit hingga rilis resmi (WIB)')
             cluster = view["event_cluster"]
-            if cluster:
+            if cluster and view["state"] == "POST_NEWS":
+                st.markdown("**Perbandingan actual resmi dan forecast pra-rilis**")
+                st.dataframe(
+                    [{
+                        "Komponen": row.get("event_component") or row.get("title"),
+                        "Actual": row.get("actual"),
+                        "Forecast": row.get("forecast"),
+                        "Surprise (pp)": row.get("surprise"),
+                        "Sumber aktual": row.get("source"),
+                    } for row in cluster],
+                    hide_index=True, width="stretch",
+                )
+                st.caption("Actual resmi menunjukkan outcome rilis, bukan "
+                           "rekonstruksi prediksi sebelum news.")
+            if cluster and view["state"] != "POST_NEWS":
                 min_count = min(int(row.get("forecast_pair_count") or 0) for row in cluster)
                 st.metric(
                     "Quorum forecast+previous per komponen",
