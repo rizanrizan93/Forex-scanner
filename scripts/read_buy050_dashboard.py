@@ -25,6 +25,21 @@ CONTRACTS = {
 }
 
 
+def btc_feed_state(value):
+    """Expose only an allowlisted bridge-feed state and safe exception class.
+
+    The VPS health record describes bridge feed generation, NOT acceptance
+    by the BTC cBot and NOT evidence of a signal or executable order.
+    """
+    if value == "ready":
+        return "READY", None
+    if isinstance(value, str) and value.startswith("unavailable:"):
+        kind = value.partition(":")[2]
+        error = kind if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", kind) else None
+        return "UNAVAILABLE", error
+    return "UNKNOWN", None
+
+
 def utc_text(value):
     if not value:
         return None
@@ -64,7 +79,7 @@ def snapshot():
         "read_only": True,
         "execution_authority": False,
         "service_active": False,
-        "bridge": {"observed_at": None, "connected": None, "profile_ok": False, "macro_snapshot_present": False},
+        "bridge": {"observed_at": None, "connected": None, "profile_ok": False, "macro_snapshot_present": False, "btc_feed_status": "UNKNOWN", "btc_feed_error": None},
         "symbols": [],
     }
     try:
@@ -77,11 +92,14 @@ def snapshot():
         pass
     try:
         health = json.loads((ROOT / "health.json").read_text())
+        btc_status, btc_error = btc_feed_state(health.get("btc"))
         output["bridge"] = {
             "observed_at": utc_text(health.get("observed_utc")),
             "connected": health["connected"] if type(health.get("connected")) is int and 0 <= health["connected"] <= 3 else None,
             "profile_ok": health.get("profile") == "RIZAN_BUY050_FROZEN_20261107",
             "macro_snapshot_present": health.get("macro_snapshot_present") is True,
+            "btc_feed_status": btc_status,
+            "btc_feed_error": btc_error,
         }
     except (OSError, ValueError, TypeError, KeyError):
         pass
