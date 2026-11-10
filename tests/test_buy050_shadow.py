@@ -45,7 +45,8 @@ class ShadowViewTests(unittest.TestCase):
             "execution_authority": False,
             "service_active": True,
             "bridge": {"observed_at": T0.isoformat(), "connected": 3,
-                       "profile_ok": True, "macro_snapshot_present": True},
+                       "profile_ok": True, "macro_snapshot_present": True,
+                        "btc_feed_status": "READY"},
             "symbols": [
                 {"symbol": symbol, "checkpoint_present": True, "identity_ok": True,
                  "lease_active": True, "checkpoint_basket": False,
@@ -63,6 +64,15 @@ class ShadowViewTests(unittest.TestCase):
         self.assertTrue(states["XAUUSD"])
         p["symbols"][0]["lease_active"] = False
         self.assertFalse(verified_live_symbols(p, now=T0)["XAUUSD"])
+
+    def test_btc_bridge_feed_unknown_disables_shadow_confirmation(self):
+        p = self.primary_live()
+        p["bridge"].pop("btc_feed_status")
+        states = verified_live_symbols(p, now=T0)
+        self.assertFalse(states["BTCUSD"])
+        self.assertTrue(states["XAUUSD"])
+        p["bridge"]["btc_feed_status"] = "UNAVAILABLE"
+        self.assertFalse(verified_live_symbols(p, now=T0)["BTCUSD"])
 
     def test_outdated_or_missing_primary_never_verifies_shadow(self):
         p = self.primary_live()

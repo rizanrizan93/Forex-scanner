@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from fx_scanner.cbot_buy050_dashboard import evaluate_snapshot
-from scripts.read_buy050_dashboard import checkpoint_symbol, PROFILE
+from scripts.read_buy050_dashboard import checkpoint_symbol, PROFILE, btc_feed_state
 
 
 NOW = datetime(2026, 11, 8, 14, 0, tzinfo=timezone.utc)
@@ -24,6 +24,8 @@ def sample():
             "connected": 3,
             "profile_ok": True,
             "macro_snapshot_present": True,
+            "btc_feed_status": "READY",
+            "btc_feed_error": None,
         },
         "symbols": [
             {
@@ -44,6 +46,28 @@ class Buy050DashboardTests(unittest.TestCase):
         self.assertEqual(set(view["statuses"].values()), {"TERPANTAU"})
         self.assertFalse(any("entry" in row or "sl" in row or "tp" in row
                              for row in view["payload"]["symbols"]))
+
+    def test_missing_btc_bridge_health_is_unknown_not_a_stalled_checkpoint(self):
+        p = sample()
+        p["bridge"].pop("btc_feed_status")
+        view = evaluate_snapshot(p, now=NOW)
+        self.assertEqual(view["statuses"]["BTCUSD"], "BTC_FEED_BELUM_TERVERIFIKASI")
+        self.assertEqual(view["statuses"]["XAUUSD"], "TERPANTAU")
+        self.assertEqual(view["btc_bridge_feed_status"], "UNKNOWN")
+
+    def test_unavailable_btc_feed_is_not_a_missing_signal(self):
+        p = sample()
+        p["bridge"]["btc_feed_status"] = "UNAVAILABLE"
+        p["bridge"]["btc_feed_error"] = "ValueError"
+        view = evaluate_snapshot(p, now=NOW)
+        self.assertEqual(view["statuses"]["BTCUSD"], "BTC_FEED_TIDAK_TERSEDIA")
+        self.assertEqual(view["statuses"]["EURUSD"], "TERPANTAU")
+
+    def test_reader_sanitizes_btc_feed_status(self):
+        self.assertEqual(btc_feed_state("ready"), ("READY", None))
+        self.assertEqual(btc_feed_state("unavailable:ValueError"), ("UNAVAILABLE", "ValueError"))
+        self.assertEqual(btc_feed_state("unavailable:Error\\nSECRET"), ("UNAVAILABLE", None))
+        self.assertEqual(btc_feed_state(None), ("UNKNOWN", None))
 
     def test_stale_snapshot_never_shows_ready(self):
         view = evaluate_snapshot(sample(), now=NOW + timedelta(minutes=16))

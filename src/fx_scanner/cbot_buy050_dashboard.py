@@ -67,6 +67,11 @@ def evaluate_snapshot(raw, *, now=None):
         snapshot_fresh and raw.get("service_active") is True
         and health.get("profile_ok") is True and -30 <= health_age <= 120
     )
+    # This is a BRIDGE-side feed flag, not proof that the BTC cBot accepted
+    # the hourly seed/extension or evaluated the last candle.
+    btc_feed_status = health.get("btc_feed_status", "UNKNOWN")
+    if btc_feed_status not in ("READY", "UNAVAILABLE"):
+        btc_feed_status = "UNKNOWN"
     status = {}
     lease_fresh = {}
     for r in rows:
@@ -93,6 +98,10 @@ def evaluate_snapshot(raw, *, now=None):
             state = "BLOKIR_NATIVE"
         elif r.get("checkpoint_basket") is True or r.get("pending_intent") is True:
             state = "CHECKPOINT_AKTIF"
+        elif symbol == "BTCUSD" and btc_feed_status == "UNAVAILABLE":
+            state = "BTC_FEED_TIDAK_TERSEDIA"
+        elif symbol == "BTCUSD" and btc_feed_status != "READY":
+            state = "BTC_FEED_BELUM_TERVERIFIKASI"
         else:
             state = "TERPANTAU"
         status[symbol] = state
@@ -101,6 +110,7 @@ def evaluate_snapshot(raw, *, now=None):
         "fresh": snapshot_fresh, "bridge_ready": bridge_ready,
         "health_age_seconds": health_age, "age_seconds": age,
         "statuses": status, "lease_freshness": lease_fresh,
+        "btc_bridge_feed_status": btc_feed_status if bridge_ready else "UNKNOWN",
     }
 
 
@@ -152,7 +162,9 @@ def render_snapshot(raw, *, now=None):
     else:
         st.info("Bridge BUY050 teramati; kesehatan koneksi tidak membuktikan cBot dapat mengirim order.")
     rows = p["symbols"]
-    count = sum(model["statuses"][s] in ("TERPANTAU", "CHECKPOINT_AKTIF", "BLOKIR_NATIVE") for s in SYMBOLS)
+    count = sum(model["statuses"][s] in ("TERPANTAU", "CHECKPOINT_AKTIF", "BLOKIR_NATIVE",
+                                        "BTC_FEED_TIDAK_TERSEDIA", "BTC_FEED_BELUM_TERVERIFIKASI")
+                for s in SYMBOLS)
     st.metric("Checkpoint identitas terpantau", (str(count) if model["fresh"] else "—") + "/3")
     st.caption("Usia publikasi: " + _lag_label(model["age_seconds"]) +
                " · usia heartbeat bridge: " + _lag_label(model["health_age_seconds"]) +
@@ -169,6 +181,8 @@ def render_snapshot(raw, *, now=None):
         "TERPANTAU": "TERPANTAU · checkpoint valid, sinyal diperiksa terpisah",
         "CHECKPOINT_AKTIF": "CHECKPOINT AKTIF · periksa posisi/intent di cTrader",
         "BLOKIR_NATIVE": "BLOKIR · fault, quarantine, atau exit pending",
+        "BTC_FEED_TIDAK_TERSEDIA": "WAIT · feed BTC bridge tidak tersedia",
+        "BTC_FEED_BELUM_TERVERIFIKASI": "UNKNOWN · status feed BTC belum diverifikasi",
         "BELUM_TERHUBUNG": "WAIT · lease/bridge belum terverifikasi",
         "LEASE_TERLAMBAT": "WAIT · heartbeat lease sudah kedaluwarsa",
         "IDENTITAS_BERMASALAH": "BLOCK · checkpoint/profil tidak cocok",
@@ -190,11 +204,23 @@ def render_snapshot(raw, *, now=None):
                        "memenuhi batas 120 detik. Jangan simpulkan cBot siap entry.")
         if model["fresh"] and item.get("checkpoint_present") is True:
             st.write("Checkpoint versi:", item.get("checkpoint_version") if type(item.get("checkpoint_version")) is int else "—")
-            st.write("Candle terakhir native:", _wib(item.get("last_bar_at")))
-            if symbol == "BTCUSD" and not item.get("last_bar_at"):
-                st.caption("Checkpoint BTC profil ini tidak menyediakan timestamp LastBarUtc. "
-                           "Lease aktif bukan bukti candle atau feed BTC terbaru; "
-                           "gunakan validasi feed shadow dan terminal cTrader.")
+            if symbol == "BTCUSD":
+                st.write("Candle terakhir native:", "Tidak disimpan dalam skema checkpoint BTC")
+                st.caption("Versi checkpoint BTC berubah saat state disimpan, bukan setiap candle. "
+                           "Versi yang tetap tidak membuktikan mesin BTC berhenti.")
+                bridge_feed = model["btc_bridge_feed_status"]
+                error_kind = (p.get("bridge") or {}).get("btc_feed_error")
+                if bridge_feed == "READY":
+                    st.info("Feed BTC di bridge: READY. Penerimaan feed oleh cBot dan evaluasi sinyal "
+                            "tetap membutuhkan bukti terminal.")
+                elif bridge_feed == "UNAVAILABLE":
+                    suffix = (" (" + error_kind + ")") if isinstance(error_kind, str) and error_kind.isidentifier() else ""
+                    st.warning("Feed BTC di bridge: UNAVAILABLE" + suffix +
+                               ". Jangan menganggap checkpoint 93 sebagai NO_SIGNAL.")
+                else:
+                    st.warning("Feed BTC belum terverifikasi pada observasi bridge yang masih segar.")
+            else:
+                st.write("Candle terakhir native:", _wib(item.get("last_bar_at")))
             st.write("Sinyal terakhir tercatat:", _wib(item.get("last_signal_at")))
             if item.get("last_signal_at"):
                 st.caption("Timestamp sinyal bukan bukti order broker berhasil ataupun sinyal baru yang masih berlaku.")
