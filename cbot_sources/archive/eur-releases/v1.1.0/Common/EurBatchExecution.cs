@@ -13,8 +13,10 @@ public static class EurBatchExecution
         var b=FrozenCore.StartBasket(c,signal,quote+signal.Side*c.Slip,balance,equity,freeMargin,usedMargin,marginChild,scale,peak);
         if(b==null)return null;
         // First request has brackets relative to the actual fill: distance is fixed.
+        // EUR feedback scale controls risk, not the hard account margin ceiling. This avoids
+        // a minimum-lot deadlock when scale=.1 while keeping the scaled risk budget intact.
         double risk=FrozenCore.ChildRisk(c,b.Side,b.Entry,b.Stop),reference=Math.Min(balance,equity);
-        int count=FrozenCore.FloorCount(Math.Min(reference*c.RiskFraction*scale/risk,Math.Max(0,Math.Min(freeMargin,reference*c.MarginFraction*scale-usedMargin))/marginChild));
+        int count=FrozenCore.FloorCount(Math.Min(reference*c.RiskFraction*scale/risk,Math.Max(0,Math.Min(freeMargin,FrozenCore.MarginCeiling(c,reference,scale)-usedMargin))/marginChild));
         double degear=peak>0&&(peak-equity)/peak>=.25?.7:1;
         b.InitialWanted=Math.Min(Math.Max(1,FrozenCore.FloorCount(count*c.InitialFraction*degear)),FrozenCore.FloorCount(b.RiskBudget/risk));
         if(count<1||b.InitialWanted<1)return null;
@@ -50,7 +52,7 @@ public static class EurBatchExecution
         if(quantity<1||stage<0||stage>=c.Stages||!new[]{quote,equity,batchMargin}.All(x=>FrozenCore.Finite(x)&&x>0)||!new[]{freeMargin,usedMargin,spread}.All(x=>FrozenCore.Finite(x)&&x>=0))return false;
         double perRisk=first?FrozenCore.ChildRisk(c,b.Side,b.Entry,b.Stop):FrozenCore.PlannedChildRisk(c,b.Side,quote,b.Stop);
         double risk=quantity*perRisk,cost=quantity*(c.ChildUnits*(spread+c.Slip)+c.CommissionPerSide),reference=Math.Min(b.ReferenceBalance,equity-cost);
-        return reference>0&&FrozenCore.Finite(risk)&&risk>0&&b.StageRisk[stage]+risk<=FrozenCore.StageAllocation(c,b,stage)+1e-8&&b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8&&usedMargin+batchMargin<=reference*c.MarginFraction*b.Scale+1e-8&&freeMargin>=batchMargin+cost;
+        return reference>0&&FrozenCore.Finite(risk)&&risk>0&&b.StageRisk[stage]+risk<=FrozenCore.StageAllocation(c,b,stage)+1e-8&&b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8&&usedMargin+batchMargin<=FrozenCore.MarginCeiling(c,reference,b.Scale)+1e-8&&freeMargin>=batchMargin+cost;
     }
     // The delegate quotes margin for the entire order, including broker leverage tiers.
     public static int Count(FrozenContract c,Basket b,int stage,double quote,double equity,double freeMargin,double usedMargin,double spread,int cap,bool first,Func<int,double> margin)
@@ -63,7 +65,7 @@ public static class EurBatchExecution
         if(!FrozenCore.Finite(entryCommission)||entryCommission<0)return false;
         if(quantity<1||stage<0||stage>=c.Stages||!new[]{fill,equity}.All(x=>FrozenCore.Finite(x)&&x>0)||!FrozenCore.Finite(usedMargin)||usedMargin<0)return false;
         double risk=quantity*FrozenCore.ChildRisk(c,b.Side,fill,b.Stop)+2*Math.Max(0,entryCommission-quantity*c.CommissionPerSide),reference=Math.Min(b.ReferenceBalance,equity);
-        return FrozenCore.Finite(risk)&&risk>0&&b.StageRisk[stage]+risk<=FrozenCore.StageAllocation(c,b,stage)+1e-8&&b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8&&usedMargin<=reference*c.MarginFraction*b.Scale+1e-8;
+        return FrozenCore.Finite(risk)&&risk>0&&b.StageRisk[stage]+risk<=FrozenCore.StageAllocation(c,b,stage)+1e-8&&b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8&&usedMargin<=FrozenCore.MarginCeiling(c,reference,b.Scale)+1e-8;
     }
     public static void Accept(FrozenContract c,Basket b,int stage,double fill,int quantity,double entryCommission=0)
     {
