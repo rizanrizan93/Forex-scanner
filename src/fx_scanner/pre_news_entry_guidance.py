@@ -99,12 +99,19 @@ def evaluate_entry_guidance(
         "Menunggu feed kalender, forecast dan makro yang dapat dipercaya.",
     )
     event = view.get("event") or {}
-    if not event or state not in {"PRE_NEWS", "POST_NEWS", "POST_NEWS_PENDING"}:
-        out["reason"] = "Tidak ada event USD siap dinilai atau data belum lengkap."
+    if not event:
+        out["reason"] = "Tidak ada event USD teridentifikasi di kalender."
         return out
     event_at = _dt(event.get("scheduled_at"))
     if event_at is None:
         out["reason"] = "Jam rilis event tidak valid."
+        return out
+    # Legacy forecast engine may mark its state DATA INCOMPLETE simply because
+    # one optional daily-yield source or forecast provider is missing.
+    # The guidance applies independent freshness/health gates below, and may
+    # still issue a LOW-confidence PRE bias rather than silently going blank.
+    if not post and current >= event_at:
+        out["reason"] = "Rilis sudah lewat tetapi status actual belum valid; tunggu data baru."
         return out
     if (not _current(snapshot.get("published_at"), current, MAX_PUBLISH_AGE_S)
             and "published_at" in snapshot):
