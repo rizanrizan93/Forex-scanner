@@ -2,6 +2,7 @@
 from datetime import UTC, datetime
 
 from .pre_news_expectation import evaluate_pre_news, timestamp, MIN_FORECAST_SOURCES
+from .pre_news_entry_guidance import evaluate_entry_guidance
 from .pre_news_source_fusion import (
     SOURCE_FOREX_FACTORY, SOURCE_MYFXBOOK, SOURCE_INVESTING,
     SOURCE_SHOWMYTRADES, SOURCE_HELIOUS, SOURCE_TRADING_ECONOMICS,
@@ -67,7 +68,7 @@ def render_pre_news_dashboard():
 
     @st.fragment(run_every="60s")
     def panel():
-        st.subheader("Pre-News Expectation Engine · XAUUSD")
+        st.subheader("News Entry Guidance · XAUUSD")
         st.caption("CPI · NFP/upah/pengangguran · PPI · JOLTS · ECI · FOMC")
         if st.button("Perbarui tampilan", key="pre_news_refresh"):
             load_snapshot.clear()
@@ -85,6 +86,29 @@ def render_pre_news_dashboard():
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
+        guidance = evaluate_entry_guidance(view, snapshot, now=datetime.now(UTC))
+        st.metric("PANDUAN ARAH ENTRY NEWS", guidance["decision"])
+        stats = st.columns(2)
+        stats[0].metric(
+            "Skor arah XAU (-100 bearish, +100 bullish)",
+            "—" if guidance["score_xau"] is None
+            else f'{guidance["score_xau"]:+.1f}/100',
+        )
+        stats[1].metric("Keyakinan analisis", guidance["confidence"])
+        st.caption(guidance["reason"])
+        st.markdown("**Pemicu entry:** " + guidance["trigger"])
+        st.caption("Invalidasi: " + guidance["invalidated_by"])
+        if guidance["warnings"]:
+            st.info(" · ".join(guidance["warnings"]))
+        if guidance["evidence"]:
+            with st.expander("Rincian kontribusi makro/news"):
+                st.dataframe(guidance["evidence"], hide_index=True, width="stretch")
+        st.caption(
+            "Panduan analitis bagi keputusan manual, bukan instruksi eksekusi otomatis. "
+            "Skor -100 hingga +100 adalah heuristik arah, bukan win-rate "
+            "atau probabilitas. M1/M5, spread dan quote harus dikonfirmasi "
+            "secara independen saat news."
+        )
         # A forecast below Previous does NOT predict Actual below consensus.
         # Keep a separate, explicitly conditional pre-release macro-risk headline.
         conclusion = view["news_conclusion"]
@@ -282,5 +306,8 @@ def render_pre_news_dashboard():
                 st.dataframe(view["scenarios"], hide_index=True, width="stretch")
                 st.caption("Skenario bersifat kondisional. Revisi, core/headline, forward guidance dan respons pasar dapat mengubah implikasi awal.")
         st.caption(view.get("next_step", "H1 bias → M15 validasi struktur/reversal → M5 timing."))
-        st.caption("Modul informasi · tidak memberi izin order · probabilitas historis belum dikalibrasi.")
+        st.caption(
+            "Panduan entry bersyarat · tidak mengirim order cBot LIVE · "
+            "akurasi arah 1–2 menit belum dikalibrasi secara historis."
+        )
     panel()
