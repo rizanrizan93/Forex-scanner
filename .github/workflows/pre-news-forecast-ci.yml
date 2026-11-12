@@ -52,4 +52,5 @@ jobs:
             tests/test_pre_news_runtime.py \
             tests/test_pre_news_cpi_2026.py \
             tests/test_pre_news_official_cpi_after_release.py \
-            tests/test_pre_news_entry_guidance.py
+            tests/test_pre_news_entry_guidance.py \
+            tests/test_pre_news_us_releases.py

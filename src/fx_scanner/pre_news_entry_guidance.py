@@ -214,6 +214,23 @@ def evaluate_entry_guidance(
                 "forecast": forecast,
                 "hot_if_actual_at_least": round(forecast + .1, 2),
                 "cool_if_actual_at_most": round(forecast - .1, 2),
+                "unit": "percentage points",
+            })
+        elif component in {"INITIAL_JOBLESS_CLAIMS", "CONTINUING_JOBLESS_CLAIMS"} and forecast is not None:
+            out["release_triggers"].append({
+                "component": component,
+                "forecast": forecast,
+                "hot_if_actual_below": forecast,
+                "cool_if_actual_above": forecast,
+                "unit": "claims",
+            })
+        elif component == "EXISTING_HOME_SALES" and forecast is not None:
+            out["release_triggers"].append({
+                "component": component,
+                "forecast": forecast,
+                "hot_if_actual_above": forecast,
+                "cool_if_actual_below": forecast,
+                "unit": "homes annualized",
             })
     out["forecast_verified"] = bool(view.get("forecast_quorum_met"))
     if not post:
@@ -271,6 +288,10 @@ def evaluate_entry_guidance(
     signs = {row.get("hawkish_tilt") for row in cluster if row.get("hawkish_tilt")}
     status = str(view.get("news_conclusion_status") or "")
     verified = status in {"OFFICIAL_VERIFIED", "MULTI_SOURCE_CORROBORATED"}
+    if status in {"PROVISIONAL_ACTUAL_SINGLE_SOURCE", "WAITING_ACTUAL", "STALE"}:
+        out["reason"] = "Actual belum diverifikasi sumber resmi/dua penyedia; jangan entry."
+        out["decision"] = "WAIT — ACTUAL BELUM TERVERIFIKASI"
+        return out
     if status == "PARTIAL_ACTUAL":
         out["reason"] = "Actual parsial, belum dapat dipakai sebagai panduan entry."
         return out
