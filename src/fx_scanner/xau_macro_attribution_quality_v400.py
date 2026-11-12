@@ -223,12 +223,18 @@ def evaluate_attribution_quality(
         weighted += EVENT_WEIGHT * news["score"]
         observed_weight += EVENT_WEIGHT
 
-    screened_score = round(weighted / observed_weight, 2) if observed_weight else None
-    screened_bias = _direction(screened_score)
     daily_weight = sum(DAILY_WEIGHTS.values())
     daily_coverage = round(sum(DAILY_WEIGHTS[n] for n in valid) / daily_weight, 3)
     family_count = int("USD_BROAD_PROXY" in valid) + int(any(
         n in valid for n in ("US2Y", "US10Y", "REAL_YIELD_10Y")))
+    # News alone cannot manufacture an apparently strong score. Require both
+    # currency and rate families before publishing any directional number.
+    valid_core = family_count >= 2 and daily_coverage >= .55
+    screened_score = (
+        round(weighted / observed_weight, 2)
+        if valid_core and observed_weight else None
+    )
+    screened_bias = _direction(screened_score)
     intraday = dict(intraday_confirmation or {})
     intraday_bias = str(intraday.get("intraday_macro_bias") or "UNAVAILABLE")
     named_fresh = set(intraday.get("fresh_components") or ())
@@ -257,8 +263,10 @@ def evaluate_attribution_quality(
         flags.append("DAILY_CONTEXT_OLDER_THAN_48H")
     if news["state"] in {"ACTUAL_NOT_CORROBORATED", "MIXED_SURPRISE"}:
         flags.append(news["state"])
-    if family_count < 2 or daily_coverage < .55:
+    if not valid_core:
         state = "WAIT_DAILY_DATA"
+    elif news["state"] in {"ACTUAL_NOT_CORROBORATED", "MIXED_SURPRISE"}:
+        state = "WAIT_NEWS_VERIFICATION_OR_MIXED"
     elif not eligible:
         state = "WAIT_INTRADAY_CONFIRMATION"
     elif screened_bias not in {"BEARISH_XAU", "BULLISH_XAU"}:
