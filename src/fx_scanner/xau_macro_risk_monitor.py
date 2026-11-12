@@ -530,6 +530,30 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         event_risk=event_risk,
     )
 
+    quality = dict((macro_eval or {}).get("attribution_quality") or {})
+    if quality:
+        st.markdown("**Macro Attribution V400 · kualitas evidence (terpisah dari indeks Makro)**")
+        qscore = quality.get("quality_screened_score")
+        qstate = str(quality.get("quality_state") or "UNAVAILABLE")
+        qcols = st.columns(3)
+        qcols[0].metric("Skor attribution tersaring",
+                        "—" if qscore is None else f"{float(qscore):+.2f}/100")
+        qcols[1].metric("Regime XAU", str(quality.get("quality_screened_bias") or "UNAVAILABLE"))
+        qcols[2].metric("Validasi intraday", qstate)
+        st.caption(
+            "Nilai ini hanya pemeriksaan kualitas skor fundamental harian; "
+            "hasilnya bukan indeks intraday di bawah, bukan probabilitas, "
+            "dan bukan izin entry. "
+            "FRED tertunda tetap berstatus daily regime, bukan tick live."
+        )
+        if qstate.startswith("WAIT"):
+            st.warning("Attribution V400 meminta WAIT: data/konfirmasi atau hubungan makro belum memadai.")
+        with st.expander("Attribution V400 · penyebab dan kelengkapan"):
+            st.write("News:", str((quality.get("event_quality") or {}).get("state") or "—"))
+            st.write("Flags:", ", ".join(quality.get("flags") or ()) or "Tidak ada")
+            st.write("Komponen dikeluarkan:", quality.get("excluded_daily_components") or {})
+            st.caption("Akurasi historis OOS belum dihitung; skor ±100 bukan win rate.")
+
     st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
     st.caption("RIZAN Macro Spot V4 · WTI/Brent DIA spot indikatif (atau FRED harian), "
                "XAU/XAG spot OTC indikatif, DXY/VIX/FX CNBC. "
