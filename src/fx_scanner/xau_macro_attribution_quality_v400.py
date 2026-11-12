@@ -256,7 +256,14 @@ def evaluate_attribution_quality(
         "DXY" in genuinely_fresh
         and bool(genuinely_fresh & {"US10Y_INTRADAY", "FED_FUNDS_FUTURES"})
     )
+    release_lag = [
+        name for name in ("US2Y", "US10Y", "REAL_YIELD_10Y")
+        if str((components.get(name) or {}).get("release_state") or "")
+        in {"RELEASE_PENDING", "DAILY_DELAYED", "OFFICIAL_DATA_MISSING"}
+    ]
     flags = []
+    if release_lag:
+        flags.append("OFFICIAL_DAILY_RELEASE_NOT_CURRENT")
     if omitted:
         flags.append("DAILY_INPUT_MISSING_OR_STALE")
     if delayed:
@@ -265,6 +272,8 @@ def evaluate_attribution_quality(
         flags.append(news["state"])
     if not valid_core:
         state = "WAIT_DAILY_DATA"
+    elif release_lag:
+        state = "WAIT_DAILY_RELEASE"
     elif news["state"] in {"ACTUAL_NOT_CORROBORATED", "MIXED_SURPRISE"}:
         state = "WAIT_NEWS_VERIFICATION_OR_MIXED"
     elif not eligible:
@@ -292,6 +301,7 @@ def evaluate_attribution_quality(
         "valid_daily_components": valid,
         "excluded_daily_components": omitted,
         "delayed_daily_components": delayed,
+        "official_release_lag_components": release_lag,
         "event_quality": news,
         "flags": flags,
         "confidence": (
