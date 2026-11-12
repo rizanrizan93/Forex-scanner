@@ -125,6 +125,12 @@ def select_official_yield_rows(
             else "RELEASE_PENDING" if state == "RELEASE_PENDING"
             else "DAILY_DELAYED"
         )
+        # A provider cache TTL is not evidence that the daily observation is current.
+        # Preserve it separately, and expose observation-aware freshness to consumers.
+        chosen["provider_cache_freshness"] = chosen.get("freshness")
+        if state != "CURRENT_PUBLISHED":
+            chosen["freshness"] = "STALE"
+            chosen["provider_status"] = state
         selected[name] = chosen
         diagnostics["chosen_providers"][name] = chosen.get("provider")
         diagnostics["release_states"][name] = state
