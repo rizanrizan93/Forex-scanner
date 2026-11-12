@@ -11,6 +11,8 @@ from urllib.parse import urlencode
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
+from .providers.transport import HttpTransportError
+
 TREASURY_HOST = "home.treasury.gov"
 TREASURY_ENDPOINT = (
     "https://home.treasury.gov/resource-center/data-chart-center/"
@@ -187,7 +189,7 @@ def fetch_treasury_daily_rows(*, transport=None, now: datetime | None = None) ->
                 for name in keys:
                     histories[name].update(parsed[name])
             succeeded += 1
-        except (ValueError, OSError, TimeoutError):
+        except (ValueError, OSError, TimeoutError, HttpTransportError):
             # Other official dataset may still be useful; fallback is per key.
             continue
     if not succeeded:
