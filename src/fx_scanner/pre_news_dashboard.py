@@ -69,7 +69,8 @@ def render_pre_news_dashboard():
     @st.fragment(run_every="60s")
     def panel():
         st.subheader("News Entry Guidance · XAUUSD")
-        st.caption("CPI · NFP/upah/pengangguran · PPI · JOLTS · ECI · FOMC")
+        st.caption("CPI · PPI · NFP · Initial/Continuing Jobless Claims · Existing Home Sales · JOLTS · FOMC")
+        st.caption("Tiga tahap terpisah: bias pra-rilis, kejutan actual, lalu konfirmasi entry M1/M5.")
         if st.button("Perbarui tampilan", key="pre_news_refresh"):
             load_snapshot.clear()
         st.caption("Panel diperiksa setiap 60 detik · sumber diperbarui sekitar 4 menit selama publisher aktif.")
@@ -86,7 +87,13 @@ def render_pre_news_dashboard():
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
+            published_at = timestamp(snapshot["published_at"])
+            publication_age = ((datetime.now(UTC) - published_at).total_seconds()
+                               if published_at else float("inf"))
+            if not 0 <= publication_age <= 900 or snapshot.get("publication_fresh") is False:
+                st.warning("SNAPSHOT PRE-NEWS TERLAMBAT (>15 menit). Semua panduan entry ditahan sampai feed pulih.")
         guidance = evaluate_entry_guidance(view, snapshot, now=datetime.now(UTC))
+        st.markdown("#### 1. Sebelum rilis · bias makro, bukan prediksi actual")
         st.metric("PANDUAN ARAH ENTRY NEWS", guidance["decision"])
         st.caption("Klasifikasi hot/cool: " + guidance["hot_cool_risk"])
         stats = st.columns(2)
@@ -98,12 +105,18 @@ def render_pre_news_dashboard():
         stats[1].metric("Keyakinan analisis", guidance["confidence"])
         st.caption(guidance["reason"])
         if guidance["release_triggers"]:
-            with st.expander("Ambang HOT/COOL yang dihitung dari forecast", expanded=False):
+            with st.expander("Skenario actual vs forecast (HOT / COOL)", expanded=False):
                 st.dataframe(guidance["release_triggers"], hide_index=True, width="stretch")
                 st.caption(
-                    "Ambang ±0,1 poin persentase adalah skenario kondisional "
-                    "kejutan angka bulanan, bukan jaminan arah atau probabilitas."
+                    "CPI/PPI: selisih 0,1pp hanya ambang skenario. "
+                    "Jobless Claims: lebih sedikit klaim dari forecast cenderung bearish XAU; "
+                    "lebih banyak klaim cenderung bullish XAU. "
+                    "Existing Home Sales: lebih tinggi dari forecast cenderung bearish XAU; "
+                    "lebih rendah cenderung bullish XAU. "
+                    "Semua reaksi tetap kondisional, bukan kepastian spike."
                 )
+        st.markdown("#### 3. Eksekusi manual · BUY / SELL / WAIT")
+        st.caption("Selalu WAIT bila feed/actual tidak tervalidasi. Konfirmasi M1/M5, DXY, yield dan spread diperlukan.")
         st.markdown("**Pemicu entry:** " + guidance["trigger"])
         st.caption("Invalidasi: " + guidance["invalidated_by"])
         if guidance["warnings"]:
@@ -119,6 +132,7 @@ def render_pre_news_dashboard():
         )
         # A forecast below Previous does NOT predict Actual below consensus.
         # Keep a separate, explicitly conditional pre-release macro-risk headline.
+        st.markdown("#### 2. Saat rilis · hasil aktual dibanding konsensus")
         conclusion = view["news_conclusion"]
         if view["state"] == "PRE_NEWS":
             fresh_pressure = [
@@ -135,12 +149,12 @@ def render_pre_news_dashboard():
         if view["state"].startswith("POST_NEWS"):
             st.metric("HASIL RILIS EKONOMI", conclusion)
             st.caption(view["news_conclusion_basis"])
-            st.caption("MODE PASCA-RILIS: actual vs forecast; cek status sumber sebelum entry.")
+            st.caption("MODE PASCA-RILIS: actual vs forecast; cek status OFFICIAL/MULTI_SOURCE sebelum entry.")
         else:
             st.caption("Konteks konsensus (bukan panduan entry): " + conclusion)
             st.caption(view["news_conclusion_basis"])
-            st.caption("MODE PRA-RILIS: forecast-vs-previous adalah ekspektasi "
-                       "perubahan inflasi, bukan prediksi actual hot/cool.")
+            st.caption("MODE PRA-RILIS: forecast-vs-previous hanya ekspektasi perubahan "
+                       "indikator ekonomi, bukan prediksi actual hot/cool.")
         st.caption(
             "VALIDATED = semua komponen sudah memenuhi 3 forecast independen. "
             "INDIKASI SEMENTARA = sebagian komponen hanya memiliki 2 sumber "
@@ -224,13 +238,13 @@ def render_pre_news_dashboard():
                 st.caption(f'{view["minutes_to_event"]:,.1f} menit hingga rilis resmi (WIB)')
             cluster = view["event_cluster"]
             if cluster and view["state"] == "POST_NEWS":
-                st.markdown("**Perbandingan actual resmi dan forecast pra-rilis**")
+                st.markdown("**Perbandingan actual dan forecast pra-rilis (periksa status verifikasi)**")
                 st.dataframe(
                     [{
                         "Komponen": row.get("event_component") or row.get("title"),
                         "Actual": row.get("actual"),
                         "Forecast": row.get("forecast"),
-                        "Surprise (pp)": row.get("surprise"),
+                        "Surprise (satuan asli)": row.get("surprise"),
                         "Sumber aktual": row.get("source"),
                     } for row in cluster],
                     hide_index=True, width="stretch",
