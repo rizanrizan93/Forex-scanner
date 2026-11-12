@@ -284,6 +284,13 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         age = (current - scheduled).total_seconds()
         if 0 < age <= 4 * 3600:
             recent.append((scheduled, e))
+    # Do not let a completed release monopolize the dashboard for four hours
+    # while a different USD event is approaching (e.g. 20:30 claims then
+    # 22:00 existing-home sales). Preserve the first 10-minute post-news window.
+    if recent and upcoming:
+        latest_recent = max(at for at, _e in recent)
+        if (current - latest_recent).total_seconds() > 600:
+            recent = []
     if recent:
         latest = max(at for at, _e in recent)
         # The feed repeats focal/latest-released rows inside upcoming_events.
