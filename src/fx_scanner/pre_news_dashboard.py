@@ -184,6 +184,25 @@ def render_pre_news_dashboard():
                 st.caption("Berbeda dari Indeks arah makro pada tab Makro (skala −100 sampai +100). "
                            "Skor attribution bukan probabilitas hasil CPI atau kenaikan emas. "
                            + ("Feed attribution segar." if active else "Heartbeat attribution sudah terlambat."))
+            quality = dict(evaluation.get("attribution_quality") or {})
+            if quality:
+                st.markdown("**Macro Attribution V400 · validasi kualitas**")
+                score = quality.get("quality_screened_score")
+                if active:
+                    st.metric("Skor tersaring (−100 hingga +100)",
+                              "—" if score is None else f"{float(score):+.2f}/100")
+                    st.caption(
+                        "Arah: " + str(quality.get("quality_screened_bias") or "—") +
+                        " · Status: " + str(quality.get("quality_state") or "—") +
+                        " · News: " + str((quality.get("event_quality") or {}).get("state") or "—")
+                    )
+                    if str(quality.get("quality_state") or "").startswith("WAIT"):
+                        st.warning("Konfirmasi makro belum memenuhi syarat. Jangan menafsirkan skor sebagai sinyal entry.")
+                else:
+                    st.warning("Diagnostik Attribution V400 historis. Menunggu pembaruan worker sebelum memakainya.")
+                if quality.get("flags"):
+                    st.caption("Peringatan kualitas: " + ", ".join(quality["flags"]))
+                st.caption("Skor V400 bukan hasil backtest atau akurasi probabilistik; tidak mengirim order.")
         excluded = view.get("unpublished_components") or []
         if excluded:
             st.info(
