@@ -207,3 +207,18 @@ def test_news_only_without_currency_rate_families_hides_score():
     assert q["quality_screened_score"] is None
     assert q["quality_screened_bias"] == "UNAVAILABLE"
     assert q["quality_state"] == "WAIT_DAILY_DATA"
+
+
+def test_official_release_pending_forces_wait_even_with_bearish_score():
+    evaluation = _evaluation()
+    for name in ("US2Y", "US10Y", "REAL_YIELD_10Y"):
+        evaluation["components"][name]["release_state"] = "RELEASE_PENDING"
+    q = evaluate_attribution_quality(
+        evaluation, intraday_confirmation=_intraday(), now=NOW,
+    )
+    assert q["quality_screened_score"] is not None
+    assert q["quality_state"] == "WAIT_DAILY_RELEASE"
+    assert "OFFICIAL_DAILY_RELEASE_NOT_CURRENT" in q["flags"]
+    assert len(q["official_release_lag_components"]) == 3
+    assert q["confidence"] == "LOW"
+    assert q["execution_authority"] is False
