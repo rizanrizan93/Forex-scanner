@@ -32,6 +32,7 @@ from .xau_intraday_yield_v367 import (
 from .xau_macro_attribution_v357 import CONTRACT as BASE_CONTRACT, evaluate_broader_macro_bias
 from .xau_macro_attribution_quality_v400 import evaluate_attribution_quality
 from .xau_h15_daily_fallback import fetch_h15_daily_rows
+from .xau_treasury_daily_official import fetch_treasury_daily_rows
 from .xau_official_yield_selection import select_official_yield_rows
 from .xau_treasury_session_v399 import (
     CONTRACT as TREASURY_SESSION_CONTRACT,
@@ -61,9 +62,9 @@ def run() -> int:
             (previous_cross_asset.get(name) or {}).get("release_state")
             for name in ("US2Y", "US10Y", "REAL_YIELD_10Y")
         )
-        and previous_details.get("official_yield_diagnostics")
+        and previous_details.get("official_yield_diagnostics", {}).get("treasury_fetch_status")
         and 0.0 <= (now - previous_refresh_at).total_seconds()
-        <= DAILY_CROSS_ASSET_REFRESH_SECONDS
+        <= min(5 * 60, DAILY_CROSS_ASSET_REFRESH_SECONDS)
     )
     official_yield_diagnostics = dict(previous_details.get("official_yield_diagnostics") or {})
     if reuse_daily:
@@ -95,20 +96,30 @@ def run() -> int:
             # The Board is retiring custom DDP downloads. Do not crash the
             # publisher or fabricate values if that endpoint disappears.
             h15_status = f"ERROR:{type(exc).__name__}"
+        # Treasury direct XML is the primary DAILY publication channel.
+        # Fetch each run independent of FRED's multi-day cache/TTL.
+        treasury_rows: dict[str, dict[str, Any]] = {}
+        treasury_status = "NOT_CHECKED"
+        try:
+            treasury_rows = fetch_treasury_daily_rows(now=now)
+            treasury_status = (
+                "OK:" + ",".join(sorted(treasury_rows))
+                if len(treasury_rows) == 3 else
+                "PARTIAL:" + ",".join(sorted(treasury_rows))
+            )
+        except Exception as exc:
+            treasury_status = f"ERROR:{type(exc).__name__}"
         cross_asset, official_yield_diagnostics = select_official_yield_rows(
-            fred_rows, h15_rows, now=now,
+            fred_rows, h15_rows, now=now, treasury_rows=treasury_rows,
         )
         official_yield_diagnostics.update(
             checked_at=now.isoformat(),
             h15_fetch_status=h15_status,
-            decision_policy="LATEST_PUBLISHED_OFFICIAL_DATE_FRED_TIE_BREAK",
+            treasury_fetch_status=treasury_status,
+            decision_policy="LATEST_VALID_OBSERVATION_DATE_TREASURY_TIE_BREAK",
         )
         cross_asset_refreshed_at = now.isoformat()
-        cross_asset_refresh_mode = (
-            "REFRESHED_FRED_H15_NEWER"
-            if official_yield_diagnostics["fallback_used"]
-            else "REFRESHED_FRED_H15_COMPARED"
-        )
+        cross_asset_refresh_mode = "REFRESHED_TREASURY_H15_FRED_COMPARED"
 
     event_context, event_observed_at = _event_context(store)
 
@@ -373,9 +384,11 @@ def run() -> int:
         },
         "event_observed_at": event_observed_at,
         "data_policy": {
-            "cross_asset_frequency": "DAILY_WITH_15M_REUSE",
-            "daily_yield_policy": "LATEST_OFFICIAL_FRED_OR_H15_BY_OBSERVATION_DATE",
+            "cross_asset_frequency": "DAILY_WITH_5M_RECHECK",
+            "daily_yield_policy": "TREASURY_PRIMARY_NEWEST_VALID_OFFICIAL_DATE_FRED_H15_FALLBACK",
             "h15_fallback_policy": "READ_ONLY_NO_MARKET_PROXY_AS_OFFICIAL",
+            "treasury_official_source": "HOME_TREASURY_GOV_XML_NOMINAL_PLUS_TIPS_REAL",
+            "treasury_official_policy": "DAILY_CMT_NEVER_INTRADAY",
             "intraday_runtime_target": "15_MINUTES",
             "us10y_cash_source": "YAHOO_FINANCE_TNX_SECONDARY_PROXY",
             "us10y_cash_policy": "LAST_VALID_VISIBLE_BUT_NOT_LIVE_WHEN_STALE",

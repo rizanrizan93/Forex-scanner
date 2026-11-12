@@ -1,6 +1,6 @@
-"""Select the latest *published* official H.15 / FRED Treasury observations.
+"""Select newest published US Treasury / H.15 / FRED daily yield observations.
 
-Both are distribution channels for the same Federal Reserve H.15 series.
+Official sources are daily observations, never intraday quotations.
 A fresh worker timestamp or provider TTL is not an observation date.
 Selection is read-only; no intraday market proxy is ever written as H.15.
 """
@@ -45,14 +45,20 @@ def _row_usable(row: Mapping[str, Any] | None, now: datetime) -> bool:
     item = dict(row or {})
     observation = _dt(item.get("observed_at"))
     previous = _dt(item.get("previous_observed_at"))
+    current_value = _number(item.get("current"))
+    prior_value = _number(item.get("previous"))
+    delta = _number(item.get("delta"))
+    if not (observation and previous and previous < observation <= now):
+        return False
+    if current_value is None or prior_value is None or delta is None:
+        return False
+    if not (-10 < current_value < 30 and -10 < prior_value < 30):
+        return False
     return bool(
-        observation and previous and previous < observation <= now
-        and _number(item.get("current")) is not None
-        and _number(item.get("previous")) is not None
-        and _number(item.get("delta")) is not None
-        and str(item.get("freshness") or "").upper() == "FRESH"
+        str(item.get("freshness") or "").upper() == "FRESH"
+        and str(item.get("delta_unit") or "BPS").upper() == "BPS"
+        and abs(delta - (current_value - prior_value) * 100.0) <= 0.05
     )
-
 
 def _expected_h15_date(now: datetime) -> tuple[date, datetime]:
     """Last scheduled release boundary, not proof an observation is published."""
@@ -85,37 +91,46 @@ def select_official_yield_rows(
     h15_rows: Mapping[str, Mapping[str, Any]] | None,
     *,
     now: datetime,
+    treasury_rows: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
-    """Prefer the newer official observation; tie -> FRED.
+    """Select newest valid OFFICIAL daily observation, Treasury wins equal-date ties.
 
-    No downgrade to older H.15 and no assumption that a release happened.
-    Delayed-but-still-within-FRED-TTL rows remain usable as *daily regime*,
-    with an explicit release-state label so they cannot masquerade as live.
+    A valid newer FRED/H.15 value can supersede an older Treasury publication.
+    When a source is delayed, never relabel its fetch/heartbeat as a new release.
+    All results remain read-only and cannot authorize broker execution.
     """
     if now.tzinfo is None:
         raise ValueError("now must be timezone aware")
     primary = dict(fred_rows or {})
-    alternative = dict(h15_rows or {})
+    federal = dict(h15_rows or {})
+    treasury = dict(treasury_rows or {})
     selected = {key: dict(value or {}) for key, value in primary.items()}
     diagnostics: dict[str, Any] = {
         "chosen_providers": {}, "fallback_used": [],
+        "treasury_primary_used": [], "h15_fallback_used": [],
         "release_states": {}, "expected_observation_dates": {},
-        "h15_observed_dates": {}, "fred_observed_dates": {},
+        "treasury_observed_dates": {}, "h15_observed_dates": {},
+        "fred_observed_dates": {},
     }
     for name in OFFICIAL_YIELD_KEYS:
         fred = dict(primary.get(name) or {})
-        h15 = dict(alternative.get(name) or {})
-        fdt = _dt(fred.get("observed_at"))
-        hdt = _dt(h15.get("observed_at"))
-        f_ok = _row_usable(fred, now)
-        h_ok = _row_usable(h15, now)
-        # Only a valid official observation may replace existing data.
-        # FRED is preferred at identical dates to avoid provider oscillation.
-        if h_ok and (not f_ok or fdt is None or hdt > fdt):
-            chosen = dict(h15)
-            diagnostics["fallback_used"].append(name)
+        h15 = dict(federal.get(name) or {})
+        direct = dict(treasury.get(name) or {})
+        candidates = [
+            (_dt(row.get("observed_at")), priority, row, label)
+            for priority, row, label in (
+                (2, fred, "FRED"),
+                (1, h15, "H15"),
+                (3, direct, "TREASURY"),
+            )
+            if _row_usable(row, now)
+        ]
+        # Source rank breaks ONLY same-observation-date ties.
+        if candidates:
+            _, _, chosen, provider_label = max(candidates, key=lambda x: (x[0], x[1]))
+            chosen = dict(chosen)
         else:
-            chosen = dict(fred)
+            chosen, provider_label = dict(fred), "FRED"
         observed = _dt(chosen.get("observed_at"))
         state, expected = _release_state(observed, now)
         chosen["release_state"] = state
@@ -125,16 +140,30 @@ def select_official_yield_rows(
             else "RELEASE_PENDING" if state == "RELEASE_PENDING"
             else "DAILY_DELAYED"
         )
-        # A provider cache TTL is not evidence that the daily observation is current.
-        # Preserve it separately, and expose observation-aware freshness to consumers.
         chosen["provider_cache_freshness"] = chosen.get("freshness")
         if state != "CURRENT_PUBLISHED":
             chosen["freshness"] = "STALE"
             chosen["provider_status"] = state
         selected[name] = chosen
+        if provider_label != "FRED":
+            diagnostics["fallback_used"].append(name)
+        if provider_label == "TREASURY":
+            diagnostics["treasury_primary_used"].append(name)
+        if provider_label == "H15":
+            diagnostics["h15_fallback_used"].append(name)
         diagnostics["chosen_providers"][name] = chosen.get("provider")
         diagnostics["release_states"][name] = state
         diagnostics["expected_observation_dates"][name] = expected
-        diagnostics["h15_observed_dates"][name] = hdt.date().isoformat() if hdt else None
-        diagnostics["fred_observed_dates"][name] = fdt.date().isoformat() if fdt else None
+        diagnostics["treasury_observed_dates"][name] = (
+            _dt(direct.get("observed_at")).date().isoformat()
+            if _dt(direct.get("observed_at")) else None
+        )
+        diagnostics["h15_observed_dates"][name] = (
+            _dt(h15.get("observed_at")).date().isoformat()
+            if _dt(h15.get("observed_at")) else None
+        )
+        diagnostics["fred_observed_dates"][name] = (
+            _dt(fred.get("observed_at")).date().isoformat()
+            if _dt(fred.get("observed_at")) else None
+        )
     return selected, diagnostics
