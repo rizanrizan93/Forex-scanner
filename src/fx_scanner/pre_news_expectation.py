@@ -11,7 +11,8 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from .pre_news_source_fusion import (
-    SECONDARY_CONSENSUS_SOURCES, _comparable_inflation_quote, canonical_event_key,
+    SECONDARY_CONSENSUS_SOURCES, SourceQuote, fuse_consensus,
+    _comparable_inflation_quote, canonical_event_key,
 )
 
 MIN_FORECAST_SOURCES = 3
@@ -20,8 +21,9 @@ CONTRACT = "RIZAN_PRE_NEWS_EXPECTATION_V1"
 EVENT_WORKER = "ctrader_demo_xau_event_risk_v192"
 MACRO_WORKER = "ctrader_demo_xau_macro_attribution_v357"
 DIRECT = {"CPI", "PPI", "EMPLOYMENT", "NFP", "WAGES", "ECI", "JOLTS", "FOMC"}
-INVERSE = {"UNEMPLOYMENT_RATE"}
+INVERSE = {"UNEMPLOYMENT_RATE", "JOBLESS_CLAIMS"}
 SUPPORTED = DIRECT | INVERSE
+SUPPORTED_OTHER_USD = frozenset({"EXISTING_HOME_SALES"})
 
 # BLS: October 2025 all-items and core indexes were unavailable; the
 # October 2026 twelve-month headline/core comparisons are not published.
@@ -68,6 +70,127 @@ def _source_conflict(event: dict[str, Any]) -> bool:
     return bool(conflicts) if isinstance(conflicts, (list, tuple, set)) else bool(str(conflicts).strip())
 
 
+def _supported_event(event: dict[str, Any]) -> bool:
+    """Whitelist economic components; never treat every OTHER_USD as gold news."""
+    category = str(event.get("category") or "")
+    component = str(event.get("event_component") or "")
+    return category in SUPPORTED or (
+        category == "OTHER_USD" and component in SUPPORTED_OTHER_USD
+    )
+
+
+def _merge_claims_aliases(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Read-only compatibility with snapshots predating canonical claims fusion.
+
+    Jobless Claims and Unemployment Claims describe the same initial claims
+    release, whereas continuing claims are a different economic component.
+    Numeric quorum counts independent forecast providers, not calendar rows.
+    """
+    normalized: list[dict[str, Any]] = []
+    groups: dict[tuple[datetime | None, str], list[dict[str, Any]]] = {}
+    for raw in events:
+        event = dict(raw)
+        category = str(event.get("category") or "")
+        alias = canonical_event_key(str(event.get("title") or ""))
+        if ((category == "JOBLESS_CLAIMS" and alias in {
+                "INITIAL_JOBLESS_CLAIMS", "CONTINUING_JOBLESS_CLAIMS"})
+                or (category == "OTHER_USD" and alias in SUPPORTED_OTHER_USD)):
+            event["event_component"] = alias
+        normalized.append(event)
+        if event.get("event_component") == "INITIAL_JOBLESS_CLAIMS":
+            groups.setdefault(
+                (timestamp(event.get("scheduled_at")), "INITIAL_JOBLESS_CLAIMS"), []
+            ).append(event)
+
+    output: list[dict[str, Any]] = []
+    used: set[tuple[datetime | None, str]] = set()
+    for event in normalized:
+        if event.get("event_component") != "INITIAL_JOBLESS_CLAIMS":
+            output.append(event)
+            continue
+        key = (timestamp(event.get("scheduled_at")), "INITIAL_JOBLESS_CLAIMS")
+        if key in used:
+            continue
+        used.add(key)
+        members = groups.get(key, [])
+        if len(members) < 2 or key[0] is None:
+            output.append(event)
+            continue
+        quotes: list[SourceQuote] = []
+        for member in members:
+            title = str(member.get("title") or "Initial Jobless Claims")
+            rows = member.get("forecast_quotes") or []
+            if not rows and member.get("source"):
+                rows = [{
+                    "source": member["source"], "forecast": member.get("forecast"),
+                    "previous": member.get("previous"),
+                }]
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                provider = str(row.get("source") or "")
+                forecast = number(row.get("forecast"))
+                if provider not in SECONDARY_CONSENSUS_SOURCES or forecast is None:
+                    continue
+                quotes.append(SourceQuote(
+                    provider, title, "USD", key[0], forecast=forecast,
+                    previous=number(row.get("previous")),
+                ))
+            actual_rows = member.get("actual_quotes") or []
+            if not actual_rows and number(member.get("actual")) is not None:
+                actual_rows = [{"source": member.get("source"),
+                                "actual": member.get("actual")}]
+            for row in actual_rows:
+                if not isinstance(row, dict):
+                    continue
+                provider = str(row.get("source") or "")
+                actual = number(row.get("actual"))
+                if not provider or actual is None:
+                    continue
+                official = (
+                    str(member.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
+                    and provider == str(member.get("source") or "")
+                )
+                quotes.append(SourceQuote(
+                    provider, title, "USD", key[0], actual=actual,
+                    authoritative_actual=official,
+                ))
+        if not quotes:
+            output.append(event)
+            continue
+        fused = fuse_consensus(quotes)
+        base = max(members, key=lambda item: (
+            str(item.get("source_tier") or "").startswith("OFFICIAL_ACTUAL")
+            and number(item.get("actual")) is not None,
+            number(item.get("actual")) is not None,
+        ))
+        output.append({
+            **base,
+            "event_component": "INITIAL_JOBLESS_CLAIMS",
+            "forecast": fused.forecast,
+            "previous": fused.previous,
+            "actual": fused.actual,
+            "sources": list(fused.sources),
+            "source_count": fused.source_count,
+            "forecast_source_count": fused.forecast_source_count,
+            "forecast_sources": list(fused.forecast_sources),
+            "forecast_quotes": [
+                {"source": source, "forecast": forecast, "previous": previous}
+                for source, forecast, previous in fused.forecast_quotes
+            ],
+            "actual_source_count": fused.actual_source_count,
+            "actual_quotes": [
+                {"source": source, "actual": value}
+                for source, value in fused.actual_quotes
+            ],
+            "source_agreement": fused.source_agreement,
+            "source_confidence": "MEDIUM" if fused.forecast_source_count >= 3
+            and not fused.conflicts else "LOW",
+            "conflicts": list(fused.conflicts),
+        })
+    return output
+
+
 def _scenarios(category: str) -> list[dict[str, str]]:
     inverse = category in INVERSE
     return [
@@ -107,18 +230,23 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         events.append(dict(risk["focal_event"]))
     if risk.get("latest_released_event"):
         events.append(dict(risk["latest_released_event"]))
+    events = _merge_claims_aliases(events)
     upcoming = []
     seen = set()
     for event in events:
         at = timestamp(event.get("scheduled_at"))
         key = (event.get("title"), at)
-        if at is None or at < current or event.get("category") not in SUPPORTED or key in seen:
+        if at is None or at < current or not _supported_event(event) or key in seen:
             continue
         if event.get("currency", "USD") != "USD":
             continue
         seen.add(key)
         upcoming.append((at, event))
-    upcoming.sort(key=lambda item: (item[0], str(item[1].get("title"))))
+    upcoming.sort(key=lambda item: (
+        item[0],
+        0 if item[1].get("event_component") == "INITIAL_JOBLESS_CLAIMS" else 1,
+        str(item[1].get("title")),
+    ))
     result: dict[str, Any] = {
         "contract": CONTRACT, "observed_at": current.isoformat(),
         "state": "DATA INCOMPLETE", "expectation": "UNAVAILABLE",
@@ -151,7 +279,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     for e in events:
         scheduled = timestamp(e.get("scheduled_at"))
         if (scheduled is None or e.get("currency", "USD") != "USD"
-                or e.get("category") not in SUPPORTED):
+                or not _supported_event(e)):
             continue
         age = (current - scheduled).total_seconds()
         if 0 < age <= 4 * 3600:
@@ -180,7 +308,13 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 )
             ):
                 deduped[component] = row
-        recent_cluster = list(deduped.values())
+        recent_cluster = sorted(
+            deduped.values(),
+            key=lambda e: (
+                0 if e.get("event_component") == "INITIAL_JOBLESS_CLAIMS" else 1,
+                str(e.get("title")),
+            ),
+        )
         # The worker explicitly reports an in-progress/released event; a past
         # focal record alone may instead be an obsolete fixture/calendar item.
         release_state = str(risk.get("state") or "")
@@ -319,11 +453,22 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 else:
                     result["news_conclusion"] = "INLINE ACTUAL — XAU NETRAL"
                     result["xau_bias"] = "NEUTRAL_MIXED"
-                comparisons = ", ".join(
-                    f'{row["event_component"]} {row["actual"]:.2f}% vs '
-                    f'{row["forecast"]:.2f}% (Δ {row["surprise"]:+.2f}pp)'
-                    for row in verified
-                )
+                def format_comparison(row: dict[str, Any]) -> str:
+                    unit = (
+                        " klaim" if row.get("category") == "JOBLESS_CLAIMS" else
+                        " penjualan" if row.get("event_component") == "EXISTING_HOME_SALES"
+                        else " pp"
+                    )
+                    if unit == " pp":
+                        return (
+                            f'{row["event_component"]} {row["actual"]:.2f}% vs '
+                            f'{row["forecast"]:.2f}% (Δ {row["surprise"]:+.2f}pp)'
+                        )
+                    return (
+                        f'{row["event_component"]} {row["actual"]:,.0f} vs '
+                        f'{row["forecast"]:,.0f} (Δ {row["surprise"]:+,.0f}{unit})'
+                    )
+                comparisons = ", ".join(format_comparison(row) for row in verified)
                 provenance = (
                     "Actual awal dari satu sumber kalender; BELUM terverifikasi BLS" 
                     if preliminary else
@@ -463,7 +608,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             "conflicts": e.get("conflicts") or [],
         })
     result["forecast_quorum_met"] = (
-        bool(cluster) and all(count >= MIN_FORECAST_SOURCES for count in quorum_counts)
+        bool(cluster) and len(tilts) == len(cluster)
+        and all(count >= MIN_FORECAST_SOURCES for count in quorum_counts)
     )
     calendar_valid = not any(
         reason in reasons
