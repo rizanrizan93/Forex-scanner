@@ -371,22 +371,32 @@ def _delta(n, suffix=""):
 
 
 def _yield_row(macro_eval, h15, symbol, fred=None):
-    """Use fresh worker/H15 observations; FRED official daily if unavailable."""
-    row = dict(((macro_eval or {}).get("components") or {}).get(symbol) or {})
-    if (row.get("freshness") == "FRESH"
-            and _recent(row.get("observed_at"), 5)
-            and _number(row.get("current")) is not None
-            and _number(row.get("delta")) is not None):
-        return row
-    fallback = dict((h15 or {}).get(symbol) or {})
-    if (fallback.get("freshness") == "FRESH"
-            and _recent(fallback.get("observed_at"), 5)
-            and _number(fallback.get("delta")) is not None):
-        return fallback
+    """Display the newest valid official observation, not merely first FRESH.
+
+    Worker V399 normally handles the FRED/H.15 comparison. The independent
+    Streamlit H.15 cache can still update before the worker, so select by
+    ORIGINAL observed_at here too. Never substitute a futures price.
+    """
+    worker = dict(((macro_eval or {}).get("components") or {}).get(symbol) or {})
+    direct_h15 = dict((h15 or {}).get(symbol) or {})
     series = FRED_YIELD_SERIES.get(symbol)
-    observation = fred_daily_yield_row(symbol, (fred or {}).get(series),
-                                       now=datetime.now(UTC))
-    return observation or {}
+    direct_fred = dict(fred_daily_yield_row(
+        symbol, (fred or {}).get(series), now=datetime.now(UTC)
+    ) or {})
+    candidates = []
+    for priority, row in ((2, worker), (1, direct_h15), (0, direct_fred)):
+        observed = _date(row.get("observed_at"))
+        if observed is not None and observed.tzinfo is None:
+            observed = observed.replace(tzinfo=UTC)
+        if (row.get("freshness") == "FRESH"
+                and observed is not None
+                and _recent(row.get("observed_at"), 5)
+                and _number(row.get("current")) is not None
+                and _number(row.get("delta")) is not None):
+            candidates.append((observed, priority, row))
+    if not candidates:
+        return {}
+    return max(candidates, key=lambda item: (item[0], item[1]))[2]
 
 
 def _daily_dxy_last(feeds):
@@ -861,6 +871,14 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                    delta=_delta(_number(row.get("delta")), " bps"))
         col.caption(f"{row.get('provider') or 'BELUM TERSEDIA'} · "
                     f"observasi {str(row.get('observed_at') or '—')[:10]}")
+        release_state = str(row.get("release_state") or "")
+        if release_state and release_state != "CURRENT_PUBLISHED":
+            col.warning("Yield harian belum mutakhir: " + release_state +
+                        " · rilis diharapkan " +
+                        str(row.get("expected_observation_date") or "—") +
+                        ". Bukan quote live.")
+        elif release_state:
+            col.caption("H.15 resmi: CURRENT_PUBLISHED (daily, bukan intraday)")
     if us2 and us10 and str(us2.get("observed_at"))[:10] == str(us10.get("observed_at"))[:10]:
         spread = (_number(us10["current"]) - _number(us2["current"])) * 100
         st.metric("Spread 10Y − 2Y", _fmt(spread, " bps", 1))

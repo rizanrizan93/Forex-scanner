@@ -18,6 +18,9 @@ on:
       - "scripts/run_pre_news_feed.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_macro_attribution_quality_v400.py"
+      - "src/fx_scanner/xau_official_yield_selection.py"
+      - "src/fx_scanner/xau_h15_daily_fallback.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/xau_intraday_macro_v398.py"
       - "src/fx_scanner/xau_treasury_session_v399.py"
@@ -32,6 +35,8 @@ on:
       - "config/pre_news_secondary_sources.json"
       - "tests/test_xau_macro_attribution_v357.py"
       - "tests/test_xau_macro_attribution_quality_v400.py"
+      - "tests/test_xau_official_yield_selection.py"
+      - "tests/test_xau_h15_daily_fallback.py"
       - "tests/test_xau_intraday_yield_v367.py"
       - "tests/test_xau_intraday_macro_v398.py"
       - "tests/test_xau_treasury_session_v399.py"
@@ -49,6 +54,9 @@ on:
       - "scripts/run_pre_news_feed.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_macro_attribution_quality_v400.py"
+      - "src/fx_scanner/xau_official_yield_selection.py"
+      - "src/fx_scanner/xau_h15_daily_fallback.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/xau_intraday_macro_v398.py"
       - "src/fx_scanner/xau_treasury_session_v399.py"
@@ -63,6 +71,8 @@ on:
       - "config/pre_news_secondary_sources.json"
       - "tests/test_xau_macro_attribution_v357.py"
       - "tests/test_xau_macro_attribution_quality_v400.py"
+      - "tests/test_xau_official_yield_selection.py"
+      - "tests/test_xau_h15_daily_fallback.py"
       - "tests/test_xau_intraday_yield_v367.py"
       - "tests/test_xau_intraday_macro_v398.py"
       - "tests/test_xau_treasury_session_v399.py"
@@ -104,6 +114,8 @@ jobs:
           pytest -q \
             tests/test_xau_macro_attribution_v357.py \
             tests/test_xau_macro_attribution_quality_v400.py \
+            tests/test_xau_official_yield_selection.py \
+            tests/test_xau_h15_daily_fallback.py \
             tests/test_xau_intraday_yield_v367.py \
             tests/test_xau_intraday_macro_v398.py \
             tests/test_xau_treasury_session_v399.py \
