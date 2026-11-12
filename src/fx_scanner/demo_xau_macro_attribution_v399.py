@@ -30,6 +30,7 @@ from .xau_intraday_yield_v367 import (
     select_latest_post_release_event,
 )
 from .xau_macro_attribution_v357 import CONTRACT as BASE_CONTRACT, evaluate_broader_macro_bias
+from .xau_macro_attribution_quality_v400 import evaluate_attribution_quality
 from .xau_treasury_session_v399 import (
     CONTRACT as TREASURY_SESSION_CONTRACT,
     evaluate_treasury_futures_pressure,
@@ -182,6 +183,12 @@ def run() -> int:
         broader_macro_bias=str(evaluation.get("broader_macro_bias") or "UNAVAILABLE"),
     )
 
+    evaluation["attribution_quality"] = evaluate_attribution_quality(
+        evaluation,
+        event_context=event_context,
+        intraday_confirmation=intraday_confirmation,
+        now=now,
+    )
     evaluation["contract_base"] = BASE_CONTRACT
     evaluation["contract"] = CONTRACT
     evaluation["intraday_macro_contract"] = INTRADAY_MACRO_CONTRACT

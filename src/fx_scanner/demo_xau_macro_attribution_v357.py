@@ -156,6 +156,7 @@ def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
         "state": evaluation.get("state"),
         "broader_macro_bias": evaluation.get("broader_macro_bias"),
         "macro_score": evaluation.get("macro_score"),
+        "attribution_quality": dict(evaluation.get("attribution_quality") or {}),
         "confidence": evaluation.get("confidence"),
         "coverage": evaluation.get("coverage"),
         "components": components,
