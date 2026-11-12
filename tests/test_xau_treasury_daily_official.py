@@ -146,3 +146,17 @@ def test_url_allowlist_and_invalid_month():
         treasury_xml_url("daily_treasury_yield_curve", "202613")
     with pytest.raises(ValueError):
         treasury_xml_url("daily_treasury_bill_rates", "202611")
+
+
+def test_real_feed_network_failure_keeps_nominal_rows():
+    from fx_scanner.providers.transport import HttpTransportError
+
+    class PartialTransport(Transport):
+        def get(self, url, *, allowed_host, headers):
+            if "data=daily_treasury_real_yield_curve" in url:
+                raise HttpTransportError("HTTP_503")
+            return super().get(url, allowed_host=allowed_host, headers=headers)
+
+    output = fetch_treasury_daily_rows(transport=PartialTransport(), now=NOW)
+    assert sorted(output) == ["US10Y", "US2Y"]
+    assert output["US10Y"]["observed_at"].startswith("2026-11-12")
