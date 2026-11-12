@@ -55,6 +55,13 @@ def run() -> int:
     reuse_daily = bool(
         previous_refresh_at
         and previous_cross_asset
+        # A new worker version must never reuse legacy daily rows that lack
+        # H.15 release metadata. Force the first official-source comparison.
+        and all(
+            (previous_cross_asset.get(name) or {}).get("release_state")
+            for name in ("US2Y", "US10Y", "REAL_YIELD_10Y")
+        )
+        and previous_details.get("official_yield_diagnostics")
         and 0.0 <= (now - previous_refresh_at).total_seconds()
         <= DAILY_CROSS_ASSET_REFRESH_SECONDS
     )
@@ -217,6 +224,7 @@ def run() -> int:
         intraday_confirmation=intraday_confirmation,
         now=now,
     )
+    evaluation["official_yield_diagnostics"] = official_yield_diagnostics
     evaluation["contract_base"] = BASE_CONTRACT
     evaluation["contract"] = CONTRACT
     evaluation["intraday_macro_contract"] = INTRADAY_MACRO_CONTRACT
