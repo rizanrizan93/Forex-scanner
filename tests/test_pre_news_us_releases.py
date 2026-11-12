@@ -68,6 +68,8 @@ def test_aliases_and_independent_numeric_forecasts():
     assert canonical_event_key("Continuing Jobless Claims") == "CONTINUING_JOBLESS_CLAIMS"
     assert canonical_event_key("Existing Home Sales") == "EXISTING_HOME_SALES"
     assert canonical_event_key("Existing Home Sales Change MoM") == "EXISTING_HOME_SALES_CHANGE_MOM"
+    assert canonical_event_key("Existing Home Sales (MoM)") == "EXISTING_HOME_SALES"
+    assert canonical_event_key("Initial Jobless Claims 4-week average") == "INITIAL_JOBLESS_CLAIMS_4W_AVG"
 
     quotes = [
         SourceQuote("SHOWMYTRADES", "Initial Jobless Claims", "USD", AT, 195000, 189000),
@@ -166,3 +168,33 @@ def test_next_housing_release_replaces_older_claims_after_spike_window():
     view = evaluate_pre_news(data, now=NOW)
     assert view["event"]["event_component"] == "EXISTING_HOME_SALES"
     assert view["minutes_to_event"] == 30
+
+
+def test_housing_level_mom_aliases_merge_but_percent_change_is_separate():
+    sales = [
+        _event("Existing Home Sales", "OTHER_USD",
+               "FOREX_FACTORY_WEEKLY", 3890000, 3990000),
+        _event("Existing Home Sales (MoM)", "OTHER_USD",
+               "SHOWMYTRADES", 3850000, 3990000),
+        _event("Existing Home Sales Change MoM", "OTHER_USD",
+               "HELIOUS", -2.1, -1.0),
+    ]
+    view = evaluate_pre_news(_snapshot(sales), now=NOW)
+    assert view["event"]["event_component"] == "EXISTING_HOME_SALES"
+    assert len(view["event_cluster"]) == 1
+    assert view["event_cluster"][0]["forecast"] == 3870000
+    assert view["event_cluster"][0]["forecast_pair_count"] == 2
+    assert not view["forecast_quorum_met"]
+
+
+def test_claims_four_week_moving_average_does_not_vote_on_initial_release():
+    rows = [
+        _event("Initial Jobless Claims", "JOBLESS_CLAIMS",
+               "SHOWMYTRADES", 195000, 189000),
+        _event("Initial Jobless Claims 4-week average", "JOBLESS_CLAIMS",
+               "HELIOUS", 190000, 188000),
+    ]
+    view = evaluate_pre_news(_snapshot(rows), now=NOW)
+    assert len(view["event_cluster"]) == 1
+    assert view["event_cluster"][0]["event_component"] == "INITIAL_JOBLESS_CLAIMS"
+    assert view["event_cluster"][0]["forecast_pair_count"] == 1
