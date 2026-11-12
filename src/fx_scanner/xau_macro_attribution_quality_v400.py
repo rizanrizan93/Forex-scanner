@@ -231,11 +231,24 @@ def evaluate_attribution_quality(
         n in valid for n in ("US2Y", "US10Y", "REAL_YIELD_10Y")))
     intraday = dict(intraday_confirmation or {})
     intraday_bias = str(intraday.get("intraday_macro_bias") or "UNAVAILABLE")
-    fresh_names = set(intraday.get("fresh_components") or ())
-    # Require a current DXY signal plus another independent rate-market signal.
+    named_fresh = set(intraday.get("fresh_components") or ())
+    intraday_rows = dict(intraday.get("components") or {})
+    # Recheck ORIGINAL source timestamps. The word FRESH on a heartbeat is
+    # not proof that the quote is current at the consumer's decision time.
+    genuinely_fresh: set[str] = set()
+    for name in named_fresh:
+        row = dict(intraday_rows.get(name) or {})
+        at = _dt(row.get("current_at"))
+        if (row.get("available") is True and at is not None
+                and 0 <= (current - at).total_seconds() <= INTRADAY_MAX_AGE_S
+                and str(row.get("gold_implication") or "").upper()
+                in {"GOLD_HEADWIND", "GOLD_HEADWIND_CONFIRMED",
+                    "GOLD_SUPPORT", "GOLD_SUPPORT_CONFIRMED"}):
+            genuinely_fresh.add(name)
+    # Require a current DXY signal plus an independent rate-market signal.
     eligible = bool(intraday.get("confirmation_eligible")) and (
-        "DXY" in fresh_names
-        and bool(fresh_names & {"US10Y_INTRADAY", "FED_FUNDS_FUTURES"})
+        "DXY" in genuinely_fresh
+        and bool(genuinely_fresh & {"US10Y_INTRADAY", "FED_FUNDS_FUTURES"})
     )
     flags = []
     if omitted:
@@ -264,6 +277,7 @@ def evaluate_attribution_quality(
         "quality_state": state,
         "intraday_bias": intraday_bias,
         "intraday_confirmation_eligible": eligible,
+        "fresh_intraday_components": sorted(genuinely_fresh),
         "daily_coverage": daily_coverage,
         "directional_coverage": round(observed_weight, 3),
         "independent_families": family_count,
