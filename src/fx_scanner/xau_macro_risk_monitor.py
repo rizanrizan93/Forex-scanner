@@ -871,6 +871,14 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                    delta=_delta(_number(row.get("delta")), " bps"))
         col.caption(f"{row.get('provider') or 'BELUM TERSEDIA'} · "
                     f"observasi {str(row.get('observed_at') or '—')[:10]}")
+        release_state = str(row.get("release_state") or "")
+        if release_state and release_state != "CURRENT_PUBLISHED":
+            col.warning("Yield harian belum mutakhir: " + release_state +
+                        " · rilis diharapkan " +
+                        str(row.get("expected_observation_date") or "—") +
+                        ". Bukan quote live.")
+        elif release_state:
+            col.caption("H.15 resmi: CURRENT_PUBLISHED (daily, bukan intraday)")
     if us2 and us10 and str(us2.get("observed_at"))[:10] == str(us10.get("observed_at"))[:10]:
         spread = (_number(us10["current"]) - _number(us2["current"])) * 100
         st.metric("Spread 10Y − 2Y", _fmt(spread, " bps", 1))
