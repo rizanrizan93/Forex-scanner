@@ -86,12 +86,17 @@ def canonical_event_key(title: str) -> str:
     # counted twice and initial/continuing claims remain distinct.
     if "CONTINUING JOBLESS CLAIM" in text or "CONTINUING UNEMPLOYMENT CLAIM" in text:
         return "CONTINUING_JOBLESS_CLAIMS"
+    if ("4 WEEK" in text or "FOUR WEEK" in text or "4WK" in text) and (
+            "JOBLESS CLAIM" in text or "UNEMPLOYMENT CLAIM" in text):
+        return "INITIAL_JOBLESS_CLAIMS_4W_AVG"
     if ("INITIAL JOBLESS CLAIM" in text or "UNEMPLOYMENT CLAIM" in text
             or text == "JOBLESS CLAIMS" or "INITIAL CLAIMS" in text):
         return "INITIAL_JOBLESS_CLAIMS"
     if "EXISTING HOME SALES" in text or "EXISTING HOMES SALES" in text:
+        # A '(MoM)' suffix may label an annualised sales LEVEL (3.85M homes);
+        # only explicit 'Change' is a growth-rate series.
         return ("EXISTING_HOME_SALES_CHANGE_MOM"
-                if "CHANGE" in text or "MOM" in text
+                if "CHANGE" in text or "GROWTH" in text
                 else "EXISTING_HOME_SALES")
 
     if "UNEMPLOYMENT RATE" in text:
