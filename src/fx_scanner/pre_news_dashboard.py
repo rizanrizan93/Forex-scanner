@@ -115,21 +115,6 @@ def render_pre_news_dashboard():
                     "lebih rendah cenderung bullish XAU. "
                     "Semua reaksi tetap kondisional, bukan kepastian spike."
                 )
-        st.markdown("#### 3. Eksekusi manual · BUY / SELL / WAIT")
-        st.caption("Selalu WAIT bila feed/actual tidak tervalidasi. Konfirmasi M1/M5, DXY, yield dan spread diperlukan.")
-        st.markdown("**Pemicu entry:** " + guidance["trigger"])
-        st.caption("Invalidasi: " + guidance["invalidated_by"])
-        if guidance["warnings"]:
-            st.info(" · ".join(guidance["warnings"]))
-        if guidance["evidence"]:
-            with st.expander("Rincian kontribusi makro/news"):
-                st.dataframe(guidance["evidence"], hide_index=True, width="stretch")
-        st.caption(
-            "Panduan analitis bagi keputusan manual, bukan instruksi eksekusi otomatis. "
-            "Skor -100 hingga +100 adalah heuristik arah, bukan win-rate "
-            "atau probabilitas. M1/M5, spread dan quote harus dikonfirmasi "
-            "secara independen saat news."
-        )
         # A forecast below Previous does NOT predict Actual below consensus.
         # Keep a separate, explicitly conditional pre-release macro-risk headline.
         st.markdown("#### 2. Saat rilis · hasil aktual dibanding konsensus")
@@ -328,6 +313,21 @@ def render_pre_news_dashboard():
             with st.expander("Skenario setelah rilis"):
                 st.dataframe(view["scenarios"], hide_index=True, width="stretch")
                 st.caption("Skenario bersifat kondisional. Revisi, core/headline, forward guidance dan respons pasar dapat mengubah implikasi awal.")
+        st.markdown("#### 3. Eksekusi manual · BUY / SELL / WAIT")
+        st.caption("Selalu WAIT bila feed/actual tidak tervalidasi. Konfirmasi M1/M5, DXY, yield dan spread diperlukan.")
+        st.markdown("**Pemicu entry:** " + guidance["trigger"])
+        st.caption("Invalidasi: " + guidance["invalidated_by"])
+        if guidance["warnings"]:
+            st.info(" · ".join(guidance["warnings"]))
+        if guidance["evidence"]:
+            with st.expander("Rincian kontribusi makro/news"):
+                st.dataframe(guidance["evidence"], hide_index=True, width="stretch")
+        st.caption(
+            "Panduan analitis bagi keputusan manual, bukan instruksi eksekusi otomatis. "
+            "Skor -100 hingga +100 adalah heuristik arah, bukan win-rate "
+            "atau probabilitas. M1/M5, spread dan quote harus dikonfirmasi "
+            "secara independen saat news."
+        )
         st.caption(view.get("next_step", "H1 bias → M15 validasi struktur/reversal → M5 timing."))
         st.caption(
             "Panduan entry bersyarat · tidak mengirim order cBot LIVE · "
