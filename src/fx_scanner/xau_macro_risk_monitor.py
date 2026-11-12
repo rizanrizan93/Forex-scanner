@@ -21,6 +21,8 @@ from .xau_macro_gold_consensus import analyze_gold_macro, explain_oil_component
 from .xau_m15_macro_forecast import render_macro_m15_forecast
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
 from .xau_treasury_schedule import fred_daily_release_key
+from .xau_treasury_daily_official import fetch_treasury_daily_rows
+from .xau_official_yield_selection import select_official_yield_rows
 from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
 from .xau_macro_spot_news_v2 import fetch_dia_spot, fetch_geopolitical_rss
 from .xau_macro_daily_regime import (
@@ -263,6 +265,12 @@ def _select_vendor_quote(existing, candidate, *, now=None):
     return existing, False
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def treasury_daily_cached():
+    """Official DAILY Treasury observations; cache does not change source date."""
+    return fetch_treasury_daily_rows()
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def load_external_macro_inputs():
     """CNBC primary with time-verified fallback for missing and stale DXY.
@@ -274,11 +282,12 @@ def load_external_macro_inputs():
     """
     fred_codes = sorted(FRED_SERIES)
     tasks = [("fred", code) for code in fred_codes] + [
-        ("cnbc", "ALL"), ("us2y", "US2Y"), ("geo", "GDELT"),
+        ("treasury", "ALL"), ("cnbc", "ALL"), ("us2y", "US2Y"), ("geo", "GDELT"),
         ("oil", "WTI"), ("oil", "Brent"),
     ]
     def read(kind, code):
         fn = (fred_history if kind == "fred" else
+              treasury_daily_cached if kind == "treasury" else
               cnbc_macro_quotes_cached if kind == "cnbc" else
               us2y_live if kind == "us2y" else
               fetch_dia_spot if kind == "oil" else geopolitical_headlines)
@@ -324,12 +333,16 @@ def load_external_macro_inputs():
                 spot[name] = quote
     return {
         "fred": {code: outcomes[("fred", code)][0] for code in fred_codes},
+        "treasury": outcomes[("treasury", "ALL")][0] or {},
         "market": market,
         "spot": spot,
         "oil_spot": {key: outcomes[("oil", key)][0] for key in ("WTI", "Brent")},
         "us2y": outcomes[("us2y", "US2Y")],
         "geo_news": outcomes[("geo", "GDELT")],
         "source_health": {
+            "treasury_status": ("OK" if outcomes[("treasury", "ALL")][0]
+                                else "UNAVAILABLE"),
+            "treasury_error": outcomes[("treasury", "ALL")][1],
             "cnbc_count": len(fast),
             "cnbc_error": fast_err,
             "yahoo_missing": missing,
@@ -370,21 +383,27 @@ def _delta(n, suffix=""):
     return None if n is None else f"{n:+.2f}{suffix}"
 
 
-def _yield_row(macro_eval, h15, symbol, fred=None):
-    """Display the newest valid official observation, not merely first FRESH.
+def _yield_row(macro_eval, h15, symbol, fred=None, treasury=None):
+    """Newest validated OFFICIAL daily source, never by dashboard refresh time.
 
-    Worker V399 normally handles the FRED/H.15 comparison. The independent
-    Streamlit H.15 cache can still update before the worker, so select by
-    ORIGINAL observed_at here too. Never substitute a futures price.
+    The worker may trail Treasury publication by several minutes; the
+    independent dashboard cache can display a newer source observation.
     """
     worker = dict(((macro_eval or {}).get("components") or {}).get(symbol) or {})
     direct_h15 = dict((h15 or {}).get(symbol) or {})
+    direct_treasury = dict((treasury or {}).get(symbol) or {})
     series = FRED_YIELD_SERIES.get(symbol)
     direct_fred = dict(fred_daily_yield_row(
         symbol, (fred or {}).get(series), now=datetime.now(UTC)
     ) or {})
+    now = datetime.now(UTC)
+    official, _ = select_official_yield_rows(
+        {symbol: direct_fred}, {symbol: direct_h15}, now=now,
+        treasury_rows={symbol: direct_treasury},
+    )
     candidates = []
-    for priority, row in ((2, worker), (1, direct_h15), (0, direct_fred)):
+    # Worker may contain the newest selected date when direct sources fail.
+    for priority, row in ((1, worker), (2, official.get(symbol) or {})):
         observed = _date(row.get("observed_at"))
         if observed is not None and observed.tzinfo is None:
             observed = observed.replace(tzinfo=UTC)
@@ -397,7 +416,6 @@ def _yield_row(macro_eval, h15, symbol, fred=None):
     if not candidates:
         return {}
     return max(candidates, key=lambda item: (item[0], item[1]))[2]
-
 
 def _daily_dxy_last(feeds):
     """Last published DXY session (NOT live) for regime-only view."""
@@ -503,7 +521,7 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     feeds = load_external_macro_inputs()
     h15, _ = _safe(h15_loader)
     yield_rows = {
-        key: _yield_row(macro_eval, h15, key, feeds.get("fred"))
+        key: _yield_row(macro_eval, h15, key, feeds.get("fred"), feeds.get("treasury"))
         for key in ("US2Y", "US10Y", "REAL_YIELD_10Y")
     }
     daily_regime = assess_daily_regime(
@@ -554,7 +572,7 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             "Nilai ini hanya pemeriksaan kualitas skor fundamental harian; "
             "hasilnya bukan indeks intraday di bawah, bukan probabilitas, "
             "dan bukan izin entry. "
-            "FRED tertunda tetap berstatus daily regime, bukan tick live."
+            "Treasury/H.15/FRED tetap daily regime, bukan tick live."
         )
         if qstate.startswith("WAIT"):
             st.warning("Attribution V400 meminta WAIT: data/konfirmasi atau hubungan makro belum memadai.")
@@ -863,8 +881,8 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     feeds = load_external_macro_inputs()
     h15, h15_err = _safe(h15_loader)
     st.subheader("1 · Treasury AS: US2Y + US10Y")
-    us2 = _yield_row(macro_eval, h15, "US2Y")
-    us10 = _yield_row(macro_eval, h15, "US10Y")
+    us2 = _yield_row(macro_eval, h15, "US2Y", feeds.get("fred"), feeds.get("treasury"))
+    us10 = _yield_row(macro_eval, h15, "US10Y", feeds.get("fred"), feeds.get("treasury"))
     c1, c2 = st.columns(2)
     for col, symbol, row in ((c1, "US2Y (DGS2)", us2), (c2, "US10Y (DGS10)", us10)):
         col.metric(symbol, _fmt(_number(row.get("current")), "%", 3),
