@@ -24,6 +24,7 @@ DIRECT = {"CPI", "PPI", "EMPLOYMENT", "NFP", "WAGES", "ECI", "JOLTS", "FOMC"}
 INVERSE = {"UNEMPLOYMENT_RATE", "JOBLESS_CLAIMS"}
 SUPPORTED = DIRECT | INVERSE
 SUPPORTED_OTHER_USD = frozenset({"EXISTING_HOME_SALES"})
+MERGE_RELEASE_COMPONENTS = frozenset({"INITIAL_JOBLESS_CLAIMS", "EXISTING_HOME_SALES"})
 
 # BLS: October 2025 all-items and core indexes were unavailable; the
 # October 2026 twelve-month headline/core comparisons are not published.
@@ -74,16 +75,19 @@ def _supported_event(event: dict[str, Any]) -> bool:
     """Whitelist economic components; never treat every OTHER_USD as gold news."""
     category = str(event.get("category") or "")
     component = str(event.get("event_component") or "")
+    if category == "JOBLESS_CLAIMS":
+        return component in {"INITIAL_JOBLESS_CLAIMS", "CONTINUING_JOBLESS_CLAIMS"}
     return category in SUPPORTED or (
         category == "OTHER_USD" and component in SUPPORTED_OTHER_USD
     )
 
 
-def _merge_claims_aliases(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _merge_release_aliases(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Read-only compatibility with snapshots predating canonical claims fusion.
 
-    Jobless Claims and Unemployment Claims describe the same initial claims
-    release, whereas continuing claims are a different economic component.
+    Jobless Claims / Unemployment Claims share an initial-claims component,
+    and annualised Existing Home Sales can be titled '(MoM)' by some vendors.
+    Continuing claims and housing percentage changes remain separate.
     Numeric quorum counts independent forecast providers, not calendar rows.
     """
     normalized: list[dict[str, Any]] = []
@@ -97,18 +101,19 @@ def _merge_claims_aliases(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 or (category == "OTHER_USD" and alias in SUPPORTED_OTHER_USD)):
             event["event_component"] = alias
         normalized.append(event)
-        if event.get("event_component") == "INITIAL_JOBLESS_CLAIMS":
+        if event.get("event_component") in MERGE_RELEASE_COMPONENTS:
             groups.setdefault(
-                (timestamp(event.get("scheduled_at")), "INITIAL_JOBLESS_CLAIMS"), []
+                (timestamp(event.get("scheduled_at")), event["event_component"]), []
             ).append(event)
 
     output: list[dict[str, Any]] = []
     used: set[tuple[datetime | None, str]] = set()
     for event in normalized:
-        if event.get("event_component") != "INITIAL_JOBLESS_CLAIMS":
+        component = str(event.get("event_component") or "")
+        if component not in MERGE_RELEASE_COMPONENTS:
             output.append(event)
             continue
-        key = (timestamp(event.get("scheduled_at")), "INITIAL_JOBLESS_CLAIMS")
+        key = (timestamp(event.get("scheduled_at")), component)
         if key in used:
             continue
         used.add(key)
@@ -166,7 +171,7 @@ def _merge_claims_aliases(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         ))
         output.append({
             **base,
-            "event_component": "INITIAL_JOBLESS_CLAIMS",
+            "event_component": component,
             "forecast": fused.forecast,
             "previous": fused.previous,
             "actual": fused.actual,
@@ -230,7 +235,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         events.append(dict(risk["focal_event"]))
     if risk.get("latest_released_event"):
         events.append(dict(risk["latest_released_event"]))
-    events = _merge_claims_aliases(events)
+    events = _merge_release_aliases(events)
     upcoming = []
     seen = set()
     for event in events:
