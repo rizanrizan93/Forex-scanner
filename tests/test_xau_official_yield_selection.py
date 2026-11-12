@@ -94,3 +94,23 @@ def test_invalid_h15_never_replaces_fred(bad):
 def test_unaware_time_cannot_be_used():
     with pytest.raises(ValueError):
         select_official_yield_rows({}, {}, now=datetime(2026, 11, 12))
+
+
+def test_dashboard_projection_keeps_release_observation_metadata():
+    from fx_scanner.demo_xau_macro_attribution_v357 import build_dashboard_projection
+
+    projected = build_dashboard_projection({
+        "components": {"US10Y": {
+            **_row(),
+            "release_state": "RELEASE_PENDING",
+            "expected_observation_date": "2026-11-12",
+            "observation_freshness": "RELEASE_PENDING",
+        }},
+        "official_yield_diagnostics": {
+            "h15_fetch_status": "OK",
+            "release_states": {"US10Y": "RELEASE_PENDING"},
+        },
+    })
+    assert projected["components"]["US10Y"]["release_state"] == "RELEASE_PENDING"
+    assert projected["components"]["US10Y"]["expected_observation_date"] == "2026-11-12"
+    assert projected["official_yield_diagnostics"]["h15_fetch_status"] == "OK"
