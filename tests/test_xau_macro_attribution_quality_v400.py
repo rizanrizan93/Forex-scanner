@@ -29,10 +29,18 @@ def _evaluation(usd=.308, us2y=5.0, us10y=2.0, real=3.0):
 
 
 def _intraday(*, side="BEARISH_XAU", eligible=True):
+    impulse = ("GOLD_HEADWIND" if side == "BEARISH_XAU" else "GOLD_SUPPORT")
     return {
         "intraday_macro_bias": side,
         "confirmation_eligible": eligible,
         "fresh_components": ["DXY", "US10Y_INTRADAY"] if eligible else ["DXY"],
+        "components": {
+            name: {
+                "available": True, "current_at": NOW.isoformat(),
+                "gold_implication": impulse,
+            }
+            for name in ("DXY", "US10Y_INTRADAY")
+        },
     }
 
 
@@ -174,3 +182,15 @@ def test_missing_data_and_naive_now_fail_closed():
     assert q["execution_influence"] is False
     with pytest.raises(ValueError):
         evaluate_attribution_quality({}, now=NOW.replace(tzinfo=None))
+
+
+def test_stale_intraday_timestamp_rejects_heartbeat_fresh_label():
+    intraday = _intraday()
+    intraday["components"]["DXY"]["current_at"] = (
+        NOW - timedelta(minutes=20)).isoformat()
+    q = evaluate_attribution_quality(
+        _evaluation(), intraday_confirmation=intraday, now=NOW,
+    )
+    assert "DXY" not in q["fresh_intraday_components"]
+    assert q["quality_state"] == "WAIT_INTRADAY_CONFIRMATION"
+    assert q["intraday_confirmation_eligible"] is False
