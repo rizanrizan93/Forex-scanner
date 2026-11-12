@@ -74,7 +74,7 @@ def test_unverified_actual_does_not_distort_daily_macro():
     assert q["legacy_macro_score"] == -55.02
     assert q["quality_screened_score"] == pytest.approx(-51.28, abs=.03)
     assert q["quality_screened_bias"] == "BEARISH_XAU"
-    assert q["quality_state"] == "WAIT_MACRO_DIVERGENCE"
+    assert q["quality_state"] == "WAIT_NEWS_VERIFICATION_OR_MIXED"
     assert q["confidence"] == "LOW"
     assert q["calibrated_accuracy"] is None
     assert not q["execution_authority"] and not q["entry_permission"]
@@ -194,3 +194,16 @@ def test_stale_intraday_timestamp_rejects_heartbeat_fresh_label():
     assert "DXY" not in q["fresh_intraday_components"]
     assert q["quality_state"] == "WAIT_INTRADAY_CONFIRMATION"
     assert q["intraday_confirmation_eligible"] is False
+
+
+def test_news_only_without_currency_rate_families_hides_score():
+    event = _claim("INITIAL_JOBLESS_CLAIMS", 188000, 195000, sources=2)
+    q = evaluate_attribution_quality(
+        {"macro_score": -70, "components": {}},
+        event_context={"upcoming_events": [event]},
+        intraday_confirmation=_intraday(), now=NOW,
+    )
+    assert q["event_quality"]["state"] == "VERIFIED_HOT"
+    assert q["quality_screened_score"] is None
+    assert q["quality_screened_bias"] == "UNAVAILABLE"
+    assert q["quality_state"] == "WAIT_DAILY_DATA"
