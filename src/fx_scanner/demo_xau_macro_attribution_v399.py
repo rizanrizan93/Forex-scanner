@@ -31,6 +31,8 @@ from .xau_intraday_yield_v367 import (
 )
 from .xau_macro_attribution_v357 import CONTRACT as BASE_CONTRACT, evaluate_broader_macro_bias
 from .xau_macro_attribution_quality_v400 import evaluate_attribution_quality
+from .xau_h15_daily_fallback import fetch_h15_daily_rows
+from .xau_official_yield_selection import select_official_yield_rows
 from .xau_treasury_session_v399 import (
     CONTRACT as TREASURY_SESSION_CONTRACT,
     evaluate_treasury_futures_pressure,
@@ -56,6 +58,7 @@ def run() -> int:
         and 0.0 <= (now - previous_refresh_at).total_seconds()
         <= DAILY_CROSS_ASSET_REFRESH_SECONDS
     )
+    official_yield_diagnostics = dict(previous_details.get("official_yield_diagnostics") or {})
     if reuse_daily:
         cross_asset = {
             str(name): dict(value or {})
@@ -64,16 +67,41 @@ def run() -> int:
         cross_asset_refreshed_at = previous_refresh_at.isoformat()
         cross_asset_refresh_mode = "REUSED_PRIOR_HEARTBEAT"
     else:
-        cross_asset: dict[str, dict[str, Any]] = {}
+        fred_rows: dict[str, dict[str, Any]] = {}
         for name, spec in FRED_SPECS.items():
             result = runtime.orchestrator.fetch(
                 fred,
                 str(spec["series"]),
                 max_age_seconds=float(spec["max_age_seconds"]),
             )
-            cross_asset[name] = _cross_asset_row(result, kind=str(spec["kind"]))
+            fred_rows[name] = _cross_asset_row(result, kind=str(spec["kind"]))
+
+        # H.15 and FRED are different official distribution paths for
+        # the same series, not independent economic observations.
+        # Check H.15 even when a 5-day FRED TTL says FRESH.
+        h15_rows: dict[str, dict[str, Any]] = {}
+        h15_status = "NOT_CHECKED"
+        try:
+            h15_rows = fetch_h15_daily_rows(now=now)
+            h15_status = "OK"
+        except Exception as exc:
+            # The Board is retiring custom DDP downloads. Do not crash the
+            # publisher or fabricate values if that endpoint disappears.
+            h15_status = f"ERROR:{type(exc).__name__}"
+        cross_asset, official_yield_diagnostics = select_official_yield_rows(
+            fred_rows, h15_rows, now=now,
+        )
+        official_yield_diagnostics.update(
+            checked_at=now.isoformat(),
+            h15_fetch_status=h15_status,
+            decision_policy="LATEST_PUBLISHED_OFFICIAL_DATE_FRED_TIE_BREAK",
+        )
         cross_asset_refreshed_at = now.isoformat()
-        cross_asset_refresh_mode = "REFRESHED_FRED"
+        cross_asset_refresh_mode = (
+            "REFRESHED_FRED_H15_NEWER"
+            if official_yield_diagnostics["fallback_used"]
+            else "REFRESHED_FRED_H15_COMPARED"
+        )
 
     event_context, event_observed_at = _event_context(store)
 
@@ -321,6 +349,7 @@ def run() -> int:
         "cross_asset": cross_asset,
         "cross_asset_refreshed_at": cross_asset_refreshed_at,
         "cross_asset_refresh_mode": cross_asset_refresh_mode,
+        "official_yield_diagnostics": official_yield_diagnostics,
         "intraday_us10y": treasury_context,
         "us10y_cash": cash_us10y,
         "treasury_futures": treasury_futures,
@@ -337,6 +366,8 @@ def run() -> int:
         "event_observed_at": event_observed_at,
         "data_policy": {
             "cross_asset_frequency": "DAILY_WITH_15M_REUSE",
+            "daily_yield_policy": "LATEST_OFFICIAL_FRED_OR_H15_BY_OBSERVATION_DATE",
+            "h15_fallback_policy": "READ_ONLY_NO_MARKET_PROXY_AS_OFFICIAL",
             "intraday_runtime_target": "15_MINUTES",
             "us10y_cash_source": "YAHOO_FINANCE_TNX_SECONDARY_PROXY",
             "us10y_cash_policy": "LAST_VALID_VISIBLE_BUT_NOT_LIVE_WHEN_STALE",
