@@ -119,8 +119,8 @@ def select_official_yield_rows(
         candidates = [
             (_dt(row.get("observed_at")), priority, row, label)
             for priority, row, label in (
-                (1, fred, "FRED"),
-                (2, h15, "H15"),
+                (2, fred, "FRED"),
+                (1, h15, "H15"),
                 (3, direct, "TREASURY"),
             )
             if _row_usable(row, now)
