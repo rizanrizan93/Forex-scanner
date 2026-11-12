@@ -8,7 +8,7 @@ internal sealed partial class BtcEngine : EngineContext
 {
     internal const string Prefix=FrozenR3.BtcPrefix;
     sealed partial class State {public DateTime EntryAt{get;set;} public string EntryOrigin{get;set;}=EntryFamilies.Incumbent; public BtcSignal? HandoffSignal{get;set;} public int Schema{get;set;}=1;public string ContractHash{get;set;}=BtcSevenDayFeed.Contract;public long AccountNumber{get;set;} public string Symbol{get;set;}="BTCUSD";public long Revision{get;set;}public DateTime LastSignal{get;set;} public DateTime Expiry{get;set;} public bool BatchActive{get;set;} public int BatchRemaining{get;set;} public int BatchSent{get;set;} public int BatchSide{get;set;} public double BatchAtr{get;set;} public double BatchSignalReference{get;set;} public double BatchBalance{get;set;} public DateTime BatchDeadline{get;set;} public DateTime BatchNext{get;set;} public bool Sending{get;set;} public bool Fault{get;set;} public bool ExitPending{get;set;} public DateTime WeekendLockUntil{get;set;} public string ExitReason{get;set;}="";}
-    State state=new();bool ready;DateTime nextSchedule,nextExitAttempt,nextCloseLog;DateTime? weekClose;bool marketOpen;string key="";
+    State state=new();bool ready;DateTime nextSchedule,nextExitAttempt,nextCloseLog,nextCheckpointTelemetry;DateTime? weekClose;bool marketOpen;string key="";
     internal BtcEngine(RizanPortfolio host):base(host,"BTCUSD"){}
     bool replay,restored,lockRepairRecoveryEligible;BtcStateLink? link;BtcSignal? prepared;readonly BtcSevenDayFeed feed=new();
     internal override bool RecoveryReady=>ready&&!state.Fault&&!state.ExitPending&&(replay||link!=null&&link.FeedReady&&link.Persisted(state.Revision)&&feed.Fresh(Server.TimeInUtc));
@@ -86,6 +86,18 @@ internal sealed partial class BtcEngine : EngineContext
     public override void OnTimer(){
         var now=Server.TimeInUtc;Manage(now);if(replay)return;
         link?.Tick();
+        // Observability only: revision advances on Save(), NOT on each BTC candle.
+        // This log never mutates checkpoint state, lease, feed, intents or orders.
+        if(now>=nextCheckpointTelemetry)
+        {
+            nextCheckpointTelemetry=now.AddMinutes(1);
+            bool bridgeHealthy=link!=null&&link.Healthy;
+            bool terminalFeedReady=link!=null&&link.FeedReady;
+            bool feedFresh=feed.Fresh(now);
+            bool ackPersisted=link!=null&&link.Persisted(state.Revision);
+            Print("BTC_CHECKPOINT_HEALTH at_utc={0:o} revision={1} restored={2} ready={3} fault={4} exit_pending={5} sending={6} terminal_feed_ready={7} feed_fresh={8} bridge_healthy={9} ack_persisted={10} recovery_ready={11} weekend_lock_until={12:o} last_signal={13:o} note=REVISION_ON_SAVE_NOT_PER_BAR",
+                now,state.Revision,restored,ready,state.Fault,state.ExitPending,state.Sending,terminalFeedReady,feedFresh,bridgeHealthy,ackPersisted,RecoveryReady,state.WeekendLockUntil,state.LastSignal);
+        }
         if(TryRepairKnownWeekendLock(now))return;
         if(prepared!=null){var signal=prepared;
             if((now-signal.At).TotalSeconds>5||link==null||link.Fatal){prepared=null;ClearNativeIntent();state.Sending=false;Save();}
