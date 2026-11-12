@@ -198,3 +198,14 @@ def test_claims_four_week_moving_average_does_not_vote_on_initial_release():
     assert len(view["event_cluster"]) == 1
     assert view["event_cluster"][0]["event_component"] == "INITIAL_JOBLESS_CLAIMS"
     assert view["event_cluster"][0]["forecast_pair_count"] == 1
+
+
+def test_snapshot_recovery_connects_to_turso_and_keeps_order_path_separate():
+    from pathlib import Path
+    workflow = (Path(__file__).resolve().parents[1] /
+                ".github/workflows/pre-news-feed-recovery.yml").read_text()
+    assert "FX_DATABASE_BACKEND: turso" in workflow
+    assert "TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}" in workflow
+    assert "TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}" in workflow
+    assert "scripts/publish_pre_news_snapshot.py" in workflow
+    assert "trade" not in workflow.lower()
