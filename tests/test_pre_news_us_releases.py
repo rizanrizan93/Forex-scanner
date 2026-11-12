@@ -145,3 +145,24 @@ def test_post_release_single_source_cannot_offer_trade_setup():
     assert guidance["decision"] == "WAIT — ACTUAL BELUM TERVERIFIKASI"
     assert guidance["trade_ready"] is False
     assert not guidance["execution_authority"]
+
+
+def test_next_housing_release_replaces_older_claims_after_spike_window():
+    claims = _event(
+        "Initial Jobless Claims", "JOBLESS_CLAIMS",
+        "SHOWMYTRADES", 195000, 189000,
+        at=NOW - timedelta(hours=1),
+    )
+    claims["actual"] = 188000
+    claims["source_tier"] = "OFFICIAL_ACTUAL_DOL"
+    claims["actual_source_count"] = 1
+    claims["actual_quotes"] = [{"source": "SHOWMYTRADES", "actual": 188000}]
+    home = _event(
+        "Existing Home Sales", "OTHER_USD", "SHOWMYTRADES",
+        3850000, 3990000, at=NOW + timedelta(minutes=30),
+    )
+    data = _snapshot([claims, home])
+    data["heartbeats"][0]["details"]["risk"]["state"] = "POST_EVENT_DISCOVERY"
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["event"]["event_component"] == "EXISTING_HOME_SALES"
+    assert view["minutes_to_event"] == 30
