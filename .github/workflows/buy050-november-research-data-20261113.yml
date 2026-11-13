@@ -1,0 +1,38 @@
+name: BUY050 November research price collection
+on:
+  push:
+    branches: ['research/buy050-november-entry-20261113']
+    paths: ['research_november_20261113/collect_november_readonly.py', '.github/workflows/buy050-november-research-data-20261113.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: buy050-november-research-data-20261113
+  cancel-in-progress: false
+jobs:
+  prices:
+    if: github.ref == 'refs/heads/research/buy050-november-entry-20261113'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install existing scanner read-only client dependencies
+        run: pip install -e '.[ctrader]' PyYAML
+      - name: Collect only historical price candles
+        run: python research_november_20261113/collect_november_readonly.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: buy050-november-research-prices-20261113
+          retention-days: 14
+          path: artifacts/november_prices/
