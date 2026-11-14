@@ -31,6 +31,12 @@ class Storage(unittest.TestCase):
   fixture=Path(__file__).parents[1]/'tests/bin/Release/net8.0/bootstrap_wire_fixture.json'
   if not fixture.exists():self.skipTest('C# fixture supplied in release pipeline')
   state=json.loads(fixture.read_text());state['AccountNumber']=int(ACCOUNT);self.s.save(KEY,LEASE,0,state['Revision'],state)
+ def test_all_native_startup_checkpoints(self):
+  fixture=Path(__file__).parents[1]/'tests/bin/Release/net8.0/native_startup_wires.json'
+  if not fixture.exists():self.skipTest('native C# startup fixture supplied by pipeline')
+  for item in json.loads(fixture.read_text()):
+   hello,request=item['hello'],item['save'];key,lease=hello['key'],hello['lease'];base,_=self.s.acquire(key,lease)
+   self.s.save(key,lease,base,request['client_revision'],request['state'])
  def test_btc_hour_boundary_polling(self):
   self.assertAlmostEqual(btc_poll_delay(3599.5,True),.5);self.assertEqual(btc_poll_delay(3600.2,False),.25);self.assertEqual(btc_poll_delay(3610,False),15)
 class Transport(unittest.IsolatedAsyncioTestCase):
