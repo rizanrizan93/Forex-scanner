@@ -1,0 +1,41 @@
+name: BUY050 Cloud storage / killed regression (NO LIVE DEPLOY)
+on:
+  push:
+    branches: ['fix/buy050-cloud-storage-durable-20261109']
+    paths:
+      - 'repairs/buy050_identity_20261108/source/**'
+      - 'repairs/buy050_identity_20261108/validation/**'
+      - '.github/workflows/buy050-cloud-storage-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Verify frozen profile, state recovery, cloud storage and entry guard
+        run: |
+          python3 -m unittest -v \
+            repairs/buy050_identity_20261108/validation/test_runtime_resilience.py \
+            repairs/buy050_identity_20261108/validation/test_cloud_storage_guard.py
+      - name: Compile native cTrader Automate cBot without touching LIVE
+        run: |
+          set -euo pipefail
+          dotnet build repairs/buy050_identity_20261108/source/RizanBuy050Frozen.csproj -c Release --warnaserror
+          mkdir -p artifacts/buy050-cloud-storage
+          find repairs/buy050_identity_20261108/source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' artifacts/buy050-cloud-storage/BUY050_CLOUD_STORAGE_GUARD_20261109.algo \;
+          test -s artifacts/buy050-cloud-storage/BUY050_CLOUD_STORAGE_GUARD_20261109.algo
+          sha256sum artifacts/buy050-cloud-storage/BUY050_CLOUD_STORAGE_GUARD_20261109.algo > artifacts/buy050-cloud-storage/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: BUY050_CLOUD_STORAGE_GUARD_20261109
+          path: artifacts/buy050-cloud-storage/
+          retention-days: 30
