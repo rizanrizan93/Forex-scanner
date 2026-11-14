@@ -1,0 +1,46 @@
+name: Bootstrap125 completion audit
+on:
+  push:
+    branches: ['release/bootstrap125-v1-20261114']
+    paths:
+      - '.github/workflows/bootstrap125-audit.yml'
+      - 'maintenance/bootstrap125_audit_20261115.py'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Audit VPS health and replay-data availability
+        working-directory: .
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo SSH_PREREQUISITES_UNAVAILABLE; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          host='Rizanrizan@202.74.74.172'
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-bootstrap125.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-bootstrap125\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; rm -rf "$d"; }
+          trap cleanup EXIT
+          scp "${sshopt[@]}" maintenance/bootstrap125_audit_20261115.py repairs/bootstrap125_v1_20261114/bridge/deploy/probe.py "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n python3 '$remote/bootstrap125_audit_20261115.py' '$remote/probe.py'" | tee bootstrap125-audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bootstrap125-completion-audit
+          path: bootstrap125-audit.json
