@@ -15,3 +15,5 @@ try:actual_data=json.loads(r.stdout)
 except:actual_data={}
 report={'mode':'OFFLINE_METADATA_ONLY','network':'none','broker_orders':0,'image_id':digest,'exit_code':r.returncode,'metadata_loaded':r.returncode==0 and 'EnableTrading' in out and 'BridgeToken' in out,'requires_ctid':bool(re.search(r'(missing|required|specify).*ctid|ctid.*(missing|required)',out,re.I)),'output_excerpt':out[:12000],'version':version.stdout[:1500],'reported_type':actual_data.get('Type'),'control':control_data,'control_exit_code':control.returncode}
 (root/'native-metadata-result.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+
+if not report["metadata_loaded"] or report["reported_type"]!="cBot" or report["control"].get("Type")!="cBot":sys.exit(1)

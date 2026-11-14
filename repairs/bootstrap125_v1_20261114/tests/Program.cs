@@ -25,6 +25,7 @@ static class Test {
  static JsonElement Snapshot(Host h)=>JsonSerializer.SerializeToElement(h.Bootstrap!.DebugState,Json);
  public static void Main(){
   MacroDirection.InitializeFrozenOff();
+  Check(typeof(cAlgo.Robots.RizanBootstrap125V1).BaseType==typeof(Robot),"native exported robot directly inherits cTrader Robot");
   Check(!BootstrapRules.CanGraduate(124.99,126,true),"floating profit alone cannot graduate");Check(!BootstrapRules.CanGraduate(126,126,false),"must be flat");Check(BootstrapRules.CanGraduate(125,125,true),"125 inclusive");
   var m=Enumerable.Range(0,512).Select(i=>new SeedBar(Now.AddMinutes((i-512)*5),1.1,1.101,1.099,1.1,5)).ToList();m[^1]=m[^1] with{Close=1.103,High=1.104};
   var h4=Enumerable.Range(0,1024).Select(i=>new SeedBar(Now.Date.AddHours(12).AddHours((i-1024)*4),1+i*.00001,1.1+i*.00001,.9+i*.00001,1+i*.00001,240)).ToList();
