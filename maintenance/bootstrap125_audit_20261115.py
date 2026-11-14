@@ -46,6 +46,20 @@ for root in sorted(locations):
     if total>=80:break
   if total>=80:break
  item['subdirectories']=item['subdirectories'][:40];report['research_locations'].append(item)
+report['tick_inventory']={}
+for symbol in ['XAUUSD','EURUSD','BTCUSD']:
+ root=Path('/home/Rizanrizan/rizan-ticks')/symbol;years={}
+ if root.is_dir():
+  for y in sorted(root.iterdir()):
+   if y.is_dir() and y.name.isdigit():
+    fs=sorted(y.glob('*.parquet'));years[y.name]={'files':len(fs),'bytes':sum(p.stat().st_size for p in fs),'first_file':fs[0].name if fs else None,'last_file':fs[-1].name if fs else None}
+ report['tick_inventory'][symbol]=years
+report['research_runs']=[]
+for root in [Path('/home/Rizanrizan/REPLAY_RESULTS'),Path('/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS'),Path('/home/Rizanrizan/rizan-ticks/.jobs')]:
+ if not root.is_dir():continue
+ ds=sorted([p for p in root.iterdir() if p.is_dir()],key=lambda p:p.stat().st_mtime,reverse=True)[:50]
+ report['research_runs'].extend({'path':str(p),'children':[c.name for c in p.iterdir() if not c.name.startswith('.')][:18]} for p in ds)
+if Path('/usr/bin/docker').exists():report['docker_images']=run(['docker','images','--format','{{.Repository}}:{{.Tag}}']).stdout.splitlines()
 report['ctrader_cli_paths']={str(p):p.exists() for p in [Path('/opt/ctrader'),Path('/usr/local/bin/ctrader-cli'),Path('/usr/bin/docker')]}
 # Re-use installed authenticated PROBE. Does not write trading checkpoints or send orders.
 env=os.environ.copy();env.update(envparse(Path('/etc/rizan-bootstrap125-bridge.env').read_text()))
