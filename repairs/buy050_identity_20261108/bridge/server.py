@@ -95,6 +95,10 @@ class Bridge:
         self.peers = {}
         self.snapshot = None
         self.feed = None
+        # BTC feed payload contains >68k historical rows. Send each immutable
+        # completed-hour packet once per authenticated websocket, not on every
+        # heartbeat or background broadcast. Missing feed is a distinct state.
+        self.btc_delivery = {}
 
     def macro_wire(self):
         if self.snapshot is None:
@@ -117,7 +121,13 @@ class Bridge:
     async def send_data(self, ws, symbol):
         wire = self.btc_wire() if symbol == "BTCUSD" else self.macro_wire() if symbol == "XAUUSD" else None
         if wire is not None:
+            if symbol == "BTCUSD":
+                marker = (wire["type"], wire.get("through"))
+                if self.btc_delivery.get(ws) == marker:
+                    return
             await ws.send(json.dumps(wire, allow_nan=False, separators=(",", ":")))
+            if symbol == "BTCUSD":
+                self.btc_delivery[ws] = marker
 
     async def broadcast(self):
         for ws, (key, lease) in tuple(self.peers.items()):
@@ -172,6 +182,7 @@ class Bridge:
                 await ws.close(code=1011)
         finally:
             self.peers.pop(ws, None)
+            self.btc_delivery.pop(ws, None)
 
 async def main():
     import feeds
@@ -203,7 +214,9 @@ async def main():
     async def btc_loop():
         while True:
             try:
-                bridge.feed = await asyncio.to_thread(feed.packet)
+                completed_hour = int(feed.clock()) // 3600 * 3600
+                if bridge.feed is None or bridge.feed.get("through") != completed_hour:
+                    bridge.feed = await asyncio.to_thread(feed.packet)
                 status = "ready"
             except Exception as ex:
                 bridge.feed = None

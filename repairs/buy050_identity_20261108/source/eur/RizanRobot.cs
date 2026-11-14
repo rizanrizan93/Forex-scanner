@@ -76,6 +76,7 @@ public abstract class RizanRobot : Rizan.Portfolio.EngineContext
     // Session-only authorization: a process restart must handshake/reconcile again.
     private bool _continuityReady;
     private long _localRevision = -1;
+    private string? _lastLocalCheckpointJson;
     private bool _pendingPreparedHere, _pendingSubmitted;
     // Lifecycle transitions run on the cTrader main thread. Fence stale callbacks.
     private bool _connecting, _stopping, _closing;
@@ -110,7 +111,8 @@ public abstract class RizanRobot : Rizan.Portfolio.EngineContext
         _m1=MarketData.GetBars(TimeFrame.Minute,SymbolName);
         DateTime wanted=Server.TimeInUtc.AddDays(-12);
         int loaded=0;while(_m1.Count>0 && _m1.OpenTimes[0]>wanted && loaded++<250){if(_m1.LoadMoreHistory()==0) break;}
-        var local=string.IsNullOrWhiteSpace(RecoveryCheckpoint) ? LocalStorage.GetString(_storageKey,LocalStorageScope.Instance) : RecoveryCheckpoint;
+        var local=!string.IsNullOrWhiteSpace(RecoveryCheckpoint) ? RecoveryCheckpoint :
+            (IsCloudRuntime ? null : LocalStorage.GetString(_storageKey,LocalStorageScope.Instance));
         if(!string.IsNullOrWhiteSpace(local))
         {
             try { _state=JsonSerializer.Deserialize<Checkpoint>(local,Json) ?? throw new Exception("EMPTY_CHECKPOINT");ValidateState(); }
@@ -316,22 +318,38 @@ public abstract class RizanRobot : Rizan.Portfolio.EngineContext
     private void Persist()
     {
         if(string.IsNullOrEmpty(_storageKey))return;
-        var json=Serialize();
-        try
+        if(IsCloudRuntime)
         {
-            LocalStorage.SetString(_storageKey,json,LocalStorageScope.Instance);
-            LocalStorage.Flush(LocalStorageScope.Instance);
-            if(LocalStorage.GetString(_storageKey,LocalStorageScope.Instance)!=json)
-                throw new InvalidOperationException("LOCAL_CHECKPOINT_READBACK_MISMATCH");
+            // No durable local disk exists in cTrader Cloud. The remote CAS ACK
+            // remains mandatory for entry; this revision is process-local only.
             _localRevision=_state.Revision;
         }
-        catch(Exception e)
+        else
         {
-            _localRevision=-1;_continuityReady=false;
-            _state.Quarantined=true;_state.QuarantineReason="LOCAL_CHECKPOINT_WRITE_FAILED";
-            _status="LOCAL_CHECKPOINT_WRITE_FAILED";
-            Print("LOCAL_CHECKPOINT_WRITE_FAILED type={0}; entry_blocked=True",e.GetType().Name);
-            return;
+            var json=Serialize();
+            try
+            {
+                // Do not rewrite an identical checkpoint on every 1s timer tick.
+                // Changes to JSON still persist even if revision was not bumped.
+                if(!string.Equals(_lastLocalCheckpointJson,json,StringComparison.Ordinal))
+                {
+                    LocalStorage.SetString(_storageKey,json,LocalStorageScope.Instance);
+                    LocalStorage.Flush(LocalStorageScope.Instance);
+                    if(LocalStorage.GetString(_storageKey,LocalStorageScope.Instance)!=json)
+                        throw new InvalidOperationException("LOCAL_CHECKPOINT_READBACK_MISMATCH");
+                    _lastLocalCheckpointJson=json;
+                }
+                _localRevision=_state.Revision;
+            }
+            catch(Exception e)
+            {
+                _localRevision=-1;_continuityReady=false;
+                _lastLocalCheckpointJson=null;
+                _state.Quarantined=true;_state.QuarantineReason="LOCAL_CHECKPOINT_WRITE_FAILED";
+                _status="LOCAL_CHECKPOINT_WRITE_FAILED";
+                Print("LOCAL_CHECKPOINT_WRITE_FAILED type={0}; entry_blocked=True",e.GetType().Name);
+                return;
+            }
         }
         if(!UsesBridge){_persistedRevision=_state.Revision;return;}
         if(!_bridgeReady || _saveInFlight || _state.Revision<=_persistedRevision)return;

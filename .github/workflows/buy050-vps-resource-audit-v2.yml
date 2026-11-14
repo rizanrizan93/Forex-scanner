@@ -1,0 +1,68 @@
+name: BUY050 VPS Bridge Readonly Resource Audit 20261109
+on:
+  push:
+    branches: ['fix/buy050-cloud-memory-resilience-v2-20261109']
+    paths: ['.github/workflows/buy050-vps-resource-audit-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Exact isolated BUY050 service and checkpoint inventory (read-only)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo 'SSH_MISSING'; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known_hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          ssh_options=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known_hosts" -o ConnectTimeout=20)
+          ssh "${ssh_options[@]}" 'Rizanrizan@202.74.74.172' 'sudo -n python3 -' <<'PY'
+          import subprocess,os,hashlib,json,sqlite3,time,datetime
+          from pathlib import Path
+          def cmd(*args):
+              p=subprocess.run(args,capture_output=True,text=True,timeout=20)
+              return p.stdout.strip(),p.returncode
+          unit='rizan-buy050-bridge.service'
+          props={}
+          for key in ('ActiveState','MainPID','NRestarts','MemoryCurrent','ExecMainStartTimestamp','FragmentPath'):
+              props[key]=cmd('systemctl','show',unit,'--value','-p',key)[0][:120]
+          f=Path('/opt/rizan-buy050-bridge/server.py')
+          if not f.is_file():raise RuntimeError('BUY050_SOURCE_NOT_FOUND')
+          h=Path('/var/lib/rizan-buy050-bridge/health.json')
+          v=json.loads(h.read_text()) if h.exists() else {}
+          observed=v.get('observed_utc','')
+          dt=datetime.datetime.fromisoformat(observed.replace('Z','+00:00')) if observed else None
+          dbpath=Path('/var/lib/rizan-buy050-bridge/checkpoints.sqlite')
+          active=[]
+          if dbpath.is_file():
+              with sqlite3.connect(dbpath.resolve().as_uri()+'?mode=ro',uri=True,timeout=3) as conn:
+                  leases=conn.execute('SELECT key,expires_at,touched_at FROM bridge_leases').fetchall()
+              active=[str(key).rsplit(':',1)[-1] for key,expires,touched in leases if float(expires)>time.time()]
+          logs, _=cmd('journalctl','-u',unit,'--since','-20 min','-n','100','--no-pager')
+          out={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+             'read_only':True,'account_suffix':'7903','unit':unit,'properties':props,
+             'server_sha256':hashlib.sha256(f.read_bytes()).hexdigest(),
+             'server_lines':len(f.read_text().splitlines()),
+             'health_age_seconds':(datetime.datetime.now(datetime.timezone.utc)-dt).total_seconds() if dt else None,
+             'health_connected':v.get('connected'),'health_btc':str(v.get('btc'))[:48],
+             'active_lease_symbols':sorted(active),
+             'journal_lines':len(logs.splitlines()),
+             'error_lines':sum(any(t in l.lower() for t in ('traceback','error','killed','exception')) for l in logs.splitlines()),
+             'orders_sent':0}
+          print('BUY050_VPS_RESOURCE_AUDIT_BEGIN')
+          print(json.dumps(out,sort_keys=True))
+          print('BUY050_VPS_RESOURCE_AUDIT_END')
+          PY
+
+# Post-deployment audit trigger 2026-11-08T22:08Z; read-only logic unchanged.

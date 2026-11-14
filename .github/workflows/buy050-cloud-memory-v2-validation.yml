@@ -1,0 +1,46 @@
+name: BUY050 Cloud Memory + Bridge Regression (NO LIVE DEPLOY)
+on:
+  push:
+    branches: ['fix/buy050-cloud-memory-resilience-v2-20261109']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert immutable trading contract and Cloud runtime guard
+        run: |
+          python3 -m unittest -v \
+            repairs/buy050_identity_20261108/validation/test_runtime_resilience.py \
+            repairs/buy050_identity_20261108/validation/test_cloud_storage_guard.py \
+            repairs/buy050_identity_20261108/validation/test_resource_pressure.py
+      - name: Verify BUY050 bridge protocol through WebSocket (no orders)
+        run: |
+          pip install -r repairs/buy050_identity_20261108/bridge/requirements.txt
+          cd repairs/buy050_identity_20261108/bridge
+          python -m unittest -v test_bridge.DurableTests test_bridge.WireTests
+      - name: Compile official cTrader Automate cBot
+        run: |
+          set -euo pipefail
+          dotnet build repairs/buy050_identity_20261108/source/RizanBuy050Frozen.csproj -c Release --warnaserror
+          mkdir -p artifacts/buy050-cloud-memory-v2
+          find repairs/buy050_identity_20261108/source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' artifacts/buy050-cloud-memory-v2/BUY050_CLOUD_MEMORY_GUARD_V2_20261109.algo \;
+          test -s artifacts/buy050-cloud-memory-v2/BUY050_CLOUD_MEMORY_GUARD_V2_20261109.algo
+          sha256sum artifacts/buy050-cloud-memory-v2/BUY050_CLOUD_MEMORY_GUARD_V2_20261109.algo > artifacts/buy050-cloud-memory-v2/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: BUY050_CLOUD_MEMORY_GUARD_V2_20261109
+          path: artifacts/buy050-cloud-memory-v2/
+          retention-days: 30
