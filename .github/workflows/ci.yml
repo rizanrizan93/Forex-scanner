@@ -50,6 +50,11 @@ jobs:
             tests/test_pre_news_expectation.py \
             tests/test_pre_news_transport.py \
             tests/test_pre_news_runtime.py
+      - name: BUY050 bridge WebSocket feed regression (no broker orders)
+        run: |
+          pip install -r repairs/buy050_identity_20261108/bridge/requirements.txt
+          cd repairs/buy050_identity_20261108/bridge
+          python -m unittest -v test_bridge.WireTests
       - name: Unit tests
         run: python -m pytest -q
       - name: Config contract
