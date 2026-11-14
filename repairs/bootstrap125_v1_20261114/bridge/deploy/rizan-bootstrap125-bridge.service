@@ -1,0 +1,23 @@
+[Unit]
+Description=RIZAN Bootstrap125 V1 isolated state and read-only feed bridge
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=rizan-bootstrap125
+Group=rizan-bootstrap125
+WorkingDirectory=/opt/rizan-bootstrap125-bridge
+EnvironmentFile=/etc/rizan-bootstrap125-bridge.env
+ExecStart=/opt/rizan-bootstrap125-bridge/.venv/bin/python /opt/rizan-bootstrap125-bridge/server.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/rizan-bootstrap125-bridge
+MemoryMax=450M
+Nice=5
+[Install]
+WantedBy=multi-user.target

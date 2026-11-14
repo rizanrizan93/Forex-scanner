@@ -1,0 +1,67 @@
+name: Bootstrap125 V1 build and isolated bridge
+on:
+  push:
+    branches: ['release/bootstrap125-v1-20261114']
+    paths:
+      - 'repairs/bootstrap125_v1_20261114/**'
+      - '.github/workflows/bootstrap125-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-bootstrap125-v1
+  cancel-in-progress: false
+jobs:
+  verify-and-deploy:
+    if: github.repository == 'rizanrizan93/Forex-scanner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile real cTrader algo and verify lifecycle
+        working-directory: repairs/bootstrap125_v1_20261114
+        run: |
+          dotnet build source/RizanBootstrap125V1.csproj -c Release
+          dotnet run --project tests/BootstrapTests.csproj -c Release
+          python -m pip install -r bridge/requirements.txt
+          python -m unittest discover -s bridge -p 'test_*.py'
+          python -m py_compile bridge/deploy/*.py
+      - name: Isolated VPS install and public TLS checkpoint test
+        working-directory: repairs/bootstrap125_v1_20261114
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo SSH_PREREQUISITES_UNAVAILABLE; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          host='Rizanrizan@202.74.74.172'
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-bootstrap125.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-bootstrap125\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; rm -rf "$d"; }
+          trap cleanup EXIT
+          scp -r "${sshopt[@]}" bridge "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n python3 '$remote/bridge/deploy/provision.py'" | tee deployment-verification.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RizanBootstrap125V1-build-verification
+          path: |
+            repairs/bootstrap125_v1_20261114/source/bin/Release/net6.0/*.algo
+            repairs/bootstrap125_v1_20261114/deployment-verification.json
