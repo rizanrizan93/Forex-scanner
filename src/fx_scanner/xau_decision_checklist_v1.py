@@ -72,7 +72,7 @@ def closed_bars(feed: Mapping | None, tf: str, now: datetime) -> tuple[list[dict
                 return [], "Timestamp candle tidak berurutan atau salah timeframe"
         out.append({"at": at, "o": v[0], "h": v[1], "l": v[2], "c": v[3]})
         previous = at
-    max_age = {"H1": 5400, "M15": 1500, "M5": 720}[tf]
+    max_age = {"H1": 5400, "M15": 1500, "M5": 480}[tf]
     if not 0 <= (now - out[-1]["at"]).total_seconds() <= max_age:
         return [], "Candle " + tf + " terakhir sudah kedaluwarsa"
     return out, None
