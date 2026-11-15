@@ -1,0 +1,53 @@
+name: XAU Decision Closed Candles Readonly Publisher
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * 1-5'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/collect_xau_decision_readonly.py'
+      - 'scripts/publish_xau_decision_readonly.py'
+      - 'src/fx_scanner/xau_decision_checklist_v1.py'
+      - 'src/fx_scanner/xau_decision_candle_feed_v1.py'
+      - '.github/workflows/xau-decision-readonly-publisher.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: xau-decision-candle-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install existing read-only cTrader transport
+        run: python -m pip install -e '.[ctrader]' pytest==9.0.2
+      - name: Verify authorization guard and closed candle contracts
+        env:
+          PYTHONPATH: "src:."
+        run: python -m pytest -q tests/test_xau_decision_checklist_v1.py tests/test_xau_decision_readonly_feed_v1.py
+      - name: Collect only CLOSED XAU H1 M15 M5 from LIVE account suffix 7903
+        env:
+          PYTHONPATH: "src:."
+        run: python scripts/collect_xau_decision_readonly.py artifacts/xau_decision_candles.json
+      - name: Publish sanitized market data to isolated snapshot branch
+        env:
+          PYTHONPATH: "src:."
+        run: python scripts/publish_xau_decision_readonly.py
