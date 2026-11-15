@@ -25,7 +25,7 @@ jobs:
       - name: Research-only dependencies
         run: python -m pip install pandas==2.2.3 pytest==9.0.2
       - name: Syntax smoke
-        run: python -m py_compile src/fx_scanner/xau_alpha_r2.py pages/4_XAU_Alpha_Indicator_R2.py
+        run: python -m py_compile main.py src/fx_scanner/xau_alpha_r2.py pages/4_XAU_Alpha_Indicator_R2.py
       - name: Fail-closed R2 unit tests
         env:
           PYTHONPATH: src
