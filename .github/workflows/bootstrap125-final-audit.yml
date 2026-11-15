@@ -1,0 +1,49 @@
+name: Bootstrap125 final bridge audit
+on:
+  push:
+    branches: ['audit/bootstrap125-release-20261115']
+    paths:
+      - '.github/workflows/bootstrap125-final-audit.yml'
+      - 'maintenance/bootstrap125_audit_safe.py'
+permissions:
+  contents: read
+concurrency:
+  group: bootstrap125-final-bridge-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Audit installed bridge without touching trading leases
+        working-directory: .
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo SSH_PREREQUISITES_UNAVAILABLE; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          host='Rizanrizan@202.74.74.172'
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-bootstrap125.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-bootstrap125\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; rm -rf "$d"; }
+          trap cleanup EXIT
+          scp "${sshopt[@]}" maintenance/bootstrap125_audit_safe.py "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n /opt/rizan-bootstrap125-bridge/.venv/bin/python '$remote/bootstrap125_audit_safe.py'" | tee bridge-audit-current.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bootstrap125-current-bridge-audit
+          path: bridge-audit-current.json
