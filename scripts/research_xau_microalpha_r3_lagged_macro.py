@@ -37,7 +37,7 @@ def load_lagged_macro() -> pd.DataFrame:
     raw = pd.read_parquet(io.BytesIO(payload))
     if "time_utc" not in raw or any(k not in raw for k in REQUIRED_MACRO):
         raise ValueError("LAGGED_MACRO_SCHEMA_MISSING")
-    raw["asof"] = pd.to_datetime(raw["time_utc"], utc=True, errors="coerce")
+    raw["asof"] = pd.to_datetime(raw["time_utc"], utc=True, errors="coerce").astype("datetime64[ns, UTC]")
     if raw["asof"].isna().any():
         raise ValueError("INVALID_MACRO_ASOF_TIMESTAMP")
     macro = raw[["asof", *REQUIRED_MACRO]].sort_values("asof").drop_duplicates("asof", keep="last")
