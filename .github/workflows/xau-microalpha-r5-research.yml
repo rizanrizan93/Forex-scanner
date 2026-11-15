@@ -8,6 +8,7 @@ on:
       - "src/fx_scanner/xau_microalpha_r5.py"
       - "tests/test_xau_microalpha_r5.py"
       - "scripts/research_xau_microalpha_r5_multiyear.py"
+      - "scripts/research_xau_r5_daily_regime.py"
       - ".github/workflows/xau-microalpha-r5-research.yml"
   workflow_dispatch:
 
@@ -52,4 +53,28 @@ jobs:
         with:
           name: rizan-xau-r5-research
           path: rizan_xau_microalpha_r5_research.json
+          retention-days: 14
+
+  r5-daily-falsification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install data-only research packages
+        run: python -m pip install pandas==2.2.3 pyarrow==24.0.0
+      - name: Run completed daily-context diagnostic, no trading
+        env:
+          PYTHONPATH: src:scripts
+        run: |
+          python -m py_compile scripts/research_xau_r5_daily_regime.py
+          python -u scripts/research_xau_r5_daily_regime.py
+      - name: Save regime diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rizan-xau-r5-d1-regime
+          path: rizan_xau_r5_daily_regime_diagnostic.json
           retention-days: 14
