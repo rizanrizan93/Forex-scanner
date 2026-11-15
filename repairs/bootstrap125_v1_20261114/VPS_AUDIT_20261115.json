@@ -1,0 +1,61 @@
+{
+  "observed_utc": "2026-11-15T11:31:15.715392+00:00",
+  "broker_orders": 0,
+  "trading_state_writes": 0,
+  "services": {
+    "rizan-bootstrap125-bridge.service": {
+      "NRestarts": "0",
+      "ExecMainStartTimestampMonotonic": "1083957340216",
+      "MemoryCurrent": "133263360",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "rizan-buy050-bridge.service": {
+      "NRestarts": "0",
+      "ExecMainStartTimestampMonotonic": "1030372289842",
+      "MemoryCurrent": "131289088",
+      "ActiveState": "active",
+      "SubState": "running"
+    }
+  },
+  "health_before_probe": {
+    "profile": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114",
+    "observed_utc": "2026-11-15T11:31:13.155+00:00",
+    "btc": "ready",
+    "macro_snapshot_present": true,
+    "connected": 0,
+    "execution_authority": "NONE"
+  },
+  "health_age_seconds": 2.593,
+  "trading_checkpoints": [],
+  "public_wss": {
+    "authenticated": true,
+    "durable_ack": true,
+    "reconnect_readback": true,
+    "heartbeat": true,
+    "only_probe_namespace": true
+  },
+  "tick_file_inventory": {
+    "XAUUSD": {
+      "files_2026": [
+        "XAUUSD_2026-01.parquet",
+        "XAUUSD_2026-02.parquet",
+        "XAUUSD_2026-03.parquet"
+      ],
+      "directory_exists": true
+    },
+    "EURUSD": {
+      "files_2026": [
+        "EURUSD_2026-01.parquet",
+        "EURUSD_2026-02.parquet",
+        "EURUSD_2026-03.parquet",
+        "EURUSD_2026-04.parquet"
+      ],
+      "directory_exists": true
+    },
+    "BTCUSD": {
+      "files_2026": [],
+      "directory_exists": false
+    }
+  }
+}

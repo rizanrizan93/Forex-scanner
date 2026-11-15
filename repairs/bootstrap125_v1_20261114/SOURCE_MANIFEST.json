@@ -1,0 +1,126 @@
+{
+  "release": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114",
+  "version": "1.0.1",
+  "profile_contract": "b6014ae7d456b10f88671f1e58e605509a20771386c72f3ca7ae8b210bde0128",
+  "source_commit": "2a33f76ff281e5b4a6018fed3e080041f27413a3",
+  "native_verification_run": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/43709342362",
+  "algo_sha256": "7f58f6839c21785cdcce2c629acd5a2b009593f47dabb6effd8a1b0225a22619",
+  "source_files": [
+    {
+      "path": "source/BootstrapEngine.cs",
+      "sha256": "311b7f54d0237c42822757c9066fdd6ec700bfde4c6525503072112db1ddd4eb"
+    },
+    {
+      "path": "source/BootstrapLink.cs",
+      "sha256": "9fd00e0fe646db69c058b59540708920f8492bd74251524419a04bdb909e64b7"
+    },
+    {
+      "path": "source/BootstrapRules.cs",
+      "sha256": "8adf1af7469955bfd49a71b643b27c9c0f7c22d761048d2ff2a164431357e595"
+    },
+    {
+      "path": "source/BootstrapState.cs",
+      "sha256": "9b86d5b26f888bd5faa36ec8c47421b56ac5fc09e6ab0575bdc51bbdf33d28ee"
+    },
+    {
+      "path": "source/BtcCore.cs",
+      "sha256": "e33364fb699942fd3aa55aba7b9f1d94e473510488d5a3b472a5d81f6888e213"
+    },
+    {
+      "path": "source/BtcEngine.cs",
+      "sha256": "4629efa17cbc70f0db24aee67ab950199e725bf79dc176e1b8acc6554ed47003"
+    },
+    {
+      "path": "source/BtcEntryGate.cs",
+      "sha256": "28e2e649a0cf4fce3c1c65254aa2296dd7748e9fcb21a623d284cccbabb83819"
+    },
+    {
+      "path": "source/BtcNativeLifecycle.cs",
+      "sha256": "2b9f902386ff9009af3b70d44c2ea0ebab29af6ac4a64d0a82a4e38f812784b9"
+    },
+    {
+      "path": "source/BtcSevenDayFeed.cs",
+      "sha256": "7cf79c8574a18d2bb830158012d937b34a7e1e8502652d43cdbffd35b9c8384a"
+    },
+    {
+      "path": "source/BtcStateLink.cs",
+      "sha256": "5a976a34ce66fd0ef901215e97d9fc8b24157757d226b278b505291327799f83"
+    },
+    {
+      "path": "source/BtcWeekendPolicy.cs",
+      "sha256": "c015eaf66c364244140021fa6846f181581d3b2058d2d804dacd7096ea77c330"
+    },
+    {
+      "path": "source/BtcWeekendRecovery.cs",
+      "sha256": "e6d2a65d7bb5df554854f552a436163f68bf2240b303eda832858ed894e13acf"
+    },
+    {
+      "path": "source/CompressionEntry.cs",
+      "sha256": "ca9f755c2b552f1959d549d96a8d723dbe76d7880cc197e8d4cb1e62b8141efb"
+    },
+    {
+      "path": "source/EntryFamilies.cs",
+      "sha256": "b20d58c2a23ab3ccbef53884670ac710dae930b4680a650314f4c7ec854d8a4a"
+    },
+    {
+      "path": "source/FrozenR3.cs",
+      "sha256": "e4b2fed51d56dfe59394520543096b9bbe5544bda5f2fca787ab496fbbed2d1f"
+    },
+    {
+      "path": "source/GlobalAliases.cs",
+      "sha256": "015d90735fba5655f4b1cd235f88fb15b8949b76c8b79c35dcf383e8d68d3673"
+    },
+    {
+      "path": "source/MacroDirection.cs",
+      "sha256": "cd2d58f1360459e6c005b9774ba2e55ff7d260525291e4be3d046c9532f758d5"
+    },
+    {
+      "path": "source/PortfolioHost.cs",
+      "sha256": "844d2300cee353acae0ccd2e24e18d3900c9c66b2041ff071377c748d46d285b"
+    },
+    {
+      "path": "source/ResearchParams.cs",
+      "sha256": "babb57f016b91f5b76358abb74969e564dbc909c2d7adc3603fa3c4ab1d26a7f"
+    },
+    {
+      "path": "source/RizanBootstrap125V1.csproj",
+      "sha256": "0d44f36cf84d05d1441d25dda463dbaff6e1555e066884007aa29151d3d50ca4"
+    },
+    {
+      "path": "source/RizanXauEurPortfolio.cs",
+      "sha256": "8e6467e07ae8439bfd0e91a47d2f56676711bb59cd5937413628b9dc566032e8"
+    },
+    {
+      "path": "source/eur/EurBatchExecution.cs",
+      "sha256": "39d7b26da7b396dfb6c57b29622f20c5b1c8ca17ede2c601fc8e2ad4df758ece"
+    },
+    {
+      "path": "source/eur/F0245Policy.cs",
+      "sha256": "cfe03d43b440b11fed45845b05c2da822e114ea2cf87d8d48a5e6eeb49bca945"
+    },
+    {
+      "path": "source/eur/FrozenCore.cs",
+      "sha256": "8eeabf5bf8bb81a0d4ae14327fea6fb2144ae99563acef471f29162335aacec4"
+    },
+    {
+      "path": "source/eur/RizanRobot.cs",
+      "sha256": "6be92a6156afbe5749183219990dce91ebf253435856dd1cb881abfab1958c6f"
+    },
+    {
+      "path": "source/xau/FrozenCore.cs",
+      "sha256": "6d37ff6cc319220e1e345adc43c156f2509fae7813a4216fec4824fa85c121c8"
+    },
+    {
+      "path": "source/xau/RizanRobot.cs",
+      "sha256": "08b6c50cba763140e7033fc97a0cf1a69d7d777afe6890d9b3e9b18e9e9e2609"
+    },
+    {
+      "path": "source/xau/XauBatchExecution.cs",
+      "sha256": "8e1cb626a9f35f426685d6d6e75d84ccfcf4aef5b39127a76528d68545c0de14"
+    },
+    {
+      "path": "source/xau/XauSendReference.cs",
+      "sha256": "dd109339696f11e81be8ed6587e67bc3cbd8ea2421989966d8bf1463ec8f4ef3"
+    }
+  ]
+}

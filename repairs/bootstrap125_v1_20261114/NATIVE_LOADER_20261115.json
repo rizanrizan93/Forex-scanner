@@ -1,0 +1,28 @@
+{
+  "mode": "OFFLINE_METADATA_ONLY",
+  "algo_sha256": "7f58f6839c21785cdcce2c629acd5a2b009593f47dabb6effd8a1b0225a22619",
+  "network": "none",
+  "broker_orders": 0,
+  "image_id": "sha256:285484fad431e0ffa4ca96662e82ea66cead93c97cf0e3c46006e80cab4734ba",
+  "exit_code": 0,
+  "metadata_loaded": true,
+  "requires_ctid": false,
+  "output_excerpt": "{\n  \"Name\": \"RizanBootstrap125V1\",\n  \"Type\": \"cBot\",\n  \"AccessRights\": \"None\",\n  \"BuildTime\": \"2026-11-15T11:31:51.6440643Z\",\n  \"Parameters\": [\n    {\n      \"PropertyName\": \"EnableTrading\",\n      \"FriendlyName\": \"Kirim order\",\n      \"GroupName\": \"Eksekusi\",\n      \"Type\": \"Boolean\",\n      \"DefaultValue\": false\n    },\n    {\n      \"PropertyName\": \"ExpectedAccount\",\n      \"FriendlyName\": \"Nomor akun penuh\",\n      \"GroupName\": \"Eksekusi\",\n      \"Type\": \"String\"\n    },\n    {\n      \"PropertyName\": \"EnableXau\",\n      \"FriendlyName\": \"XAU aktif\",\n      \"GroupName\": \"Strategi\",\n      \"Type\": \"Boolean\",\n      \"DefaultValue\": true\n    },\n    {\n      \"PropertyName\": \"EnableEur\",\n      \"FriendlyName\": \"EUR aktif\",\n      \"GroupName\": \"Strategi\",\n      \"Type\": \"Boolean\",\n      \"DefaultValue\": true\n    },\n    {\n      \"PropertyName\": \"PortfolioRiskPercent\",\n      \"FriendlyName\": \"Batas risiko terbuka gabungan %\",\n      \"GroupName\": \"Portofolio\",\n      \"Type\": \"Double\",\n      \"DefaultValue\": 20.75,\n      \"MinValue\": 20.75,\n      \"MaxValue\": 20.75\n    },\n    {\n      \"PropertyName\": \"XauStopAtr\",\n      \"FriendlyName\": \"XAU SL ATR (beku)\",\n      \"GroupName\": \"Strategi beku\",\n      \"Type\": \"Double\",\n      \"DefaultValue\": 2.4,\n      \"MinValue\": 2.4,\n      \"MaxValue\": 2.4\n    },\n    {\n      \"PropertyName\": \"XauTargetR\",\n      \"FriendlyName\": \"XAU TP R (beku)\",\n      \"GroupName\": \"Strategi beku\",\n      \"Type\": \"Double\",\n      \"DefaultValue\": 4.5,\n      \"MinValue\": 4.5,\n      \"MaxValue\": 4.5\n    },\n    {\n      \"PropertyName\": \"XauRiskMultiplier\",\n      \"FriendlyName\": \"XAU pengali risiko (beku)\",\n      \"GroupName\": \"Strategi beku\",\n      \"Type\": \"Double\",\n      \"DefaultValue\": 1.65,\n      \"MinValue\": 1.65,\n      \"MaxValue\": 1.65\n    },\n    {\n      \"PropertyName\": \"BridgeUrl\",\n      \"FriendlyName\": \"Bridge WSS :25345\",\n      \"GroupName\": \"Pemulihan dan data\",\n      \"Type\": \"String\",\n      \"DefaultValue\": \"wss://rizan-bridge.duckdns.org:25345/bootstrap125/\"\n    },\n    {\n      \"PropertyName\": \"BridgeToken\",\n      \"FriendlyName\": \"Token bridge\",\n      \"GroupName\": \"Pemulihan dan data\",\n      \"Type\": \"String\"\n    },\n    {\n      \"PropertyName\": \"BtcBridgeUrl\",\n      \"FriendlyName\": \"BTC 7D WSS :25345\",\n      \"GroupName\": \"Pemulihan dan data\",\n      \"Type\": \"String\",\n      \"DefaultValue\": \"wss://rizan-bridge.duckdns.org:25345/bootstrap125/btc\"\n    },\n    {\n      \"PropertyName\": \"BtcBridgeToken\",\n      \"FriendlyName\": \"Token BTC 7D\",\n      \"GroupName\": \"Pemulihan dan data\",\n      \"Type\": \"String\"\n    },\n    {\n      \"PropertyName\": \"EnableBtc\",\n      \"FriendlyName\": \"BTC aktif\",\n      \"GroupName\": \"Strategi\",\n      \"Type\": \"Boolean\",\n      \"DefaultValue\": true\n    }\n  ]\n}\n\n",
+  "version": "dotnet --version\nVersion: 5.10.1.0\n",
+  "reported_type": "cBot",
+  "control": {
+    "Name": "BootstrapMetadataControl",
+    "Type": "cBot",
+    "AccessRights": "None",
+    "BuildTime": "2026-11-15T11:31:52.5503925Z",
+    "Parameters": [
+      {
+        "PropertyName": "Control",
+        "FriendlyName": "Control",
+        "Type": "Boolean",
+        "DefaultValue": false
+      }
+    ]
+  },
+  "control_exit_code": 0
+}
