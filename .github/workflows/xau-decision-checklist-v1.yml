@@ -1,0 +1,41 @@
+name: XAU Decision Checklist V1 Isolated Tests
+
+on:
+  pull_request:
+    paths:
+      - "main.py"
+      - "pages/4_XAU_Decision_Checklist.py"
+      - "src/fx_scanner/xau_decision_checklist_v1.py"
+      - "src/fx_scanner/xau_decision_candle_feed_v1.py"
+      - "scripts/collect_xau_decision_readonly.py"
+      - "scripts/publish_xau_decision_readonly.py"
+      - "tests/test_xau_decision_checklist_v1.py"
+      - "tests/test_xau_decision_readonly_feed_v1.py"
+      - ".github/workflows/xau-decision-checklist-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checklist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated non-trading test dependencies
+        run: python -m pip install -e '.[ctrader]' pytest==9.0.2
+      - name: Syntax safety check
+        run: |
+          python -m py_compile main.py pages/4_XAU_Decision_Checklist.py
+          python -m py_compile src/fx_scanner/xau_decision_checklist_v1.py
+          python -m py_compile src/fx_scanner/xau_decision_candle_feed_v1.py
+          python -m py_compile scripts/collect_xau_decision_readonly.py
+          python -m py_compile scripts/publish_xau_decision_readonly.py
+      - name: Fail-closed checklist and market collector unit tests
+        env:
+          PYTHONPATH: "src:."
+        run: python -m pytest -q tests/test_xau_decision_checklist_v1.py tests/test_xau_decision_readonly_feed_v1.py
