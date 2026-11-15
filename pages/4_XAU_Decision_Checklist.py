@@ -151,8 +151,9 @@ def render_checklist() -> None:
             "ADX14 dan EMA200 H1 memerlukan rangkaian candle tertutup yang memadai. "
             "Data dari feed cTrader read-only dicek setiap ±60 detik; publisher GitHub "
             "berjadwal sekitar 5 menit. Jika feed belum jalan/stale status UNKNOWN. "
-            "Minimum volume, biaya serta estimasi margin broker belum diberikan, "
-            "jadi risiko tidak akan dicentang dari asumsi."
+            "Minimum volume, biaya, estimasi margin, dan EQUITY AKTUAL broker "
+            "harus valid agar checklist risiko lulus. USD100 adalah modal awal, "
+            "bukan otomatis equity saat ini."
         )
 
     st.caption(
