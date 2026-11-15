@@ -132,8 +132,9 @@ def build_liquidity_signals(
             buy &= h1_bull
             sell &= h1_bear
         # Ambiguous simultaneous confirmation -> no signal.
-        buy = buy & ~sell
-        sell = sell & ~buy
+        ambiguous = buy & sell
+        buy = buy & ~ambiguous
+        sell = sell & ~ambiguous
         b = buy.to_numpy(dtype=bool)
         s = sell.to_numpy(dtype=bool)
         if b.any():
