@@ -1,0 +1,53 @@
+name: XAU MicroAlpha R4 Liquidity Research
+
+on:
+  pull_request:
+    paths:
+      - "src/fx_scanner/xau_microalpha_r4.py"
+      - "tests/test_xau_microalpha_r4.py"
+      - "scripts/research_xau_microalpha_r4_multiyear.py"
+      - ".github/workflows/xau-microalpha-r4-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r4-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated research dependencies
+        run: python -m pip install pandas==2.2.3 pytest==9.0.2
+      - name: Syntax + unit tests
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m py_compile src/fx_scanner/xau_microalpha_r4.py scripts/research_xau_microalpha_r4_multiyear.py
+          python -m pytest -q tests/test_xau_microalpha_r4.py
+
+  r4-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned research libraries
+        run: python -m pip install pandas==2.2.3 pyarrow==24.0.0
+      - name: Replay historical public gold M5 + lagged macro
+        env:
+          PYTHONPATH: src:scripts
+        run: python -u scripts/research_xau_microalpha_r4_multiyear.py
+      - name: Save dated R4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: microalpha-r4-multiyear-evidence
+          path: microalpha_r4_2019_2026_research.json
+          retention-days: 14
