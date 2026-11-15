@@ -27,8 +27,8 @@ def forced_replay() -> pd.DataFrame:
     f["r4_signal"] = 0
     f["r4_structural_stop"] = np.nan
     # Entry is the NEXT candle open.
-    f.loc[10, "r4_signal"] = 1
-    f.loc[10, "r4_structural_stop"] = f.loc[11, "open"] - 2.0
+    f.loc[20, "r4_signal"] = 1
+    f.loc[20, "r4_structural_stop"] = f.loc[21, "open"] - 2.0
     return f
 
 
@@ -70,8 +70,8 @@ def test_same_candle_stop_precedes_target() -> None:
     src = forced_replay()
     cfg = R4Settings()
     # Make both SL and TP reachable on the next candle.
-    src.loc[11, "high"] = float(src.loc[11, "open"]) + 12.0
-    src.loc[11, "low"] = float(src.loc[11, "open"]) - 12.0
+    src.loc[21, "high"] = float(src.loc[21, "open"]) + 12.0
+    src.loc[21, "low"] = float(src.loc[21, "open"]) - 12.0
     out, trades = backtest(src, cfg, session="ALL")
     assert out["count"] == 1
     assert trades.iloc[0]["exit_reason"] == "STOP"
@@ -82,16 +82,16 @@ def test_historical_macro_is_asof_and_missing_wait() -> None:
     sample = forced_replay()
     sample["closed_at"] = sample["datetime"] + pd.Timedelta(minutes=5)
     macro = pd.DataFrame({
-        "asof": pd.DatetimeIndex([sample.loc[10, "closed_at"] - pd.Timedelta(minutes=30)]),
+        "asof": pd.DatetimeIndex([sample.loc[20, "closed_at"] - pd.Timedelta(minutes=30)]),
         "macro_DFII10_chg7d": [-.12],
         "macro_DGS10_chg7d": [-.11],
         "macro_DTWEXBGS_pct7d": [-.3],
     })
     allowed = apply_lagged_macro_filter(sample, macro, mode="REAL_NOMINAL_USD")
-    assert allowed.loc[10, "r4_signal"] == 1
+    assert allowed.loc[20, "r4_signal"] == 1
     future_only = macro.assign(asof=macro["asof"] + pd.Timedelta(hours=2))
     dropped = apply_lagged_macro_filter(sample, future_only, mode="REAL_NOMINAL_USD")
-    assert dropped.loc[10, "r4_signal"] == 0
+    assert dropped.loc[20, "r4_signal"] == 0
 
 
 def test_asia_entry_forced_exit_by_session_end() -> None:
