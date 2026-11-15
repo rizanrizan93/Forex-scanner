@@ -120,7 +120,7 @@ def render_checklist() -> None:
                     st.checkbox(
                         criterion["name"],
                         value=(criterion["state"] == "PASS"), disabled=True,
-                        key="checklist_v1_" + side + "_" + criterion["key"],
+                        key="checklist_v1_" + side + "_" + criterion["key"] + "_" + criterion["state"],
                     )
                     st.caption(statuses[criterion["state"]] + " — " + criterion["why"])
             if data["state"] == "ALL_CONDITIONS_MET_SHADOW_ONLY":
