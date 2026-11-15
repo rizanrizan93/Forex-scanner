@@ -15,6 +15,7 @@ import pandas as pd
 from fx_scanner.xau_microalpha_r4 import R4Settings, backtest
 from fx_scanner.xau_microalpha_r5 import features, build_signals
 from research_xau_microalpha_r3_multiyear import load_history
+from research_xau_microalpha_r3_lagged_macro import load_lagged_macro
 
 OUT = Path("rizan_xau_r5_daily_regime_diagnostic.json")
 SPLITS = {
@@ -52,17 +53,35 @@ def run():
     d1up = q["close"].gt(q["d1_ema20"]) & q["d1_ema20"].gt(q["d1_ema100"]) & q["d1_ema20"].gt(q["d1_ema20_prev5"])
     d1down = q["close"].lt(q["d1_ema20"]) & q["d1_ema20"].lt(q["d1_ema100"]) & q["d1_ema20"].lt(q["d1_ema20_prev5"])
     breakout60 = q["close"].gt(q["d1_high_prev60"]) & q["close"].gt(q["d1_ema100"])
+    # Publisher-lagged daily US rates and broad USD proxies, as-of only.
+    # These have NOT been independently audited against actual release timestamps.
+    macro = load_lagged_macro()
+    f_macro = pd.merge_asof(
+        s[["closed_at"]].sort_values("closed_at"),
+        macro.sort_values("asof"), left_on="closed_at", right_on="asof",
+        direction="backward", tolerance=pd.Timedelta(hours=2),
+    )
+    lower_real = pd.to_numeric(f_macro["macro_DFII10_chg7d"], errors="coerce").lt(0)
+    weaker_usd = pd.to_numeric(f_macro["macro_DTWEXBGS_pct7d"], errors="coerce").lt(0)
+    higher_real = pd.to_numeric(f_macro["macro_DFII10_chg7d"], errors="coerce").gt(0)
+    stronger_usd = pd.to_numeric(f_macro["macro_DTWEXBGS_pct7d"], errors="coerce").gt(0)
     # Daily as-of is backward: no today's unclosed 24h candle is exposed.
     masks = {
         "BASELINE_ASIA_OPEN_BREAKOUT": s["r4_signal"].ne(0),
         "LONG_ONLY": s["r4_signal"].eq(1),
         "D1_EMA20_100_CONCORDANT": (s["r4_signal"].eq(1) & d1up) | (s["r4_signal"].eq(-1) & d1down),
         "LONG_ONLY_D1_60DAY_BREAK": s["r4_signal"].eq(1) & breakout60,
+        "LONG_D1_60DAY_AND_REAL_DOWN": s["r4_signal"].eq(1) & breakout60 & lower_real,
+        "LONG_D1_60DAY_AND_REAL_USD_DOWN": (
+            s["r4_signal"].eq(1) & breakout60 & lower_real & weaker_usd),
+        "D1_TREND_REAL_USD_CONCORDANCE": (
+            (s["r4_signal"].eq(1) & d1up & lower_real & weaker_usd)
+            | (s["r4_signal"].eq(-1) & d1down & higher_real & stronger_usd)),
     }
     cfg = R4Settings()
     report = {
         "contract": "RIZAN_R5_DAILY_REGIME_FALSIFICATION_READONLY",
-        "price_manifest": integrity, "d1_rows": len(d1),
+        "price_manifest": integrity, "d1_rows": len(d1), "macro_proxy_h1_rows": len(macro),
         "publication": "Completed UTC calendar D1 available only from next UTC midnight",
         "out_of_sample_claim": False, "selection_bias": "Exploratory after observing R5 failures",
         "cost_model": "FP broker data NOT validated, constant roundtrip friction 0.80 USD/oz",
