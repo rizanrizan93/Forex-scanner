@@ -161,7 +161,7 @@ def test_directional_bos_check():
     assert ok is True
     assert "BOS" in reason
     not_ok, _ = structure(bars, "SELL")
-    assert not_ok
+    assert not not_ok
 
 
 def test_feed_requires_correct_source_and_contract():
