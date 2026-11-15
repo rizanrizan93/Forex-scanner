@@ -18,7 +18,7 @@ PATH = "runtime/xau_decision_candles.json"
 ROOT = "https://raw.githubusercontent.com/" + REPOSITORY + "/"
 CONTENTS = "https://api.github.com/repos/" + REPOSITORY + "/contents/"
 MAX_PAYLOAD_BYTES = 196608
-MAX_SNAPSHOT_AGE_SECONDS = 750
+MAX_SNAPSHOT_AGE_SECONDS = 600
 
 
 def validate_candle_snapshot(payload, *, now: datetime | None = None) -> dict:
