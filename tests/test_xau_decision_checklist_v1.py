@@ -58,7 +58,7 @@ def good_spec():
         "symbol": "XAUUSD", "account_suffix": "7903",
         "execution_authority": False, "execution_influence": False,
         "minimum_units": 1., "minimum_margin_usd": 20.,
-        "roundtrip_cost_per_unit_usd": .8,
+        "roundtrip_cost_per_unit_usd": .8, "account_equity_usd": 100.,
         "observed_at": (NOW - timedelta(seconds=60)).isoformat(),
     }
 
@@ -170,3 +170,24 @@ def test_feed_requires_correct_source_and_contract():
     data, error = closed_bars(sample, "H1", NOW)
     assert not data
     assert error
+
+def test_missing_actual_equity_cannot_mark_compounding_risk_as_pass():
+    spec = good_spec()
+    spec.pop("account_equity_usd")
+    rep = evaluate_checklist(decision=good_decision(), macro_evaluation=good_macro(),
+                             candle_feed=public_bars(), broker_spec=spec,
+                             now=NOW, structure_fresh=True)
+    risk = rep["BUY"]["items"][-1]
+    assert risk["state"] == "UNKNOWN"
+    assert "equity LIVE" in risk["why"]
+
+
+def test_actual_equity_drawdown_enforces_lower_risk_cap():
+    spec = good_spec()
+    spec["account_equity_usd"] = 40.
+    rep = evaluate_checklist(decision=good_decision(), macro_evaluation=good_macro(),
+                             candle_feed=public_bars(), broker_spec=spec,
+                             now=NOW, structure_fresh=True)
+    risk = rep["BUY"]["items"][-1]
+    assert risk["state"] == "FAIL"
+    assert "equity LIVE USD 40.00" in risk["why"]
