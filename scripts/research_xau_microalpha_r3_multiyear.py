@@ -94,7 +94,7 @@ def run() -> dict:
         "contract": "RIZAN_R3_MULTYEAR_RESEARCH_ONLY",
         "dataset": "PUBLIC_MID_OHLC_NOT_FP_MARKETS_TICKS",
         "source": SOURCE, "integrity": integrity,
-        "scope": "2019-01-01 through 2026-09-24 UTC",
+        "scope": f"{integrity['first']} through {integrity['last']} (actual available source range)",
         "historical_macro_join": "NOT_RUN_NO_POINT_IN_TIME_DXY_RATES",
         "leverage": 200, "starting_equity": 100,
         "simulated_fixed_roundtrip_friction_usd_per_oz": base.friction_roundtrip_usd_per_oz,
