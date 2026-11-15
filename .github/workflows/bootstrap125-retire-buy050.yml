@@ -1,0 +1,49 @@
+name: Retire prior BUY050 bridge after Bootstrap125 deployment
+on:
+  push:
+    branches: ['retire/buy050-after-bootstrap125-20261115']
+    paths:
+      - '.github/workflows/bootstrap125-retire-buy050.yml'
+      - 'maintenance/bootstrap125_retire_buy050.py'
+permissions:
+  contents: read
+concurrency:
+  group: bootstrap125-final-bridge-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate new instance then retire previous bridge
+        working-directory: .
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo SSH_PREREQUISITES_UNAVAILABLE; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          host='Rizanrizan@202.74.74.172'
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-bootstrap125.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-bootstrap125\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; rm -rf "$d"; }
+          trap cleanup EXIT
+          scp "${sshopt[@]}" maintenance/bootstrap125_retire_buy050.py "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n /opt/rizan-bootstrap125-bridge/.venv/bin/python '$remote/bootstrap125_retire_buy050.py'" | tee bridge-retirement.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bootstrap125-bridge-retirement
+          path: bridge-retirement.json
