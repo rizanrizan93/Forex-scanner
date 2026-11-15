@@ -17,3 +17,6 @@ report={'mode':'OFFLINE_METADATA_ONLY','algo_sha256':hashlib.sha256((root/'Rizan
 (root/'native-metadata-result.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
 
 if not report["metadata_loaded"] or report["reported_type"]!="cBot" or report["control"].get("Type")!="cBot":sys.exit(1)
+
+
+# Packaged source is delivered separately in the release ZIP.
