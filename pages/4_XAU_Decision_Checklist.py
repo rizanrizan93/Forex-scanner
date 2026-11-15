@@ -14,6 +14,7 @@ if str(ROOT / "src") not in sys.path:
 from fx_scanner.dashboard_independent_feeds import macro_input
 from fx_scanner.pre_news_transport import fetch_pre_news_snapshot
 from fx_scanner.xau_decision_checklist_v1 import evaluate_checklist, stamp, obj
+from fx_scanner.xau_decision_candle_feed_v1 import fetch_decision_candles
 from fx_scanner.xau_runtime_decision_v404 import evaluate_runtime_decision_v404
 from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
 
@@ -76,9 +77,15 @@ def render_checklist() -> None:
     except (OSError, ValueError, KeyError, TypeError) as exc:
         macro_reason = "Makro V400 belum dapat diverifikasi: " + type(exc).__name__
 
-    # Optional future broker-published series (missing means UNKNOWN).
-    # Do NOT use a public historical CSV to claim the latest live M15 ADX.
-    candle_feed = obj(sd.get("closed_candle_history")) if market_fresh else {}
+    # Independent, read-only LIVE 7903 closed H1/M15/M5 collector; never use
+    # stale historical public CSV for real-time ADX/DI, EMA or BOS/MSS.
+    candle_feed = {}
+    candle_reason = "Belum ada data candle tervalidasi"
+    try:
+        candle_feed = fetch_decision_candles(now=now, timeout_seconds=6.0)
+        candle_reason = "Candle CLOSED H1/M15/M5 diverifikasi dari LIVE 7903"
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        candle_reason = "Feed candle broker belum tersedia: " + type(exc).__name__
     broker_spec = obj(sd.get("broker_symbol_spec")) if market_fresh else {}
 
     report = evaluate_checklist(
@@ -131,6 +138,7 @@ def render_checklist() -> None:
         st.write({
             "status_market": market_reason,
             "status_macro": macro_reason,
+            "status_candle_broker": candle_reason,
             "macro_v400_quality_state": obj(macro_result.get("attribution_quality")).get("quality_state"),
             "v404_state": decision.get("state", "UNAVAILABLE"),
             "v404_direction": decision.get("direction", "WAIT"),
@@ -140,10 +148,11 @@ def render_checklist() -> None:
             "order_enabled": False,
         })
         st.caption(
-            "Dua hal yang BELUM dapat disimpulkan dari satu candle M15: ADX14 dan EMA200 H1. "
-            "Statusnya UNKNOWN sampai feed cTrader read-only menerbitkan seri candle "
-            "tertutup yang lengkap. Volume minimum dan margin cTrader perlu snapshot "
-            "broker tersendiri. Nilai asumsi tidak boleh mendapat checklist ✅."
+            "ADX14 dan EMA200 H1 memerlukan rangkaian candle tertutup yang memadai. "
+            "Data dari feed cTrader read-only dicek setiap ±60 detik; publisher GitHub "
+            "berjadwal sekitar 5 menit. Jika feed belum jalan/stale status UNKNOWN. "
+            "Minimum volume, biaya serta estimasi margin broker belum diberikan, "
+            "jadi risiko tidak akan dicentang dari asumsi."
         )
 
     st.caption(
