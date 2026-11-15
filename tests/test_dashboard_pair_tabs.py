@@ -47,7 +47,7 @@ def test_navigation_survives_nested_page_stop_and_pair_roundtrip():
         "selected_raw_reference_dashboard": {"render_selected_raw_reference": lambda symbol: st.caption(symbol)},
         "xau_frozen_dd50_dashboard": {"render_frozen_core": lambda: st.caption("Frozen core")},
         "cross_asset_dashboard": {"render_cross_asset": lambda symbol: None},
-        "cbot_manual_dashboard": {"render_cbot_manual_dashboard": lambda: st.caption("cBots panel")},
+        "cbot_v1_dashboard": {"render_v1_dashboard": lambda: st.caption("cBots V1 panel")},
     }
     package = ModuleType("fx_scanner")
     package.__path__ = []
@@ -79,7 +79,7 @@ def test_navigation_survives_nested_page_stop_and_pair_roundtrip():
 
         app.radio[0].set_value("cBots").run()
         assert not app.exception
-        assert any(item.value == "cBots panel" for item in app.caption)
+        assert any(item.value == "cBots V1 panel" for item in app.caption)
 
         app.radio[0].set_value("XAUUSD").run()
         assert not app.exception
