@@ -111,6 +111,29 @@ class V1DashboardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sanitize(states, leases, now=NOW)
 
+    def test_checklist_distinguishes_failed_guards_from_missing_candle_data(self):
+        p = sample()
+        p['roles'][0].update(fault=False, halted=False, phase='SEED')
+        p['roles'][1]['quarantined'] = True
+        m = evaluate_snapshot(p, now=NOW)
+        rows = {r['Syarat']: r['Status'] for r in checklist(m, 'XAUUSD')}
+        self.assertTrue(rows['Fase mengizinkan instrumen ini'].startswith('❌'))
+        self.assertTrue(rows['Pengelola fase bebas fault/halt'].startswith('✅'))
+        self.assertTrue(rows['Engine instrumen bebas fault/quarantine/exit pending'].startswith('❌'))
+        self.assertTrue(rows['Candle tertutup dan warmup indikator lengkap'].startswith('❓'))
+        self.assertFalse(any(r['Status'].startswith(('✅','❌')) for r in checklist(None, 'EURUSD')))
+
+    def test_btc_weekend_and_bridge_feed_checked_separately_from_terminal(self):
+        p = sample()
+        p['roles'][3]['weekend_lock_until'] = (NOW + timedelta(hours=1)).isoformat()
+        m = evaluate_snapshot(p, now=NOW)
+        rows = {r['Syarat']: r['Status'] for r in checklist(m, 'BTCUSD')}
+        self.assertTrue(rows['Feed BTC tersedia di bridge'].startswith('✅'))
+        self.assertTrue(rows['Guard akhir pekan mengizinkan entry'].startswith('❌'))
+        self.assertTrue(rows['PortfolioReady dan penerimaan feed terminal siap'].startswith('❓'))
+        m = evaluate_snapshot(p, now=NOW + timedelta(minutes=16))
+        self.assertTrue(all(r['Status'].startswith('❓') for r in checklist(m, 'BTCUSD')))
+
     def test_reader_opens_sqlite_without_modifying_checkpoint_or_lease(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

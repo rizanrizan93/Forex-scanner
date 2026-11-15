@@ -82,24 +82,68 @@ def evaluate_snapshot(raw, *, now=None):
     if not current or bootstrap.get("identity_ok") is not True or phase not in ("SEED", "GROWTH"):
         phase = "UNKNOWN"
     return {"fresh": current, "bridge_ready": bridge_ready, "phase": phase,
-            "roles": by_role, "statuses": states, "payload": raw}
+            "roles": by_role, "statuses": states, "payload": raw, "now": now}
 
 
 def checklist(model, symbol):
-    """Only observations that the bridge can actually prove receive a checkmark."""
-    row = model["roles"][symbol]
-    identity = model["fresh"] and row.get("identity_ok") is True
-    connected = model["statuses"][symbol].startswith(("TERHUBUNG", "STATE AKTIF", "TERBLOKIR"))
-    return [
-        {"Syarat": "Identitas checkpoint V1 cocok", "Status": "✅ Terpenuhi" if identity else "❓ Belum terverifikasi"},
-        {"Syarat": "Fase tersimpan SEED/GROWTH", "Status": "✅ " + model["phase"] if model["phase"] != "UNKNOWN" else "❓ Belum terverifikasi"},
-        {"Syarat": "Bridge dan lease baru", "Status": "✅ Terpenuhi" if connected else "❓ Belum terverifikasi"},
-        {"Syarat": "Candle tertutup, warmup dan aturan setup V1", "Status": "❓ Menunggu bukti candle/indikator"},
-        {"Syarat": "Trigger entry, sesi dan filter bawaan", "Status": "❓ Menunggu evaluasi strategi"},
-        {"Syarat": "Risk, margin, cooldown, exposure dan Guard47", "Status": "❓ Menunggu data akun dan guard"},
-        {"Syarat": "Kirim order, AccountBinding, PortfolioReady dan feed terminal", "Status": "❓ Menunggu telemetry terminal"},
-        {"Syarat": "Request order dan hasil broker tercocokkan", "Status": "❓ Menunggu Journal/riwayat broker"},
-    ]
+    """Three-state evidence: a measured false gate differs from missing data."""
+    rows = []
+    def add(name, value, detail):
+        status = "✅ Terpenuhi" if value is True else "❌ Belum terpenuhi" if value is False else "❓ Belum terverifikasi"
+        rows.append({"Syarat": name, "Status": status, "Bukti / yang ditunggu": detail})
+    current = model is not None and model["fresh"]
+    row = model["roles"][symbol] if model else {}
+    phase = model["phase"] if model else "UNKNOWN"
+    add("Identitas checkpoint V1 cocok", row.get("identity_ok") if current else None,
+        "Identitas akun dan kontrak pada checkpoint" if current else "Menunggu observasi V1 baru")
+    add("Fase mengizinkan instrumen ini", None if phase == "UNKNOWN" else phase == "GROWTH" or symbol == "EURUSD",
+        "Fase " + phase + ("; XAU/BTC menunggu GROWTH" if phase == "SEED" and symbol != "EURUSD" else ""))
+    connection = None
+    if current:
+        if model["statuses"][symbol].startswith(("TERHUBUNG", "STATE AKTIF", "TERBLOKIR")):
+            connection = True
+        elif model["payload"].get("service_active") is False:
+            connection = False
+    add("Bridge dan lease baru", connection,
+        "Heartbeat lease: " + wib(row.get("lease_touched_at")) if model else "Menunggu observasi bridge")
+    for role, label, names in (
+        ("BOOTSTRAP", "Pengelola fase bebas fault/halt", ("fault", "halted")),
+        (symbol, "Engine instrumen bebas fault/quarantine/exit pending", ("fault", "quarantined", "exit_pending")),
+    ):
+        item = model["roles"][role] if model else {}
+        # Only fields that this role actually persists are required.
+        required = names if role == "BOOTSTRAP" else ("fault", "exit_pending") if symbol == "BTCUSD" else ("quarantined",)
+        values = [item.get(k) for k in required]
+        known = current and item.get("identity_ok") is True
+        result = False if known and any(v is True for v in values) else True if known and all(v is False for v in values) else None
+        detail = "; ".join(k + "=" + str(item.get(k)) for k in required) if known else "Menunggu state engine baru yang valid"
+        add(label, result, detail)
+    if symbol == "BTCUSD":
+        bridge = model["payload"].get("bridge", {}) if model else {}
+        feed = bridge.get("btc_feed_status") if model and model["bridge_ready"] else None
+        add("Feed BTC tersedia di bridge", True if feed == "READY" else False if feed == "UNAVAILABLE" else None,
+            "Status bridge: " + str(feed or "UNKNOWN") + "; penerimaan terminal diperiksa terpisah")
+        until = parse_time(row.get("weekend_lock_until"))
+        locked = current and row.get("identity_ok") is True and until and until > model["now"]
+        add("Guard akhir pekan mengizinkan entry", False if locked else None,
+            "Lock tercatat hingga " + wib(row.get("weekend_lock_until")) + "; waktu terlewati belum membuktikan guard terminal lolos")
+    if phase == "SEED" and symbol == "EURUSD":
+        setup = ["Warmup 512 M5 dan 1.024 H4 tertutup lengkap", "Candle M5 sinyal bullish",
+                 "Close M5 > high 64 bar sebelumnya + 0,05 ATR14", "EMA20 H4 > EMA80 H4 pada candle tertutup"]
+    else:
+        setup = ["Candle tertutup dan warmup indikator lengkap", "Setup frozen " + {"XAUUSD": "compression/displacement", "EURUSD": "EUR", "BTCUSD": "original / Break40"}[symbol] + " terpenuhi"]
+    for name in setup:
+        add(name, None, "Menunggu candle broker dan evaluasi independen V1")
+    for name, detail in (
+        ("Trigger entry, sesi dan filter bawaan lolos", "Menunggu evaluasi trigger serta waktu/filter V1"),
+        ("Risk, minlot, volume dan margin lolos", "Menunggu equity, exposure dan spesifikasi broker"),
+        ("Cooldown, exposure dan guard risiko sesuai fase lolos", "Menunggu state portofolio; Guard47 berlaku pada GROWTH"),
+        ("Kirim order dan AccountBinding siap", "Menunggu parameter aktual terminal"),
+        ("PortfolioReady dan penerimaan feed terminal siap", "Menunggu telemetry terminal"),
+        ("Request order dan hasil broker tercocokkan", "Menunggu Journal dan riwayat broker"),
+    ):
+        add(name, None, detail)
+    return rows
 
 
 def render_snapshot(raw=None, *, now=None, unavailable=False):
@@ -137,20 +181,21 @@ def render_snapshot(raw=None, *, now=None, unavailable=False):
     st.markdown("### Sinyal V1 dan eksekusi")
     st.info("Aba-aba: UNKNOWN. Snapshot checkpoint belum memuat evaluasi candle independen, "
             "seluruh guard, dan riwayat broker. Tidak ada dasar menyatakan tidak ada sinyal atau ada order terlewat.")
+    st.caption("✅ Terpenuhi · ❌ Belum terpenuhi berdasarkan bukti · ❓ Belum terverifikasi karena data belum tersedia. Checklist bukan tombol untuk mengirim order.")
     for symbol in ("XAUUSD", "EURUSD", "BTCUSD"):
-        with st.expander(symbol + " · checklist V1", expanded=symbol == "EURUSD"):
+        checks = checklist(model, symbol)
+        counts = [sum(r["Status"].startswith(mark) for r in checks) for mark in ("✅", "❌", "❓")]
+        with st.expander(symbol + f" · ✅ {counts[0]} · ❌ {counts[1]} · ❓ {counts[2]}", expanded=True):
             if phase == "SEED" and symbol != "EURUSD":
                 st.caption("Menunggu fase GROWTH; instrumen ini tidak membuka entry pada fase SEED.")
             st.write("Entry / SL / TP berikutnya: belum terverifikasi.")
+            st.dataframe(checks, hide_index=True, width="stretch")
             if model:
-                st.dataframe(checklist(model, symbol), hide_index=True, width="stretch")
                 row = model["roles"][symbol]
                 st.caption("Sinyal terakhir tercatat: " + wib(row.get("last_signal_at")) + ". Timestamp bukan konfirmasi order.")
                 if symbol == "BTCUSD":
                     st.caption("BTC weekend lock tercatat hingga " + wib(row.get("weekend_lock_until")) +
                                "; status guard sekarang perlu bukti terminal. LastBarUtc tidak disimpan oleh checkpoint BTC.")
-            else:
-                st.write("❓ Identitas/fase, candle dan setup, trigger, guard, kesiapan terminal, request dan hasil broker belum terverifikasi.")
     with st.expander("Aturan frozen V1"):
         st.markdown("**SEED — EURUSD BUY:** M5 tertutup bullish, close > high 64 bar sebelumnya + 0,05 ATR14; "
                     "EMA20 H4 > EMA80 H4 tertutup. Warmup 512 M5 / 1.024 H4. SL minimal 1,25 ATR sesuai rumus; TP 4R; "
