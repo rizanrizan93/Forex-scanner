@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install isolated non-trading test dependencies
-        run: python -m pip install pytest==9.0.2
+        run: python -m pip install -e '.[ctrader]' pytest==9.0.2
       - name: Syntax safety check
         run: |
           python -m py_compile main.py pages/4_XAU_Decision_Checklist.py
