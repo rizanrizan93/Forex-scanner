@@ -244,11 +244,20 @@ def risk_check(decision: Mapping | None, spec: Mapping | None, side: str, equity
                            ("minimum_units", "minimum_margin_usd", "roundtrip_cost_per_unit_usd"))
     if any(x is None or x < 0 for x in (units, margin, cost)) or units <= 0:
         return row("risk", "SL / TP / lot / margin", "UNKNOWN", "Spesifikasi volume/margin/biaya broker tidak valid")
+    # Compounding: reference starting capital USD100 is NOT verified LIVE equity.
+    # Risk must stay UNKNOWN unless the broker snapshot provides actual equity.
+    actual_equity = number(broker.get("account_equity_usd"))
+    if actual_equity is None or actual_equity <= 0:
+        return row("risk", "SL / TP / lot / margin", "UNKNOWN",
+                   "RR=%.2f; equity LIVE belum tersedia/terverifikasi. "
+                   "Modal awal USD100 bukan saldo compounding terkini." % rr)
     loss = units*(stop_distance+cost)
-    passed = rr >= 2 and loss <= .05*equity and margin <= .50*equity
+    passed = rr >= 2 and loss <= .05*actual_equity and margin <= .50*actual_equity
     return row("risk", "SL / TP / lot / margin", "PASS" if passed else "FAIL",
-               "RR=%.2f; risiko min USD %.2f (maks USD %.2f); margin USD %.2f (maks USD %.2f)"
-               % (rr, loss, .05*equity, margin, .50*equity))
+               "RR=%.2f; equity LIVE USD %.2f; risiko min USD %.2f (maks USD %.2f); "
+               "margin USD %.2f (maks USD %.2f)"
+               % (rr, actual_equity, loss, .05*actual_equity,
+                  margin, .50*actual_equity))
 
 
 def evaluate_checklist(*, decision: Mapping | None, macro_evaluation: Mapping | None,
