@@ -8,6 +8,7 @@ on:
       - "pages/5_XAU_MicroAlpha_R3.py"
       - "tests/test_xau_microalpha_r3.py"
       - "scripts/research_xau_microalpha_r3_public_pilot.py"
+      - "scripts/research_xau_microalpha_r3_multiyear.py"
       - ".github/workflows/xau-microalpha-r3-research.yml"
   workflow_dispatch:
 
@@ -40,4 +41,28 @@ jobs:
         with:
           name: microalpha-r3-pilot
           path: microalpha_r3_pilot.json
+          retention-days: 7
+
+  multiyear-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated research dependencies
+        run: python -m pip install pandas==2.2.3 pyarrow==24.0.0
+      - name: Run pinned 2019-2026 M5 OHLC multiyear backtest
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m py_compile scripts/research_xau_microalpha_r3_multiyear.py
+          python -u scripts/research_xau_microalpha_r3_multiyear.py
+      - name: Save year-by-year research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: microalpha-r3-multiyear
+          path: microalpha_r3_multiyear.json
           retention-days: 7
