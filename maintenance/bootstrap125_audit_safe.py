@@ -32,3 +32,5 @@ async def main():
   root=Path('/home/Rizanrizan/rizan-ticks')/sym;fs=sorted(root.glob('2026/*.parquet'));report['tick_file_inventory'][sym]={'files_2026':[p.name for p in fs],'directory_exists':root.is_dir()}
  print(json.dumps(report,indent=2))
 asyncio.run(main())
+
+# Recheck requested before direct algo download, 2026-11-15.
