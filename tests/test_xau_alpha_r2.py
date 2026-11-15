@@ -15,7 +15,7 @@ def trend_data(count: int = 360, cadence: str = "h") -> pd.DataFrame:
     prices = [4000.0 + i * 0.5 for i in range(count)]
     return pd.DataFrame({
         "datetime": dates, "open": [x - 0.1 for x in prices],
-        "high": [x + 0.8 for x in prices],
+        "high": [x + 0.3 for x in prices],
         "low": [x - 0.9 for x in prices],
         "close": prices,
     })
