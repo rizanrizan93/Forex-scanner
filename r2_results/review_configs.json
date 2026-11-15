@@ -1,0 +1,53 @@
+[
+  {
+    "family": "BB_RANGE",
+    "window": "EARLY",
+    "stop": 1.25,
+    "target": 2.0,
+    "usd": 1,
+    "macro": 0,
+    "news": "AFTER",
+    "vol_veto": 0,
+    "suffix": "_MAC0_NEWSAFTER_VOL0"
+  },
+  {
+    "family": "OPEN_FADE",
+    "window": "EARLY",
+    "stop": 1.25,
+    "target": 2.0,
+    "usd": 1,
+    "macro": 1,
+    "news": "AFTER",
+    "vol_veto": 0,
+    "suffix": "_MAC1_NEWSAFTER_VOL0"
+  },
+  {
+    "family": "DONCHIAN",
+    "window": "EARLY",
+    "stop": 0.75,
+    "target": 2.0,
+    "usd": 0,
+    "macro": 1,
+    "news": "AFTER",
+    "vol_veto": 0,
+    "suffix": "_MAC1_NEWSAFTER_VOL0"
+  },
+  {
+    "family": "RSI_FADE",
+    "window": "LATE",
+    "stop": 1.25,
+    "target": 1.0,
+    "usd": 1,
+    "macro": 1,
+    "news": "AFTER",
+    "vol_veto": 0,
+    "suffix": "_MAC1_NEWSAFTER_VOL0"
+  },
+  {
+    "family": "NY_SWEEP",
+    "window": "EARLY",
+    "stop": 1.25,
+    "target": 1.0,
+    "usd": 1
+  }
+]

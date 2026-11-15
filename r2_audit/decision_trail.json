@@ -1,0 +1,15 @@
+{
+  "research_date_wib": "2026-11-15",
+  "grid_configs": 312,
+  "ablation_configs": 180,
+  "expected_return_configs": 12,
+  "total_screen_configs_including_controls": 504,
+  "validated_winners": 0,
+  "scope": "retrospective exploratory research; prior R1 and other diagnostic test results had been viewed",
+  "watchlist_selection": "discovery/validation positive-but-sparse families prioritized for diagnostics; original eligibility thresholds unchanged",
+  "r1_positive_test_reference_included_as_diagnostic_only": true,
+  "geopolitical_text_backtest_executed": false,
+  "native_fp_markets_parity_certified": false,
+  "production_changes": false,
+  "real_orders_sent": 0
+}

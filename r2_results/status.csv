@@ -1,0 +1,9 @@
+Bagian,Status,Bukti atau batas
+Audit XAU/EUR,PARTIAL,174 exact-byte files; source end March 2026; independent primary parity and FP history incomplete
+Indicator/SMC screen,COMPLETE_FOR_DEFINED_GRID,312 combinations / 13 families
+Macro/news/volatility ablation,COMPLETE_FOR_DEFINED_GRID,"180 experiments, including repeated controls"
+Expected-return models,COMPLETE_FOR_DEFINED_GRID,"12 thresholds/model variants, causal model cutoffs"
+Selected robustness,COMPLETE_FOR_WATCHLIST,"Cost stress, annual reset, continuous, compounding, tick-marked curves"
+Geopolitical text / news surprise,BLOCKED,No verified full historical first-seen text and contemporaneous consensus panel
+Intraday Treasury nowcast / official DXY,BLOCKED,Weekly vintage daily yields and EUR proxy do not supply these histories
+New LIVE strategy,NOT_APPROVED_BY_EVIDENCE,No candidate passes discovery/validation gates; no deployment

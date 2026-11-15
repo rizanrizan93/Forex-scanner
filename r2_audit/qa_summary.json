@@ -1,0 +1,15 @@
+{
+  "r1_execution_tests_reused": 10,
+  "r2_unit_cases_passed": 3,
+  "r2_signal_prefix_invariance": {
+    "families": 13,
+    "usd_gate_variants_per_family": 2
+  },
+  "ml_fits_checked": 24,
+  "all_ml_training_exits_before_cutoffs": true,
+  "all_ml_predictions_after_model_cutoffs": true,
+  "core_configurations": 504,
+  "period_metric_rows": 1512,
+  "core_and_review_exit_integrity": "PASS; no incomplete monthly exits or held gaps over5minutes",
+  "five_curve_ending_equity_and_max_floating_dd_vs_engine": "PASS; maximum tolerance1e-9 for DD"
+}
