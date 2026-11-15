@@ -25,6 +25,7 @@ class MicroSettings:
     lot_size_oz: float = 100.0
     minimum_lot: float = 0.01
     lot_step: float = 0.01
+    maximum_lot: float = 0.50  # research capacity cap, adjustable after broker check
     risk_fraction: float = 0.05
     margin_fraction: float = 0.50
     stop_atr: float = 1.0
@@ -240,7 +241,7 @@ def replay(frame: pd.DataFrame, cfg: MicroSettings, *, session: str = "ASIA") ->
     if not (0 < cfg.risk_fraction <= 0.2 and
             0 < cfg.margin_fraction <= 1 and 0 < cfg.stopout_margin_level < 1 and
             cfg.hold_bars >= 1 and cfg.minimum_lot > 0 and cfg.lot_step > 0 and
-            cfg.lot_size_oz > 0 and cfg.leverage > 0 and cfg.stop_atr > 0 and
+            cfg.lot_size_oz > 0 and cfg.maximum_lot >= cfg.minimum_lot and cfg.leverage > 0 and cfg.stop_atr > 0 and
             cfg.take_profit_r > 0 and cfg.initial_equity > 0 and
             cfg.friction_roundtrip_usd_per_oz >= 0):
         raise ValueError("INVALID_R3_SETTINGS")
@@ -280,6 +281,11 @@ def replay(frame: pd.DataFrame, cfg: MicroSettings, *, session: str = "ASIA") ->
         units = min(units, floor(
             (equity * cfg.margin_fraction * cfg.leverage / float(following["open"]) + 1e-10)
             / unit_step) * unit_step)
+        if units + 1e-9 < unit_min:
+            blocked_margin += 1
+            i += 1
+            continue
+        units = min(units, floor((cfg.maximum_lot * cfg.lot_size_oz + 1e-10) / unit_step) * unit_step)
         if units + 1e-9 < unit_min:
             blocked_margin += 1
             i += 1
@@ -347,6 +353,9 @@ def replay(frame: pd.DataFrame, cfg: MicroSettings, *, session: str = "ASIA") ->
         "ending_equity": round(equity, 2),
         "return_pct": round(100 * (equity / cfg.initial_equity - 1), 2),
         "trades": len(records), "profit_factor": round(profits / losses, 3) if losses else None,
+        "win_rate_pct": round(100 * sum(row["pnl_usd"] > 0 for row in records) / len(records), 2) if records else None,
+        "expectancy_r": round(sum(row["pnl_usd"] / row["risk_usd"] for row in records) / len(records), 4) if records else None,
+        "maximum_lot_assumed": cfg.maximum_lot,
         "closed_dd_pct": round(close_dd * 100, 2),
         "ohlc_intrabar_dd_estimate_pct": round(intrabar_dd * 100, 2),
         "blocked_risk": blocked_risk, "blocked_margin": blocked_margin,
