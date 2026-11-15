@@ -1,0 +1,37 @@
+name: XAU MicroAlpha R3 Lagged Macro Ablation
+
+on:
+  pull_request:
+    paths:
+      - "scripts/research_xau_microalpha_r3_lagged_macro.py"
+      - "src/fx_scanner/xau_microalpha_r3.py"
+      - ".github/workflows/xau-microalpha-r3-macro-ablation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-macro-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install research-only dependencies
+        run: python -m pip install pandas==2.2.3 pyarrow==24.0.0
+      - name: Run no-order macro/technical USD100 comparison
+        env:
+          PYTHONPATH: "src:scripts"
+        run: |
+          python -m py_compile scripts/research_xau_microalpha_r3_lagged_macro.py
+          python -u scripts/research_xau_microalpha_r3_lagged_macro.py
+      - name: Save macro ablation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: microalpha-r3-lagged-macro
+          path: microalpha_r3_macro_ablation.json
+          retention-days: 7
