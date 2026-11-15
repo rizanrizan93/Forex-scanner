@@ -3,6 +3,7 @@ name: XAU Alpha R2 Readonly Research
 on:
   pull_request:
     paths:
+      - "main.py"
       - "src/fx_scanner/xau_alpha_r2.py"
       - "pages/4_XAU_Alpha_Indicator_R2.py"
       - "tests/test_xau_alpha_r2.py"
