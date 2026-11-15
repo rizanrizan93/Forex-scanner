@@ -38,13 +38,13 @@ def load_history() -> tuple[pd.DataFrame, dict]:
         raise ValueError("UNEXPECTED_DATASET_SHA256")
     frame = pd.read_parquet(io.BytesIO(raw))
     columns = {str(k).lower(): k for k in frame.columns}
-    time_key = next((columns[k] for k in ("datetime", "timestamp", "time", "date")
+    time_key = next((columns[k] for k in ("time_utc", "datetime", "timestamp", "time", "date")
                      if k in columns), None)
     if time_key is None:
         if isinstance(frame.index, pd.DatetimeIndex):
             frame = frame.reset_index()
             columns = {str(k).lower(): k for k in frame.columns}
-            time_key = next((columns[k] for k in ("datetime", "timestamp", "time", "date", "index")
+            time_key = next((columns[k] for k in ("time_utc", "datetime", "timestamp", "time", "date", "index")
                              if k in columns), None)
     if time_key is None:
         raise ValueError("NO_TIME_COLUMN_IN_PUBLIC_DATA")
