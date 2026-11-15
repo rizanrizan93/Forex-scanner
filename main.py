@@ -65,7 +65,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Demand", "Pre-News", "Makro", "Alpha R2", "Pengaturan"]
+            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Demand", "Pre-News", "Makro", "Alpha R2", "MicroAlpha R3", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -73,7 +73,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                     "Halaman XAUUSD", labels, key="rizan_xau_detail",
                     horizontal=True, label_visibility="collapsed",
                 )
-            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "pages/4_XAU_Alpha_Indicator_R2.py", "streamlit_app.py"]
+            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "pages/4_XAU_Alpha_Indicator_R2.py", "pages/5_XAU_MicroAlpha_R3.py", "streamlit_app.py"]
             for label, path in zip(labels, paths):
                 if label == selected_detail:
                     with st.container(key="rizan_xau_detail_content"):
@@ -116,7 +116,7 @@ def render_cbot_webview():
 
 routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True),
           st.Page(render_cbot_webview, title="RIZAN cBot Plugin", url_path="cbot-plugin")]
-for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro"), ("XAU_Alpha_R2", "XAUUSD", "Alpha R2")]:
+for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro"), ("XAU_Alpha_R2", "XAUUSD", "Alpha R2"), ("XAU_MicroAlpha_R3", "XAUUSD", "MicroAlpha R3")]:
     def route(pair=pair, detail=detail):
         render_dashboard(pair, detail)
     routes.append(st.Page(route, title=slug, url_path=slug))
