@@ -38,6 +38,8 @@ def run() -> dict:
         "R3_ASIA_RISK5_SL05ATR": (replace(base, stop_atr=.5), "ASIA"),
         "R3_ASIA_RISK2_SL1ATR": (replace(base, risk_fraction=.02), "ASIA"),
         "R3_ALL_RISK5_SL1ATR": (base, "ALL"),
+        "R3_ASIA_RISK2_001_MICROLOT_HYPOTHETICAL": (
+            replace(base, risk_fraction=.02, minimum_lot=.001, lot_step=.001), "ASIA"),
     }
     report = {
         "contract": "RIZAN_XAU_MICROALPHA_R3_PUBLIC_PILOT_V1",
