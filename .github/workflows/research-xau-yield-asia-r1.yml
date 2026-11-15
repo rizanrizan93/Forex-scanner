@@ -1,0 +1,41 @@
+name: RIZAN XAU Yield Asia R1 Isolated Audit
+on:
+  push:
+    branches: [research/xau-yield-asia-r1-20261115]
+    paths: [research_r1/**, .github/workflows/research-xau-yield-asia-r1.yml]
+permissions:
+  contents: read
+concurrency:
+  group: rizan-xau-yield-asia-research-r1
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventory historical storage read only
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/r1
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo 'SSH credentials unavailable'; exit 1; }
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh -i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 Rizanrizan@202.74.74.172 'python3 -' < research_r1/remote_inventory.py > artifacts/r1/vps_inventory.json
+          python -c "import json;d=json.load(open('artifacts/r1/vps_inventory.json'));print('Inventory files:',len(d['files']));print('Total bytes:',sum(x['bytes'] for x in d['files']));print('First files:',d['files'][:2])"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-yield-asia-r1-audit
+          path: artifacts/r1/
+          retention-days: 30
