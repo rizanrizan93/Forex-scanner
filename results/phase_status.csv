@@ -1,0 +1,8 @@
+Fase,Status,Bukti/batas
+1 Audit,PARTIAL,Repository dan source teridentifikasi; tick hanya Jan2019–Mar2026; baseline belum replay native.
+2 Yield/DXY model,BLOCKED,"Histori kuotasi yield intraday, DXY terverifikasi dan first-seen/vintage belum tersedia. Daily resmi telah diunduh; API model belum dilatih."
+3 Statistik sesi,PARTIAL,Profil per jam/sesi/hari/bulan/tahun dan liquidity selesai pada cakupan tersedia; news/macro regime belum terverifikasi.
+4 Setup/replay,PARTIAL,75 kombinasi harga/SMC dieksekusi; setup A/E yang memerlukan makro belum dijalankan.
+5 Kombinasi makro/Asia,BLOCKED,Tidak ada panel makro PIT sah; tidak membuat ablation atau profit gabungan fiktif.
+6 Robustness/portfolio,PARTIAL,"Split independen, annual reset, walk-forward, biaya, bootstrap dan sensitivitas dieksekusi; portfolio Frozen belum."
+7 Laporan/package,PARTIAL,Paket R1 dan hasil yang tersedia disusun; target penelitian keseluruhan belum COMPLETE.

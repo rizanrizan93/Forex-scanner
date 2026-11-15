@@ -1,0 +1,46 @@
+{
+  "selected_from": "2019-2021 only; fallback2R when training<50trades",
+  "configs": [
+    [
+      "ASIA_FULL",
+      "MOMENTUM",
+      1.5
+    ],
+    [
+      "ASIA_FULL",
+      "SWEEP_MSS_FVG",
+      2.0
+    ],
+    [
+      "ASIA_FULL",
+      "OPENING_BREAKOUT",
+      1.5
+    ],
+    [
+      "ASIA_FULL",
+      "NY_CONTINUATION",
+      3.0
+    ],
+    [
+      "ASIA_FULL",
+      "TREND_FVG",
+      3.0
+    ]
+  ],
+  "starting_equity": 10000,
+  "initial_fixed_risk_usd": 50,
+  "risk_fraction_compound": 0.005,
+  "leverage": 200,
+  "margin_cap_fraction": 0.2,
+  "minimum_oz": 1,
+  "costs": {
+    "BASE": {
+      "spread_multiplier": 1,
+      "market_slippage_usd_per_oz": 0.1,
+      "commission_roundturn_per_lot": 6
+    }
+  },
+  "historical_test_end": "2026-03-31",
+  "macro_fitted": false,
+  "production_changed": false
+}

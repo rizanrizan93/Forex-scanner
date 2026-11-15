@@ -1,0 +1,611 @@
+[
+  {
+    "filename": "XAUUSD_2019-01.parquet",
+    "sha256": "85d0c9ada926dc05630aa2c69b373b38801edf2b669fd5d9686a48f8cb22b07c",
+    "bytes": 13627292,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-02.parquet",
+    "sha256": "3013a288ce38831b73be541a4a876ce601f518f6bfc6a80292a73ce4cd3cd745",
+    "bytes": 11040911,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-03.parquet",
+    "sha256": "ce550620b36367a06ccb41cc7d67b4dc3697f865e627444cc5037b7ff2617572",
+    "bytes": 14460176,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-04.parquet",
+    "sha256": "f60cfd191babb8aeaf9ff52d30e64c2da5047898886d279283f3a8f31e5ec586",
+    "bytes": 12104898,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-05.parquet",
+    "sha256": "3771eec159f1252a7907825c310d0275d3359401e4ca267f93b95057b8e75971",
+    "bytes": 16197590,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-06.parquet",
+    "sha256": "a59fea12aa23b2b5c6beeb582a1ddfde7e92259618e963725c60da391f5f4023",
+    "bytes": 23118523,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-07.parquet",
+    "sha256": "5a51b70e76e18d3aee9dcc906b9205efd5d7348a4116c1ab4eb343670a25fd12",
+    "bytes": 23901395,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-08.parquet",
+    "sha256": "c245cb7e590ba53d42c6a8d4c1c3a4ad73f5552095126ee60f60688021b0942b",
+    "bytes": 31216066,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-09.parquet",
+    "sha256": "087c7962cfccd4b60724c840de3cc395113366ffdd0368fcebd4d4b2d27560db",
+    "bytes": 26979522,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-10.parquet",
+    "sha256": "e65959f778fc0820b2b5553c103a547d3ecfd7b21b89fa0b3175fefb3e84f641",
+    "bytes": 29200995,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-11.parquet",
+    "sha256": "3c246ecac9844f21d4130582b629edfd14cd63e4ccacc00c899ab44197732827",
+    "bytes": 18832560,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2019-12.parquet",
+    "sha256": "117a691cce420e7a0408370839ab20f7fceb30b12af3376697e2e1c7786507a3",
+    "bytes": 15991908,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2019-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-01.parquet",
+    "sha256": "c158d8197a3e6ecc5c3f33a26819a9ef57a62e519990cf22434b477938c2e910",
+    "bytes": 25408740,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-02.parquet",
+    "sha256": "5f4b16b595147fd595e832d362edc39a767b90a807ac8c6e40ffa376c067ec60",
+    "bytes": 30515485,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-03.parquet",
+    "sha256": "c5f6be5f591ad8894486261658672db112b8182db492e8fbc635e42de81c5f90",
+    "bytes": 45212312,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-04.parquet",
+    "sha256": "6626df1952a248696a9e562a97db1395d818b82c3d97a91337a0ed9fff46cb31",
+    "bytes": 24717353,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-05.parquet",
+    "sha256": "501f41ac38f05af2a0149224cf5c76a3a86a27d8d5cd1d73a135ab7efcb0bf74",
+    "bytes": 26385689,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-06.parquet",
+    "sha256": "fa4deb1cf8837ac249863e3a6b0eae5a26c7487de95dbe725fe9534005c7a299",
+    "bytes": 28765544,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-07.parquet",
+    "sha256": "2336eeba6533c1003c5baf70ec93e8075f14f9bd5dbba68e47e6d9f47837162d",
+    "bytes": 30239934,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-08.parquet",
+    "sha256": "cc05610c63084c4f8c9d9dd985f9213293ec176785e25989d0346639c0b1d960",
+    "bytes": 39636657,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-09.parquet",
+    "sha256": "00602077a592ddc1e85aa8d581c232664e5e7e740c95ba1214d7eb8938e0b159",
+    "bytes": 33793004,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-10.parquet",
+    "sha256": "8d6dd823e81e4ef9049ce830217f4e0238e2a6c235a3cf8133f61f3a70098189",
+    "bytes": 27930309,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-11.parquet",
+    "sha256": "4e27587a7769075674a803b8c54665af780ef13d05d00c205556c2536d3ec342",
+    "bytes": 29029513,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2020-12.parquet",
+    "sha256": "7f5e25e317a5a84afd90563365f56699882f7f3e893dcca62baf7fac6f357e5c",
+    "bytes": 25701096,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2020-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-01.parquet",
+    "sha256": "eb4dbadf7ca959d37279d0c32bc45da204b33892f4c3a118f69e05b1e289a682",
+    "bytes": 33447895,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-02.parquet",
+    "sha256": "1120a1d273cec6da0ed8c46c7a8a93e5dab37e32dbf624b32045ce37996bae76",
+    "bytes": 35930364,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-03.parquet",
+    "sha256": "342d722cf6fa9fe9c45f003d09e54a220e45e6e3765e4b62b1b9334ed114f5b2",
+    "bytes": 44410424,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-04.parquet",
+    "sha256": "5e8785e4bdac0d7f78c08368aa921af5bc19a01ea38564090ae5cd6698c34c4c",
+    "bytes": 28554992,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-05.parquet",
+    "sha256": "11f729d5911302701cddea523a2ab6cc0b9f03ae9304cd77404f797ac9190f6d",
+    "bytes": 30605527,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-06.parquet",
+    "sha256": "9bd5fed9f140d27c18965acce1ad73db30bf4f7626ecc8b9113eace61a48f4ce",
+    "bytes": 30656409,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-07.parquet",
+    "sha256": "a47678abe964765c1c100d547b0544a745fb70dfb5524136a12121e6b0612d0b",
+    "bytes": 23770441,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-08.parquet",
+    "sha256": "d1e70bd98f1de01e34d7114debb7438bb2f12ff96d05182574629b6caa04036a",
+    "bytes": 24243236,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-09.parquet",
+    "sha256": "a56fc88bf930ece86107b137c900d8475bd8d621bb184251d589e9dc276be30f",
+    "bytes": 30096507,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-10.parquet",
+    "sha256": "98e873af861f23af18d998d587c6f2c41c79d20178792df4906600d225cc99c2",
+    "bytes": 28713928,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-11.parquet",
+    "sha256": "27d23c24d81464a7011766a1f18522a3f6c8d64004a4d523c5a04d871db52637",
+    "bytes": 29255766,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2021-12.parquet",
+    "sha256": "a5c49d32000100d3a73ed2d1fcc647c95e407a1da604765342ff1e123d81d2d9",
+    "bytes": 23934065,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2021-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-01.parquet",
+    "sha256": "4483d2cb9b92ef61e62364b01748ea0ad42e6db253a0d1c95542496e1a082ca4",
+    "bytes": 42981727,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-02.parquet",
+    "sha256": "3cc66eeac1efbcefd615f935a051149a0f7d7e4a989be107664393d5aa8dba95",
+    "bytes": 53528812,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-03.parquet",
+    "sha256": "b0ecf0dae66647eccb03da9ddcfaa2a0f480bd3bac385ae7cfb9838d7a75d888",
+    "bytes": 61927279,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-04.parquet",
+    "sha256": "9e567eb989d881841130096c9cd02ae24d0002d7ee2b044119e5bda06a9bc354",
+    "bytes": 42505472,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-05.parquet",
+    "sha256": "086938ac8cebd71e47bacdfff99a830ad16a6ea46801e4bb1ffec3734308c771",
+    "bytes": 51961600,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-06.parquet",
+    "sha256": "5ce389ad6fd21ca06b53d85c7f411335cc66efdcc5e6b725446e7c1abdffcbb7",
+    "bytes": 47074759,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-07.parquet",
+    "sha256": "e00a072190bd69e4fa2c657c0fe89c2db81f1d4c2375a56a819695db0f009431",
+    "bytes": 50516934,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-08.parquet",
+    "sha256": "5fa9448e0400c58ef0a00ebe171e72ec8b82b344e667a12aa4ecb0c26e79295b",
+    "bytes": 39046378,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-09.parquet",
+    "sha256": "cc3c718132895b16f9a8e7f6060f772fda6869379120490c510f8653226591b8",
+    "bytes": 51725409,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-10.parquet",
+    "sha256": "80d3b3a3c375cafc628c7cc91a5d14d2b1863130008d7faee8ef44590aaff4c7",
+    "bytes": 50565095,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-11.parquet",
+    "sha256": "4ee2b8ab0490871cc00093265d9781b3dad9baaa4011bb3b27f80dd2870d5980",
+    "bytes": 38152743,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2022-12.parquet",
+    "sha256": "448fa94bef68220a5eda27cb84d22f40bb13ed1d3a632a017735e1a4ebf90ee5",
+    "bytes": 31671500,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2022-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-01.parquet",
+    "sha256": "8a80b847d53546063558154e53151040922de779d311b9a1e0b3ce14f23832d6",
+    "bytes": 38318900,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-02.parquet",
+    "sha256": "d553d0b9ef46b944ac8ee65ecfcc21da9cf6d92f3f19dda0f3c114782267df33",
+    "bytes": 34507504,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-03.parquet",
+    "sha256": "eb7e33cfaa1a203a2078290d1f8b9cd464d2ea693e0a7097ab4bf9ece5fcdcd8",
+    "bytes": 48207817,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-04.parquet",
+    "sha256": "02f825b631fa7af30176e124e11724c8a474c41cc3e2f4d4e725f19c42438c31",
+    "bytes": 32406920,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-05.parquet",
+    "sha256": "e80ec9a93e2dec48e86351a81a3b793b6269917099fdee48673c4d419da5a73a",
+    "bytes": 40943950,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-06.parquet",
+    "sha256": "bfdf0c3ec558d5c205f05ab58c9743b2f5edbf09ba55136e46205c43affd0da5",
+    "bytes": 26888278,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-07.parquet",
+    "sha256": "ec54d53c96c89a36c3c291ce08ea6dcb3604d54d8cd5b68935d77fb7700fdc28",
+    "bytes": 28486235,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-08.parquet",
+    "sha256": "3b35164bffe9288d0d34d612828e2068ab865c8f0e9a1d086e1dee4e2e46127a",
+    "bytes": 22272985,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-09.parquet",
+    "sha256": "752044d1086b6fe61448c78638ea3f0cc7d69043fbd712ce410470a0acdb37e2",
+    "bytes": 14242756,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-10.parquet",
+    "sha256": "0d83753190061c84dd239d41cabcd3c22d735d38b6bb3200f7ffb5ae2221364c",
+    "bytes": 25291235,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-11.parquet",
+    "sha256": "1676101a582f36156bf12b69885c2665457ea18574b5b6401881388abde00dea",
+    "bytes": 26455137,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2023-12.parquet",
+    "sha256": "0f2ee24ec831a279249fdd288c0e1047f56e840bef8a392f508fcd356f0e8800",
+    "bytes": 27977866,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2023-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-01.parquet",
+    "sha256": "357a3571deda36becefa92e8ef0313ed06f81da16b6ca2a8bfff80822aeaf8ff",
+    "bytes": 30260334,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-02.parquet",
+    "sha256": "9c9a91930ab6c75e20734d0290f3605b4d29163551ff3013e27741c486001a94",
+    "bytes": 18326475,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-03.parquet",
+    "sha256": "364d5431586fc8a71b6da3bab5f01c99379058b176a2edd724b321ee390c401a",
+    "bytes": 29953908,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-04.parquet",
+    "sha256": "843d1876ce2a98da66f5e097bc68f54fdecf2cb6d685578058cc77fd9fc7ebba",
+    "bytes": 59936209,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-05.parquet",
+    "sha256": "319fa1625bcc4d92827d438a360989d0f9cc58e2e8994de423bca887d80969a2",
+    "bytes": 37816990,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-06.parquet",
+    "sha256": "e231ee71dc290e098046f8d5a809d178c2cefd2934c2505958d1c97384a96ba8",
+    "bytes": 29419702,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-07.parquet",
+    "sha256": "fc418b69d67465189c0504012a2168a77885ff2a9f46ddd121bb94799b73be53",
+    "bytes": 35799100,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-08.parquet",
+    "sha256": "b6ea8b1169824e15643e55854b3e076e79f049208f2bb89c670d184f59c5ec80",
+    "bytes": 39588833,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-09.parquet",
+    "sha256": "f1cf6503b6ea62b0d62e568cd6496acf761b1c6eefe5e2ebb2280d343573b8c0",
+    "bytes": 33947155,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-10.parquet",
+    "sha256": "5168d6a3cd52ee5e207422c428481c1fd34a7b224e71518861ff1bee4a5c545e",
+    "bytes": 36808046,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-11.parquet",
+    "sha256": "7b87244b7f80e9e9b544af57c61fa714d8cb79ac022371bc1cdbdc593948a815",
+    "bytes": 39269187,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2024-12.parquet",
+    "sha256": "239b28709b0340308c98d224d64bcd52ffad392801c6772fd7580b7c60e7fc98",
+    "bytes": 31609698,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2024-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-01.parquet",
+    "sha256": "412fd8a1ba775222bfea80b340cead08638d68738f9a41d75cbe71783d5a88bf",
+    "bytes": 37045195,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-02.parquet",
+    "sha256": "2f42fc68ca02b6e0e5f0881e23941220d31ea3fcb3d52e98767509b9736fc576",
+    "bytes": 36448869,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-03.parquet",
+    "sha256": "4843d46153ab3e8d508a96531e3ea1c5e920e784d23cfafd8c229821e303b228",
+    "bytes": 33416941,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-03.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-04.parquet",
+    "sha256": "384bfc92eb0f6f94d21022309e198059c92345c6e4cb241b6c00fb801c043385",
+    "bytes": 40817172,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-04.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-05.parquet",
+    "sha256": "adb160af636a065afd64010df3067017dd7c926ca3c684f67da87bbd4b89332c",
+    "bytes": 34723241,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-05.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-06.parquet",
+    "sha256": "b8acb49ddab276dabbb117d3017f8980b3f827e55a1fa52ae7ca565cc809807b",
+    "bytes": 30872463,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-06.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-07.parquet",
+    "sha256": "55190b0ba3add563c63b6b63eb2e980eb2dc3c94fa48f574e2d73699f9bac497",
+    "bytes": 27270559,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-07.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-08.parquet",
+    "sha256": "853db0ba06a8940ef093aa589bdcfc027743225af8d300131a1b4d8306329bfb",
+    "bytes": 27820357,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-08.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-09.parquet",
+    "sha256": "dd3f0f351c1c62d2119d4b15e8035536579f758029a5e1f959bc1ecf812ae0ed",
+    "bytes": 38129087,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-09.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-10.parquet",
+    "sha256": "5655c6af2a35cf392bcc9e098e96c061df2f03ff477a3fca0107465df8c6421a",
+    "bytes": 47374892,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-10.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-11.parquet",
+    "sha256": "39a2ce813261d75c1d98c79487ee3f031351c7478ff2e84f812be3e057ec4362",
+    "bytes": 42701845,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-11.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2025-12.parquet",
+    "sha256": "55c789933007cd9338972800052c21c561b9ad4e68d194d13ebe541196c27dc9",
+    "bytes": 49114612,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2025-12.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2026-01.parquet",
+    "sha256": "402e6a42cffe8bcb797f7d5971a851f37ff25a76841810f329aef46f3bf003a1",
+    "bytes": 62667037,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2026-01.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2026-02.parquet",
+    "sha256": "442d6f4a7ed5c86ea3aac098f908829776f0d0b4bbf5547d7df16add4352c420",
+    "bytes": 53254569,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2026-02.parquet?download=true"
+  },
+  {
+    "filename": "XAUUSD_2026-03.parquet",
+    "sha256": "2bcc4968886cb424d72f8508d344f5c6cf8a19c0190dfa15b0e27985c31a4889",
+    "bytes": 72085775,
+    "status": "MATCH_VPS_MANIFEST",
+    "source_url": "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/XAUUSD/XAUUSD_2026-03.parquet?download=true"
+  }
+]
