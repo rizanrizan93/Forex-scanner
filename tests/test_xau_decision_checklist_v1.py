@@ -151,6 +151,10 @@ def test_unvalidated_broker_spec_never_passes():
 
 def test_directional_bos_check():
     data = public_bars()
+    recent_high = max(b["high"] for b in data["bars"]["M5"][-13:-1])
+    last = data["bars"]["M5"][-1]
+    last.update(open=recent_high-0.5, low=recent_high-1.,
+                close=recent_high+2., high=recent_high+3.)
     bars, error = closed_bars(data, "M5", NOW)
     assert error is None
     ok, reason = structure(bars, "BUY")
