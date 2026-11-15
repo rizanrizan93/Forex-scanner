@@ -6,7 +6,7 @@ namespace Rizan.Portfolio;
 
 // Computed exclusively from completed bars. No historical timestamp membership,
 // environment-selected strategies, broker requests or mutable global signal state.
-public static class EntryFamilies
+internal static class EntryFamilies
 {
     public const string Incumbent="INCUMBENT", XauDisplacement="XAU_H1_DISPLACEMENT", BtcBreak40="BTC_H4_BREAK40_ALL";
     public static bool ValidOrigin(string origin)=>origin==Incumbent||origin==XauDisplacement;

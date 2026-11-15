@@ -7,7 +7,7 @@ using cAlgo.API.Internals;
 
 namespace Rizan.Portfolio.Eur;
 
-public sealed class Checkpoint
+internal sealed class Checkpoint
 {
     public int Schema { get; set; } = 3;
     public string ExecutionModel { get; set; } = "";
@@ -31,17 +31,17 @@ public sealed class Checkpoint
     public int XauDaySignals { get; set; }
     public DateTime XauDay { get; set; }
 }
-public sealed class MacroPoint
+internal sealed class MacroPoint
 {
     public double Delta { get; set; }
     public DateTime AvailableUtc { get; set; }
 }
-public sealed class NewsPoint
+internal sealed class NewsPoint
 {
     public DateTime AtUtc { get; set; }
     public string Category { get; set; } = "";
 }
-public sealed class ExternalSnapshot
+internal sealed class ExternalSnapshot
 {
     public DateTime ProducedUtc { get; set; }
     public DateTime CoverageFromUtc { get; set; }
@@ -53,7 +53,7 @@ public sealed class ExternalSnapshot
     public List<NewsPoint> Events { get; set; } = new();
 }
 
-public abstract class RizanRobot : Rizan.Portfolio.EngineContext
+internal abstract class RizanRobot : Rizan.Portfolio.EngineContext
 {
     protected RizanRobot(RizanPortfolio host, string instrument) : base(host, instrument) {}
 

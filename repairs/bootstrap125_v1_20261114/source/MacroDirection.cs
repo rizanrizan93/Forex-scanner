@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 namespace Rizan.Portfolio;
-public sealed record MacroDaily {
+internal sealed record MacroDaily {
  public string Date{get;set;}=""; public DateTime AvailableUtc{get;set;}
  public double Dxy{get;set;} public double Us2{get;set;} public double Us10{get;set;} public double Real10{get;set;}
  public double DxyDelta1{get;set;} public double DxyDelta5{get;set;} public double DxyTrend20{get;set;}
@@ -11,7 +11,7 @@ public sealed record MacroDaily {
 }
 // Research prototype. Production must receive independently authenticated point-in-time snapshots.
 // It is fail-closed by default and cannot trade before Configure supplies a validated immutable timeline.
-public static class MacroDirection {
+internal static class MacroDirection {
  static MacroDaily[] rows=Array.Empty<MacroDaily>();static string mode="unconfigured";
  static bool scopeOn=true;static readonly List<object> transitions=new();
  static readonly Dictionary<string,int> counts=new();static readonly List<object> samples=new();

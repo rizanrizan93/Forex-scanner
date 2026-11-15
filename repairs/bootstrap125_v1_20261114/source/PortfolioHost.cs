@@ -7,7 +7,7 @@ using cAlgo.API.Internals;
 
 namespace Rizan.Portfolio;
 
-public abstract class EngineContext
+internal abstract class EngineContext
 {
     internal readonly RizanPortfolio Host;
     internal string Instrument { get; }
@@ -57,4 +57,5 @@ internal sealed class EurEngine : Eur.RizanRobot
     protected override string LoginSuffix=>Host.ExpectedAccount.Length>=4?Host.ExpectedAccount[^4..]:Host.ExpectedAccount;
     internal override void SetParameters(){EnableTrading=Host.EnableTrading;ExpectedAccount=Host.ExpectedAccount;BridgeUrl=Host.BridgeUrl;BridgeToken=Host.BridgeToken;}
 }
+
 

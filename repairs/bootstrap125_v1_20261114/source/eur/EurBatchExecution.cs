@@ -3,7 +3,7 @@ using System.Linq;
 namespace Rizan.Portfolio.Eur;
 
 // All counts are virtual 1,000-unit children. A broker position can contain many.
-public static class EurBatchExecution
+internal static class EurBatchExecution
 {
     public const string Model = "EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1";
     public const int MaxChildren = 2000;

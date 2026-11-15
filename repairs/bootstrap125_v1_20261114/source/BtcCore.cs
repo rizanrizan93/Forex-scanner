@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Rizan.Portfolio;
-public record BtcBar(DateTime At,double Open,double High,double Low,double Close,int Count=1);
-public record BtcSignal(DateTime At,int Side,double Atr,double Reference,string Origin=EntryFamilies.Incumbent);
-public static class BtcCore
+internal record BtcBar(DateTime At,double Open,double High,double Low,double Close,int Count=1);
+internal record BtcSignal(DateTime At,int Side,double Atr,double Reference,string Origin=EntryFamilies.Incumbent);
+internal static class BtcCore
 {
     sealed record Feature(BtcBar Bar,double Atr,double E20,double E80,double Rsi);
     static List<Feature> Features(IEnumerable<BtcBar> input)

@@ -1,6 +1,6 @@
 using System.Text.Json;
 namespace Rizan.Portfolio;
-public static class FrozenR3 {
+internal static class FrozenR3 {
  public const string ProfileId="RIZAN_BOOTSTRAP125_V1_FROZEN_20261114";
  public const string ConfigSha256="b6014ae7d456b10f88671f1e58e605509a20771386c72f3ca7ae8b210bde0128";
 #if REPLAY

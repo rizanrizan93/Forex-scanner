@@ -9,13 +9,13 @@ namespace Rizan.Portfolio.Xau;
 
 // A broker fill rejected by the post-fill budget check is real account activity,
 // but never an accepted strategy child. Persist its identity BEFORE closing it.
-public sealed class RejectedFill
+internal sealed class RejectedFill
 {
     public long PositionId { get; set; }
     public string Label { get; set; } = "";
     public double Volume { get; set; }
 }
-public sealed class Checkpoint
+internal sealed class Checkpoint
 {
     public List<RejectedFill> RejectedFills { get; set; } = new();
     public int Schema { get; set; } = 1;
@@ -44,17 +44,17 @@ public sealed class Checkpoint
     public int XauDaySignals { get; set; }
     public DateTime XauDay { get; set; }
 }
-public sealed class MacroPoint
+internal sealed class MacroPoint
 {
     public double Delta { get; set; }
     public DateTime AvailableUtc { get; set; }
 }
-public sealed class NewsPoint
+internal sealed class NewsPoint
 {
     public DateTime AtUtc { get; set; }
     public string Category { get; set; } = "";
 }
-public sealed class ExternalSnapshot
+internal sealed class ExternalSnapshot
 {
     public DateTime ProducedUtc { get; set; }
     public DateTime CoverageFromUtc { get; set; }
@@ -66,7 +66,7 @@ public sealed class ExternalSnapshot
     public List<NewsPoint> Events { get; set; } = new();
 }
 
-public abstract class RizanRobot : Rizan.Portfolio.EngineContext
+internal abstract class RizanRobot : Rizan.Portfolio.EngineContext
 {
     protected RizanRobot(RizanPortfolio host, string instrument) : base(host, instrument) {}
 

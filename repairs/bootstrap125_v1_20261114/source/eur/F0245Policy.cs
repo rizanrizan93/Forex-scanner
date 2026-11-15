@@ -2,7 +2,7 @@ using System;
 namespace Rizan.Portfolio.Eur;
 
 // Immutable F0245 v1. Virtual feedback uses merged R3+Asia signals with the original 4R reference.
-public static class F0245Policy
+internal static class F0245Policy
 {
     public const string Version = "1.2.0_F0245";
     public const string ConfigHash = "d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a";

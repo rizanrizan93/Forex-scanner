@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 
 namespace Rizan.Portfolio.Eur;
 
-public sealed class UtcDateTimeConverter : JsonConverter<DateTime>
+internal sealed class UtcDateTimeConverter : JsonConverter<DateTime>
 {
     public override DateTime Read(ref Utf8JsonReader reader,Type type,JsonSerializerOptions options)
     {
@@ -18,15 +18,15 @@ public sealed class UtcDateTimeConverter : JsonConverter<DateTime>
     }
     public override void Write(Utf8JsonWriter writer,DateTime value,JsonSerializerOptions options) => writer.WriteStringValue(DateTime.SpecifyKind(value,DateTimeKind.Utc));
 }
-public record Candle(DateTime OpenUtc, double Open, double High, double Low, double Close, int Count = 1)
+internal record Candle(DateTime OpenUtc, double Open, double High, double Low, double Close, int Count = 1)
 {
     public DateTime End(int minutes) => OpenUtc.AddMinutes(minutes);
 }
-public record Signal(DateTime AtUtc, int Side, double Distance, double Atr = 0, double Anchor = 0, bool AsiaExtra = false);
-public record Feature(DateTime AtUtc, double Open, double High, double Low, double Close,
+internal record Signal(DateTime AtUtc, int Side, double Distance, double Atr = 0, double Anchor = 0, bool AsiaExtra = false);
+internal record Feature(DateTime AtUtc, double Open, double High, double Low, double Close,
     int Count, double Atr, double Body, double PriorHigh, double PriorLow, int Bias, bool AsiaBuy = false);
-public record H1Record(DateTime AtUtc, double Ema, int Bias);
-public sealed class VirtualTrade
+internal record H1Record(DateTime AtUtc, double Ema, int Bias);
+internal sealed class VirtualTrade
 {
     public DateTime AtUtc { get; set; }
     public DateTime LastUtc { get; set; }
@@ -35,7 +35,7 @@ public sealed class VirtualTrade
     public double Entry { get; set; }
     public double Distance { get; set; }
 }
-public sealed class EurState
+internal sealed class EurState
 {
     public double Fast { get; set; }
     public double Slow { get; set; }
@@ -44,7 +44,7 @@ public sealed class EurState
     public List<H1Record> H1 { get; set; } = new();
     public VirtualTrade? Virtual { get; set; }
 }
-public record FrozenContract(string Symbol, string Hash, int Stages, double[] Depths,
+internal record FrozenContract(string Symbol, string Hash, int Stages, double[] Depths,
     bool Confirmed, int AddMinutes, double InitialFraction, double WeightPower,
     double RiskFraction, double MarginFraction, double TargetR, int HoldMinutes,
     double Slip, double ChildUnits, double CommissionPerSide, int ReferenceLeverage)
@@ -55,7 +55,7 @@ public record FrozenContract(string Symbol, string Hash, int Stages, double[] De
         4, new[] { 0d, .16111111111111112, .32222222222222224, .48333333333333334 },
         true, 45, 1, .5, .125, .5, 6.6, 480, .05, 1, .03, 100);
 }
-public sealed class Basket
+internal sealed class Basket
 {
     public DateTime AtUtc { get; set; }
     public DateTime ExitUtc { get; set; }
@@ -82,7 +82,7 @@ public sealed class Basket
     public DateTime LastConfirmationUtc { get; set; }
     public int[] Accepted { get; set; } = new int[4];
 }
-public static class FrozenCore
+internal static class FrozenCore
 {
     // cTrader LocalStorage: max 50 characters, Latin alphanumeric only.
     // Bridge identity retains the complete original account/symbol key.

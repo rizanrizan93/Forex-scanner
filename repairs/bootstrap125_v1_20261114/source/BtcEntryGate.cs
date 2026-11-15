@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Rizan.Portfolio;
 
 // Apply after baseline conflict resolution. Only closed source bars are read.
-public static class BtcEntryGate
+internal static class BtcEntryGate
 {
     public static double Efficiency(IReadOnlyList<BtcBar> bars,int i)
     {

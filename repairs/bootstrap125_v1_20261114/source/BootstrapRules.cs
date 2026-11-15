@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Rizan.Portfolio;
-public readonly record struct SeedBar(DateTime At,double Open,double High,double Low,double Close,int Count);
-public readonly record struct SeedSignal(DateTime At,double Atr,double Anchor);
-public static class BootstrapRules
+internal readonly record struct SeedBar(DateTime At,double Open,double High,double Low,double Close,int Count);
+internal readonly record struct SeedSignal(DateTime At,double Atr,double Anchor);
+internal static class BootstrapRules
 {
  public const double Handoff=125,Risk=.08,Margin=.5,StopAtr=1.25,TargetR=4;
  public static bool CanGraduate(double balance,double equity,bool flat)=>flat&&double.IsFinite(balance)&&double.IsFinite(equity)&&balance>=Handoff&&equity>=Handoff;

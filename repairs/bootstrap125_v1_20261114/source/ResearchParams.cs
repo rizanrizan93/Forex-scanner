@@ -1,6 +1,6 @@
 using System;
 namespace Rizan.Portfolio;
-public record ResearchCase {
+internal record ResearchCase {
  public string Id{get;set;}="BASELINE";
  public double SafetyFraction{get;set;}=1;
  public double XauRisk{get;set;}=1; public double EurRisk{get;set;}=1;public double BtcRisk{get;set;}=1;
@@ -14,7 +14,7 @@ public record ResearchCase {
  public int BtcBatchOrders{get;set;}=1;public int BtcBatchSeconds{get;set;}=180;public double BtcBatchRisk{get;set;}=.025;public double BtcBatchMargin{get;set;}=.1;public double BtcBatchZone{get;set;}=.5;
  public double BtcBuyHours{get;set;}=128;public double BtcSellHours{get;set;}=8;
 }
-public static class RP {
+internal static class RP {
 #if REPLAY
  public static ResearchCase C=new();
 #else

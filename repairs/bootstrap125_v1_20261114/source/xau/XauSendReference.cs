@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Globalization;
 namespace Rizan.Portfolio.Xau;
-public static class XauSendReference {
+internal static class XauSendReference {
  public static Basket? Refresh(FrozenContract c,Signal? signal,Basket template,double quote,double spread,double freeMargin,double marginChild,double tolerance) {
   if(signal==null||!FrozenCore.Finite(signal.Atr)||signal.Atr<=0||!FrozenCore.Finite(signal.Anchor)||signal.Anchor<=0||signal.AtUtc!=template.AtUtc||signal.Side!=template.Side||signal.Origin!=template.Origin||template.Accepted.Sum()!=0||!FrozenCore.Finite(quote)||!FrozenCore.Finite(spread)||spread<0)return null;
   double entry=quote+signal.Side*c.Slip;

@@ -5,7 +5,7 @@ using X=Rizan.Portfolio.Xau;
 namespace Rizan.Portfolio;
 
 // Frozen asymmetric compression. Admission/news gates run in the XAU engine.
-public static class CompressionEntry
+internal static class CompressionEntry
 {
     public static X.Signal? Extra(IReadOnlyList<X.Candle> m1,DateTime available)
     {

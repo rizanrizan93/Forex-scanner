@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 namespace Rizan.Portfolio;
-public sealed class SeedIntent {
+internal sealed class SeedIntent {
  public string Label{get;set;}="";public int Stage{get;set;}=1;public DateTime AtUtc{get;set;}public DateTime DeadlineUtc{get;set;}
  public double Units{get;set;}public double Stop{get;set;}public double Target{get;set;}public double Reference{get;set;}
 }
-public sealed class BootstrapState {
+internal sealed class BootstrapState {
  public int Schema{get;set;}=1;public string ContractHash{get;set;}=FrozenR3.ConfigSha256;public long AccountNumber{get;set;}public string Symbol{get;set;}="BOOTSTRAP";public long Revision{get;set;}
  public string Phase{get;set;}="SEED";public bool Fault{get;set;}public string Reason{get;set;}="";public bool Halted{get;set;}
  public double Peak{get;set;}=100;public double MaxDD{get;set;}public DateTime LastSignalUtc{get;set;}public DateTime NextEntryUtc{get;set;}public DateTime DayUtc{get;set;}public int DayAttempts{get;set;}

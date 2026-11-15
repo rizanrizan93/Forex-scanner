@@ -3,7 +3,7 @@ using System.Linq;
 namespace Rizan.Portfolio.Xau;
 
 // All counts are virtual 1-oz children. A broker position can contain many.
-public static class XauBatchExecution
+internal static class XauBatchExecution
 {
     public const string Model = "XAU_BATCH_STAGE_FIXED_REF_WAL_V1";
     public const int MaxChildren = 2000;
