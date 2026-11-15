@@ -260,6 +260,9 @@ def evaluate_checklist(*, decision: Mapping | None, macro_evaluation: Mapping | 
         raise ValueError("Invalid timezone/equity")
     now = now.astimezone(UTC)
     history = {tf: closed_bars(candle_feed, tf, now) for tf in REQUIRED_BARS}
+    # Margin is dynamic; a published symbol-spec snapshot must also be fresh.
+    broker_at = stamp(obj(broker_spec).get("observed_at"))
+    broker_spec = broker_spec if broker_at is not None and 0 <= (now - broker_at).total_seconds() <= 180 else None
     result = {}
     for side in ("BUY", "SELL"):
         items = [
