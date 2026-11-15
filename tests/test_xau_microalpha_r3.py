@@ -87,6 +87,7 @@ def test_macro_alignment_requires_original_quote_timestamps(monkeypatch) -> None
     from types import ModuleType
     fake = ModuleType("fx_scanner.dashboard_independent_feeds")
     now = datetime(2026, 11, 15, 4, 0, tzinfo=UTC)
+    original_quote_time = now
     def read(snapshot, *, now):
         return {
             "observed_at": now.isoformat(),
@@ -99,9 +100,9 @@ def test_macro_alignment_requires_original_quote_timestamps(monkeypatch) -> None
                 },
                 "intraday_macro_confirmation": {
                     "components": {
-                        "DXY": {"available": True, "current_at": now.isoformat(),
+                        "DXY": {"available": True, "current_at": original_quote_time.isoformat(),
                                 "gold_implication": "GOLD_SUPPORT"},
-                        "US10Y_INTRADAY": {"available": True, "current_at": now.isoformat(),
+                        "US10Y_INTRADAY": {"available": True, "current_at": original_quote_time.isoformat(),
                                           "gold_implication": "GOLD_SUPPORT"},
                     }
                 },
