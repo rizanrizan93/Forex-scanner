@@ -112,14 +112,18 @@ def build_features(raw: pd.DataFrame) -> pd.DataFrame:
                          on="closed_at", direction="backward")
     old_ema = rows["m5_ema20"].shift(1)
     previous_close = rows["close"].shift(1)
+    # Match pilot eligibility: only act after 200 COMPLETED H1 candles.
+    ready_h1 = rows["h1_ema200"].notna()
     bullish = (
-        rows["m15_ema20"].gt(rows["m15_ema50"])
+        ready_h1
+        & rows["m15_ema20"].gt(rows["m15_ema50"])
         & rows["close"].gt(rows["h1_ema50"])
         & previous_close.lt(old_ema)
         & rows["close"].gt(rows["m5_ema20"])
     )
     bearish = (
-        rows["m15_ema20"].lt(rows["m15_ema50"])
+        ready_h1
+        & rows["m15_ema20"].lt(rows["m15_ema50"])
         & rows["close"].lt(rows["h1_ema50"])
         & previous_close.gt(old_ema)
         & rows["close"].lt(rows["m5_ema20"])
