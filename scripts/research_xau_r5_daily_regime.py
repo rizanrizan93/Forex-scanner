@@ -10,7 +10,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from dataclasses import replace
 
 from fx_scanner.xau_microalpha_r4 import R4Settings, backtest
 from fx_scanner.xau_microalpha_r5 import features, build_signals
@@ -105,6 +107,46 @@ def run():
             f"dd={full['closed_dd_pct']} count={full['count']}", flush=True
         )
         OUT.write_text(json.dumps(report, indent=2, default=str))
+    # Post-selection falsification of the only exploratory positive case.
+    # iid trade bootstrap is NOT a valid de-overfitted OOS confidence interval.
+    selected = s.copy()
+    gate = masks["LONG_D1_60DAY_AND_REAL_DOWN"].fillna(False)
+    selected["r4_signal"] = selected["r4_signal"].where(gate, 0)
+    selected["r4_structural_stop"] = selected["r4_structural_stop"].where(gate)
+    stress = {}
+    for fee in (.4, .8, 1.2, 1.6, 2.4):
+        cfg_fee = replace(cfg, roundtrip_cost_usd_per_oz=fee)
+        x, _ = backtest(selected, cfg_fee, session="ASIA")
+        stress[str(fee)] = x
+        print(
+            f"R5_POSITIVE_COST fee={fee} ending={x['ending_usd']} "
+            f"trades={x['count']} PF={x['profit_factor']}", flush=True
+        )
+    ref, trades = backtest(selected, cfg, session="ASIA")
+    if trades.empty:
+        raise ValueError("CANNOT_BOOTSTRAP_WITHOUT_TRADES")
+    r_values = (trades["pnl_usd"] / trades["risk_usd"]).to_numpy()
+    if not np.isfinite(r_values).all():
+        raise ValueError("BOOTSTRAP_R_VALUES_INVALID")
+    rng = np.random.default_rng(20261116)
+    sample_mean = rng.choice(r_values, size=(5000, len(r_values)), replace=True).mean(axis=1)
+    boot = {
+        "trades": len(trades),
+        "observed_mean_r": round(float(r_values.mean()), 4),
+        "mean_r_iid_bootstrap_95pct": [
+            round(float(np.quantile(sample_mean, .025)), 4),
+            round(float(np.quantile(sample_mean, .975)), 4),
+        ],
+        "fraction_bootstrap_positive_mean_r": round(float((sample_mean > 0).mean()), 4),
+        "warning": (
+            "Post-hoc model selection + IID trade resampling. Serial correlation, "
+            "regime-shifts and multiple-hypothesis penalties are not corrected."
+        ),
+    }
+    report["positive_gate_cost_stress"] = stress
+    report["positive_gate_uncertainty"] = boot
+    OUT.write_text(json.dumps(report, indent=2, default=str))
+    print("R5_POSITIVE_GATE_BOOTSTRAP " + json.dumps(boot), flush=True)
     print("R5_DAILY_DIAGNOSTIC_COMPLETE", flush=True)
     return report
 
