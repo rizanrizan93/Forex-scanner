@@ -19,7 +19,7 @@ def app(monkeypatch):
 def test_switches_cancel_old_panel_and_return_to_zone(monkeypatch):
     at=app(monkeypatch)
     assert not at.exception
-    for detail, marker in [('USD Lead','5_USD_Lead_Engine.py'),('Teknikal','6_XAU_Technical_Engine.py'),('Makro','2_US10Y_Regime_Timing.py'),('Checklist','4_XAU_Decision_Checklist.py'),('Zona reversal','ZONE PANEL')]:
+    for detail, marker in [('Analisis Terpadu','7_XAU_Unified_Decision.py'),('Makro','2_US10Y_Regime_Timing.py'),('Zona reversal','ZONE PANEL')]:
         at.radio(key='rizan_xau_detail').set_value(detail).run()
         assert not at.exception
         assert not any("no-op" in str(x.value) for x in at.warning)
@@ -34,7 +34,7 @@ def test_page_failure_keeps_navigation_and_retry(monkeypatch):
     def broken(*args, **kwargs):
         raise RuntimeError('backend unavailable')
     monkeypatch.setattr(runpy,'run_path',broken)
-    at.radio(key='rizan_xau_detail').set_value('Teknikal').run()
+    at.radio(key='rizan_xau_detail').set_value('Analisis Terpadu').run()
     assert not at.exception
     assert any('Halaman belum dapat dimuat' in e.value for e in at.error)
     assert at.button(key='rizan_retry_page')
