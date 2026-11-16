@@ -245,7 +245,7 @@ def _eur_growth(market, now):
     return out
 
 
-def evaluate_bias(market: Mapping | None, *, phase: str, now: datetime):
+def evaluate_bias(market: Mapping | None, *, phase: str, now: datetime, btc_native=None):
     """Return independent BUY / SELL scores for each V1 symbol, not a portfolio signal."""
     if now.tzinfo is None:
         raise ValueError("now must be timezone aware")
@@ -256,19 +256,27 @@ def evaluate_bias(market: Mapping | None, *, phase: str, now: datetime):
         active = (phase == "GROWTH" or phase == "SEED" and symbol == "EURUSD")
         families = {"BUY": [], "SELL": []}
         reason = ""
+        native_meta = None
+        symbol_valid = valid
         if phase not in ("SEED", "GROWTH"):
             reason = "Fase V1 belum terverifikasi; skor ditahan"
         elif not active:
             reason = "Fase SEED hanya mengizinkan EURUSD BUY"
+        elif symbol == "BTCUSD":
+            from .btc_native_readonly import score_packet
+            try:
+                families, native_meta = score_packet(btc_native, now, _family)
+                symbol_valid = True
+                reason = "Seed dan sambungan M1 Bitstamp tervalidasi; acceptance terminal dan guard order tetap belum diverifikasi."
+            except (ValueError, TypeError, KeyError, IndexError, OverflowError):
+                symbol_valid = False
+                reason = "BTC membutuhkan feed asli BITSTAMP 7D dan seed tervalidasi; sumber native belum tersedia/baru, CFD broker bukan pengganti"
         elif not valid:
             reason = "Feed market LIVE 7903 tidak valid atau lebih dari 180 detik"
         elif symbol == "XAUUSD":
             families = _xau(market, now)
         elif symbol == "EURUSD":
             families = _eur_seed(market, now) if phase == "SEED" else _eur_growth(market, now)
-        else:
-            # No verified native BITSTAMP_BTCUSD_M1 7D series in this public feed.
-            reason = "BTC membutuhkan feed asli BITSTAMP 7D dan state native; CFD broker bukan pengganti"
         scores = {}
         for side in ("BUY", "SELL"):
             eligible = [family for family in families[side] if family["score"] is not None]
@@ -284,7 +292,7 @@ def evaluate_bias(market: Mapping | None, *, phase: str, now: datetime):
         buy, sell = scores["BUY"]["score"], scores["SELL"]["score"]
         if not active:
             dominant = "FASE TIDAK AKTIF" if phase in ("SEED", "GROWTH") else "WAIT DATA"
-        elif not valid or symbol == "BTCUSD":
+        elif not symbol_valid:
             dominant = "WAIT DATA"
         elif phase == "SEED" and symbol == "EURUSD":
             dominant = "BUY SAJA DIIZINKAN · belum tentu ada sinyal"
@@ -297,7 +305,8 @@ def evaluate_bias(market: Mapping | None, *, phase: str, now: datetime):
         result[symbol] = {
             "BUY": scores["BUY"], "SELL": scores["SELL"],
             "bias": dominant, "reason": reason,
-            "active": active, "market_valid": valid, "phase": phase,
+            "active": active, "market_valid": symbol_valid, "phase": phase,
+            "native_source": native_meta,
             "native_order_signal": "NOT_EVALUATED",
             "missed_order_verdict": "NOT_EVALUATED",
             "execution_authority": False,

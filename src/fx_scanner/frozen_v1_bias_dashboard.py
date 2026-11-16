@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from threading import Lock
+from time import monotonic
 
 import streamlit as st
 
@@ -51,6 +53,45 @@ def _read(kind: str):
         return None
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
+def _btc_seed():
+    from .btc_native_readonly import load_seed
+    return load_seed()
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def _btc_chunk(start, end):
+    from .btc_native_readonly import load_minutes
+    return load_minutes(start, end)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _btc_packet(through):
+    from .btc_native_readonly import build_packet
+    return build_packet(through, _btc_seed(), _btc_chunk)
+
+
+@st.cache_resource
+def _btc_jobs():
+    return ThreadPoolExecutor(max_workers=1), {}, Lock()
+
+
+def _btc_observation(through):
+    # Cold reconstruction runs in the background; FX tabs and refresh stay responsive.
+    worker, jobs, lock = _btc_jobs()
+    with lock:
+        future, started = jobs.get(through, (None, 0))
+        if future is not None and future.done() and future.exception() is not None and monotonic()-started >= 60:
+            future = None
+        if future is None:
+            future = worker.submit(_btc_packet, through)
+            jobs[through] = future, monotonic()
+        for key in list(jobs):
+            if key != through and jobs[key][0].done():
+                del jobs[key]
+    return future.result() if future.done() else None
+
+
 def _panel():
     now = datetime.now(timezone.utc)
     st.subheader("Frozen V1 · Pola BUY vs SELL")
@@ -71,7 +112,15 @@ def _panel():
     except (ValueError, TypeError, KeyError):
         pass
     phase = model["phase"] if model else "UNKNOWN"
-    report = evaluate_bias(market, phase=phase, now=now)
+    native = None
+    native_error = None
+    if phase == "GROWTH":
+        try:
+            native = _btc_observation(int(datetime.now(timezone.utc).timestamp()) // 3600 * 3600)
+        except (OSError, ValueError, TypeError, KeyError, TimeoutError) as exc:
+            native_error = type(exc).__name__
+    now = datetime.now(timezone.utc)
+    report = evaluate_bias(market, phase=phase, now=now, btc_native=native)
     stable_h1 = from_v1_market(market, now)
     phase_col, market_col = st.columns(2)
     phase_col.metric("Fase native V1", phase)
@@ -130,9 +179,17 @@ def _panel():
                                 detail=check["detail"], meta=str(check["weight"]) + " poin"
                             )
             if symbol == "BTCUSD":
-                st.caption("Tidak memakai candle CFD XAU/EUR/BTC sebagai pengganti "
-                           "native BITSTAMP_BTCUSD_M1 7D. Skor akan tetap — "
-                           "sampai data native terverifikasi dipublikasikan.")
+                meta = item.get("native_source")
+                if meta:
+                    st.caption("Sumber independen: " + meta["source"] + " · H1 selesai: " + wib(meta["through"])
+                               + " · H4 selesai: " + wib(meta["h4_close"]) + " · seed SHA256 cocok V1 · "
+                               + str(meta["hourly_count"]) + " H1. Bukan bukti feed diterima terminal.")
+                    st.caption("Incumbent BUY: waktu close H4 UTC <08; Break40: close H4; SELL: close H1. "
+                               "Weekend, konflik sinyal dan seluruh guard terminal tetap wajib; skor hanya pola candle.")
+                elif phase == "GROWTH" and native_error is None:
+                    st.info("Sedang melengkapi dan memvalidasi history Bitstamp sejak seed. Tab memperbarui otomatis; pembacaan pertama membutuhkan waktu lebih lama.")
+                elif native_error:
+                    st.warning("Sumber native BTC belum berhasil dibaca (" + native_error + "). Skor ditahan sampai validasi berhasil; tidak memakai CFD sebagai pengganti.")
             if model is not None:
                 st.caption("Status instance: "
                            + str(model["statuses"].get(symbol, "UNKNOWN")))
