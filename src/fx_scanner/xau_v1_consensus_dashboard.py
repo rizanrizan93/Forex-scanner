@@ -13,6 +13,7 @@ import streamlit as st
 from .cbot_v1_dashboard import MARKET_URL, SOURCE_URL, evaluate_snapshot, fetch_json, fetch_snapshot, wib
 from .frozen_v1_directional_score import evaluate_bias
 from .xau_v1_primary_consensus import evaluate_consensus
+from .xau_stable_h1_context import from_v1_market, from_research_candles, explain_vs_fast
 from .xau_unified_inputs_v1 import macro_and_notes
 from .xau_decision_candle_feed_v1 import fetch_decision_candles
 from .xau_decision_checklist_v1 import evaluate_checklist
@@ -122,7 +123,24 @@ def _render():
     v1 = report["symbols"]["XAUUSD"]
     opportunity = research.get("opportunity") or {}
 
-    st.markdown("### Keputusan pembanding")
+    v1_anchor = from_v1_market(market, now)
+    research_anchor = from_research_candles(research.get("candles"), now)
+    aligned = consensus["alignment"] == "ALIGNED"
+    if (aligned and v1_anchor["direction"] == research_anchor["direction"]
+            and v1_anchor["direction"] in ("BUY", "SELL", "NETRAL")):
+        stable_context = v1_anchor["direction"]
+        context_note = "Kedua feed H1 konsisten; perubahan bias memerlukan 2 H1 tertutup."
+    else:
+        stable_context = "WAIT ALIGNMENT"
+        context_note = "Regime dua sumber H1 tidak sama atau belum bisa dibandingkan. Jangan menyimpulkan arah stabil."
+    st.markdown("### Bias konteks utama H1 (lebih stabil)")
+    st.metric("Bias H1 terkonfirmasi lintas feed", stable_context)
+    st.caption(context_note)
+    st.caption("H1: " + str(v1_anchor["last_h1_close"] or "—")
+               + " · V1: " + v1_anchor["direction"]
+               + " · Riset: " + research_anchor["direction"])
+    st.caption(explain_vs_fast(v1_anchor, consensus["v1_direction"]))
+    st.markdown("### Perbandingan trigger cepat (bukan pergantian tren)")
     st.write("**" + consensus["state"].replace("_", " ") + "**")
     st.write(consensus["explanation"])
     st.caption("Ini label riset, bukan perintah entry. Prioritas native Frozen V1 tidak berubah.")

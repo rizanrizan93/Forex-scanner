@@ -14,6 +14,7 @@ from .cbot_v1_dashboard import (
     MARKET_URL, SOURCE_URL, evaluate_snapshot, fetch_json, fetch_snapshot, wib,
 )
 from .frozen_v1_directional_score import SYMBOLS, evaluate_bias
+from .xau_stable_h1_context import from_v1_market, explain_vs_fast
 from .ui_terminal import render_condition
 
 
@@ -71,6 +72,7 @@ def _panel():
         pass
     phase = model["phase"] if model else "UNKNOWN"
     report = evaluate_bias(market, phase=phase, now=now)
+    stable_h1 = from_v1_market(market, now)
     phase_col, market_col = st.columns(2)
     phase_col.metric("Fase native V1", phase)
     market_col.metric("Market snapshot", "VALID" if any(
@@ -93,7 +95,14 @@ def _panel():
         with tab:
             item = report["symbols"][symbol]
             st.markdown("#### " + symbol)
-            st.write("**Bias pola:** " + item["bias"])
+            if symbol == "XAUUSD":
+                st.metric("Konteks H1 stabil (2 candle tertutup)", stable_h1["direction"])
+                raw_side = ("BUY" if item["bias"] == "BUY LEBIH KUAT"
+                            else "SELL" if item["bias"] == "SELL LEBIH KUAT" else None)
+                st.caption(explain_vs_fast(stable_h1, raw_side))
+                st.caption("Konteks H1 independen, bukan aturan Frozen V1. "
+                           "Mengikuti EMA5/EMA8 dan 2 close H1; tidak mengubah trigger atau order.")
+            st.write("**Trigger pola cepat V1 (dapat berubah per candle):** " + item["bias"])
             st.caption("Kesiapan native: BELUM DIVERIFIKASI. Skor terbaik hanya salah satu "
                        "keluarga entry, tidak berarti semua guard V1 terpenuhi.")
             bcol, scol = st.columns(2)
