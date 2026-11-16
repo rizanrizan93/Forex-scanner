@@ -1,0 +1,67 @@
+name: USD Lead V1 Decision Research Tests
+
+on:
+  pull_request:
+    paths:
+      - "main.py"
+      - "pages/5_USD_Lead_Engine.py"
+      - "src/fx_scanner/usd_lead_decision_v1.py"
+      - "src/fx_scanner/usd_lead_bund_2y_v1.py"
+      - "tests/test_usd_lead_decision_v1.py"
+      - "tests/test_usd_lead_bund_2y_v1.py"
+      - ".github/workflows/usd-lead-v1-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  usd-lead-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated research test dependencies
+        run: python -m pip install pytest==9.0.2
+      - name: Compile USD Lead, dashboard route and parser
+        run: |
+          python -m py_compile main.py pages/5_USD_Lead_Engine.py
+          python -m py_compile src/fx_scanner/usd_lead_decision_v1.py src/fx_scanner/usd_lead_bund_2y_v1.py
+      - name: Unit test as-of evidence, conflicting directions, quote age and source independence
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_usd_lead_decision_v1.py tests/test_usd_lead_bund_2y_v1.py
+      - name: Static check no order authority
+        run: |
+          ! grep -iE "ProtoOANewOrderReq|ExecuteMarketOrder|PlaceLimitOrder|open_position|close_position" src/fx_scanner/usd_lead_decision_v1.py src/fx_scanner/usd_lead_bund_2y_v1.py pages/5_USD_Lead_Engine.py
+
+  bundesbank-public-source-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Probe daily 2Y official Bundesbank CSV without credentials
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from datetime import datetime, UTC
+          from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y
+          from urllib.request import Request, urlopen
+          from fx_scanner.usd_lead_bund_2y_v1 import BUND_URL
+          url = BUND_URL + "?format=csv&lang=en&startPeriod=2026-11-01"
+          with urlopen(Request(url, headers={"User-Agent": "RIZAN-USD-Lead-DailyBund/1"}), timeout=12) as response:
+              sample = response.read(4096)
+          print("BUNDESBANK_PUBLIC_CSV_FIRST_LINES", repr(sample.decode("utf-8-sig", "replace")[:3000]), flush=True)
+          result = fetch_bundesbank_2y(now=datetime.now(UTC), timeout_seconds=12)
+          print("BUNDESBANK_OFFICIAL_SOURCE_OK", result["series"],
+                len(result["daily"]), sorted(result["daily"])[-3:])
+          PY
