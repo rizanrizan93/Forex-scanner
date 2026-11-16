@@ -192,6 +192,11 @@ def render_usd_lead():
                     "USD direction WATCH: syarat XAU/real yield belum semuanya terpenuhi. "
                     "Jangan mengasumsikan emas otomatis bergerak berlawanan."
                 )
+            elif side["status"] == "USD_DAILY_RATES_WATCH_ONLY":
+                st.info(
+                    "US2Y dan spread harian mendukung dolar, tetapi futures Fed "
+                    "belum tervalidasi. Ini konteks yield, bukan sinyal intraday."
+                )
             else:
                 st.info("WAIT: belum ada bukti cukup untuk mengambil keputusan berbasis USD.")
 
