@@ -61,10 +61,15 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     # stop or rerun, but must never own or replace the primary navigation.
     with st.container(key="rizan_primary_navigation"):
         pair = st.radio(
-            "Instrumen", ["XAUUSD", "EURUSD", "cBots"],
+            "Instrumen", ["XAUUSD", "EURUSD", "Frozen V1", "cBots"],
             key="rizan_pair", horizontal=True, label_visibility="collapsed",
             on_change=navigate_pair,
         )
+    if pair == "Frozen V1":
+        with st.container(key="rizan_frozen_v1_bias_content"):
+            render_section_intro(st, pair="Frozen V1", detail="Frozen V1")
+            from fx_scanner.frozen_v1_bias_dashboard import render_frozen_v1_bias_dashboard
+            render_frozen_v1_bias_dashboard()
     if pair == "cBots":
         with st.container(key="rizan_cbots_content"):
             render_section_intro(st, pair="cBots", detail="cBots")
@@ -151,6 +156,7 @@ ROUTE_SPECS = [
     ("", "XAUUSD", "Zona reversal"),
     ("EURUSD_Demo_Forward", "EURUSD", "Setup"),
     ("cbots", "cBots", "Setup"),
+    ("Frozen_V1", "Frozen V1", "Setup"),
     ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"),
     ("XAU_Setup", "XAUUSD", "Setup"),
     ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"),
