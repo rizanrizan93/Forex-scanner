@@ -18,7 +18,15 @@ def at(minutes=0):
 
 def zn(change=-.03125):
     return {
+        "contract": "XAU_TREASURY_SESSION_AWARE_V399",
+        "execution_authority": False, "execution_influence": False,
         "available": True,
+        "futures_state": (
+            "TREASURY_FUTURES_DOWN_YIELD_UP_PROXY" if change < -0.03124
+            else "TREASURY_FUTURES_UP_YIELD_DOWN_PROXY" if change > 0.03124
+            else "TREASURY_FUTURES_FLAT"
+        ),
+        "futures_freshness": "FRESH",
         "timing_basis": "TREASURY_FUTURES_PROXY",
         "source": "CASH_LAST_VALID_PLUS_ZN_FUTURES_PROXY",
         "effective_source": "YAHOO_FINANCE_ZN_FRONT_PROXY",
@@ -136,3 +144,33 @@ def test_future_timestamp_rejected():
 def test_reject_naive_now():
     with pytest.raises(ValueError, match="NOW_MUST_HAVE_TIMEZONE"):
         evaluate_yield_pressure({}, now=datetime(2026, 11, 16))
+
+
+def test_cash_session_still_uses_separately_timestamped_zn_futures():
+    cash = zn(-.0625)
+    cash["session_state"] = "CASH_FEED_ACTIVE"
+    cash["effective_source"] = "YAHOO_FINANCE_TNX_INTRADAY_PROXY"
+    cash["source"] = "YAHOO_FINANCE_TNX_INTRADAY_PROXY"
+    result = evaluate_yield_pressure({
+        "intraday_yield_context": cash
+    }, fed_funds=zq(2.0), now=NOW)
+    assert result["yield_direction"] == "UP"
+    assert result["state"] == "CONCORDANT_PROXY"
+
+
+def test_cash_session_cannot_claim_zn_when_futures_state_stale():
+    cash = zn(-.0625)
+    cash["session_state"] = "CASH_FEED_ACTIVE"
+    cash["effective_source"] = "YAHOO_FINANCE_TNX_INTRADAY_PROXY"
+    cash["futures_freshness"] = "STALE"
+    result = evaluate_yield_pressure({
+        "intraday_yield_context": cash
+    }, fed_funds=zq(2.0), now=NOW)
+    assert result["yield_direction"] == "WAIT"
+
+
+def test_zn_exact_native_threshold_matches_v399():
+    result = evaluate_yield_pressure({
+        "intraday_yield_context": zn(-.03125)
+    }, fed_funds=zq(2.0), now=NOW)
+    assert result["yield_direction"] == "UP"
