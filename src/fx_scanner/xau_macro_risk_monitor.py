@@ -645,6 +645,13 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         daily_a.metric("Bias regime", daily_regime["bias"])
         daily_b.metric("Skor regime", "—" if daily_regime["score"] is None
                        else f"{daily_regime['score']:+d} / 100")
+        if daily_regime.get("yield_divergence"):
+            st.warning(
+                "KONFLIK NOMINAL vs REAL YIELD: arah Treasury 2Y/10Y "
+                "berlawanan dengan real yield 10Y. Nominal yield turun bukan "
+                "konfirmasi otomatis BUY XAU. Periksa DXY segar, Fed, dan "
+                "struktur harga H1/M15/M5 sebelum menyimpulkan arah."
+            )
         st.caption(
             f"Cakupan regime harian: {daily_regime['coverage_pct']}% · "
             f"DXY: {daily_regime['dxy_source'] or 'tidak ada'} · "
