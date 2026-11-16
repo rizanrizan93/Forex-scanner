@@ -20,6 +20,7 @@ from fx_scanner.xau_decision_checklist_v1 import evaluate_checklist, obj, stamp
 from fx_scanner.xau_technical_engine_v1 import evaluate_technical
 from fx_scanner.xau_unified_decision_v1 import evaluate_unified
 from fx_scanner.xau_weighted_opportunity_v1 import evaluate_opportunity
+from fx_scanner.xau_stable_h1_context import from_research_candles, explain_vs_fast
 from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y, pair_with_treasury_2y
 from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
 from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
@@ -93,12 +94,17 @@ def render():
     opportunity = evaluate_opportunity(
         unified=unified, technical=technical, checklist=checklist
     )
+    stable_h1 = from_research_candles(candles, now)
+    st.metric("Konteks H1 stabil (2 candle tertutup)", stable_h1["direction"])
+    st.caption(explain_vs_fast(stable_h1, opportunity["preferred"]))
+    st.caption("Konteks H1 sekunder tidak mengubah scoring SMC/ICT, USD Lead, yield, "
+               "atau sinyal Frozen V1. Trigger cepat di bawah dapat berubah setiap M5.")
     left, right, choice = st.columns(3)
     for widget, side in ((left, "BUY"), (right, "SELL")):
         score = opportunity[side]
         widget.metric(side + " · skor riset", f'{score["score"]:.1f}/100')
         widget.caption(score["state"])
-    choice.metric("Fokus pemantauan", opportunity["preferred"])
+    choice.metric("Trigger riset cepat", opportunity["preferred"])
     st.caption(
         "Bobot awal riset: SMC/ICT 40% · EMA/ADX/BOS 25% · USD Lead 15% · "
         "tekanan yield 10% · zona V404 10%. "
