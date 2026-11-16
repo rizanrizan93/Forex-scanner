@@ -8,6 +8,9 @@ from __future__ import annotations
 import base64
 import json
 import os
+import subprocess
+import sys
+import time
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -72,11 +75,44 @@ def publish(data: dict) -> None:
     print("XAU_DECISION_READONLY_PUBLISHED original_at=" + data["as_of"], flush=True)
 
 
-def main():
-    if not ARTIFACT.exists():
-        raise ValueError("MISSING_CTRADER_READONLY_COLLECTOR_OUTPUT")
+def cycle():
+    """Collect a new source observation every time; never redate an old file."""
+    ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
+    ARTIFACT.unlink(missing_ok=True)
+    subprocess.run(
+        [sys.executable, "scripts/collect_xau_decision_readonly.py", str(ARTIFACT)],
+        check=True, timeout=90,
+    )
     payload = json.loads(ARTIFACT.read_text())
     publish(payload)
+    return payload["as_of"]
+
+
+def run_loop(*, duration_seconds=3300, cycle_fn=cycle, clock=time.monotonic,
+             wait=time.sleep):
+    """Bounded runner, retried collection, then workflow queues a replacement."""
+    duration_seconds = min(3300, max(1, int(duration_seconds)))
+    until = clock() + duration_seconds
+    successes = 0
+    while clock() < until:
+        started = clock()
+        try:
+            observed = cycle_fn()
+            successes += 1
+            print("XAU_DECISION_CYCLE_OK original_at=" + observed, flush=True)
+        except (ValueError, RuntimeError, OSError, KeyError,
+                subprocess.SubprocessError) as exc:
+            print("XAU_DECISION_CYCLE_SKIPPED reason=" + type(exc).__name__, flush=True)
+        delay = min(max(0, 45-(clock()-started)), max(0, until-clock()))
+        if delay > 0:
+            wait(delay)
+    if not successes:
+        raise RuntimeError("XAU_DECISION_NO_FRESH_PUBLICATIONS")
+    return successes
+
+
+def main():
+    run_loop(duration_seconds=int(os.environ.get("XAU_DECISION_LOOP_SECONDS", "3300")))
 
 
 if __name__ == "__main__":
