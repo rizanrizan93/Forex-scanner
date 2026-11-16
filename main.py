@@ -20,13 +20,13 @@ def load_zone_panel(source_revision):
 def navigate_pair():
     pair = st.session_state["rizan_pair"]
     detail = st.session_state.get("_rizan_last_xau_detail", "Zona reversal")
-    st.switch_page(PAGES[(pair, detail if pair == "XAUUSD" else "Setup")])
+    st.session_state["_rizan_pending_route"] = (pair, detail if pair == "XAUUSD" else "Setup")
 
 
 def navigate_detail():
     detail = st.session_state["rizan_xau_detail"]
     st.session_state["_rizan_last_xau_detail"] = detail
-    st.switch_page(PAGES[("XAUUSD", detail)])
+    st.session_state["_rizan_pending_route"] = ("XAUUSD", detail)
 
 
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
@@ -157,4 +157,10 @@ for slug, pair, detail in ROUTE_SPECS:
     PAGES[(pair, detail)] = page
     routes.append(page)
 routes.append(st.Page(render_cbot_webview, title="RIZAN cBot Plugin", url_path="cbot-plugin"))
-st.navigation(routes, position="hidden").run()
+active_page = st.navigation(routes, position="hidden")
+pending_route = st.session_state.pop("_rizan_pending_route", None)
+if pending_route is not None:
+    # Run outside widget callbacks: rerun/switch requests inside a callback
+    # can be ignored by Streamlit and leave the previous page on screen.
+    st.switch_page(PAGES[pending_route])
+active_page.run()
