@@ -33,7 +33,8 @@ def test_mobile_navigation_is_scrollable_and_reuses_original_session_keys():
     assert '"USD Lead", "Teknikal", "Demand", "Pre-News", "Makro"' in src
     assert '("USD_Lead_Engine", "XAUUSD", "USD Lead")' in src
     assert '("XAU_Decision_Checklist", "XAUUSD", "Checklist")' in src
-    assert 'st.navigation(routes, position="hidden").run()' in src
+    assert 'active_page = st.navigation(routes, position="hidden")' in src
+    assert "active_page.run()" in src
 
 
 def test_every_xau_navigation_label_has_a_section_description():

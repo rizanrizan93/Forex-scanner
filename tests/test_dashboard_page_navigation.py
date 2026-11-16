@@ -22,6 +22,7 @@ def test_switches_cancel_old_panel_and_return_to_zone(monkeypatch):
     for detail, marker in [('USD Lead','5_USD_Lead_Engine.py'),('Teknikal','6_XAU_Technical_Engine.py'),('Makro','2_US10Y_Regime_Timing.py'),('Checklist','4_XAU_Decision_Checklist.py'),('Zona reversal','ZONE PANEL')]:
         at.radio(key='rizan_xau_detail').set_value(detail).run()
         assert not at.exception
+        assert not any("no-op" in str(x.value) for x in at.warning)
         assert at.radio(key='rizan_xau_detail').value == detail
         text='\n'.join(str(x.value) for x in at.markdown)
         assert marker in text
