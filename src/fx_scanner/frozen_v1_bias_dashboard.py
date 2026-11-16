@@ -52,10 +52,10 @@ def _read(kind: str):
 
 def _panel():
     now = datetime.now(timezone.utc)
-    st.subheader("Frozen V1 · Bias BUY vs SELL")
+    st.subheader("Frozen V1 · Pola BUY vs SELL")
     st.caption(
         "LIVE ••••7903 · profil RIZAN_BOOTSTRAP125_V1_FROZEN_20261114 · "
-        "skor berbasis subset aturan candle frozen, bukan skor SMC/ICT dan "
+        "skor kecocokan sebagian pola frozen, bukan skor kesiapan eksekusi, dan "
         "bukan probabilitas menang."
     )
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -93,11 +93,13 @@ def _panel():
         with tab:
             item = report["symbols"][symbol]
             st.markdown("#### " + symbol)
-            st.write("**Bias:** " + item["bias"])
+            st.write("**Bias pola:** " + item["bias"])
+            st.caption("Kesiapan native: BELUM DIVERIFIKASI. Skor terbaik hanya salah satu "
+                       "keluarga entry, tidak berarti semua guard V1 terpenuhi.")
             bcol, scol = st.columns(2)
             for col, side in ((bcol, "BUY"), (scol, "SELL")):
                 d = item[side]
-                col.metric(side + " · skor V1", _fmt_score(d["score"]))
+                col.metric(side + " · skor pola parsial", _fmt_score(d["score"]))
                 col.caption("Cakupan keluarga terbaik: " + str(d["coverage"]) + "/100"
                             + (" · " + d["family"] if d["family"] else ""))
                 if d["score"] is not None:
@@ -131,6 +133,7 @@ def _panel():
         "filter berita/yield, broker dan weekend guard tidak disederhanakan. "
         "Tidak ada klaim missed order tanpa native intent + Journal + broker history."
     )
+    st.markdown("[Buka Panel Konsensus V1](https://forexrizan.streamlit.app/Konsensus_V1)")
     st.markdown("[Baca kontrak Frozen V1](" + SOURCE_URL + ")")
 
 
