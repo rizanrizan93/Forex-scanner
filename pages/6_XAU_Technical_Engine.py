@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 import streamlit as st
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT/'src') not in sys.path:
@@ -27,6 +28,12 @@ def render():
     report=evaluate_technical(feed,now=now)
     st.metric('Arah teknikal',report['direction'])
     st.caption('Sumber: cTrader market data read-only · observasi snapshot '+str(feed.get('as_of') or 'belum tersedia'))
+    if feed:
+        observed=datetime.fromisoformat(feed['as_of'])
+        closed=datetime.fromisoformat(feed['bars']['M5'][-1]['closed_at'])
+        st.caption('Pembaruan '+observed.astimezone(ZoneInfo('Asia/Jakarta')).strftime('%H:%M:%S WIB')+
+                   ' · candle M5 terakhir '+closed.astimezone(ZoneInfo('Asia/Jakarta')).strftime('%H:%M WIB')+
+                   ' · usia snapshot '+str(max(0,int((now-observed).total_seconds())))+' detik')
     if error:
         st.warning('WAIT DATA · '+error)
     elif report['BUY']['state'] == 'WAIT_CANDLE':

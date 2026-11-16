@@ -88,7 +88,7 @@ def test_cached_raw_m5_uses_cache_busted_contents_api():
         if 'api.github.com' in request.full_url:
             return Response(json.dumps({'encoding':'base64','content':base64.b64encode(json.dumps(new).encode()).decode()}).encode())
         return Response(json.dumps(old).encode())
-    result = fetch_decision_candles(now=NOW, opener=opener)
+    result = fetch_decision_candles(now=NOW, opener=opener, direct_url=None)
     assert result['as_of'] == NOW.isoformat()
     assert len(urls) == 3
     assert '/refs/heads/' in urls[1]
@@ -102,7 +102,7 @@ def test_delivery_diagnostics_do_not_leak_http_url_or_body():
     def opener(request, timeout):
         raise HTTPError('https://host/?private_token=SECRET',429,'SECRET',{},None)
     with pytest.raises(ValueError) as raised:
-        fetch_decision_candles(now=NOW, opener=opener)
+        fetch_decision_candles(now=NOW, opener=opener, direct_url=None)
     message = str(raised.value)
     assert 'raw=HTTP_429' in message and 'api=HTTP_429' in message
     assert 'SECRET' not in message and 'https' not in message
@@ -119,7 +119,7 @@ def test_raw_ref_recovers_latest_candle_without_calling_rate_limited_api():
         urls.append(request.full_url)
         assert 'api.github.com' not in request.full_url
         return BytesIO(json.dumps(new if '/refs/heads/' in request.full_url else old).encode())
-    assert fetch_decision_candles(now=NOW, opener=opener) == new
+    assert fetch_decision_candles(now=NOW, opener=opener, direct_url=None) == new
     assert len(urls) == 2
 
 
@@ -134,7 +134,7 @@ def test_api_403_keeps_valid_history_but_never_revives_expired_setup():
         if 'api.github.com' in request.full_url:
             raise HTTPError(request.full_url, 403, 'rate limit', {}, None)
         return BytesIO(json.dumps(old).encode())
-    feed = fetch_decision_candles(now=NOW, opener=opener)
+    feed = fetch_decision_candles(now=NOW, opener=opener, direct_url=None)
     assert feed['as_of'] == old['as_of']
     report = evaluate_technical(feed, now=NOW)
     assert report['direction'] == 'WAIT'
@@ -153,4 +153,4 @@ def test_old_raw_and_api_403_still_fail_closed():
             raise HTTPError(request.full_url, 403, 'rate limit', {}, None)
         return BytesIO(json.dumps(old).encode())
     with pytest.raises(ValueError, match='CLOSED_CANDLE_FEED_STALE_OR_UNAVAILABLE'):
-        fetch_decision_candles(now=NOW, opener=opener)
+        fetch_decision_candles(now=NOW, opener=opener, direct_url=None)

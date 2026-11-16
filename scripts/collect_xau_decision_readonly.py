@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fx_scanner.xau_decision_checklist_v1 import CANDLE_CONTRACT, REQUIRED_BARS, closed_bars
-from scripts.collect_xau_m15_readonly import ReadOnly
+from fx_scanner.execution.ctrader_market_readonly import ReadOnly
 
 ACCOUNT_SUFFIX = "7903"
 TIMEFRAMES = {

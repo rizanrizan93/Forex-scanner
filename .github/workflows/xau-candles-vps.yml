@@ -1,0 +1,82 @@
+name: XAU direct candle data path
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xau-candles-vps.yml'
+      - 'operations/xau_candles/**'
+      - 'scripts/collect_xau_decision_readonly.py'
+      - 'src/fx_scanner/execution/ctrader_market_readonly.py'
+permissions:
+  contents: read
+concurrency:
+  group: xau-direct-candle-install
+  cancel-in-progress: false
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test data validation and read-only isolation
+        run: |
+          python -m pip install pytest==9.0.2
+          PYTHONPATH=src:. python -m pytest -q tests/test_xau_decision_readonly_feed_v1.py tests/test_xau_technical_engine_v1.py tests/test_xau_candles_vps.py
+      - name: Install dedicated candle timer and no-cache static endpoint
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          remote=''
+          opts=()
+          host='Rizanrizan@202.74.74.172'
+          cleanup() {
+            if [[ -n "$remote" ]]; then ssh "${opts[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15)
+          remote=$(ssh "${opts[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-xau-candles.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-xau-candles\.[a-zA-Z0-9]+$ ]]
+          mkdir -p "$d/stage/scripts" "$d/stage/operations/xau_candles" "$d/stage/src/fx_scanner/execution"
+          cp scripts/collect_xau_decision_readonly.py "$d/stage/scripts/"
+          cp operations/xau_candles/*.py "$d/stage/operations/xau_candles/"
+          cp src/fx_scanner/__init__.py src/fx_scanner/models.py src/fx_scanner/exceptions.py src/fx_scanner/xau_decision_checklist_v1.py src/fx_scanner/xau_decision_candle_feed_v1.py "$d/stage/src/fx_scanner/"
+          cp src/fx_scanner/execution/ctrader_session.py src/fx_scanner/execution/ctrader_market_readonly.py "$d/stage/src/fx_scanner/execution/"
+          scp -q -r "${opts[@]}" "$d/stage" "$host:$remote/"
+          ssh "${opts[@]}" "$host" "sudo -n /usr/bin/python3 '$remote/stage/operations/xau_candles/install.py' '$remote/stage'"
+      - name: Verify three advancing direct snapshots and real closed candles
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python -u - <<'PY'
+          import json,time
+          from datetime import UTC,datetime
+          from urllib.request import Request,urlopen
+          from fx_scanner.xau_decision_candle_feed_v1 import DIRECT_URL,validate_candle_snapshot
+          values=[]
+          for i in range(3):
+              with urlopen(Request(DIRECT_URL,headers={'Cache-Control':'no-cache'}),timeout=10) as response:
+                  assert 'no-store' in response.headers.get('Cache-Control',''), 'CACHE_NOT_DISABLED'
+                  payload=validate_candle_snapshot(json.load(response),now=datetime.now(UTC))
+              age=(datetime.now(UTC)-datetime.fromisoformat(payload['as_of'])).total_seconds()
+              assert 0 <= age < 60, 'DIRECT_CANDLE_PUBLICATION_LATE'
+              values.append(payload['as_of'])
+              print('DIRECT_CANDLES_FRESH',payload['as_of'],'M5',payload['bars']['M5'][-1]['closed_at'],'age',round(age,2),flush=True)
+              if i<2: time.sleep(25)
+          assert len(set(values))==3, 'CANDLE_TIMER_NOT_ADVANCING'
+          PY

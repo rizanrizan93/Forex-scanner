@@ -20,6 +20,8 @@ ROOT = "https://raw.githubusercontent.com/" + REPOSITORY + "/"
 CONTENTS = "https://api.github.com/repos/" + REPOSITORY + "/contents/"
 MAX_PAYLOAD_BYTES = 196608
 MAX_SNAPSHOT_AGE_SECONDS = 600
+DIRECT_URL = 'https://rizan-bridge.duckdns.org:25345/bootstrap125/xau-candles.json'
+MAX_DIRECT_AGE_SECONDS = 90
 
 
 def validate_candle_snapshot(payload, *, now: datetime | None = None) -> dict:
@@ -74,22 +76,29 @@ def _safe_failure(exc):
 
 
 def fetch_decision_candles(*, now: datetime | None = None, opener=urlopen,
-                           timeout_seconds: float = 6.) -> dict:
+                           timeout_seconds: float = 6., direct_url=DIRECT_URL) -> dict:
     now = now or datetime.now(UTC)
     errors = []
     slot = str(int(now.timestamp() // 20))
     candidates = []
     # The explicit refs/heads route has an independent CDN cache key. Prefer
     # public raw delivery over the unauthenticated API's shared-IP rate limit.
-    routes = (
+    routes = []
+    if direct_url:
+        routes.append(('vps', direct_url+'?slot='+slot, False))
+    routes.extend((
         ("raw", ROOT + BRANCH + "/" + PATH + "?slot=" + slot, False),
         ("raw_ref", ROOT + "refs/heads/" + BRANCH + "/" + PATH + "?slot=" + slot, False),
         ("api", CONTENTS + PATH + "?ref=" + BRANCH + "&slot=" + slot, True),
-    )
+    ))
     for name, url, api in routes:
         try:
-            source = _read(url, opener=opener, timeout=timeout_seconds, api=api)
+            source = _read(url, opener=opener,
+                           timeout=min(timeout_seconds, 3.) if name == 'vps' else timeout_seconds,
+                           api=api)
             validated = validate_candle_snapshot(source, now=now)
+            if name == 'vps' and (now-stamp(validated['as_of'])).total_seconds() > MAX_DIRECT_AGE_SECONDS:
+                raise ValueError('XAU_DECISION_DIRECT_PUBLICATION_LATE')
             candidates.append(validated)
             latest_m5 = stamp(validated["bars"]["M5"][-1]["closed_at"])
             if latest_m5 is not None and (now-latest_m5).total_seconds() < 300:
