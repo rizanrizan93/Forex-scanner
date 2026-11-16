@@ -97,3 +97,31 @@ def test_checklist_and_usd_lead_use_same_presentational_helper_without_logic_edi
     assert "structure_fresh=market_fresh" in xau
     assert "broker_spec=broker_spec" in xau
     assert "Frozen V1" in usd
+
+
+
+def test_streamlit_components_render_without_any_backend_or_quotes():
+    from streamlit.testing.v1 import AppTest
+    source = """
+import sys
+sys.path.insert(0, "src")
+import streamlit as st
+from fx_scanner.ui_terminal import (
+    TERMINAL_CSS, render_brand, render_section_intro,
+    render_condition, render_progress,
+)
+st.set_page_config(page_title="RIZAN UI smoke", layout="wide")
+st.markdown(TERMINAL_CSS, unsafe_allow_html=True)
+render_brand(st)
+render_section_intro(st, pair="XAUUSD", detail="USD Lead")
+render_progress(st, passed=2, failed=1, unknown=1, total=4)
+render_condition(st, title="US2Y spread", state="PASS", detail="Official published daily")
+render_condition(st, title="DXY", state="UNKNOWN", detail="Quote stale")
+"""
+    app = AppTest.from_string(source, default_timeout=12).run()
+    assert not app.exception
+    rendered = "\n".join(str(x.value) for x in app.markdown)
+    assert "RIZAN" in rendered
+    assert "USD Lead" in rendered
+    assert "2/4 terpenuhi" in rendered
+    assert "DATA BELUM VALID" in rendered
