@@ -9,6 +9,7 @@ import base64
 import json
 from datetime import UTC, datetime
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from .xau_decision_checklist_v1 import CANDLE_CONTRACT, REQUIRED_BARS, closed_bars, stamp
 
@@ -60,13 +61,27 @@ def _read(url: str, *, opener, timeout: float, api: bool) -> dict:
     return obj
 
 
+def _safe_failure(exc):
+    # Never expose request URLs, credential headers, response bodies or secrets.
+    if isinstance(exc, HTTPError):
+        return "HTTP_" + str(exc.code)
+    if isinstance(exc, URLError):
+        return "NETWORK_UNAVAILABLE"
+    if isinstance(exc, ValueError):
+        code = str(exc).split(":", 1)[0]
+        return code if code.startswith("XAU_DECISION_") else "PAYLOAD_INVALID"
+    return type(exc).__name__
+
+
 def fetch_decision_candles(*, now: datetime | None = None, opener=urlopen,
                            timeout_seconds: float = 6.) -> dict:
     now = now or datetime.now(UTC)
+    errors = []
+    slot = str(int(now.timestamp() // 20))
     try:
         source = _read(
             ROOT + BRANCH + "/" + PATH + "?slot=" +
-            str(int(now.timestamp() // 60)),
+            slot,
             opener=opener, timeout=timeout_seconds, api=False,
         )
         validated = validate_candle_snapshot(source, now=now)
@@ -77,13 +92,14 @@ def fetch_decision_candles(*, now: datetime | None = None, opener=urlopen,
         if latest_m5 is None or (now-latest_m5).total_seconds() >= 300:
             raise ValueError("XAU_DECISION_CDN_M5_RETRY_API")
         return validated
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
-        pass
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        errors.append("raw=" + _safe_failure(exc))
     try:
         source = _read(
-            CONTENTS + PATH + "?ref=" + BRANCH,
+            CONTENTS + PATH + "?ref=" + BRANCH + "&slot=" + slot,
             opener=opener, timeout=timeout_seconds, api=True,
         )
         return validate_candle_snapshot(source, now=now)
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        raise ValueError("XAU_DECISION_CLOSED_CANDLE_FEED_STALE_OR_UNAVAILABLE") from exc
+        errors.append("api=" + _safe_failure(exc))
+        raise ValueError("XAU_DECISION_CLOSED_CANDLE_FEED_STALE_OR_UNAVAILABLE [" + "; ".join(errors) + "]") from exc
