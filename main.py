@@ -41,10 +41,10 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
     # Normalize the two former navigation labels after a live Streamlit reload.
-    if st.session_state.get("rizan_xau_detail") in {"USD Lead", "Teknikal"}:
-        st.session_state["rizan_xau_detail"] = "Teknikal + USD Lead"
-    if st.session_state.get("_rizan_last_xau_detail") in {"USD Lead", "Teknikal"}:
-        st.session_state["_rizan_last_xau_detail"] = "Teknikal + USD Lead"
+    if st.session_state.get("rizan_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead"}:
+        st.session_state["rizan_xau_detail"] = "Analisis Terpadu"
+    if st.session_state.get("_rizan_last_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead"}:
+        st.session_state["_rizan_last_xau_detail"] = "Analisis Terpadu"
     # Keep navigation outside legacy page/tab containers. A child page may
     # stop or rerun, but must never own or replace the primary navigation.
     with st.container(key="rizan_primary_navigation"):
@@ -68,7 +68,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Checklist", "Teknikal + USD Lead", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Analisis Terpadu", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -77,7 +77,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                     horizontal=True, label_visibility="collapsed",
                     on_change=navigate_detail,
                 )
-            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/4_XAU_Decision_Checklist.py", "pages/6_XAU_Technical_Engine.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/7_XAU_Unified_Decision.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
@@ -104,25 +104,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                                 render_selected_raw_reference("XAUUSD")
                                 render_frozen_core()
                                 render_cross_asset("XAUUSD")
-                            if label == "Teknikal + USD Lead":
-                                # One navigation tab, two independently refreshing,
-                                # read-only checklists. Keep both source engines intact.
-                                for panel_name, panel_path in (
-                                    ("Teknikal", "pages/6_XAU_Technical_Engine.py"),
-                                    ("USD Lead", "pages/5_USD_Lead_Engine.py"),
-                                ):
-                                    if panel_name == "USD Lead":
-                                        st.divider()
-                                    try:
-                                        runpy.run_path(
-                                            str(ROOT / panel_path), run_name="__main__"
-                                        )
-                                    except Exception as exc:
-                                        st.warning(
-                                            panel_name + " belum dapat dimuat: "
-                                            + type(exc).__name__
-                                        )
-                            elif label in {"Hierarki zona", "Makro"}:
+                            if label in {"Hierarki zona", "Makro"}:
                                 # M15 forecast must update within the first minutes
                                 # of a candle, rather than wait for a 60s UI rerun.
                                 interval = "15s" if label == "Makro" else "60s"
