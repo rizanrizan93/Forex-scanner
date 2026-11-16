@@ -32,6 +32,9 @@ def _compute(rows, *, source):
     }
     if not rows or len(rows) < 11:
         return default
+    # A fixed 11-H1 window makes the EMA bootstrap comparable across feeds
+    # with different available history lengths (11 broker vs 210 research).
+    rows = rows[-11:]
     last, previous = rows[-1], rows[-2]
     # Rows may come from either normalized transport; no forming candles.
     current_at = last["at"]
