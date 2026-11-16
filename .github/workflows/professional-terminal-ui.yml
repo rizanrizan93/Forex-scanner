@@ -1,0 +1,50 @@
+name: Professional ForexScanner UI Regression
+
+on:
+  pull_request:
+    paths:
+      - "main.py"
+      - ".streamlit/config.toml"
+      - "src/fx_scanner/ui_terminal.py"
+      - "pages/4_XAU_Decision_Checklist.py"
+      - "pages/5_USD_Lead_Engine.py"
+      - "tests/test_professional_terminal_ui.py"
+      - ".github/workflows/professional-terminal-ui.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install same dependencies used by Streamlit Cloud
+        run: python -m pip install -r requirements.txt
+      - name: Check syntax and theme TOML
+        run: |
+          python -m py_compile main.py src/fx_scanner/ui_terminal.py
+          python -m py_compile pages/4_XAU_Decision_Checklist.py
+          python -m py_compile pages/5_USD_Lead_Engine.py
+          python - <<'PY'
+          import tomllib
+          with open(".streamlit/config.toml", "rb") as f:
+              config = tomllib.load(f)
+          assert config["theme"]["base"] == "dark"
+          print("TERMINAL_THEME_TOML_VALID")
+          PY
+      - name: Verify navigation, accessibility, escaping and signal isolation
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_professional_terminal_ui.py
+      - name: Verify USD Lead and yield decision engine still work
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_usd_lead_decision_v1.py tests/test_usd_lead_yield_bidirectional_v2.py tests/test_xau_decision_checklist_v1.py
