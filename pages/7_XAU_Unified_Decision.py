@@ -153,7 +153,8 @@ def render():
     left, right, choice = st.columns(3)
     for widget, side in ((left, "BUY"), (right, "SELL")):
         score = opportunity[side]
-        widget.metric(side + " · skor riset", f'{score["score"]:.1f}/100', score["state"])
+        widget.metric(side + " · skor riset", f'{score["score"]:.1f}/100')
+        widget.caption(score["state"])
     choice.metric("Fokus pemantauan", opportunity["preferred"])
     st.caption(
         "Bobot awal riset: SMC/ICT 40% · EMA/ADX/BOS 25% · USD Lead 15% · "
