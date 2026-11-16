@@ -52,6 +52,14 @@ def _rows(market: Mapping | None, symbol: str, frame: str, now: datetime, minimu
             return None
         bars.append({"at": at, "o": o, "h": h, "l": l, "c": c})
         last = at
+    # An older bar must never be reused once the broker has published past
+    # the expected new close boundary. H4 is session-anchored by the broker.
+    if sec <= 3600:
+        expected_close = datetime.fromtimestamp(
+            int(observed.timestamp()) // sec * sec, tz=timezone.utc
+        )
+        if bars[-1]["at"] + timedelta(seconds=sec) != expected_close:
+            return None
     age = (now - (bars[-1]["at"] + timedelta(seconds=sec))).total_seconds()
     if not 0 <= age <= max(180, sec):
         return None
@@ -174,6 +182,12 @@ def _closed_m15_from_m1(market, now):
     if len(aggregates) < 9:
         return None
     last = aggregates[-1]["at"] + timedelta(minutes=15)
+    observed = stamp(market.get("observed_at"))
+    expected_close = observed.replace(
+        minute=observed.minute // 15 * 15, second=0, microsecond=0
+    )
+    if last != expected_close:
+        return None
     if not 0 <= (now - last).total_seconds() <= 1080:
         return None
     return aggregates
