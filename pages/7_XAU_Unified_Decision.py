@@ -20,6 +20,7 @@ from fx_scanner.xau_decision_checklist_v1 import evaluate_checklist, obj, stamp
 from fx_scanner.xau_technical_engine_v1 import evaluate_technical
 from fx_scanner.xau_unified_decision_v1 import evaluate_unified
 from fx_scanner.xau_weighted_opportunity_v1 import evaluate_opportunity
+from fx_scanner.xau_rebound_dip_v1 import evaluate_rebound_dip
 from fx_scanner.xau_stable_h1_context import from_research_candles, explain_vs_fast
 from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y, pair_with_treasury_2y
 from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
@@ -94,6 +95,49 @@ def render():
     opportunity = evaluate_opportunity(
         unified=unified, technical=technical, checklist=checklist
     )
+    tactical = evaluate_rebound_dip(
+        candles, technical, checklist, usd, yield_pressure, evaluation, now=now
+    )
+    st.subheader("Rencana entry · SELL on rebound vs BUY the dip")
+    st.metric("Preferensi riset makro + H1", tactical["preferred"])
+    st.caption(tactical["reason"])
+    st.caption(
+        "Candle tertutup: " + str(tactical.get("candle_closed_at") or "WAIT DATA")
+        + " · close referensi: " + str(tactical.get("reference_close"))
+        + " · data news actual hanya dipakai jika terverifikasi dan <60 menit."
+    )
+    for scenario, title in (("SELL", "SELL on rebound"), ("BUY", "BUY the dip")):
+        row = tactical[scenario]
+        with st.expander(
+            title + " · " + row["state"]
+            + (" · skor " + str(row["score"]) + "/100" if row["score"] is not None else ""),
+            expanded=scenario == "SELL",
+        ):
+            st.caption("Skor checklist adalah kelengkapan konfluensi, BUKAN probabilitas profit.")
+            for item in row["conditions"]:
+                render_condition(st, title=item["name"], state=item["state"],
+                                 detail="Konfluensi strategi read-only")
+            for i, zone in enumerate(row["zones"], start=1):
+                targets = ", ".join("%.2f" % v for v in zone["targets"]) or "belum ada target likuiditas"
+                rr = ("%.2fR" % zone["rr_before_costs"]
+                      if zone["rr_before_costs"] is not None else "belum dapat dihitung")
+                st.write(
+                    "Zona %d: %.2f–%.2f · level %.2f · SL indikatif %.2f · "
+                    "TP likuiditas %s · RR bruto %s"
+                    % (i, zone["low"], zone["high"], zone["reference_entry"],
+                       zone["structural_sl_estimate"], targets, rr)
+                )
+            if row.get("countertrend"):
+                st.warning("Countertrend H1; hanya watch, bukan pembenaran BUY/SELL tanpa reversal.")
+            st.caption("SL/TP dari struktur candle historis, bukan quote eksekusi. "
+                       "Spread, slippage, equity, margin, dan lot LIVE harus dicek terpisah.")
+    with st.expander("Audit preferensi makro & berita"):
+        st.write("Arah: " + tactical["macro"]["direction"]
+                 + " · suara bersih: " + str(tactical["macro"]["net_votes"]))
+        for fact in tactical["macro"]["evidence"]:
+            st.write("• " + fact)
+        st.caption(tactical["macro"]["note"])
+    st.caption("SHADOW ONLY · Tidak mengirim order, tidak memodifikasi Frozen V1/bridge/cBot.")
     stable_h1 = from_research_candles(candles, now)
     st.metric("Konteks H1 stabil (2 candle tertutup)", stable_h1["direction"])
     st.caption(explain_vs_fast(stable_h1, opportunity["preferred"]))
