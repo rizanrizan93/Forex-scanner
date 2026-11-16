@@ -91,7 +91,7 @@ def test_bidirectional_buy_and_sell_watch_with_confirmed_yield():
         assert result[key]["status"] == expected_state
         assert result[key]["yield_confirmation_required"] is True
         assert result[key]["yield_confirmation_met"] is True
-        assert result[key]["passed"] == 7  # 8 rows; no news actual / spread
+        assert result[key]["passed"] == 6  # 8 rows; news and spread unverified
         assert len(result[key]["rows"]) == 8
         assert result["execution_authority"] is False
 
