@@ -240,12 +240,25 @@ def evaluate_usd_lead(
         counter = sum(m[key] == "FAIL" for key in ("fed", "us2y", "spread"))
         # DXY confirmation is NOT counted as a lead. Optional news never
         # creates a lead without independent monetary-policy/rates evidence.
-        macro_watch = known_leading >= 2 and counter == 0 and m["dxy"] == "PASS"
+        # The daily US2Y change and US-DE spread share the SAME US2Y leg.
+        # Do not misrepresent them as independent forecasting confirmations.
+        macro_watch = (
+            m["fed"] == "PASS"
+            and (m["us2y"] == "PASS" or m["spread"] == "PASS")
+            and counter == 0 and m["dxy"] == "PASS"
+        )
+        rates_only = (
+            not macro_watch and m["fed"] == "UNKNOWN"
+            and m["us2y"] == "PASS" and m["spread"] == "PASS"
+            and m["dxy"] == "PASS"
+        )
         full = macro_watch and m["real"] == "PASS" and m["xau"] == "PASS"
         if full:
             state = "XAU_SELL_SHADOW_WATCH" if side == "UP" else "XAU_BUY_SHADOW_WATCH"
         elif macro_watch:
             state = "USD_DIRECTION_WATCH_ONLY"
+        elif rates_only:
+            state = "USD_DAILY_RATES_WATCH_ONLY"
         else:
             state = "WAIT"
         rowsets[side] = {
