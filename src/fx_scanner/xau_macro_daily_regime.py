@@ -94,6 +94,7 @@ def assess_daily_regime(
     missing: list[str] = []
     components = []
     yield_times = []
+    yield_directions: dict[str, int] = {}
     for name, weight in YIELD_WEIGHTS.items():
         item = yields.get(name) or {}
         at, delta = item.get("observed_at"), _number(item.get("delta"))
@@ -106,6 +107,7 @@ def assess_daily_regime(
             available += weight
             yield_times.append(_dt(at))
             direction = -1 if delta >= 1.0 else 1 if delta <= -1.0 else 0
+            yield_directions[name] = direction
             signed_sum += weight * direction
         else:
             missing.append(name)
@@ -113,6 +115,22 @@ def assess_daily_regime(
             "name": name, "valid": valid, "timestamp": at,
             "provider": item.get("provider"), "delta_bps": delta,
         })
+    # +1 = bullish XAU (falling yields); -1 = bearish XAU (rising yields).
+    # Keep nominal Treasury yields distinct from inflation-adjusted real yield.
+    real_direction = yield_directions.get("REAL_YIELD_10Y")
+    nominal_votes = [
+        yield_directions[name] for name in ("US2Y", "US10Y")
+        if name in yield_directions and yield_directions[name] != 0
+    ]
+    nominal_direction = (
+        1 if nominal_votes and all(v == 1 for v in nominal_votes)
+        else -1 if nominal_votes and all(v == -1 for v in nominal_votes)
+        else 0 if nominal_votes else None
+    )
+    yield_divergence = bool(
+        real_direction in (-1, 1) and nominal_direction in (-1, 1)
+        and real_direction != nominal_direction
+    )
     treasury_valid = n_yields >= 2 and available >= 0.49
     treasury_score = signed_sum / available if treasury_valid else None
 
@@ -148,6 +166,9 @@ def assess_daily_regime(
         "status": status, "bias": bias, "score": score,
         "coverage_pct": coverage, "treasury_direction": treasury_score,
         "dxy_direction": dollar_direction, "components": components,
+        "nominal_yield_direction": nominal_direction,
+        "real_yield_direction": real_direction,
+        "yield_divergence": yield_divergence,
         "dxy_timestamp": dxy_last.get("observed"),
         "dxy_source": source, "dxy_pct": pct,
         "missing": missing,
