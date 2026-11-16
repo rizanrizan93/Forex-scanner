@@ -55,6 +55,12 @@ jobs:
           python - <<'PY'
           from datetime import datetime, UTC
           from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y
+          from urllib.request import Request, urlopen
+          from fx_scanner.usd_lead_bund_2y_v1 import BUND_URL
+          url = BUND_URL + "?format=csv&lang=en&startPeriod=2026-11-01"
+          with urlopen(Request(url, headers={"User-Agent": "RIZAN-USD-Lead-DailyBund/1"}), timeout=12) as response:
+              sample = response.read(4096)
+          print("BUNDESBANK_PUBLIC_CSV_FIRST_LINES", repr(sample.decode("utf-8-sig", "replace")[:3000]), flush=True)
           result = fetch_bundesbank_2y(now=datetime.now(UTC), timeout_seconds=12)
           print("BUNDESBANK_OFFICIAL_SOURCE_OK", result["series"],
                 len(result["daily"]), sorted(result["daily"])[-3:])
