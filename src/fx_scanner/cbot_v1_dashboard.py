@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
+from fx_scanner.cbot_v1_evidence import evidence
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
@@ -17,6 +19,7 @@ SOURCE_URL = ("https://github.com/rizanrizan93/Forex-scanner/blob/"
               "repairs/bootstrap125_v1_20261114/STRATEGY_V1_FROZEN.md")
 DIRECT_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/status.json"
 BROKER_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/broker.json"
+MARKET_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/market.json"
 WIB = ZoneInfo("Asia/Jakarta")
 
 
@@ -87,7 +90,7 @@ def evaluate_snapshot(raw, *, now=None):
             "roles": by_role, "statuses": states, "payload": raw, "now": now}
 
 
-def checklist(model, symbol):
+def checklist(model, symbol, *, market=None, broker=None):
     """Three-state evidence: a measured false gate differs from missing data."""
     rows = []
     def add(name, value, detail):
@@ -146,21 +149,25 @@ def checklist(model, symbol):
             ("XAU: displacement 12:00–00:00 WIB; compression 19:00–00:00 WIB" if symbol == "XAUUSD"
              else "EUR: keluarga sinyal mulai 14:00 WIB; incumbent sampai 19:00, AsiaBuy sampai 00:00 WIB") +
             "; jam terbuka belum membuktikan pola candle atau guard lolos")
-    for name in setup:
-        add(name, None, "Menunggu candle broker dan evaluasi independen V1")
+    if market is not None or broker is not None:
+        for name, value, detail in evidence(market, broker, symbol, phase, model["now"] if model else datetime.now(timezone.utc)):
+            add(name, value, detail)
+    else:
+        for name in setup:
+            add(name, None, "Sumber market belum terbaca; evaluasi candle belum tersedia")
     for name, detail in (
-        ("Trigger entry, sesi dan filter bawaan lolos", "Menunggu evaluasi trigger serta waktu/filter V1"),
+        ("Trigger entry, sesi dan filter bawaan lolos", "Lihat predikat candle di atas; validasi penuh memerlukan warmup/state native dan filter point-in-time"),
         ("Risk, minlot, volume dan margin lolos", "Menunggu equity, exposure dan spesifikasi broker"),
-        ("Cooldown, exposure dan guard risiko sesuai fase lolos", "Menunggu state portofolio; Guard47 berlaku pada GROWTH"),
+        ("Cooldown, exposure dan guard risiko sesuai fase lolos", "Snapshot exposure diperiksa terpisah; cooldown dan Guard47 membutuhkan state portofolio pada waktu sinyal"),
         ("Kirim order dan AccountBinding siap", "Menunggu parameter aktual terminal"),
         ("PortfolioReady dan penerimaan feed terminal siap", "Menunggu telemetry terminal"),
-        ("Request order dan hasil broker tercocokkan", "Menunggu Journal dan riwayat broker"),
+        ("Request order dan hasil broker tercocokkan", "History broker diperiksa terpisah; perlu Journal request/intent untuk mencocokkan sinyal, termasuk request yang belum diterima broker"),
     ):
         add(name, None, detail)
     return rows
 
 
-def render_snapshot(raw=None, *, now=None, unavailable=False):
+def render_snapshot(raw=None, *, now=None, unavailable=False, market=None, broker=None):
     import streamlit as st
 
     st.subheader("cBots · Bootstrap125 V1")
@@ -193,11 +200,11 @@ def render_snapshot(raw=None, *, now=None, unavailable=False):
         ], hide_index=True, width="stretch")
         st.caption("Empat role koneksi berasal dari satu instance cBot. BOOTSTRAP mengelola fase; tiga role lain mengelola instrumen.")
     st.markdown("### Sinyal V1 dan eksekusi")
-    st.info("Aba-aba: UNKNOWN. Snapshot checkpoint belum memuat evaluasi candle independen, "
-            "seluruh guard, dan riwayat broker. Tidak ada dasar menyatakan tidak ada sinyal atau ada order terlewat.")
+    st.caption("Candle dan riwayat broker dinilai terpisah dari checkpoint. Predikat candle positif belum merupakan sinyal executable; "
+               "request sinyal hanya dapat dipastikan dengan bukti terminal yang cocok.")
     st.caption("✅ Terpenuhi · ❌ Belum terpenuhi berdasarkan bukti · ❓ Belum terverifikasi karena data belum tersedia. Checklist bukan tombol untuk mengirim order.")
     for symbol in ("XAUUSD", "EURUSD", "BTCUSD"):
-        checks = checklist(model, symbol)
+        checks = checklist(model, symbol, market=market, broker=broker)
         counts = [sum(r["Status"].startswith(mark) for r in checks) for mark in ("✅", "❌", "❓")]
         with st.expander(symbol + f" · ✅ {counts[0]} · ❌ {counts[1]} · ❓ {counts[2]}", expanded=True):
             if phase == "SEED" and symbol != "EURUSD":
@@ -214,7 +221,7 @@ def render_snapshot(raw=None, *, now=None, unavailable=False):
         st.markdown("**SEED — EURUSD BUY:** M5 tertutup bullish, close > high 64 bar sebelumnya + 0,05 ATR14; "
                     "EMA20 H4 > EMA80 H4 tertutup. Warmup 512 M5 / 1.024 H4. SL minimal 1,25 ATR sesuai rumus; TP 4R; "
                     "risiko rencana 8%, margin maksimal 50%; maksimum dua upaya/hari UTC; sinyal berlaku 60 detik.")
-        st.markdown("**GROWTH:** XAU compression/displacement (SL 2,4 ATR, TP 4,5R), EUR (target 10R, BE3), "
+        st.markdown("**GROWTH:** XAU compression dan incumbent mengikuti kontrak native; displacement BUY: SL 1,25 ATR / TP 12R; SELL: SL 1,5 ATR / TP 2R. EUR (target 10R, BE3), "
                     "BTC original + Break40 (BUY stop 2 ATR / TP 12R; SELL stop 1,5 ATR / TP 2R), Guard47 dan weekend policy asli. "
                     "Aturan lengkap, sizing dan filter mengikuti source frozen.")
         st.caption("Fase GROWTH tidak kembali ke SEED saat saldo turun. Guard47 bukan jaminan batas drawdown.")
@@ -225,9 +232,16 @@ def render_snapshot(raw=None, *, now=None, unavailable=False):
 
 def fetch_json(url, slot):
     request = Request(url + "?slot=" + str(slot), headers={"User-Agent": "RIZAN-V1-readonly/2", "Cache-Control": "no-cache"})
-    with urlopen(request, timeout=9) as response:
-        data = response.read(80_001)
-    if len(data) > 80_000:
+    limit = 4_000_000 if url == MARKET_URL else 80_000
+    for attempt in range(2):
+        try:
+            with urlopen(request, timeout=12) as response:
+                data = response.read(limit + 1)
+            break
+        except OSError:
+            if attempt:
+                raise
+    if len(data) > limit:
         raise ValueError("V1_MONITOR_TOO_LARGE")
     return json.loads(data)
 
@@ -274,23 +288,27 @@ def _render():
     import streamlit as st
 
     @st.cache_data(ttl=10, show_spinner=False)
-    def cached(slot):
-        return fetch_snapshot(slot)
+    def cached(kind, slot):
+        if kind == "status":
+            return fetch_snapshot(slot)
+        return fetch_json(MARKET_URL if kind == "market" else BROKER_URL, slot)
 
+    def read(kind):
+        try:
+            return cached(kind, int(datetime.now(timezone.utc).timestamp() // 10))
+        except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+            return None
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        raw, market, broker = list(pool.map(read, ("status", "market", "broker")))
+    now = datetime.now(timezone.utc)
     try:
-        now = datetime.now(timezone.utc)
-        raw = cached(int(now.timestamp() // 10))
-        evaluate_snapshot(raw, now=now)
-    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
-        render_snapshot(unavailable=True)
-    else:
-        render_snapshot(raw, now=now)
-    @st.cache_data(ttl=10, show_spinner=False)
-    def broker_cached(slot):
-        return fetch_json(BROKER_URL, slot)
+        render_snapshot(raw, now=now, unavailable=raw is None, market=market, broker=broker)
+    except (ValueError, TypeError, KeyError):
+        render_snapshot(unavailable=True, market=market, broker=broker)
     try:
-        render_broker(broker_cached(int(datetime.now(timezone.utc).timestamp() // 10)))
-    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+        render_broker(broker, now=now)
+    except (ValueError, TypeError, KeyError):
         st.warning("Riwayat broker V1 belum dapat dibaca; status order/fill tetap UNKNOWN.")
 
 
