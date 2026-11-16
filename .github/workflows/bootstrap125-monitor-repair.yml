@@ -1,0 +1,89 @@
+name: Bootstrap125 direct read-only monitor repair
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap125-monitor-repair.yml'
+      - 'operations/bootstrap125_monitor/**'
+      - 'scripts/publish_bootstrap125_status.py'
+      - 'scripts/read_bootstrap125_broker.py'
+permissions:
+  contents: read
+concurrency:
+  group: bootstrap125-monitor-repair
+  cancel-in-progress: false
+jobs:
+  install-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify collector contracts
+        run: |
+          python -m py_compile scripts/read_bootstrap125_broker.py scripts/read_bootstrap125_dashboard.py scripts/publish_bootstrap125_status.py operations/bootstrap125_monitor/install.py
+          PYTHONPATH=src python -m unittest discover -s tests -p 'test_cbot_v1_dashboard.py' -q
+      - name: Install independent status and broker readers
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+          CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+          CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          remote=''
+          opts=()
+          host='Rizanrizan@202.74.74.172'
+          cleanup() {
+            if [[ -n "$remote" ]]; then ssh "${opts[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15)
+          remote=$(ssh "${opts[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-v1-monitor.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-v1-monitor\.[a-zA-Z0-9]+$ ]]
+          mkdir -p "$d/stage/scripts" "$d/stage/operations/bootstrap125_monitor" "$d/stage/src/fx_scanner/execution"
+          cp scripts/read_bootstrap125_dashboard.py scripts/publish_bootstrap125_status.py scripts/read_bootstrap125_broker.py "$d/stage/scripts/"
+          cp operations/bootstrap125_monitor/install.py "$d/stage/operations/bootstrap125_monitor/"
+          cp src/fx_scanner/__init__.py src/fx_scanner/models.py src/fx_scanner/exceptions.py "$d/stage/src/fx_scanner/"
+          cp src/fx_scanner/execution/ctrader_session.py "$d/stage/src/fx_scanner/execution/"
+          STAGE="$d/stage" python - <<'PY'
+          import json,os,pathlib
+          values={k:os.environ[k] for k in ('CTRADER_CLIENT_ID','CTRADER_CLIENT_SECRET','CTRADER_ACCESS_TOKEN')}
+          assert all(values.values()), 'BROKER_READONLY_CREDENTIALS_UNAVAILABLE'
+          pathlib.Path(os.environ['STAGE'],'broker-credentials.json').write_text(json.dumps(values))
+          PY
+          scp -q -r "${opts[@]}" "$d/stage" "$host:$remote/"
+          ssh "${opts[@]}" "$host" "sudo -n /usr/bin/python3 '$remote/stage/operations/bootstrap125_monitor/install.py' '$remote/stage'"
+      - name: Verify live source timestamps and broker result
+        run: |
+          python - <<'PY'
+          import json,time,urllib.request
+          from datetime import datetime,timezone
+          base='https://rizan-bridge.duckdns.org:25345/bootstrap125/'
+          values=[]
+          for _ in range(2):
+              with urllib.request.urlopen(base+'status.json',timeout=10) as response: p=json.load(response)
+              age=(datetime.now(timezone.utc)-datetime.fromisoformat(p['observed_at'])).total_seconds()
+              assert -5 <= age < 30, 'DIRECT_STATUS_NOT_FRESH'
+              values.append(p['observed_at'])
+              print('V1_STATUS_FRESH',p['observed_at'],p['roles'][0]['phase'])
+              if len(values)==1:time.sleep(12)
+          assert values[0]!=values[1], 'STATUS_TIMER_NOT_ADVANCING'
+          with urllib.request.urlopen(base+'broker.json',timeout=10) as response: b=json.load(response)
+          print('BROKER_OBSERVATION',b['observed_at'],b['status'],b.get('error'),b.get('orders_history_checked'),b.get('deals_history_checked'))
+          assert b['status']=='OBSERVED', 'BROKER_READER_NOT_OBSERVED'
+          PY

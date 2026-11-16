@@ -15,6 +15,8 @@ SNAPSHOT_URL = ("https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
 SOURCE_URL = ("https://github.com/rizanrizan93/Forex-scanner/blob/"
               "2a33f76ff281e5b4a6018fed3e080041f27413a3/"
               "repairs/bootstrap125_v1_20261114/STRATEGY_V1_FROZEN.md")
+DIRECT_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/status.json"
+BROKER_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/broker.json"
 WIB = ZoneInfo("Asia/Jakarta")
 
 
@@ -205,36 +207,81 @@ def render_snapshot(raw=None, *, now=None, unavailable=False):
                     "Aturan lengkap, sizing dan filter mengikuti source frozen.")
         st.caption("Fase GROWTH tidak kembali ke SEED saat saldo turun. Guard47 bukan jaminan batas drawdown.")
         st.markdown("[Baca aturan V1 frozen](" + SOURCE_URL + ")")
-    st.caption("Panel diperbarui setiap 60 detik; publikasi status berkala bisa terlambat. Refresh tampilan bukan pembaruan candle broker. "
+    st.caption("Status VPS dibaca langsung; target publikasi status 10 detik dan broker 60 detik, layar 15 detik. Fallback GitHub tetap mengikuti timestamp sumber. "
                "BUY050 sebelumnya sudah dihentikan dan tidak dipakai sebagai sumber status V1.")
 
 
-def fetch_snapshot(slot):
-    request = Request(SNAPSHOT_URL + "?slot=" + str(slot), headers={"User-Agent": "RIZAN-V1-readonly/1"})
-    with urlopen(request, timeout=9) as response:
+def fetch_json(url, slot):
+    request = Request(url + "?slot=" + str(slot), headers={"User-Agent": "RIZAN-V1-readonly/2", "Cache-Control": "no-cache"})
+    with urlopen(request, timeout=5) as response:
         data = response.read(80_001)
     if len(data) > 80_000:
         raise ValueError("V1_MONITOR_TOO_LARGE")
     return json.loads(data)
 
 
+def fetch_snapshot(slot):
+    for url in (DIRECT_URL, SNAPSHOT_URL):
+        try:
+            data = fetch_json(url, slot)
+            evaluate_snapshot(data)
+            return data
+        except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+            if url == SNAPSHOT_URL:
+                raise
+
+
+def render_broker(raw, *, now=None):
+    import streamlit as st
+    now = now or datetime.now(timezone.utc)
+    if (not isinstance(raw, dict) or raw.get("contract") != "RIZAN_BOOTSTRAP125_BROKER_READONLY_V1"
+            or raw.get("account_suffix") != "7903" or raw.get("read_only") is not True
+            or raw.get("execution_authority") is not False):
+        raise ValueError("INVALID_V1_BROKER_CONTRACT")
+    st.markdown("### Riwayat order broker V1")
+    st.caption("Observasi broker: " + wib(raw.get("observed_at")) + " · cakupan history: " +
+               wib(raw.get("history_from")) + " — " + wib(raw.get("history_to")))
+    if not fresh(raw.get("observed_at"), now, 180) or raw.get("status") != "OBSERVED":
+        st.warning("UNKNOWN · observasi broker terlambat atau gagal. Jangan menafsirkan angka lama sebagai hasil saat ini.")
+        return
+    st.caption("History order lengkap: " + str(raw.get("orders_history_checked") is True) +
+               " · history deal lengkap: " + str(raw.get("deals_history_checked") is True))
+    roles = raw.get("roles")
+    if not isinstance(roles, dict):
+        raise ValueError("INVALID_V1_BROKER_ROLES")
+    st.dataframe([dict(Pair=s, Posisi=r.get("open_positions"), Pending=r.get("pending_orders"),
+                       Order_V1_48_jam=r.get("orders"), Deal_V1_48_jam=r.get("deals"),
+                       Entry_fill=r.get("entry_fills"), Ditolak=r.get("rejected_orders"))
+                  for s,r in roles.items() if s in ROLES and isinstance(r,dict)],
+                 hide_index=True,width="stretch")
+    st.caption("Order dan deal V1 dipisahkan melalui label broker. Nol order bukan bukti nol sinyal; "
+               "pencocokan sinyal dan seluruh guard masih diperlukan untuk memastikan missed entry.")
+
+
 def _render():
     import streamlit as st
 
-    @st.cache_data(ttl=45, show_spinner=False)
+    @st.cache_data(ttl=10, show_spinner=False)
     def cached(slot):
         return fetch_snapshot(slot)
 
     try:
         now = datetime.now(timezone.utc)
-        raw = cached(int(now.timestamp() // 45))
+        raw = cached(int(now.timestamp() // 10))
         evaluate_snapshot(raw, now=now)
     except (OSError, ValueError, TypeError, KeyError, TimeoutError):
         render_snapshot(unavailable=True)
     else:
         render_snapshot(raw, now=now)
+    @st.cache_data(ttl=10, show_spinner=False)
+    def broker_cached(slot):
+        return fetch_json(BROKER_URL, slot)
+    try:
+        render_broker(broker_cached(int(datetime.now(timezone.utc).timestamp() // 10)))
+    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+        st.warning("Riwayat broker V1 belum dapat dibaca; status order/fill tetap UNKNOWN.")
 
 
 def render_v1_dashboard():
     import streamlit as st
-    st.fragment(run_every="60s")(_render)()
+    st.fragment(run_every="15s")(_render)()
