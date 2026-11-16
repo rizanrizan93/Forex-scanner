@@ -84,6 +84,8 @@ def evaluate_technical(feed, *, now):
         tail = series[-24:] if tf != 'M5' else series[-30:]
         if any((b['at']-a['at']).total_seconds() != span for a,b in zip(tail, tail[1:])):
             error = 'Candle '+tf+' terbaru memiliki gap; tunggu rangkaian lengkap'
+        if tf == 'M5' and series and (now-series[-1]['at']).total_seconds() >= 300:
+            error = 'Candle M5 melewati batas setup; tunggu candle terbaru'
         if error:
             errors.append(tf+': '+error)
         bars[tf] = series

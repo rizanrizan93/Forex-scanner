@@ -74,3 +74,9 @@ def test_macro_cannot_promote_incomplete_technical():
     assert compare_macro({'direction':'BUY'},{'usd_direction':'UP_WATCH'}, {'state':'CONCORDANT_PROXY','yield_direction':'UP'}).startswith('KONFLIK')
     assert compare_macro({'direction':'SELL'},{'usd_direction':'UP_WATCH'}, {'state':'CONCORDANT_PROXY','yield_direction':'UP'}).startswith('SELARAS')
     assert compare_macro({'direction':'SELL'},{'usd_direction':'UP_WATCH'}, {'state':'ZN_PROXY_ONLY','yield_direction':'UP'}).startswith('WAIT')
+
+
+def test_setup_expires_at_next_m5_close_even_if_transport_still_fresh():
+    r=evaluate_technical(fixture(),now=NOW+timedelta(minutes=5))
+    assert r['direction']=='WAIT'
+    assert r['BUY']['plan'] is None
