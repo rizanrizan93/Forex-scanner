@@ -145,7 +145,16 @@ html, body, [data-testid="stAppViewContainer"] { font-family: system-ui, -apple-
 }
 .st-key-rizan_primary_navigation [role="radiogroup"] > label [data-baseweb="radio"],
 .st-key-rizan_xau_navigation [role="radiogroup"] > label [data-baseweb="radio"] {
-  display: none;
+  /* Keep keyboard/screen-reader access while removing the circular ornament. */
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.st-key-rizan_primary_navigation [role="radiogroup"] > label:focus-within,
+.st-key-rizan_xau_navigation [role="radiogroup"] > label:focus-within {
+  outline: 2px solid #8ae6d9;
+  outline-offset: 2px;
 }
 .rz-brand {
   display: flex; align-items: center; justify-content: space-between;
