@@ -211,9 +211,43 @@ def _xau_check(checklist: Mapping | None, side: str) -> dict:
                 category="XAU")
 
 
+def _yield_nowcast_check(raw: Mapping | None, side: str, now: datetime) -> dict:
+    """Directional yield pressure, not a calibrated 15–60m forecast."""
+    r = _obj(raw)
+    expected = "UP" if side == "UP" else "DOWN"
+    raw_at = r.get("as_of_utc")
+    if (r.get("contract") != "RIZAN_US10Y_YIELD_PRESSURE_NOWCAST_V1_READONLY"
+            or r.get("execution_authority") is not False
+            or r.get("execution_influence") is not False
+            or not _valid_at(raw_at, now, 120)):
+        return _row("yield_nowcast", "Proyeksi tekanan US10Y (15–60m)",
+                    "UNKNOWN", "Nowcast yield belum tersedia atau timestamp tidak valid",
+                    category="YIELD_PROXY")
+    predicted = str(r.get("yield_direction") or "WAIT")
+    quality = str(r.get("state") or "WAIT_SOURCE")
+    if quality == "WAIT_CONFLICT":
+        return _row("yield_nowcast", "Proyeksi tekanan US10Y (15–60m)",
+                    "UNKNOWN", "Futures ZN dan ZQ bertentangan; tunggu konfirmasi",
+                    category="YIELD_PROXY")
+    if predicted not in {"UP", "DOWN"} or quality != "CONCORDANT_PROXY":
+        return _row("yield_nowcast", "Proyeksi tekanan US10Y (15–60m)",
+                    "UNKNOWN",
+                    "Hanya tekanan awal atau data tidak lengkap, belum cukup untuk entry XAU",
+                    category="YIELD_PROXY")
+    return _row(
+        "yield_nowcast", "Proyeksi tekanan US10Y (15–60m)",
+        "PASS" if predicted == expected else "FAIL",
+        "Pressure yield = %s (%s). Proyeksi kualitatif, belum diuji out-of-sample"
+        % (predicted, quality),
+        category="YIELD_PROXY",
+        observed_at=str(raw_at),
+    )
+
+
 def evaluate_usd_lead(
     evaluation: Mapping | None, *, now: datetime,
     spread: Mapping | None = None, xau_checklist: Mapping | None = None,
+    yield_nowcast: Mapping | None = None,
 ) -> dict:
     """Research watch status only; never infer intraday USD probability from daily FRED."""
     if now.tzinfo is None:
@@ -235,6 +269,10 @@ def evaluate_usd_lead(
             _news_check(q.get("event_quality"), side, now),
             _xau_check(xau_checklist, side),
         ]
+        # Explicit V2 integration only: retain V1 API and test behavior for
+        # legacy read-only callers which do not request yield nowcasting.
+        if yield_nowcast is not None:
+            rows.insert(-1, _yield_nowcast_check(yield_nowcast, side, now))
         m = {v["key"]: v["state"] for v in rows}
         known_leading = sum(m[key] == "PASS" for key in ("fed", "us2y", "spread"))
         counter = sum(m[key] == "FAIL" for key in ("fed", "us2y", "spread"))
@@ -252,7 +290,8 @@ def evaluate_usd_lead(
             and m["us2y"] == "PASS" and m["spread"] == "PASS"
             and m["dxy"] == "PASS"
         )
-        full = macro_watch and m["real"] == "PASS" and m["xau"] == "PASS"
+        yield_ok = m.get("yield_nowcast") == "PASS" if yield_nowcast is not None else True
+        full = macro_watch and m["real"] == "PASS" and m["xau"] == "PASS" and yield_ok
         if full:
             state = "XAU_SELL_SHADOW_WATCH" if side == "UP" else "XAU_BUY_SHADOW_WATCH"
         elif macro_watch:
@@ -266,7 +305,9 @@ def evaluate_usd_lead(
             "failed": sum(r["state"] == "FAIL" for r in rows),
             "unknown": sum(r["state"] == "UNKNOWN" for r in rows),
             "leading_votes": known_leading, "leading_contradictions": counter,
-            "status": state, "xau_execution_permitted": False,
+            "status": state, "yield_confirmation_required": yield_nowcast is not None,
+            "yield_confirmation_met": yield_ok,
+            "xau_execution_permitted": False,
         }
     return {
         "contract": CONTRACT, "as_of_utc": now.isoformat(),
@@ -277,6 +318,8 @@ def evaluate_usd_lead(
         ),
         "execution_authority": False, "execution_influence": False,
         "probability_calibrated": False, "historical_oos_validated": False,
+        "bidirectional_support": True,
+        "yield_nowcast_is_unvalidated_proxy": yield_nowcast is not None,
         "risk_caution": (
             "Strong USD does not guarantee XAU decline: risk-off may lift both; "
             "broker minimum-lot and actual equity still govern XAU feasibility."
