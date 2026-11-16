@@ -20,6 +20,7 @@ from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
 from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y, pair_with_treasury_2y
 from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
 from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
+from fx_scanner.ui_terminal import render_condition, render_progress
 def _load_intraday_market_helpers():
     """Lazy import: dashboard must render even if optional Yahoo transport fails.
 
@@ -199,8 +200,6 @@ def render_usd_lead():
         "USD NAIK + Yield NAIK → Periksa SELL XAU",
         "USD TURUN + Yield TURUN → Periksa BUY XAU",
     ])
-    mapping = {"PASS": "✅ TERPENUHI", "FAIL": "❌ BELUM TERPENUHI",
-               "UNKNOWN": "⏳ BELUM VALID"}
     for side, parent, direction_key in (
         (up, tab_up, "UP"), (down, tab_down, "DOWN"),
     ):
@@ -211,19 +210,18 @@ def render_usd_lead():
                 str(side["unknown"]) + " belum valid • " +
                 str(side["leading_votes"]) + " bukti awal selaras"
             )
+            render_progress(
+                st, passed=side["passed"], failed=side["failed"],
+                unknown=side["unknown"], total=len(side["rows"]),
+            )
             for r in side["rows"]:
-                with st.container(border=True):
-                    st.checkbox(
-                        r["label"], value=(r["state"] == "PASS"),
-                        disabled=True,
-                        key="usd_lead_" + r["key"] + "_" +
-                            direction_key + "_" + r["state"],
-                    )
-                    st.caption(mapping[r["state"]] + " — " + r["detail"])
-                    st.caption(
-                        "Jenis: " + r["category"] +
-                        (" • data " + str(r["observed_at"]) if r["observed_at"] else "")
-                    )
+                render_condition(
+                    st, title=r["label"], state=r["state"], detail=r["detail"],
+                    meta=r["category"] + (
+                        "  •  sumber " + str(r["observed_at"])
+                        if r.get("observed_at") else ""
+                    ),
+                )
             if side["status"].endswith("SHADOW_WATCH"):
                 st.warning(
                     side["status"] + ": struktur XAU dan bukti USD selaras. "
@@ -270,9 +268,8 @@ def render_usd_lead():
     )
 
 
-st.title("RIZAN — USD Lead Engine V2 · BUY & SELL + Yield")
-st.warning(
-    "Alat bantu keputusan, BUKAN algoritma profit yang sudah tervalidasi. "
-    "Tidak ada probabilitas akurasi 15 menit/1 jam/6 jam yang diklaim."
+st.caption(
+    "RESEARCH / SHADOW ONLY · Tidak mengirim order. "
+    "Belum ada akurasi prediksi 15m, 1 jam, atau 3–6 jam yang tervalidasi."
 )
 render_usd_lead()
