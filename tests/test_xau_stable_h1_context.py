@@ -55,6 +55,22 @@ def test_same_uptrend_yields_stable_buy_on_both_independent_sources():
     assert "SEARAH" in explain_vs_fast(a, "BUY")
 
 
+def test_same_last_11_h1_prices_have_same_regime_and_ema_even_when_history_lengths_differ():
+    short = v1(1)
+    long = research(1)
+    for reference, target in zip(
+        short["bars"]["XAUUSD"]["H1"],
+        long["bars"]["H1"][-11:],
+    ):
+        for field in ("open", "high", "low", "close", "volume"):
+            target[field] = reference[field]
+    v = from_v1_market(short, NOW)
+    r = from_research_candles(long, NOW)
+    assert v["direction"] == r["direction"] == "BUY"
+    assert v["ema5"] == r["ema5"]
+    assert v["ema8"] == r["ema8"]
+
+
 def test_downtrend_yields_sell_and_flat_yields_neutral():
     assert from_v1_market(v1(-1), NOW)["direction"] == "SELL"
     assert from_research_candles(research(-1), NOW)["direction"] == "SELL"
