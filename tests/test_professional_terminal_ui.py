@@ -32,8 +32,9 @@ def test_mobile_navigation_is_scrollable_and_reuses_original_session_keys():
     assert 'render_section_intro(st, pair="XAUUSD", detail=selected_detail)' in src
     assert '"Keputusan", "Analisis Terpadu", "Demand", "Pre-News", "Makro"' in src
     assert '"pages/7_XAU_Unified_Decision.py"' in src
-    assert '("USD_Lead_Engine", "XAUUSD", "USD Lead")' in src
-    assert '("XAU_Decision_Checklist", "XAUUSD", "Checklist")' in src
+    assert '("XAU_Analisis_Terpadu", "XAUUSD", "Analisis Terpadu")' in src
+    assert '("USD_Lead_Engine", "XAUUSD", "Analisis Terpadu")' in src
+    assert '("XAU_Decision_Checklist", "XAUUSD", "Analisis Terpadu")' in src
     assert 'active_page = st.navigation(routes, position="hidden")' in src
     assert "active_page.run()" in src
 
