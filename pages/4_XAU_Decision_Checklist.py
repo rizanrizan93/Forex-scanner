@@ -17,6 +17,7 @@ from fx_scanner.xau_decision_checklist_v1 import evaluate_checklist, stamp, obj
 from fx_scanner.xau_decision_candle_feed_v1 import fetch_decision_candles
 from fx_scanner.xau_runtime_decision_v404 import evaluate_runtime_decision_v404
 from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
+from fx_scanner.ui_terminal import render_condition, render_progress
 
 
 def freshness(t, now, limit=150) -> bool:
@@ -93,8 +94,6 @@ def render_checklist() -> None:
         candle_feed=candle_feed, broker_spec=broker_spec,
         equity_usd=100., now=now, structure_fresh=market_fresh,
     )
-    statuses = {"PASS": "✅ TERPENUHI", "FAIL": "❌ BELUM TERPENUHI",
-                "UNKNOWN": "⏳ DATA BELUM VALID"}
     b, s, w = st.columns([1, 1, 2])
     b.metric("BUY", str(report["BUY"]["passed"]) + "/6 terpenuhi")
     s.metric("SELL", str(report["SELL"]["passed"]) + "/6 terpenuhi")
@@ -115,14 +114,15 @@ def render_checklist() -> None:
                 str(data["failed"]) + " belum terpenuhi • " +
                 str(data["unknown"]) + " belum terverifikasi"
             )
+            render_progress(
+                st, passed=data["passed"], failed=data["failed"],
+                unknown=data["unknown"], total=data["total"],
+            )
             for criterion in data["items"]:
-                with st.container(border=True):
-                    st.checkbox(
-                        criterion["name"],
-                        value=(criterion["state"] == "PASS"), disabled=True,
-                        key="checklist_v1_" + side + "_" + criterion["key"] + "_" + criterion["state"],
-                    )
-                    st.caption(statuses[criterion["state"]] + " — " + criterion["why"])
+                render_condition(
+                    st, title=criterion["name"],
+                    state=criterion["state"], detail=criterion["why"],
+                )
             if data["state"] == "ALL_CONDITIONS_MET_SHADOW_ONLY":
                 st.warning(
                     "Semua syarat evaluasi telah terpenuhi, tetapi belum ada "
@@ -162,5 +162,8 @@ def render_checklist() -> None:
     )
 
 
-st.title("RIZAN — Checklist Entry XAUUSD")
+st.caption(
+    "CHECKLIST / READ-ONLY · Centang hanya untuk data yang tervalidasi. "
+    "Status lengkap bukan izin eksekusi otomatis."
+)
 render_checklist()
