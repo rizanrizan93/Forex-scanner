@@ -16,7 +16,7 @@ CONTRACT = "RIZAN_US10Y_YIELD_PRESSURE_NOWCAST_V1_READONLY"
 EXECUTION_AUTHORITY = False
 MAX_QUOTE_AGE_SECONDS = 900
 MAX_REFERENCE_WINDOW_SECONDS = 4 * 3600
-MIN_FUTURES_MOVE_POINTS = 1.0 / 64.0  # 1.5625 cents: experimental threshold
+MIN_FUTURES_MOVE_POINTS = 1.0 / 32.0  # match existing V399 ZN 0.03125-point threshold
 
 
 def _dict(x: Any) -> dict:
@@ -55,10 +55,31 @@ def _zn_direction(context: Mapping | None, now: datetime) -> dict:
     pressure = str(row.get("futures_yield_pressure") or "")
     source = str(row.get("effective_source") or "")
     state = str(row.get("session_state") or "")
+    futures_state = str(row.get("futures_state") or "")
+    futures_freshness = str(row.get("futures_freshness") or "")
+    # V399 can prefer the fresh cash quote, while retaining independently
+    # timestamped ZN futures for corroboration. Do not discard ZN in that case.
+    has_broker_attested_zn = (
+        row.get("contract") == "XAU_TREASURY_SESSION_AWARE_V399"
+        and row.get("execution_authority") is False
+        and row.get("execution_influence") is False
+    )
+    live_zn = (
+        has_broker_attested_zn
+        and (
+            (state == "GLOBEX_PROXY_ACTIVE" and source == "YAHOO_FINANCE_ZN_FRONT_PROXY")
+            or (state == "CASH_FEED_ACTIVE"
+                and source == "YAHOO_FINANCE_TNX_INTRADAY_PROXY"
+                and futures_freshness == "FRESH")
+        )
+        and futures_state in {
+            "TREASURY_FUTURES_DOWN_YIELD_UP_PROXY",
+            "TREASURY_FUTURES_UP_YIELD_DOWN_PROXY",
+            "TREASURY_FUTURES_FLAT",
+        }
+    )
     if (
-        row.get("available") is not True
-        or source != "YAHOO_FINANCE_ZN_FRONT_PROXY"
-        or state not in {"GLOBEX_PROXY_ACTIVE", "GLOBEX_ACTIVE", "TREASURY_FUTURES_ACTIVE"}
+        not live_zn
         or price is None or price <= 0 or move is None
         or abs(move) > max(10.0, price * .10)
         or not _fresh(quote_at, now=now)
@@ -69,13 +90,19 @@ def _zn_direction(context: Mapping | None, now: datetime) -> dict:
             "observed_at": quote_at,
         }
     # Prevent cached derived indicator from disagreeing with raw observable price change.
-    if move < -MIN_FUTURES_MOVE_POINTS and pressure != "YIELD_UP_PROXY":
+    if move <= -MIN_FUTURES_MOVE_POINTS and (
+        pressure != "YIELD_UP_PROXY"
+        or futures_state != "TREASURY_FUTURES_DOWN_YIELD_UP_PROXY"
+    ):
         return {"direction": "UNKNOWN", "quality": "INCONSISTENT",
                 "reason": "Arah ZN tidak sesuai perubahan futures", "observed_at": quote_at}
-    if move > MIN_FUTURES_MOVE_POINTS and pressure != "YIELD_DOWN_PROXY":
+    if move >= MIN_FUTURES_MOVE_POINTS and (
+        pressure != "YIELD_DOWN_PROXY"
+        or futures_state != "TREASURY_FUTURES_UP_YIELD_DOWN_PROXY"
+    ):
         return {"direction": "UNKNOWN", "quality": "INCONSISTENT",
                 "reason": "Arah ZN tidak sesuai perubahan futures", "observed_at": quote_at}
-    if abs(move) <= MIN_FUTURES_MOVE_POINTS:
+    if abs(move) < MIN_FUTURES_MOVE_POINTS:
         return {
             "direction": "FLAT", "quality": "PROXY_FRESH",
             "reason": "ZN bergerak kecil; tidak cukup sebagai bias yield",
@@ -88,7 +115,7 @@ def _zn_direction(context: Mapping | None, now: datetime) -> dict:
             "ZN futures turun sehingga pressure US10Y cenderung naik"
             if move < 0 else "ZN futures naik sehingga pressure US10Y cenderung turun"
         ),
-        "move_points": move, "source": source,
+        "move_points": move, "source": "YAHOO_FINANCE_ZN_FRONT_PROXY",
         "observed_at": quote_at,
     }
 
