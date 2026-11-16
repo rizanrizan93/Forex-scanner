@@ -17,17 +17,36 @@ def load_zone_panel(source_revision):
     from fx_scanner import zone_v05_dashboard
     return reload(zone_v05_dashboard).render_zone_v05
 
+def navigate_pair():
+    pair = st.session_state["rizan_pair"]
+    detail = st.session_state.get("_rizan_last_xau_detail", "Zona reversal")
+    st.switch_page(PAGES[(pair, detail if pair == "XAUUSD" else "Setup")])
+
+
+def navigate_detail():
+    detail = st.session_state["rizan_xau_detail"]
+    st.session_state["_rizan_last_xau_detail"] = detail
+    st.switch_page(PAGES[("XAUUSD", detail)])
+
+
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     render_brand(st)
+    route = (default_pair, default_detail)
+    if st.session_state.get("_rizan_active_route") != route:
+        st.session_state["rizan_pair"] = default_pair
+        if default_pair == "XAUUSD":
+            st.session_state["rizan_xau_detail"] = default_detail
+            st.session_state["_rizan_last_xau_detail"] = default_detail
+        st.session_state["_rizan_active_route"] = route
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
-    st.session_state["rizan_xau_detail"] = st.session_state["rizan_xau_detail"]
     # Keep navigation outside legacy page/tab containers. A child page may
     # stop or rerun, but must never own or replace the primary navigation.
     with st.container(key="rizan_primary_navigation"):
         pair = st.radio(
             "Instrumen", ["XAUUSD", "EURUSD", "cBots"],
             key="rizan_pair", horizontal=True, label_visibility="collapsed",
+            on_change=navigate_pair,
         )
     if pair == "cBots":
         with st.container(key="rizan_cbots_content"):
@@ -51,6 +70,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                 selected_detail = st.radio(
                     "Halaman XAUUSD", labels, key="rizan_xau_detail",
                     horizontal=True, label_visibility="collapsed",
+                    on_change=navigate_detail,
                 )
             paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/4_XAU_Decision_Checklist.py", "pages/5_USD_Lead_Engine.py", "pages/6_XAU_Technical_Engine.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
@@ -84,8 +104,9 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                                 # of a candle, rather than wait for a 60s UI rerun.
                                 interval = "15s" if label == "Makro" else "60s"
                                 @st.fragment(run_every=interval)
-                                def independent_panel(path=path):
-                                    runpy.run_path(str(ROOT / path), run_name="__main__")
+                                def independent_panel(path=path, label=label):
+                                    with st.spinner("Memperbarui " + label + "…"):
+                                        runpy.run_path(str(ROOT / path), run_name="__main__")
                                 independent_panel()
                             else:
                                 runpy.run_path(str(ROOT / path), run_name="__main__", init_globals={"RIZAN_SETTINGS_ONLY": label == "Pengaturan"})
@@ -94,11 +115,46 @@ def render_cbot_webview():
     from fx_scanner.cbot_webview_dashboard import render_webview_plugin
     render_webview_plugin()
 
-routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True),
-          st.Page(render_cbot_webview, title="RIZAN cBot Plugin", url_path="cbot-plugin")]
-for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("XAU_Decision_Checklist", "XAUUSD", "Checklist"), ("USD_Lead_Engine", "XAUUSD", "USD Lead"), ("XAU_Technical_Engine", "XAUUSD", "Teknikal"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro")]:
+
+
+def protected_dashboard(pair="XAUUSD", detail="Zona reversal"):
+    # Control-flow exceptions (stop/rerun/switch_page) inherit BaseException and
+    # are deliberately NOT swallowed. Real page errors retain navigation.
+    try:
+        with st.spinner("Memuat " + pair + " · " + detail + "…"):
+            render_dashboard(pair, detail)
+    except Exception:
+        st.error("Halaman belum dapat dimuat. Pilih tab lain atau coba muat ulang.")
+        if st.button("Coba muat ulang", key="rizan_retry_page"):
+            st.rerun()
+
+
+PAGES = {}
+ROUTE_SPECS = [
+    ("", "XAUUSD", "Zona reversal"),
+    ("EURUSD_Demo_Forward", "EURUSD", "Setup"),
+    ("cbots", "cBots", "Setup"),
+    ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"),
+    ("XAU_Setup", "XAUUSD", "Setup"),
+    ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"),
+    ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"),
+    ("XAU_Decision_Checklist", "XAUUSD", "Checklist"),
+    ("USD_Lead_Engine", "XAUUSD", "USD Lead"),
+    ("XAU_Technical_Engine", "XAUUSD", "Teknikal"),
+    ("Demand_Tiers", "XAUUSD", "Demand"),
+    ("Pre_News", "XAUUSD", "Pre-News"),
+    ("US10Y_Regime_Timing", "XAUUSD", "Makro"),
+    ("XAU_Settings", "XAUUSD", "Pengaturan"),
+]
+routes = []
+for slug, pair, detail in ROUTE_SPECS:
     def route(pair=pair, detail=detail):
-        render_dashboard(pair, detail)
-    routes.append(st.Page(route, title=slug, url_path=slug))
-# Register existing URLs while disabling the automatic sidebar page list.
+        protected_dashboard(pair, detail)
+    # Every panel has a distinct registered page. Switching pages cancels the
+    # old script and its timed fragments instead of reusing their UI slots.
+    page = st.Page(route, title=slug or "RIZAN Scanner", url_path=slug or None,
+                   default=not slug)
+    PAGES[(pair, detail)] = page
+    routes.append(page)
+routes.append(st.Page(render_cbot_webview, title="RIZAN cBot Plugin", url_path="cbot-plugin"))
 st.navigation(routes, position="hidden").run()
