@@ -14,7 +14,7 @@ def test_pair_tabs_only_execute_selected_page():
         app.session_state["rizan_xau_detail"] = "Setup"
         app.run()
         assert not app.exception
-        assert app.radio[0].options == ["XAUUSD", "EURUSD", "cBots"]
+        assert app.radio[0].options == ["XAUUSD", "EURUSD", "Frozen V1", "Konsensus", "cBots"]
         assert not app.sidebar.children
         assert any("Inti XAUUSD" in item.value for item in app.subheader)
         assert any(m.label == "Executor DEMO" for m in app.metric)
@@ -48,6 +48,8 @@ def test_navigation_survives_nested_page_stop_and_pair_roundtrip():
         "xau_frozen_dd50_dashboard": {"render_frozen_core": lambda: st.caption("Frozen core")},
         "cross_asset_dashboard": {"render_cross_asset": lambda symbol: None},
         "cbot_v1_dashboard": {"render_v1_dashboard": lambda: st.caption("cBots V1 panel")},
+        "frozen_v1_bias_dashboard": {"render_frozen_v1_bias_dashboard": lambda: st.caption("Frozen V1 score panel")},
+        "xau_v1_consensus_dashboard": {"render_xau_v1_primary_consensus": lambda: st.caption("V1 primary consensus panel")},
     }
     package = ModuleType("fx_scanner")
     package.__path__ = []
@@ -68,12 +70,12 @@ def test_navigation_survives_nested_page_stop_and_pair_roundtrip():
         app.session_state["rizan_xau_detail"] = "Setup"
         app.run()
         assert not app.exception
-        assert app.radio[0].options == ["XAUUSD", "EURUSD", "cBots"]
+        assert app.radio[0].options == ["XAUUSD", "EURUSD", "Frozen V1", "Konsensus", "cBots"]
         assert app.radio[1].value == "Setup"
 
         app.radio[0].set_value("EURUSD").run()
         assert not app.exception
-        assert app.radio[0].options == ["XAUUSD", "EURUSD", "cBots"]
+        assert app.radio[0].options == ["XAUUSD", "EURUSD", "Frozen V1", "Konsensus", "cBots"]
         assert app.radio[0].value == "EURUSD"
         assert Path(execute.call_args.args[0]).name == "00_EURUSD_Demo_Forward.py"
 
@@ -81,10 +83,18 @@ def test_navigation_survives_nested_page_stop_and_pair_roundtrip():
         assert not app.exception
         assert any(item.value == "cBots V1 panel" for item in app.caption)
 
+        app.radio[0].set_value("Frozen V1").run()
+        assert not app.exception
+        assert any(item.value == "Frozen V1 score panel" for item in app.caption)
+
+        app.radio[0].set_value("Konsensus").run()
+        assert not app.exception
+        assert any(item.value == "V1 primary consensus panel" for item in app.caption)
+
         app.radio[0].set_value("XAUUSD").run()
         assert not app.exception
         assert app.radio[1].value == "Setup"
         app.radio[1].set_value("Pengaturan").run()
         assert not app.exception
         assert execute.call_args.kwargs["init_globals"]["RIZAN_SETTINGS_ONLY"]
-        assert app.radio[0].options == ["XAUUSD", "EURUSD", "cBots"]
+        assert app.radio[0].options == ["XAUUSD", "EURUSD", "Frozen V1", "Konsensus", "cBots"]
