@@ -64,9 +64,11 @@ def supplemental_quotes(evaluation: dict, now: datetime) -> tuple[dict, dict]:
         ("dxy_intraday", "DXY", evaluate_dxy_pressure),
     ):
         existing = obj(out.get(key))
-        # If provider has data, evaluator will inspect source timestamp afresh.
-        if existing.get("available") is True:
-            notes[key] = "Sumber makro ForexScanner"
+        # A stale available=True flag is NOT a current quote; fetch the
+        # secondary source when original observation has aged out.
+        if (existing.get("available") is True
+                and fresh(existing.get("current_at"), now, 900)):
+            notes[key] = "Sumber makro ForexScanner, original timestamp valid"
             continue
         try:
             data = fallback_market(name)
