@@ -101,3 +101,26 @@ def test_bundesbank_fetch_uses_original_dates_not_retrieval_time():
     assert out["daily"]["2026-11-13"] == 2.0
     assert "startPeriod=" in calls[0][0]
     assert out["retrieved_at"] == NOW.isoformat()
+
+
+def test_actual_bundesbank_wide_format_metadata_rows_and_weekend_missing():
+    csv = (
+        b'"",BBSSY.D.REN.EUR.A610.000000WT0202.A,BBSSY.D.REN.EUR.A610.000000WT0202.A_FLAGS\n'
+        b'"",Daily yield of the current (two-year) Federal Treasury notes,\n'
+        b'last update,2026-11-13 12:42:40,\n'
+        b'2026-11-07,.,No value available\n'
+        b'2026-11-12,3.08,\n'
+        b'2026-11-13,3.13,\n'
+    )
+    observations = parse_bundesbank_daily_csv(csv)
+    assert observations == {"2026-11-12": 3.08, "2026-11-13": 3.13}
+
+
+def test_bundesbank_wide_format_rejects_unrelated_series():
+    csv = (
+        b'"",BBSSY.D.REN.EUR.A620.000000WT0505.A,FLAGS\n'
+        b'2026-11-12,3.08,\n'
+        b'2026-11-13,3.13,\n'
+    )
+    with pytest.raises(ValueError, match="BUNDESBANK_CSV_NO_SDMX_COLUMNS"):
+        parse_bundesbank_daily_csv(csv)
