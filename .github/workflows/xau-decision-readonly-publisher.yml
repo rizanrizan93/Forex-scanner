@@ -11,6 +11,8 @@ on:
       - 'scripts/publish_xau_decision_readonly.py'
       - 'src/fx_scanner/xau_decision_checklist_v1.py'
       - 'src/fx_scanner/xau_decision_candle_feed_v1.py'
+      - 'src/fx_scanner/xau_technical_engine_v1.py'
+      - 'pages/6_XAU_Technical_Engine.py'
       - '.github/workflows/xau-decision-readonly-publisher.yml'
 
 permissions:
