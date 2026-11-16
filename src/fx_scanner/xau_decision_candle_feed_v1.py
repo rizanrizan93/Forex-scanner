@@ -69,7 +69,14 @@ def fetch_decision_candles(*, now: datetime | None = None, opener=urlopen,
             str(int(now.timestamp() // 60)),
             opener=opener, timeout=timeout_seconds, api=False,
         )
-        return validate_candle_snapshot(source, now=now)
+        validated = validate_candle_snapshot(source, now=now)
+        # A CDN snapshot can still pass transport freshness while its last M5
+        # setup has expired. Try the independent Contents API before returning
+        # that old candle; never change the original observation timestamps.
+        latest_m5 = stamp(validated["bars"]["M5"][-1]["closed_at"])
+        if latest_m5 is None or (now-latest_m5).total_seconds() >= 300:
+            raise ValueError("XAU_DECISION_CDN_M5_RETRY_API")
+        return validated
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         pass
     try:
