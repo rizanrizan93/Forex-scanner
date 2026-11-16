@@ -119,6 +119,25 @@ def treasury_session_status(now: datetime | None = None) -> dict:
     }
 
 
+def treasury_cash_quote_status(now: datetime | None = None) -> dict:
+    """Display calendar for Tradeweb's Asia session (09:00–16:00 Tokyo).
+
+    The NY SIFMA calendar remains the daily publication calendar. A Sunday
+    in NY must not suppress Monday Asia quotes. Calendar eligibility never
+    certifies a quote: its source timestamp must still pass freshness checks.
+    Reference: tradeweb.com/our-markets/institutional/rates/government-bonds/
+    """
+    now = now or datetime.now(NY)
+    state = treasury_session_status(now)
+    tokyo = now.astimezone(ZoneInfo("Asia/Tokyo"))
+    if (is_treasury_session_day(tokyo.date())
+            and time(9) <= tokyo.time() < time(16)):
+        return {**state, "status": "ASIA_SESSION",
+                "label": "Tradeweb Asia · 09:00–16:00 Tokyo",
+                "session_date": tokyo.date().isoformat()}
+    return state
+
+
 def _last_release_day(now: datetime, *, fetch_time: time) -> date:
     if now.tzinfo is None:
         raise ValueError("now must be timezone aware")
