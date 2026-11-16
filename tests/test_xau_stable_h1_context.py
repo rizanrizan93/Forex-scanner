@@ -11,7 +11,7 @@ NOW = datetime(2026, 11, 16, 15, 0, tzinfo=timezone.utc)
 def _rows(count, trend, *, native):
     out = []
     for i in range(count):
-        close = 100 + trend * i * .85
+        close = 3900 + trend * i * .85
         close_at = NOW - timedelta(hours=count - 1 - i)
         at = close_at - timedelta(hours=1) if native else close_at
         row = {
@@ -67,7 +67,7 @@ def test_downtrend_yields_sell_and_flat_yields_neutral():
 def test_one_h1_opposite_displacement_does_not_instant_flip_regime():
     feed = v1(1)
     last = feed["bars"]["XAUUSD"]["H1"][-1]
-    last.update(open=100., high=109., low=98., close=99.)
+    last.update(open=3900., high=3909., low=3898., close=3899.)
     result = from_v1_market(feed, NOW)
     assert result["direction"] != "SELL"
 
