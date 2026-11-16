@@ -62,9 +62,17 @@ def nowcast(side, *, zq=None, change=None):
     return evaluate_yield_pressure(
         {
             "intraday_yield_context": {
+                "contract": "XAU_TREASURY_SESSION_AWARE_V399",
+                "execution_authority": False, "execution_influence": False,
                 "available": True,
                 "effective_source": "YAHOO_FINANCE_ZN_FRONT_PROXY",
                 "session_state": "GLOBEX_PROXY_ACTIVE",
+                "futures_freshness": "FRESH",
+                "futures_state": (
+                    "TREASURY_FUTURES_DOWN_YIELD_UP_PROXY"
+                    if ((-.03125*u) if change is None else change) < 0
+                    else "TREASURY_FUTURES_UP_YIELD_DOWN_PROXY"
+                ),
                 "futures_price": 106.0,
                 "futures_at": at(4),
                 "futures_change_points": (-.03125*u) if change is None else change,
