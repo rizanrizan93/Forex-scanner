@@ -30,7 +30,8 @@ def test_mobile_navigation_is_scrollable_and_reuses_original_session_keys():
     assert 'key="rizan_xau_detail"' in src
     assert 'render_brand(st)' in src
     assert 'render_section_intro(st, pair="XAUUSD", detail=selected_detail)' in src
-    assert '"USD Lead", "Teknikal", "Demand", "Pre-News", "Makro"' in src
+    assert '"Keputusan", "Analisis Terpadu", "Demand", "Pre-News", "Makro"' in src
+    assert '"pages/7_XAU_Unified_Decision.py"' in src
     assert '("USD_Lead_Engine", "XAUUSD", "USD Lead")' in src
     assert '("XAU_Decision_Checklist", "XAUUSD", "Checklist")' in src
     assert 'active_page = st.navigation(routes, position="hidden")' in src
@@ -46,7 +47,7 @@ def test_every_xau_navigation_label_has_a_section_description():
             and any(isinstance(t, ast.Name) and t.id == "labels" for t in x.targets)
         )
     )
-    assert len(labels) == 12
+    assert len(labels) == 10
     assert set(labels).issubset(SECTION_DESCRIPTIONS)
 
 
