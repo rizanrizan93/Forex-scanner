@@ -44,7 +44,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Checklist", "USD Lead", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Checklist", "USD Lead", "Teknikal", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -52,7 +52,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                     "Halaman XAUUSD", labels, key="rizan_xau_detail",
                     horizontal=True, label_visibility="collapsed",
                 )
-            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/4_XAU_Decision_Checklist.py", "pages/5_USD_Lead_Engine.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/4_XAU_Decision_Checklist.py", "pages/5_USD_Lead_Engine.py", "pages/6_XAU_Technical_Engine.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
@@ -96,7 +96,7 @@ def render_cbot_webview():
 
 routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True),
           st.Page(render_cbot_webview, title="RIZAN cBot Plugin", url_path="cbot-plugin")]
-for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("XAU_Decision_Checklist", "XAUUSD", "Checklist"), ("USD_Lead_Engine", "XAUUSD", "USD Lead"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro")]:
+for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("XAU_Decision_Checklist", "XAUUSD", "Checklist"), ("USD_Lead_Engine", "XAUUSD", "USD Lead"), ("XAU_Technical_Engine", "XAUUSD", "Teknikal"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro")]:
     def route(pair=pair, detail=detail):
         render_dashboard(pair, detail)
     routes.append(st.Page(route, title=slug, url_path=slug))
