@@ -32,11 +32,23 @@ def navigate_detail():
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     render_brand(st)
     route = (default_pair, default_detail)
-    if st.session_state.get("_rizan_active_route") != route:
-        st.session_state["rizan_pair"] = default_pair
-        if default_pair == "XAUUSD":
-            st.session_state["rizan_xau_detail"] = default_detail
-            st.session_state["_rizan_last_xau_detail"] = default_detail
+    prior_route = st.session_state.get("_rizan_active_route")
+    if prior_route != route:
+        if prior_route is None:
+            # First load: retain an existing widget selection rather than
+            # silently overwriting persisted or AppTest session state.
+            st.session_state.setdefault("rizan_pair", default_pair)
+            if default_pair == "XAUUSD":
+                st.session_state.setdefault("rizan_xau_detail", default_detail)
+                st.session_state.setdefault(
+                    "_rizan_last_xau_detail", st.session_state["rizan_xau_detail"]
+                )
+        else:
+            # Real navigation to a different Streamlit route owns its target.
+            st.session_state["rizan_pair"] = default_pair
+            if default_pair == "XAUUSD":
+                st.session_state["rizan_xau_detail"] = default_detail
+                st.session_state["_rizan_last_xau_detail"] = default_detail
         st.session_state["_rizan_active_route"] = route
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
