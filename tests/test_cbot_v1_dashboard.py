@@ -44,7 +44,7 @@ class V1DashboardTests(unittest.TestCase):
         self.assertEqual(model['phase'], 'GROWTH')
         self.assertTrue(model['bridge_ready'])
         self.assertTrue(all(s.startswith('TERHUBUNG') for s in model['statuses'].values()))
-        self.assertTrue(all('❓' in x['Status'] for x in checklist(model, 'EURUSD')[3:]))
+        self.assertTrue(all(x['Status'].startswith('❓') for x in checklist(model, 'EURUSD') if x['Syarat'] in ('Trigger entry, sesi dan filter bawaan lolos', 'Request order dan hasil broker tercocokkan')))
         self.assertEqual(model['roles']['BOOTSTRAP']['checkpoint_version'], 9)
         self.assertEqual(model['roles']['BOOTSTRAP']['client_revision'], 7)
 

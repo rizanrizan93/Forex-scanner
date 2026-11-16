@@ -13,7 +13,7 @@ ROLES = ("BOOTSTRAP", "XAUUSD", "EURUSD", "BTCUSD")
 SNAPSHOT_URL = ("https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
                 "bootstrap125-monitor-snapshots/runtime/bootstrap125_live_snapshot.json")
 SOURCE_URL = ("https://github.com/rizanrizan93/Forex-scanner/blob/"
-              "2a33f76ff281e5b4a6018fed3e080041f27413a3/"
+              "90172c2fba345e4221ca822c8e7d1d760a98c6b1/"
               "repairs/bootstrap125_v1_20261114/STRATEGY_V1_FROZEN.md")
 DIRECT_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/status.json"
 BROKER_URL = "https://rizan-bridge.duckdns.org:25345/bootstrap125/broker.json"
@@ -134,6 +134,18 @@ def checklist(model, symbol):
                  "Close M5 > high 64 bar sebelumnya + 0,05 ATR14", "EMA20 H4 > EMA80 H4 pada candle tertutup"]
     else:
         setup = ["Candle tertutup dan warmup indikator lengkap", "Setup frozen " + {"XAUUSD": "compression/displacement", "EURUSD": "EUR", "BTCUSD": "original / Break40"}[symbol] + " terpenuhi"]
+    if phase == "GROWTH" and symbol in ("XAUUSD", "EURUSD"):
+        now = model["now"]
+        # Source gates: EntryFamilies.XauEvaluate starts 05:00 UTC; compression
+        # starts 12:00 UTC. EUR incumbent/AsiaBuy cannot trigger before 07:00 UTC.
+        start = 5 if symbol == "XAUUSD" else 7
+        allowed = start <= now.hour < 17
+        if symbol == "XAUUSD":
+            allowed = allowed and now.weekday() < 5
+        add("Jam keluarga sinyal GROWTH terbuka", allowed,
+            ("XAU: displacement 12:00–00:00 WIB; compression 19:00–00:00 WIB" if symbol == "XAUUSD"
+             else "EUR: keluarga sinyal mulai 14:00 WIB; incumbent sampai 19:00, AsiaBuy sampai 00:00 WIB") +
+            "; jam terbuka belum membuktikan pola candle atau guard lolos")
     for name in setup:
         add(name, None, "Menunggu candle broker dan evaluasi independen V1")
     for name, detail in (
@@ -213,7 +225,7 @@ def render_snapshot(raw=None, *, now=None, unavailable=False):
 
 def fetch_json(url, slot):
     request = Request(url + "?slot=" + str(slot), headers={"User-Agent": "RIZAN-V1-readonly/2", "Cache-Control": "no-cache"})
-    with urlopen(request, timeout=5) as response:
+    with urlopen(request, timeout=9) as response:
         data = response.read(80_001)
     if len(data) > 80_000:
         raise ValueError("V1_MONITOR_TOO_LARGE")
@@ -254,7 +266,7 @@ def render_broker(raw, *, now=None):
                        Entry_fill=r.get("entry_fills"), Ditolak=r.get("rejected_orders"))
                   for s,r in roles.items() if s in ROLES and isinstance(r,dict)],
                  hide_index=True,width="stretch")
-    st.caption("Order dan deal V1 dipisahkan melalui label broker. Nol order bukan bukti nol sinyal; "
+    st.caption("Deal belum terpetakan ke label/order: " + str(raw.get("unmapped_deals", "UNKNOWN")) + ". Angka tabel hanya record V1 teridentifikasi. Nol order bukan bukti nol sinyal; "
                "pencocokan sinyal dan seluruh guard masih diperlukan untuk memastikan missed entry.")
 
 

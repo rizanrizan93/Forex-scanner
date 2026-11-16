@@ -117,7 +117,7 @@ def read():
             for frame,count,days in [('M1',512,3),('M5',512,5),('H1',512,45),('H4',1024,270)]:
                 try:
                     now=datetime.now(UTC);period={'M1':60,'M5':300,'H1':3600,'H4':14400}[frame]
-                    bars=client.historical_bars(symbol,frame,from_time=now-timedelta(days=days),to_time=now,count=count)
+                    bars=client.historical_bars(symbol,frame,from_time=now-timedelta(days=days),to_time=now,count=count+1)
                     closed=[b for b in bars if b.timestamp+timedelta(seconds=period)<=now]
                     market['bars'][symbol][frame]=[dict(timestamp=b.timestamp.isoformat(),open=b.open,high=b.high,low=b.low,close=b.close,volume=b.tick_count) for b in closed]
                     result['market'][symbol][frame]=dict(count=len(closed),last_closed_bar_at=closed[-1].timestamp.isoformat() if closed else None)
