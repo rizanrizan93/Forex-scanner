@@ -20,10 +20,17 @@ from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
 from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y, pair_with_treasury_2y
 from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
 from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
-from fx_scanner.xau_intraday_macro_v398 import (
-    fetch_yahoo_chart, evaluate_dxy_pressure,
-    evaluate_fed_funds_futures_pressure,
-)
+def _load_intraday_market_helpers():
+    """Lazy import: dashboard must render even if optional Yahoo transport fails.
+
+    The two local evaluators are used only for secondary market-data quotes.
+    Existing validated macro snapshots remain available without this package.
+    """
+    from fx_scanner.xau_intraday_macro_v398 import (
+        fetch_yahoo_chart, evaluate_dxy_pressure,
+        evaluate_fed_funds_futures_pressure,
+    )
+    return fetch_yahoo_chart, evaluate_dxy_pressure, evaluate_fed_funds_futures_pressure
 
 
 def fresh(t, now, seconds=150):
@@ -36,12 +43,11 @@ def fallback_market(symbol: str) -> dict:
     """Secondary quote, NOT official CME/ICE or a FedWatch probability."""
     if symbol == "ZQ":
         endpoint = "https://query1.finance.yahoo.com/v8/finance/chart/ZQ=F"
-        evaluator = evaluate_fed_funds_futures_pressure
     elif symbol == "DXY":
         endpoint = "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB"
-        evaluator = evaluate_dxy_pressure
     else:
         raise ValueError("UNSUPPORTED_USD_LEAD_SYMBOL")
+    fetch_yahoo_chart, _, _ = _load_intraday_market_helpers()
     points = fetch_yahoo_chart(
         base_url=endpoint, allowed_host="query1.finance.yahoo.com",
         timeout_seconds=5., interval="5m", range_name="1d",
@@ -59,6 +65,17 @@ def supplemental_quotes(evaluation: dict, now: datetime) -> tuple[dict, dict]:
     """Only use fallback for a missing original source; never paper over stale data."""
     out = dict(evaluation)
     notes = {}
+    try:
+        _, evaluate_dxy_pressure, evaluate_fed_funds_futures_pressure = (
+            _load_intraday_market_helpers()
+        )
+    except ModuleNotFoundError as exc:
+        if exc.name != "curl_cffi":
+            raise
+        # Never crash the page because a secondary quote transport is missing.
+        # Pure USD Lead guards will mark absent/stale evidence UNKNOWN/WAIT.
+        unavailable = "Transport Yahoo curl_cffi belum terpasang; gunakan feed makro tervalidasi"
+        return out, {"fed_funds_futures": unavailable, "dxy_intraday": unavailable}
     for key, name, f in (
         ("fed_funds_futures", "ZQ", evaluate_fed_funds_futures_pressure),
         ("dxy_intraday", "DXY", evaluate_dxy_pressure),
@@ -74,8 +91,10 @@ def supplemental_quotes(evaluation: dict, now: datetime) -> tuple[dict, dict]:
             data = fallback_market(name)
             out[key] = f(data["observations"], now=now, max_age_seconds=900)
             notes[key] = "Yahoo Finance proxy; bukan kuotasi ICE/CME langsung"
-        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
-            notes[key] = "Tidak tersedia: " + type(exc).__name__
+        except Exception as exc:
+            # Third-party HTTP libraries may raise a RequestException not derived
+            # from OSError; a failed fallback is UNKNOWN, never a page-wide crash.
+            notes[key] = "Feed cadangan tidak tersedia: " + type(exc).__name__
     return out, notes
 
 

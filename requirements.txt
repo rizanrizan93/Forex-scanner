@@ -10,3 +10,4 @@ cryptography==42.0.8
 
 matplotlib==3.10.7
 httpx==0.28.1
+curl-cffi==0.16.3

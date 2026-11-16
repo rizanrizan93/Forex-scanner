@@ -1,0 +1,48 @@
+name: Streamlit Cloud USD Lead Runtime Hotfix
+
+on:
+  pull_request:
+    paths:
+      - "requirements.txt"
+      - "pages/5_USD_Lead_Engine.py"
+      - "tests/test_usd_lead_streamlit_cloud_runtime.py"
+      - ".github/workflows/usd-lead-streamlit-cloud-hotfix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cloud-dependencies-and-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exactly the same requirements file used by Streamlit Cloud
+        run: python -m pip install -r requirements.txt
+      - name: Verify previously missing dependency and affected imports
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import curl_cffi
+          from fx_scanner.xau_intraday_macro_v398 import (
+              fetch_yahoo_chart, evaluate_dxy_pressure,
+              evaluate_fed_funds_futures_pressure
+          )
+          from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
+          from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
+          print("STREAMLIT_CLOUD_CURL_CFFI_IMPORT_OK")
+          PY
+      - name: Compile navigation and USD Lead page
+        run: |
+          python -m py_compile main.py pages/5_USD_Lead_Engine.py
+      - name: Regression test missing optional transport and failing network
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_usd_lead_streamlit_cloud_runtime.py
+          python -m pytest -q tests/test_usd_lead_decision_v1.py tests/test_usd_lead_yield_bidirectional_v2.py
