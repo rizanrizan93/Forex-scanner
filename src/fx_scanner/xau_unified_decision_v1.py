@@ -27,7 +27,7 @@ def _recent(report, key, now):
     r = _obj(report)
     try:
         at = datetime.fromisoformat(str(r.get("as_of_utc")).replace("Z", "+00:00"))
-        delta = (now - at.astimezone(UTC)).total_seconds()
+        if at.tzinfo is None:\n            return False\n        delta = (now - at.astimezone(UTC)).total_seconds()
     except (TypeError, ValueError, OverflowError):
         return False
     return (r.get("contract") == EXPECTED[key]
