@@ -29,6 +29,10 @@ def render():
     st.caption('Sumber: cTrader market data read-only · observasi snapshot '+str(feed.get('as_of') or 'belum tersedia'))
     if error:
         st.warning('WAIT DATA · '+error)
+    elif report['BUY']['state'] == 'WAIT_CANDLE':
+        st.info('Menunggu candle M5 yang baru tertutup diterbitkan. Feed masih terhubung; setup sebelumnya sudah berakhir.')
+    elif report['errors']:
+        st.warning('WAIT DATA · '+'; '.join(report['errors']))
     for side, tab in zip(('BUY','SELL'),st.tabs(['Checklist BUY','Checklist SELL'])):
         with tab:
             r=report[side]

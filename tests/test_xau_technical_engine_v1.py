@@ -82,6 +82,21 @@ def test_setup_expires_at_next_m5_close_even_if_transport_still_fresh():
     assert r['BUY']['plan'] is None
 
 
+def test_boundary_wait_keeps_valid_h1_without_reusing_old_m5_setup():
+    f = fixture()
+    f['as_of'] = (NOW+timedelta(minutes=5)).isoformat()
+    r = evaluate_technical(f, now=NOW+timedelta(minutes=5, seconds=30))
+    assert r['BUY']['state'] == 'WAIT_CANDLE'
+    assert r['BUY']['items'][0]['state'] == 'PASS'
+    assert all(x['state'] == 'UNKNOWN' for x in r['BUY']['items'][1:])
+    assert r['direction'] == 'WAIT'
+    assert r['BUY']['plan'] is None
+    # A prolonged collection failure is still a genuine data outage.
+    r = evaluate_technical(f, now=NOW+timedelta(minutes=7))
+    assert r['BUY']['state'] == 'WAIT_DATA'
+    assert r['BUY']['plan'] is None
+
+
 def test_higher_timeframes_use_actual_session_bars_without_gap_fill():
     f=fixture()
     for tf in ('H1','M15'):

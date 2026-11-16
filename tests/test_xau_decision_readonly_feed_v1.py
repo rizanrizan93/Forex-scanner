@@ -90,8 +90,9 @@ def test_cached_raw_m5_uses_cache_busted_contents_api():
         return Response(json.dumps(old).encode())
     result = fetch_decision_candles(now=NOW, opener=opener)
     assert result['as_of'] == NOW.isoformat()
-    assert len(urls) == 2
-    assert '&slot=' in urls[1]
+    assert len(urls) == 3
+    assert '/refs/heads/' in urls[1]
+    assert '&slot=' in urls[2]
     assert result['bars']['M5'][-1]['closed_at'] == NOW.isoformat()
 
 
@@ -105,3 +106,51 @@ def test_delivery_diagnostics_do_not_leak_http_url_or_body():
     message = str(raised.value)
     assert 'raw=HTTP_429' in message and 'api=HTTP_429' in message
     assert 'SECRET' not in message and 'https' not in message
+
+
+def test_raw_ref_recovers_latest_candle_without_calling_rate_limited_api():
+    import json
+    from io import BytesIO
+    from fx_scanner.xau_decision_candle_feed_v1 import fetch_decision_candles
+    old = make_payload(fake_series(now=NOW-timedelta(minutes=5)), now=NOW-timedelta(minutes=5))
+    new = make_payload(fake_series(), now=NOW)
+    urls = []
+    def opener(request, timeout):
+        urls.append(request.full_url)
+        assert 'api.github.com' not in request.full_url
+        return BytesIO(json.dumps(new if '/refs/heads/' in request.full_url else old).encode())
+    assert fetch_decision_candles(now=NOW, opener=opener) == new
+    assert len(urls) == 2
+
+
+def test_api_403_keeps_valid_history_but_never_revives_expired_setup():
+    import json
+    from io import BytesIO
+    from urllib.error import HTTPError
+    from fx_scanner.xau_decision_candle_feed_v1 import fetch_decision_candles
+    from fx_scanner.xau_technical_engine_v1 import evaluate_technical
+    old = make_payload(fake_series(now=NOW-timedelta(minutes=5)), now=NOW)
+    def opener(request, timeout):
+        if 'api.github.com' in request.full_url:
+            raise HTTPError(request.full_url, 403, 'rate limit', {}, None)
+        return BytesIO(json.dumps(old).encode())
+    feed = fetch_decision_candles(now=NOW, opener=opener)
+    assert feed['as_of'] == old['as_of']
+    report = evaluate_technical(feed, now=NOW)
+    assert report['direction'] == 'WAIT'
+    assert report['BUY']['state'] == 'WAIT_CANDLE'
+    assert report['BUY']['plan'] is None
+
+
+def test_old_raw_and_api_403_still_fail_closed():
+    import json
+    from io import BytesIO
+    from urllib.error import HTTPError
+    from fx_scanner.xau_decision_candle_feed_v1 import fetch_decision_candles
+    old = make_payload(fake_series(now=NOW-timedelta(minutes=20)), now=NOW-timedelta(minutes=20))
+    def opener(request, timeout):
+        if 'api.github.com' in request.full_url:
+            raise HTTPError(request.full_url, 403, 'rate limit', {}, None)
+        return BytesIO(json.dumps(old).encode())
+    with pytest.raises(ValueError, match='CLOSED_CANDLE_FEED_STALE_OR_UNAVAILABLE'):
+        fetch_decision_candles(now=NOW, opener=opener)

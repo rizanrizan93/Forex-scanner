@@ -74,6 +74,7 @@ def evaluate_technical(feed, *, now):
         raise ValueError('NOW_MUST_BE_TIMEZONE_AWARE')
     now = now.astimezone(UTC)
     bars, errors = {}, []
+    waiting_m5 = False
     at = stamp((feed or {}).get('as_of'))
     if at is None or not 0 <= (now-at).total_seconds() <= 600:
         errors.append('Snapshot candle kedaluwarsa/timestamp belum valid')
@@ -87,6 +88,8 @@ def evaluate_technical(feed, *, now):
             error = 'Candle '+tf+' terbaru memiliki gap; tunggu rangkaian lengkap'
         if tf == 'M5' and series and (now-series[-1]['at']).total_seconds() >= 300:
             error = 'Candle M5 melewati batas setup; tunggu candle terbaru'
+            waiting_m5 = (300 <= (now-series[-1]['at']).total_seconds() <= 390
+                          and at is not None and 0 <= (now-at).total_seconds() <= 90)
         if error:
             errors.append(tf+': '+error)
         bars[tf] = series
@@ -96,7 +99,16 @@ def evaluate_technical(feed, *, now):
     for side in ('BUY', 'SELL'):
         if errors:
             rows = [{'key':k,'name':n,'state':'UNKNOWN','why':'; '.join(errors)} for k,n in RULES]
-            result[side] = {'items':rows,'state':'WAIT_DATA','passed':0,'plan':None}
+            waiting = waiting_m5 and len(errors) == 1 and bool(bars['H1']) and bool(bars['M15'])
+            if waiting:
+                highs, lows = pivots(bars['H1'][-72:])
+                buy = side == 'BUY'
+                trend = (len(highs)>=2 and len(lows)>=2 and
+                         (highs[-1]>highs[-2] and lows[-1]>lows[-2] if buy else highs[-1]<highs[-2] and lows[-1]<lows[-2]))
+                rows[0].update(state='PASS' if trend else 'FAIL',
+                               why='Swing H1 tervalidasi; menunggu publikasi candle M5 yang baru tertutup')
+            result[side] = {'items':rows,'state':'WAIT_CANDLE' if waiting else 'WAIT_DATA',
+                            'passed':sum(x['state']=='PASS' for x in rows),'plan':None}
             continue
         buy = side == 'BUY'
         h1, m15, m5 = bars['H1'], bars['M15'], bars['M5']

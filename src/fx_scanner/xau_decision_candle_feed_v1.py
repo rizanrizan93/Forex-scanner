@@ -78,28 +78,29 @@ def fetch_decision_candles(*, now: datetime | None = None, opener=urlopen,
     now = now or datetime.now(UTC)
     errors = []
     slot = str(int(now.timestamp() // 20))
-    try:
-        source = _read(
-            ROOT + BRANCH + "/" + PATH + "?slot=" +
-            slot,
-            opener=opener, timeout=timeout_seconds, api=False,
-        )
-        validated = validate_candle_snapshot(source, now=now)
-        # A CDN snapshot can still pass transport freshness while its last M5
-        # setup has expired. Try the independent Contents API before returning
-        # that old candle; never change the original observation timestamps.
-        latest_m5 = stamp(validated["bars"]["M5"][-1]["closed_at"])
-        if latest_m5 is None or (now-latest_m5).total_seconds() >= 300:
-            raise ValueError("XAU_DECISION_CDN_M5_RETRY_API")
-        return validated
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        errors.append("raw=" + _safe_failure(exc))
-    try:
-        source = _read(
-            CONTENTS + PATH + "?ref=" + BRANCH + "&slot=" + slot,
-            opener=opener, timeout=timeout_seconds, api=True,
-        )
-        return validate_candle_snapshot(source, now=now)
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        errors.append("api=" + _safe_failure(exc))
-        raise ValueError("XAU_DECISION_CLOSED_CANDLE_FEED_STALE_OR_UNAVAILABLE [" + "; ".join(errors) + "]") from exc
+    candidates = []
+    # The explicit refs/heads route has an independent CDN cache key. Prefer
+    # public raw delivery over the unauthenticated API's shared-IP rate limit.
+    routes = (
+        ("raw", ROOT + BRANCH + "/" + PATH + "?slot=" + slot, False),
+        ("raw_ref", ROOT + "refs/heads/" + BRANCH + "/" + PATH + "?slot=" + slot, False),
+        ("api", CONTENTS + PATH + "?ref=" + BRANCH + "&slot=" + slot, True),
+    )
+    for name, url, api in routes:
+        try:
+            source = _read(url, opener=opener, timeout=timeout_seconds, api=api)
+            validated = validate_candle_snapshot(source, now=now)
+            candidates.append(validated)
+            latest_m5 = stamp(validated["bars"]["M5"][-1]["closed_at"])
+            if latest_m5 is not None and (now-latest_m5).total_seconds() < 300:
+                return validated
+            errors.append(name + "=XAU_DECISION_AWAITING_LATEST_M5")
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+            errors.append(name + "=" + _safe_failure(exc))
+    if candidates:
+        # A failed optional fallback must not erase validated H1/M15 history.
+        # Keep the original times: evaluate_technical still expires the setup
+        # at its next M5 close and cannot turn this into an actionable signal.
+        return max(candidates, key=lambda x: (
+            stamp(x["bars"]["M5"][-1]["closed_at"]), stamp(x["as_of"])))
+    raise ValueError("XAU_DECISION_CLOSED_CANDLE_FEED_STALE_OR_UNAVAILABLE [" + "; ".join(errors) + "]")
