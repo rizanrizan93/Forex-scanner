@@ -29,7 +29,35 @@ def parse_bundesbank_daily_csv(raw: bytes) -> dict[str, float]:
     header_index = next((i for i, line in enumerate(lines[:80])
                          if "TIME_PERIOD" in line.upper() and "OBS_VALUE" in line.upper()), None)
     if header_index is None:
-        raise ValueError("BUNDESBANK_CSV_NO_SDMX_COLUMNS")
+        # Bundesbank REST also serves its official WIDE CSV with a series ID
+        # in the second header column, metadata rows and YYYY-MM-DD observations.
+        reader = csv.reader(io.StringIO(text), delimiter=",")
+        all_rows = list(reader)
+        if not all_rows or len(all_rows[0]) < 2 or (
+            str(all_rows[0][1]).strip().strip('"') != BUND_SERIES
+        ):
+            raise ValueError("BUNDESBANK_CSV_NO_SDMX_COLUMNS")
+        result = {}
+        for cells in all_rows[1:]:
+            if len(cells) < 2:
+                continue
+            date = str(cells[0]).strip().strip('"')
+            value = str(cells[1]).strip().strip('"')
+            if len(date) != 10 or date[4] != "-" or date[7] != "-":
+                continue
+            try:
+                datetime.strptime(date, "%Y-%m-%d")
+                v = float(value.replace(",", "."))
+            except ValueError:
+                continue  # Bundesbank "." on weekends/holidays means missing.
+            if not -5 <= v <= 20:
+                raise ValueError("BUNDESBANK_YIELD_OUT_OF_BOUNDS")
+            if date in result and result[date] != v:
+                raise ValueError("BUNDESBANK_DUPLICATE_CONFLICT")
+            result[date] = v
+        if len(result) < 2:
+            raise ValueError("BUNDESBANK_INSUFFICIENT_DAILY_OBSERVATIONS")
+        return result
     line = lines[header_index]
     delimiter = ";" if line.count(";") > line.count(",") else ","
     reader = csv.DictReader(io.StringIO("\n".join(lines[header_index:])), delimiter=delimiter)
