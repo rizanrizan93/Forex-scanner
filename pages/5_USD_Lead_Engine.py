@@ -19,6 +19,7 @@ from fx_scanner.xau_runtime_decision_v404 import evaluate_runtime_decision_v404
 from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
 from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y, pair_with_treasury_2y
 from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
+from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
 from fx_scanner.xau_intraday_macro_v398 import (
     fetch_yahoo_chart, evaluate_dxy_pressure,
     evaluate_fed_funds_futures_pressure,
@@ -63,9 +64,11 @@ def supplemental_quotes(evaluation: dict, now: datetime) -> tuple[dict, dict]:
         ("dxy_intraday", "DXY", evaluate_dxy_pressure),
     ):
         existing = obj(out.get(key))
-        # If provider has data, evaluator will inspect source timestamp afresh.
-        if existing.get("available") is True:
-            notes[key] = "Sumber makro ForexScanner"
+        # A stale available=True flag is NOT a current quote; fetch the
+        # secondary source when original observation has aged out.
+        if (existing.get("available") is True
+                and fresh(existing.get("current_at"), now, 900)):
+            notes[key] = "Sumber makro ForexScanner, original timestamp valid"
             continue
         try:
             data = fallback_market(name)
@@ -143,24 +146,45 @@ def render_usd_lead():
     notes["xau"] = candle_note
     notes["v404"] = "Original V404 broker price FRESH" if zone_fresh else "V404 not fresh/unknown"
 
-    report = evaluate_usd_lead(evaluation, spread=spread, xau_checklist=xau, now=now)
+    # Yield pressure is a qualitative 15–60m projection. It uses fresh
+    # market pressure, NOT the old daily Treasury release as a prediction.
+    yield_projection = evaluate_yield_pressure(
+        evaluation, now=now, fed_funds=evaluation.get("fed_funds_futures")
+    )
+    report = evaluate_usd_lead(
+        evaluation, spread=spread, xau_checklist=xau,
+        yield_nowcast=yield_projection, now=now,
+    )
     up, down = report["usd_up"], report["usd_down"]
-    c1, c2, c3 = st.columns(3)
-    c1.metric("USD Menguat", str(up["passed"]) + "/7")
-    c2.metric("USD Melemah", str(down["passed"]) + "/7")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("USD Menguat", str(up["passed"]) + "/" + str(len(up["rows"])))
+    c2.metric("USD Melemah", str(down["passed"]) + "/" + str(len(down["rows"])))
     c3.metric("USD Direction", report["usd_direction"])
+    c4.metric(
+        "Yield 15–60m (proxy)",
+        yield_projection["yield_direction"]
+        if yield_projection["state"] in {"CONCORDANT_PROXY", "ZN_PROXY_ONLY"}
+        else "WAIT",
+    )
+    st.caption(
+        "Prediksi yield = hipotesis tekanan arah dari ZN futures dan perubahan "
+        "ekspektasi Fed ZQ. Bukan proyeksi angka yield, belum tervalidasi sebagai "
+        "forecast, dan tidak menggantikan data US2Y/real yield harian."
+    )
     st.caption(
         "DXY adalah KONFIRMASI, bukan indikator pendahulu. Fed futures intraday "
         "dan perubahan yield harian TIDAK boleh diperlakukan sebagai satu frekuensi."
     )
 
     tab_up, tab_down = st.tabs([
-        "USD NAIK → Cari SELL XAU",
-        "USD TURUN → Cari BUY XAU",
+        "USD NAIK + Yield NAIK → Periksa SELL XAU",
+        "USD TURUN + Yield TURUN → Periksa BUY XAU",
     ])
     mapping = {"PASS": "✅ TERPENUHI", "FAIL": "❌ BELUM TERPENUHI",
                "UNKNOWN": "⏳ BELUM VALID"}
-    for side, parent in ((up, tab_up), (down, tab_down)):
+    for side, parent, direction_key in (
+        (up, tab_up, "UP"), (down, tab_down, "DOWN"),
+    ):
         with parent:
             st.caption(
                 str(side["passed"]) + " terpenuhi • " +
@@ -173,9 +197,8 @@ def render_usd_lead():
                     st.checkbox(
                         r["label"], value=(r["state"] == "PASS"),
                         disabled=True,
-                        key="usd_lead_" + r["key"] + "_" + (
-                            "UP" if parent is tab_up else "DOWN"
-                        ) + "_" + r["state"],
+                        key="usd_lead_" + r["key"] + "_" +
+                            direction_key + "_" + r["state"],
                     )
                     st.caption(mapping[r["state"]] + " — " + r["detail"])
                     st.caption(
@@ -189,8 +212,9 @@ def render_usd_lead():
                 )
             elif side["status"] == "USD_DIRECTION_WATCH_ONLY":
                 st.info(
-                    "USD direction WATCH: syarat XAU/real yield belum semuanya terpenuhi. "
-                    "Jangan mengasumsikan emas otomatis bergerak berlawanan."
+                    "USD direction WATCH: yield 15–60m, real yield atau struktur "
+                    "XAU belum semuanya terkonfirmasi. BUY/SELL hanya watchlist, "
+                    "bukan perintah transaksi."
                 )
             elif side["status"] == "USD_DAILY_RATES_WATCH_ONLY":
                 st.info(
@@ -206,7 +230,9 @@ def render_usd_lead():
             "macro_quality": obj(evaluation.get("attribution_quality")).get("quality_state"),
             "provider_notes": notes,
             "spread": spread,
+            "yield_pressure_nowcast": yield_projection,
             "xau_SMC_SELL_items": xau["SELL"]["items"],
+            "xau_SMC_BUY_items": xau["BUY"]["items"],
             "risk": (
                 "Akun $100 adalah referensi; lot, equity aktual, margin broker belum "
                 "diverifikasi, jadi panel tidak memberi otoritas entry."
@@ -220,12 +246,12 @@ def render_usd_lead():
             "[Bundesbank 2Y](https://www.bundesbank.de/en/statistics/money-and-capital-markets/interest-rates-and-yields/daily-yields-of-current-federal-securities-772220)"
         )
     st.caption(
-        "USD LEAD V1 • indikator penelitian, refresh tampilan ±60 detik • "
+        "USD LEAD V2 • BUY/SELL simetris + yield pressure proxy, refresh ±60 detik • "
         "tidak mengubah Frozen V1, cBot, bridge, atau posisi LIVE."
     )
 
 
-st.title("RIZAN — USD Lead Engine V1")
+st.title("RIZAN — USD Lead Engine V2 · BUY & SELL + Yield")
 st.warning(
     "Alat bantu keputusan, BUKAN algoritma profit yang sudah tervalidasi. "
     "Tidak ada probabilitas akurasi 15 menit/1 jam/6 jam yang diklaim."

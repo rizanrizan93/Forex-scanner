@@ -1,0 +1,40 @@
+name: USD Lead V2 Bidirectional Yield Research
+
+on:
+  pull_request:
+    paths:
+      - "src/fx_scanner/usd_lead_decision_v1.py"
+      - "src/fx_scanner/xau_yield_pressure_nowcast_v1.py"
+      - "pages/5_USD_Lead_Engine.py"
+      - "tests/test_xau_yield_pressure_nowcast_v1.py"
+      - "tests/test_usd_lead_yield_bidirectional_v2.py"
+      - ".github/workflows/usd-lead-v2-yield-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bidirectional-yield-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated research test dependencies
+        run: python -m pip install pytest==9.0.2
+      - name: Compile read-only USD Lead and new yield nowcast UI
+        run: |
+          python -m py_compile src/fx_scanner/usd_lead_decision_v1.py
+          python -m py_compile src/fx_scanner/xau_yield_pressure_nowcast_v1.py
+          python -m py_compile pages/5_USD_Lead_Engine.py
+      - name: Test both sides + source freshness + yield divergence
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_usd_lead_decision_v1.py tests/test_usd_lead_bund_2y_v1.py tests/test_xau_yield_pressure_nowcast_v1.py tests/test_usd_lead_yield_bidirectional_v2.py
+      - name: Keep module isolated from cTrader order APIs
+        run: |
+          ! grep -iE "ProtoOANewOrderReq|ExecuteMarketOrder|PlaceLimitOrder|close_position|open_position" src/fx_scanner/usd_lead_decision_v1.py src/fx_scanner/xau_yield_pressure_nowcast_v1.py pages/5_USD_Lead_Engine.py
