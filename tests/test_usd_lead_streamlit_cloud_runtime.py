@@ -19,7 +19,7 @@ def _supplemental_function():
     tree = ast.parse(source)
     fn = next(n for n in tree.body
               if isinstance(n, ast.FunctionDef) and n.name == "supplemental_quotes")
-    namespace = {}
+    namespace = {"datetime": datetime}
     exec(compile(ast.Module(body=[fn], type_ignores=[]), str(PAGE), "exec"), namespace)
     return tree, namespace
 
