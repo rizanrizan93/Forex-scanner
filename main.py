@@ -7,32 +7,8 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 st.set_page_config(page_title="RIZAN Scanner", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
-st.markdown(
-    """<style>
-    /* Legacy EUR/Setup pages reduce .block-container padding to .75rem.
-       Reserve space for Streamlit's header so it cannot cover navigation. */
-    [data-testid="stMainBlockContainer"] {
-        padding-top: 4.5rem !important;
-    }
-    [data-testid="stLayoutWrapper"]:has(> .st-key-rizan_primary_navigation) {
-        position: sticky; top: 3.5rem; z-index: 990;
-    }
-    .st-key-rizan_primary_navigation {
-        /* Opaque sticky surface prevents scrolled cBot captions from
-           becoming visible behind the radio controls on mobile browsers. */
-        background: var(--background-color, #0e1117) !important;
-        padding: .4rem .25rem;
-        box-shadow: 0 6px 0 var(--background-color, #0e1117);
-        border-bottom: 1px solid rgba(128, 128, 128, .2);
-        isolation: isolate;
-    }
-    .st-key-rizan_primary_navigation [role="radiogroup"],
-    .st-key-rizan_xau_navigation [role="radiogroup"] {
-        flex-wrap: wrap; gap: .35rem 1rem;
-    }
-    </style>""",
-    unsafe_allow_html=True,
-)
+from fx_scanner.ui_terminal import TERMINAL_CSS, render_brand, render_section_intro
+st.markdown(TERMINAL_CSS, unsafe_allow_html=True)
 
 @st.cache_resource(show_spinner=False)
 def load_zone_panel(source_revision):
@@ -42,6 +18,7 @@ def load_zone_panel(source_revision):
     return reload(zone_v05_dashboard).render_zone_v05
 
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
+    render_brand(st)
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
     st.session_state["rizan_xau_detail"] = st.session_state["rizan_xau_detail"]
@@ -54,10 +31,12 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
         )
     if pair == "cBots":
         with st.container(key="rizan_cbots_content"):
+            render_section_intro(st, pair="cBots", detail="cBots")
             from fx_scanner.cbot_v1_dashboard import render_v1_dashboard
             render_v1_dashboard()
     if pair == "EURUSD":
         with st.container(key="rizan_eurusd_content"):
+            render_section_intro(st, pair="EURUSD", detail="EURUSD")
             from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
             render_selected_raw_reference("EURUSD")
             from fx_scanner.cross_asset_dashboard import render_cross_asset
@@ -74,6 +53,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                     horizontal=True, label_visibility="collapsed",
                 )
             paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/4_XAU_Decision_Checklist.py", "pages/5_USD_Lead_Engine.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
                     with st.container(key="rizan_xau_detail_content"):
