@@ -34,6 +34,24 @@ class DailyRegimeTests(unittest.TestCase):
         self.assertEqual(r["coverage_pct"],100)
         self.assertFalse(r["execution_authority"])
 
+    def test_nominal_down_but_real_up_is_explicit_divergence(self):
+        y = rows()
+        y["REAL_YIELD_10Y"]["delta"] = 1.0
+        y["US2Y"]["delta"] = -5.0
+        y["US10Y"]["delta"] = -3.0
+        r = assess_daily_regime(yields=y, dxy_last=close(4), now=NOW)
+        self.assertTrue(r["yield_divergence"])
+        self.assertEqual(r["nominal_yield_direction"], 1)
+        self.assertEqual(r["real_yield_direction"], -1)
+        self.assertAlmostEqual(r["treasury_direction"], 0.0)
+        self.assertFalse(r["execution_authority"])
+
+    def test_same_direction_yields_do_not_raise_divergence(self):
+        r = assess_daily_regime(yields=rows(), dxy_last=close(4), now=NOW)
+        self.assertFalse(r["yield_divergence"])
+        self.assertEqual(r["nominal_yield_direction"], -1)
+        self.assertEqual(r["real_yield_direction"], -1)
+
     def test_yields_from_fred_are_real_daily_not_live(self):
         obs=[("2026-11-03",4.5),("2026-11-04",4.6),("2026-11-05",4.62)]
         row=fred_daily_yield_row("US10Y",obs,now=NOW)
