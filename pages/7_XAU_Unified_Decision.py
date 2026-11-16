@@ -26,65 +26,8 @@ from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
 from fx_scanner.ui_terminal import render_condition, render_progress
 
 
-def _fresh(value, now, seconds=150):
-    at = stamp(value)
-    return at is not None and 0 <= (now-at).total_seconds() <= seconds
-
-
-@st.cache_data(ttl=120, show_spinner=False)
-def _secondary_quotes(symbol):
-    # Secondary proxy only. The original quote timestamp is never refreshed here.
-    from fx_scanner.xau_intraday_macro_v398 import (
-        fetch_yahoo_chart, evaluate_dxy_pressure, evaluate_fed_funds_futures_pressure,
-    )
-    urls = {
-        "ZQ": "https://query1.finance.yahoo.com/v8/finance/chart/ZQ=F",
-        "DXY": "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB",
-    }
-    values = fetch_yahoo_chart(base_url=urls[symbol], allowed_host="query1.finance.yahoo.com",
-                               timeout_seconds=5., interval="5m", range_name="1d")
-    return list(values)
-
-
-@st.cache_data(ttl=1800, show_spinner=False)
-def _bund():
-    return fetch_bundesbank_2y(now=datetime.now(UTC), timeout_seconds=7.)
-
-
-def _macro_and_notes(now):
-    notes = {}
-    try:
-        evaluation = obj(macro_input(
-            fetch_pre_news_snapshot(now=now, timeout_seconds=7.), now=now
-        ).get("evaluation"))
-        notes["macro"] = "V400 snapshot diperiksa; nilai yield resmi harian bukan nowcast"
-    except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
-        evaluation = {}
-        notes["macro"] = "WAIT DATA: " + type(exc).__name__
-    for key, symbol in (("fed_funds_futures", "ZQ"), ("dxy_intraday", "DXY")):
-        current = obj(evaluation.get(key))
-        if current.get("available") is True and _fresh(current.get("current_at"), now, 900):
-            continue
-        try:
-            from fx_scanner.xau_intraday_macro_v398 import (
-                evaluate_dxy_pressure, evaluate_fed_funds_futures_pressure,
-            )
-            points = _secondary_quotes(symbol)
-            fn = evaluate_dxy_pressure if symbol == "DXY" else evaluate_fed_funds_futures_pressure
-            evaluation[key] = fn(points, now=now, max_age_seconds=900)
-            notes[key] = "Yahoo Finance proxy, timestamp quote asli"
-        except Exception as exc:
-            # Missing optional transport must never blank the primary dashboard.
-            notes[key] = "UNKNOWN: " + type(exc).__name__
-    try:
-        spread = pair_with_treasury_2y(
-            _bund(), obj(obj(evaluation.get("components")).get("US2Y")), now=now
-        )
-        notes["spread"] = "Treasury + Bundesbank tanggal cocok" if spread else "UNKNOWN: tanggal tidak cocok"
-    except (OSError, ValueError, RuntimeError, TypeError, KeyError) as exc:
-        spread = None
-        notes["spread"] = "UNKNOWN: " + type(exc).__name__
-    return evaluation, spread, notes
+# Shared provider logic ensures identical macro interpretation in both panels.
+from fx_scanner.xau_unified_inputs_v1 import macro_and_notes as _macro_and_notes
 
 
 def _zone(now):
