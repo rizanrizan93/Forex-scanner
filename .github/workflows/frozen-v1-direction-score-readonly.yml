@@ -1,0 +1,39 @@
+name: Frozen V1 Directional Score Readonly Tests
+
+on:
+  pull_request:
+    paths:
+      - 'main.py'
+      - 'src/fx_scanner/frozen_v1_directional_score.py'
+      - 'src/fx_scanner/frozen_v1_bias_dashboard.py'
+      - 'tests/test_frozen_v1_directional_score.py'
+      - '.github/workflows/frozen-v1-direction-score-readonly.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'main.py'
+      - 'src/fx_scanner/frozen_v1_directional_score.py'
+      - 'src/fx_scanner/frozen_v1_bias_dashboard.py'
+      - 'tests/test_frozen_v1_directional_score.py'
+      - '.github/workflows/frozen-v1-direction-score-readonly.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install focused test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Compile scanner and isolated V1 panel
+        run: python -m py_compile main.py src/fx_scanner/frozen_v1_directional_score.py src/fx_scanner/frozen_v1_bias_dashboard.py
+      - name: Frozen V1 scoring regression
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest -q tests/test_frozen_v1_directional_score.py
