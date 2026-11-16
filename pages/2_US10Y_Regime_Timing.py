@@ -21,7 +21,7 @@ from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
 from fx_scanner.xau_treasury_schedule import (  # noqa: E402
-    treasury_session_status, fred_daily_release_key, next_h15_release, WIB,
+    treasury_session_status, treasury_cash_quote_status, fred_daily_release_key, next_h15_release, WIB,
 )
 
 # Long-running Streamlit sessions can retain imported modules after a Git
@@ -64,7 +64,7 @@ _refresh_macro_code_if_changed()
 from fx_scanner.xau_macro_risk_monitor import (  # noqa: E402
     render_macro_risk_monitor, render_gold_macro_conclusion,
     fred_history, market_quote, us2y_live, load_external_macro_inputs,
-    cnbc_macro_quotes_cached, goldapi_spot_cached,
+    cnbc_macro_quotes_cached, goldapi_spot_cached, treasury_daily_cached, _yield_row,
 )
 
 CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
@@ -178,7 +178,7 @@ def load_macro():
     return fetch_pre_news_snapshot()
 
 
-@st.cache_data(ttl=7 * 86400, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _load_h15_by_release(release_key):
     return fetch_h15_daily_rows()
 
@@ -191,11 +191,11 @@ def load_h15_daily():
 st.set_page_config(page_title="RIZAN US10Y", layout="wide")
 st.title("RIZAN — Makro XAU: Treasury & Cross-Asset")
 st.caption(
-    "Daily FRED (fallback Federal Reserve H.15) untuk regime makro. Intraday US10Y untuk timing/pressure. "
+    "Daily US Treasury (fallback H.15/FRED) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
-st.caption("Versi dashboard: RIZAN Macro V3.3 TREASURY HOLIDAY + OFFICIAL DAILY RELEASE · read-only")
-treasury_calendar = treasury_session_status()
+st.caption("Versi dashboard: RIZAN Macro V3.4 ASIA SESSION + TREASURY REFRESH · read-only")
+treasury_calendar = treasury_cash_quote_status()
 calendar_state = treasury_calendar["status"]
 if calendar_state == "MARKET_HOLIDAY":
     st.info(
@@ -216,8 +216,8 @@ elif calendar_state in {"WEEKEND_CLOSED", "EARLY_CLOSE"}:
         + ". Yield cash sebelumnya hanya referensi, bukan LIVE."
     )
 st.caption(
-    "FRED Treasury daily: fetch sekali per siklus rilis H.15 (16:15 ET, buffer hingga 16:45 ET), "
-    "bukan setiap refresh 15–20 detik. Siklus data " + fred_daily_release_key()
+    "US Treasury daily: cek publikasi tiap 5 menit; fallback H.15/FRED dicoba ulang bila tertunda. "
+    "Siklus data resmi " + fred_daily_release_key()
     + " · rilis H.15 berikutnya "
     + next_h15_release().astimezone(WIB).strftime("%d/%m %H:%M WIB")
     + ". FRED dapat terlambat dari H.15."
@@ -232,6 +232,7 @@ if st.button("Perbarui tampilan", key="yield_refresh"):
     cnbc_macro_quotes_cached.clear()
     goldapi_spot_cached.clear()
     us2y_live.clear()
+    treasury_daily_cached.clear()
     load_external_macro_inputs.clear()
 
 # The independently fetched CNBC cash quote must remain visible even when the
@@ -267,7 +268,7 @@ render_gold_macro_conclusion(macro_eval, load_h15_daily, event_risk=event_risk)
 def render_live_cash_quote() -> None:
     live_cash = None
     live_error = None
-    closed_market = treasury_session_status()["status"] in {
+    closed_market = treasury_cash_quote_status()["status"] in {
         "MARKET_HOLIDAY", "WEEKEND_CLOSED", "EARLY_CLOSE",
     }
     # Avoid polling a cash quote during a known scheduled closure. This is a
@@ -278,7 +279,7 @@ def render_live_cash_quote() -> None:
         except Exception as exc:
             live_error = _safe_error(exc)
     if closed_market:
-        health = treasury_session_status()["status"].replace("_", " ")
+        health = treasury_cash_quote_status()["status"].replace("_", " ")
         fallback = "N/A"
         health_detail = (
             "Treasury cash tidak memiliki sesi aktif sesuai kalender pasar AS. "
@@ -386,13 +387,15 @@ h15_display_error = None
 # Prefer a newer official H.15 date if the published macro-worker/FRED
 # snapshot is a session behind. Equal-date worker data retains precedence.
 try:
-    official = dict(load_h15_daily().get("US10Y") or {})
+    feeds = load_external_macro_inputs()
+    official = _yield_row(macro_eval, load_h15_daily(), "US10Y",
+                          feeds.get("fred"), feeds.get("treasury"))
     official_day = str(official.get("observed_at") or "")[:10]
     worker_day = str(daily.get("observed_at") or "")[:10]
     if (
         official.get("freshness") == "FRESH"
         and official.get("delta") is not None
-        and (daily.get("gold_bias") == "UNAVAILABLE" or official_day > worker_day)
+        and (daily.get("gold_bias") == "UNAVAILABLE" or official_day >= worker_day)
     ):
         display_only = dict(macro_eval)
         display_only["components"] = {
@@ -422,11 +425,11 @@ with c1:
     st.markdown("### US10Y Daily Regime")
     st.metric("Bias terhadap XAU", bias_label(daily.get("gold_bias")))
     if h15_display_active:
-        st.info("Fallback Federal Reserve H.15 aktif karena FRED/worker belum menyediakan DGS10. Hanya konteks tampilan, tanpa otoritas order.")
+        st.info("Yield harian memakai observasi resmi terbaru; Treasury diprioritaskan pada tanggal yang sama. Ini konteks harian.")
     elif daily.get("gold_bias") == "UNAVAILABLE":
         st.warning("DGS10 harian belum valid; fallback H.15 juga belum menyediakan observasi segar.")
     st.metric(
-        "Fed H.15 DGS10 (fallback)" if h15_display_active else "FRED DGS10",
+        "US10Y harian · " + str(daily.get("source") or "sumber belum tersedia"),
         fmt(daily.get("current"), "%"),
         delta=(
             None
@@ -435,7 +438,7 @@ with c1:
         ),
     )
     st.caption("Tanggal observasi daily: " + str(daily.get("observed_at") or "—")[:10])
-    st.caption("Fetch official daily per rilis; pada holiday/weekend mempertahankan observasi terakhir, tanpa mencapnya LIVE.")
+    st.caption("Data harian mempertahankan tanggal publikasi terakhir sampai rilis baru; berbeda dari quote intraday. Cek ulang sumber setiap 5 menit.")
     st.caption("Sumber harian: " + str(daily.get("source") or "UNAVAILABLE"))
     st.caption(
         "Fungsi: menentukan backdrop 1–beberapa hari. Yield harian turun = tailwind XAU; "
@@ -494,7 +497,7 @@ render_macro_risk_monitor(macro_eval, load_h15_daily)
 
 st.markdown("### Cara baca cepat")
 st.write(
-    "1. Daily FRED = arah regime. 2. Intraday yield = timing pressure. "
+    "1. Daily Treasury = arah regime. 2. Intraday yield = timing pressure. "
     "3. Bila searah, cek apakah struktur H4/H1 dan S/R XAU mendukung. "
     "4. Bila berlawanan, jangan entry dari makro saja; tunggu reclaim/MSS/displacement."
 )
@@ -516,7 +519,7 @@ with st.expander("Detail sumber"):
             "fallback_policy": "LAST_VALID_CASH_THEN_ZN_DIRECTION_PROXY_FAIL_CLOSED",
             "treasury_calendar": treasury_calendar,
             "fred_daily_release_key": fred_daily_release_key(),
-            "fred_network_refresh_policy": "ONCE_PER_H15_RELEASE_CYCLE_1645_ET",
+            "fred_network_refresh_policy": "RELEASE_KEY_WITH_300S_RETRY",
             "alignment": alignment,
         }
     )

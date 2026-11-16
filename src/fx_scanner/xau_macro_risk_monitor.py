@@ -101,11 +101,11 @@ def _download_fred_history(series):
 # Daily Treasury series are fetched only once per official H.15 publication
 # cycle, never every Streamlit rerun. FRED mirrors H.15 with a publication lag:
 # the release key switches at 16:45 ET (30 minutes after the 16:15 ET release).
-# A manual refresh can explicitly invalidate this cache if FRED is late.
+# Retry after five minutes if the mirror was still behind at the release boundary.
 _DAILY_TREASURY_SERIES = frozenset({"DGS2", "DGS10", "DFII10"})
 
 
-@st.cache_data(ttl=7 * 86400, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _fred_daily_by_release(series, release_key):
     if series not in _DAILY_TREASURY_SERIES:
         raise ValueError("Not a daily Treasury series")

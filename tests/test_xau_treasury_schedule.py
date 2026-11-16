@@ -43,3 +43,21 @@ def test_sifma_2026_early_close_and_no_trade_day():
     assert treasury_session_status(datetime(2026, 4, 3, 13, 0, tzinfo=NY))["status"] == "EARLY_CLOSE"
     assert is_treasury_session_day(date(2026, 4, 3))
     assert not is_treasury_session_day(date(2026, 7, 3))
+
+
+def test_monday_asia_quote_not_blocked_by_new_york_sunday():
+    from fx_scanner.xau_treasury_schedule import treasury_cash_quote_status
+    now = datetime(2026, 11, 16, 8, 0, tzinfo=WIB)
+    assert treasury_session_status(now)["status"] == "WEEKEND_CLOSED"
+    assert treasury_cash_quote_status(now)["status"] == "ASIA_SESSION"
+    # Publication date remains Friday, independently of the quote session.
+    assert fred_daily_release_key(now) == "2026-11-13"
+
+
+def test_asia_session_boundaries_holiday_and_dst():
+    from fx_scanner.xau_treasury_schedule import treasury_cash_quote_status
+    assert treasury_cash_quote_status(datetime(2026, 11, 16, 6, 59, tzinfo=WIB))["status"] == "WEEKEND_CLOSED"
+    assert treasury_cash_quote_status(datetime(2026, 11, 16, 7, 0, tzinfo=WIB))["status"] == "ASIA_SESSION"
+    assert treasury_cash_quote_status(datetime(2026, 11, 14, 8, 0, tzinfo=WIB))["status"] != "ASIA_SESSION"
+    assert treasury_cash_quote_status(datetime(2026, 11, 11, 8, 0, tzinfo=WIB))["status"] != "ASIA_SESSION"
+    assert treasury_cash_quote_status(datetime(2026, 7, 6, 8, 0, tzinfo=WIB))["status"] == "ASIA_SESSION"
