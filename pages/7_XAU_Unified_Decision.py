@@ -17,10 +17,9 @@ from fx_scanner.dashboard_independent_feeds import macro_input
 from fx_scanner.pre_news_transport import fetch_pre_news_snapshot
 from fx_scanner.xau_decision_candle_feed_v1 import fetch_decision_candles
 from fx_scanner.xau_decision_checklist_v1 import evaluate_checklist, obj, stamp
-from fx_scanner.xau_runtime_decision_v404 import evaluate_runtime_decision_v404
-from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
 from fx_scanner.xau_technical_engine_v1 import evaluate_technical
 from fx_scanner.xau_unified_decision_v1 import evaluate_unified
+from fx_scanner.xau_weighted_opportunity_v1 import evaluate_opportunity
 from fx_scanner.usd_lead_bund_2y_v1 import fetch_bundesbank_2y, pair_with_treasury_2y
 from fx_scanner.usd_lead_decision_v1 import evaluate_usd_lead
 from fx_scanner.xau_yield_pressure_nowcast_v1 import evaluate_yield_pressure
@@ -89,31 +88,19 @@ def _macro_and_notes(now):
 
 
 def _zone(now):
-    """Only corroborated original price observations can contribute V404/risk."""
-    try:
-        snapshot = fetch_public_hot_snapshot(now=now, timeout_seconds=8.)
-        workers = [
-            obj(row) for row in (snapshot.get("heartbeats") or [])
-            if obj(row).get("worker_name") == "ctrader_demo_xau_sd_liquidity_v342"
-        ]
-        workers.sort(key=lambda v: str(v.get("observed_at") or ""), reverse=True)
-        hb = workers[0] if workers else {}
-        sd = obj(obj(hb.get("details")).get("evaluation"))
-        original_at = sd.get("price_observed_at") or obj(sd.get("market_context")).get("price_observed_at")
-        verified = (hb.get("healthy") is True and _fresh(hb.get("observed_at"), now)
-                    and _fresh(original_at, now) and sd.get("execution_authority") is not True)
-        if verified:
-            return evaluate_runtime_decision_v404(sd), obj(sd.get("broker_symbol_spec")), True, "V404 FRESH"
-    except (OSError, ValueError, RuntimeError, TypeError, KeyError) as exc:
-        return {}, {}, False, "V404 UNKNOWN: " + type(exc).__name__
-    return {}, {}, False, "V404 UNKNOWN: heartbeat atau harga broker kedaluwarsa"
+    """Never read retired DEMO V404 as evidence for the LIVE 7903 scanner.
+
+    The LIVE source has no independently attested V404 zone contract yet.
+    That is an optional unknown for research scoring, not a failed setup.
+    """
+    return {}, {}, False, "V404 LIVE 7903 belum tersedia; worker DEMO lama tidak dipakai"
 
 
 @st.fragment(run_every="60s")
 def render():
     now = datetime.now(UTC)
-    st.subheader("XAUUSD — Checklist + Teknikal + USD Lead")
-    st.caption("Satu keputusan riset dengan checklist terpisah per sumber; tidak mengirim order atau mengubah Frozen V1.")
+    st.subheader("XAUUSD — Analisis Terpadu · Skor Peluang")
+    st.caption("BUY dan SELL dinilai terpisah. Data UNKNOWN tidak mendapat poin. Ini bukan prediksi probabilitas atau sinyal order Frozen V1.")
     notes = {}
     # Independent read-only feeds are fetched concurrently, then evaluated
     # against ONE now timestamp; no papering over stale originals.
@@ -160,11 +147,47 @@ def render():
         yield_pressure=yield_pressure, now=now,
     )
 
+    opportunity = evaluate_opportunity(
+        unified=unified, technical=technical, checklist=checklist
+    )
+    left, right, choice = st.columns(3)
+    for widget, side in ((left, "BUY"), (right, "SELL")):
+        score = opportunity[side]
+        widget.metric(side + " · skor riset", f'{score["score"]:.1f}/100', score["state"])
+    choice.metric("Fokus pemantauan", opportunity["preferred"])
+    st.caption(
+        "Bobot awal riset: SMC/ICT 40% · EMA/ADX/BOS 25% · USD Lead 15% · "
+        "tekanan yield 10% · zona V404 10%. "
+        "Ambang ini belum divalidasi out-of-sample; skor bukan peluang menang."
+    )
+    for side in ("BUY", "SELL"):
+        scored = opportunity[side]
+        with st.expander(
+            f'{side} · {scored["state"]} · skor {scored["score"]:.1f}/100 · '
+            f'cakupan {scored["coverage"]:.1f}%',
+            expanded=(side == opportunity["preferred"]),
+        ):
+            for part in scored["components"]:
+                st.write(
+                    f'{part["name"].upper()}: {part["earned"]:.1f}/{part["weight"]:.0f} '
+                    f'· PASS {part["passed"]} · FAIL {part["failed"]} '
+                    f'· UNKNOWN {part["unknown"]}'
+                )
+            st.caption(
+                "Risk LIVE: " + scored["risk"]
+                + (" · konflik arah makro/yield" if scored["macro_conflict"] else "")
+                + " · harga tertutup valid: " + str(scored["price_valid"])
+            )
+            if scored["missing"]:
+                st.write("Masih perlu: " + ", ".join(scored["missing"]))
+    st.divider()
+    st.caption("Audit konfluensi 4/4 di bawah tetap tersedia untuk transparansi. "
+               "Tidak lagi menentukan status peluang WATCH/ARMED.")
     buy, sell = unified["BUY"], unified["SELL"]
     a, b, c = st.columns(3)
     a.metric("BUY", str(buy["passed"]) + "/4 syarat")
     b.metric("SELL", str(sell["passed"]) + "/4 syarat")
-    c.metric("Keputusan", unified["decision"] + " SHADOW" if unified["decision"] != "WAIT" else "WAIT")
+    c.metric("Audit ketat 4/4", unified["decision"] + " SHADOW" if unified["decision"] != "WAIT" else "WAIT")
     st.caption("Diperiksa " + now.astimezone(ZoneInfo("Asia/Jakarta")).strftime("%d/%m/%Y %H:%M:%S WIB")
                + " · status READY hanya berarti konfluensi riset, bukan izin transaksi.")
     for side, result in (("BUY", buy), ("SELL", sell)):
@@ -175,11 +198,11 @@ def render():
         missing = [k for k, ok in unified["sources_valid"].items() if not ok]
         st.warning("WAIT DATA · sumber belum terverifikasi: " + ", ".join(missing))
 
-    buy_tab, sell_tab, usd_tab = st.tabs(["BUY · " + buy["state"], "SELL · " + sell["state"], "USD / Yield"])
+    buy_tab, sell_tab, usd_tab = st.tabs(["BUY · " + opportunity["BUY"]["state"], "SELL · " + opportunity["SELL"]["state"], "USD / Yield"])
     for side, tab in (("BUY", buy_tab), ("SELL", sell_tab)):
         with tab:
             row = unified[side]
-            st.write("Konfluensi: " + row["state"])
+            st.write("Audit ketat 4/4: " + row["state"] + " · bukan pemicu order")
             render_progress(st, passed=row["passed"],
                             failed=row["total"]-row["passed"]-row["unknown"],
                             unknown=row["unknown"], total=row["total"])
@@ -216,7 +239,8 @@ def render():
             "technical_errors": technical["errors"],
             "macro_quality": obj(evaluation.get("attribution_quality")).get("quality_state"),
             "candle_original_as_of": candles.get("as_of"),
-            "equity": "Gunakan equity LIVE terverifikasi; USD100 bukan nilai akun sekarang",
+            "equity": "Equity LIVE terverifikasi belum tersedia di sumber V404; USD100 tidak dipakai sebagai equity aktual",
+            "weighted_opportunity": opportunity,
             "native_frozen_v1_signal": unified["frozen_v1_native_signal"],
             "missed_order_verdict": unified["missed_order_verdict"],
             "execution_authority": False,
