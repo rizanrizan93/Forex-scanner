@@ -49,5 +49,5 @@ def render():
         st.caption('USD '+usd['usd_direction']+' · yield '+y['yield_direction']+' · '+y['state']+'. Hanya feed makro tervalidasi; lihat USD Lead untuk sumber cadangan dan checklist lengkap.')
     except Exception as exc:
         st.info('WAIT — sumber makro belum valid: '+type(exc).__name__)
-    st.caption('Aturan deterministik: swing H1 2-kiri/2-kanan; range M15 31 candle; sweep → displacement MSS → FVG → retest M5. Setup harus memenuhi semua syarat. Data hilang/gap/stale = UNKNOWN; kondisi valid yang belum cocok = FAIL. Engine ini belum memiliki hasil backtest atau tingkat kemenangan terukur.')
+    st.caption('Aturan deterministik: swing H1 2-kiri/2-kanan; range M15 31 candle observasi lintas sesi tanpa mengisi jeda pasar; sweep → displacement MSS → FVG → retest M5. Setup harus memenuhi semua syarat. Data hilang/gap M5/stale = UNKNOWN; kondisi valid yang belum cocok = FAIL. Engine ini belum memiliki hasil backtest atau tingkat kemenangan terukur.')
 render()

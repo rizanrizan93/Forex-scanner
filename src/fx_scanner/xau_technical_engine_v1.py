@@ -79,10 +79,11 @@ def evaluate_technical(feed, *, now):
         errors.append('Snapshot candle kedaluwarsa/timestamp belum valid')
     for tf in ('H1', 'M15', 'M5'):
         series, error = closed_bars(feed, tf, now)
-        # Reject recent gaps; do not build an entry over missing bars/weekend gaps.
+        # The M5 entry sequence must be contiguous. H1/M15 use actual observed
+        # bars across sessions; never fill a market closure with synthetic candles.
         span = {'H1': 3600, 'M15': 900, 'M5': 300}[tf]
         tail = series[-24:] if tf != 'M5' else series[-30:]
-        if any((b['at']-a['at']).total_seconds() != span for a,b in zip(tail, tail[1:])):
+        if tf == 'M5' and any((b['at']-a['at']).total_seconds() != span for a,b in zip(tail, tail[1:])):
             error = 'Candle '+tf+' terbaru memiliki gap; tunggu rangkaian lengkap'
         if tf == 'M5' and series and (now-series[-1]['at']).total_seconds() >= 300:
             error = 'Candle M5 melewati batas setup; tunggu candle terbaru'
@@ -115,7 +116,7 @@ def evaluate_technical(feed, *, now):
         passed = [trend, location, seq['sweep'], seq['mss'], seq['fvg'], rr is not None and rr>=2]
         details = [
             'Swing H1 terkonfirmasi 2 candle kanan: HH+HL BUY / LH+LL SELL',
-            'Range M15 31 candle: %.2f–%.2f; equilibrium %.2f; close M5 %.2f' % (low,high,mid,entry),
+            'Range M15 31 candle observasi (lintas sesi): %.2f–%.2f; equilibrium %.2f; close M5 %.2f' % (low,high,mid,entry),
             'Wick menembus ekstrem 12 candle sebelumnya lalu close kembali di dalam range',
             'Close melewati ekstrem 3 candle sebelum sweep; body ≥0.8 ATR14 sebelum displacement',
             'FVG ≥0.1 ATR; terbentuk setelah MSS; candle terakhir retest + close melewati midpoint; belum invalid',
