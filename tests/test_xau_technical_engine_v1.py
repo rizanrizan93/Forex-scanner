@@ -80,3 +80,13 @@ def test_setup_expires_at_next_m5_close_even_if_transport_still_fresh():
     r=evaluate_technical(fixture(),now=NOW+timedelta(minutes=5))
     assert r['direction']=='WAIT'
     assert r['BUY']['plan'] is None
+
+
+def test_higher_timeframes_use_actual_session_bars_without_gap_fill():
+    f=fixture()
+    for tf in ('H1','M15'):
+        for b in f['bars'][tf][:-10]:
+            b['closed_at']=(datetime.fromisoformat(b['closed_at'])-timedelta(days=2)).isoformat()
+    r=evaluate_technical(f,now=NOW)
+    assert r['direction']=='BUY'
+    assert not r['errors']
