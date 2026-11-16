@@ -255,6 +255,7 @@ SECTION_DESCRIPTIONS = {
     "Setup": ("TRADE PREPARATION", "Setup & eksekusi", "Ringkasan setup dan konteks, sesuai status sebenarnya dari sistem."),
     "Hierarki zona": ("MARKET STRUCTURE", "Hierarki zona", "Urutan prioritas zona berdasarkan struktur dan umur candle."),
     "Keputusan": ("DECISION DESK", "Pusat keputusan XAU", "Konfirmasi struktur, makro, dan status sumber sebelum entry."),
+    "Analisis Terpadu": ("CONFLUENCE DESK", "Checklist · SMC/ICT · USD Lead", "Satu keputusan analisis XAUUSD dengan validasi data, yield, struktur, dan risiko secara terpisah."),
     "Checklist": ("ENTRY READINESS", "Checklist XAUUSD", "Syarat BUY dan SELL ditampilkan terpisah, termasuk data yang belum valid."),
     "Teknikal": ("PRICE STRUCTURE", "Teknikal XAU · SMC / ICT", "Struktur H1, lokasi M15 dan konfirmasi M5 dengan checklist BUY/SELL."),
     "USD Lead": ("CROSS-ASSET INTELLIGENCE", "USD Lead & Yield", "Ekspektasi Fed, dolar, yield dan validasi arah XAU—research-only."),
