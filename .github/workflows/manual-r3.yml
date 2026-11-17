@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - name: Install dashboard test dependencies
-        run: python -m pip install pandas==2.2.3 pydantic==2.13.4 streamlit==1.62.0 pytest==9.0.2
+        run: python -m pip install pandas==2.2.3 pydantic==2.13.4 PyYAML==6.0.3 streamlit==1.62.0 pytest==9.0.2
       - name: Verify indicator, feed and navigation
         env: {PYTHONPATH: 'src:.'}
         run: python -m pytest -q tests/test_manual_r3.py tests/test_streamlit_entrypoint_v09.py

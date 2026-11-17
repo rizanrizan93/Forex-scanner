@@ -48,7 +48,8 @@ def test_every_xau_navigation_label_has_a_section_description():
             and any(isinstance(t, ast.Name) and t.id == "labels" for t in x.targets)
         )
     )
-    assert len(labels) == 10
+    assert len(labels) == len(set(labels))
+    assert "Manual R3" in labels
     assert set(labels).issubset(SECTION_DESCRIPTIONS)
 
 
