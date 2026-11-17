@@ -3,6 +3,7 @@ import json,os,subprocess,sys
 from pathlib import Path
 from datetime import UTC,datetime
 APP=Path('/opt/rizan-manual-r3');OUT=Path('/var/lib/rizan-manual-r3')
+sys.path.insert(0,str(APP/'src'))
 
 def atomic(path,data):
     tmp=path.with_suffix('.tmp')
