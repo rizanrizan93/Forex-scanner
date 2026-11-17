@@ -1,0 +1,221 @@
+{
+  "method": "Expected success of 50/50 BUY/SELL at the exact same selected entry reference and times, same target/adverse/horizon. Does not select rules.",
+  "rows": [
+    {
+      "kind": "AREA",
+      "side": -1,
+      "scenario": "SMALL",
+      "year": 2025,
+      "n": 94,
+      "actual_rate": 0.7872340425531915,
+      "balanced_random_rate": 0.8191489361702128
+    },
+    {
+      "kind": "AREA",
+      "side": -1,
+      "scenario": "SMALL",
+      "year": 2026,
+      "n": 16,
+      "actual_rate": 0.875,
+      "balanced_random_rate": 0.75
+    },
+    {
+      "kind": "AREA",
+      "side": -1,
+      "scenario": "STRICT",
+      "year": 2025,
+      "n": 52,
+      "actual_rate": 0.5769230769230769,
+      "balanced_random_rate": 0.49038461538461536
+    },
+    {
+      "kind": "AREA",
+      "side": -1,
+      "scenario": "STRICT",
+      "year": 2026,
+      "n": 16,
+      "actual_rate": 0.625,
+      "balanced_random_rate": 0.5
+    },
+    {
+      "kind": "AREA",
+      "side": -1,
+      "scenario": "WIDE",
+      "year": 2025,
+      "n": 54,
+      "actual_rate": 0.7592592592592593,
+      "balanced_random_rate": 0.7222222222222222
+    },
+    {
+      "kind": "AREA",
+      "side": -1,
+      "scenario": "WIDE",
+      "year": 2026,
+      "n": 15,
+      "actual_rate": 0.7333333333333333,
+      "balanced_random_rate": 0.6333333333333333
+    },
+    {
+      "kind": "AREA",
+      "side": 1,
+      "scenario": "SMALL",
+      "year": 2025,
+      "n": 50,
+      "actual_rate": 0.9,
+      "balanced_random_rate": 0.78
+    },
+    {
+      "kind": "AREA",
+      "side": 1,
+      "scenario": "SMALL",
+      "year": 2026,
+      "n": 10,
+      "actual_rate": 0.8,
+      "balanced_random_rate": 0.7
+    },
+    {
+      "kind": "AREA",
+      "side": 1,
+      "scenario": "STRICT",
+      "year": 2025,
+      "n": 34,
+      "actual_rate": 0.38235294117647056,
+      "balanced_random_rate": 0.45588235294117646
+    },
+    {
+      "kind": "AREA",
+      "side": 1,
+      "scenario": "STRICT",
+      "year": 2026,
+      "n": 9,
+      "actual_rate": 0.5555555555555556,
+      "balanced_random_rate": 0.3888888888888889
+    },
+    {
+      "kind": "AREA",
+      "side": 1,
+      "scenario": "WIDE",
+      "year": 2025,
+      "n": 48,
+      "actual_rate": 0.8541666666666666,
+      "balanced_random_rate": 0.7395833333333334
+    },
+    {
+      "kind": "AREA",
+      "side": 1,
+      "scenario": "WIDE",
+      "year": 2026,
+      "n": 9,
+      "actual_rate": 0.6666666666666666,
+      "balanced_random_rate": 0.6666666666666666
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": -1,
+      "scenario": "SMALL",
+      "year": 2025,
+      "n": 267,
+      "actual_rate": 0.8164794007490637,
+      "balanced_random_rate": 0.8239700374531835
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": -1,
+      "scenario": "SMALL",
+      "year": 2026,
+      "n": 63,
+      "actual_rate": 0.8253968253968254,
+      "balanced_random_rate": 0.8333333333333334
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": -1,
+      "scenario": "STRICT",
+      "year": 2025,
+      "n": 67,
+      "actual_rate": 0.47761194029850745,
+      "balanced_random_rate": 0.5
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": -1,
+      "scenario": "STRICT",
+      "year": 2026,
+      "n": 8,
+      "actual_rate": 0.375,
+      "balanced_random_rate": 0.4375
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": -1,
+      "scenario": "WIDE",
+      "year": 2025,
+      "n": 145,
+      "actual_rate": 0.7655172413793103,
+      "balanced_random_rate": 0.7586206896551724
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": -1,
+      "scenario": "WIDE",
+      "year": 2026,
+      "n": 29,
+      "actual_rate": 0.7586206896551724,
+      "balanced_random_rate": 0.7413793103448276
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": 1,
+      "scenario": "SMALL",
+      "year": 2025,
+      "n": 333,
+      "actual_rate": 0.8258258258258259,
+      "balanced_random_rate": 0.8243243243243243
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": 1,
+      "scenario": "SMALL",
+      "year": 2026,
+      "n": 74,
+      "actual_rate": 0.8513513513513513,
+      "balanced_random_rate": 0.8243243243243243
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": 1,
+      "scenario": "STRICT",
+      "year": 2025,
+      "n": 99,
+      "actual_rate": 0.43434343434343436,
+      "balanced_random_rate": 0.494949494949495
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": 1,
+      "scenario": "STRICT",
+      "year": 2026,
+      "n": 27,
+      "actual_rate": 0.7037037037037037,
+      "balanced_random_rate": 0.5
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": 1,
+      "scenario": "WIDE",
+      "year": 2025,
+      "n": 41,
+      "actual_rate": 0.6829268292682927,
+      "balanced_random_rate": 0.7560975609756098
+    },
+    {
+      "kind": "CONFIRMED",
+      "side": 1,
+      "scenario": "WIDE",
+      "year": 2026,
+      "n": 7,
+      "actual_rate": 0.7142857142857143,
+      "balanced_random_rate": 0.8571428571428571
+    }
+  ]
+}
