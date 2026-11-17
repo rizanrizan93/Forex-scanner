@@ -1,0 +1,40 @@
+{
+  "contract": "RIZAN_ZONE_DXY_YIELD_R5",
+  "status": "NEED_MATCHED_INTRADAY_HISTORY",
+  "touch_rows": 110595,
+  "touch_first": "2019-01-02 13:01:00+00:00",
+  "touch_last": "2026-03-31 16:39:00+00:00",
+  "common_fresh_at_touch": 0,
+  "common_fresh_in_15m_window": 0,
+  "DXY": {
+    "first_observed": "2026-11-12 05:05:00+00:00",
+    "last_observed": "2026-11-17 22:35:00+00:00",
+    "rows": 1025,
+    "time_basis": [
+      "BAR_CLOSE_PLUS_60S_ASSUMED"
+    ]
+  },
+  "US10Y": {
+    "first_observed": "2026-11-11 13:25:00+00:00",
+    "last_observed": "2026-11-17 19:55:00+00:00",
+    "rows": 399,
+    "time_basis": [
+      "BAR_CLOSE_PLUS_60S_ASSUMED"
+    ]
+  },
+  "US2Y": null,
+  "allowed_macro": [
+    "DXY",
+    "US10Y",
+    "US2Y_OPTIONAL"
+  ],
+  "real_yield_10y": "DAILY_CONTEXT_ONLY_NOT_INTRADAY_REPLACEMENT",
+  "eur_or_synthetic_fallback": false,
+  "accuracy_computed": false,
+  "note": "Preflight tests only source coverage at touch and during the next15min, not price outcomes. Bar-close+60s timing is assumed, not certified point-in-time. No replay success rate is inferred from coverage.",
+  "input_sha256": {
+    "dxy": "7162f61c1005e34a7ddb719b8b8d637388d408a9d9d9f139a5577b8a7eeb7f9f",
+    "us10y": "f71a8413624b1417bd0f2a92bfcca2ce8c89dc897af79b594548e0eb2c9a89b8",
+    "touches": "0c2c21883298824960764446e389a9f660766f4521fce58be615778f223afcb1"
+  }
+}

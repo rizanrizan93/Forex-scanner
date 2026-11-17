@@ -1,0 +1,10 @@
+{
+  "date_wib": "2026-11-18",
+  "tests_passed": 15,
+  "failed": 0,
+  "framework": "unittest",
+  "python": "3.12.14",
+  "coverage": "Macro source/type/units, timestamp availability, stale/missing/conflicting data, first-entry integration BUY/SELL, target evaluation on synthetic fixtures. Synthetic examples are not historical performance.",
+  "historical_accuracy_computed": false,
+  "cnbc_us2y_fetch": "HTTP_403_NO_SUBSTITUTE_USED"
+}
