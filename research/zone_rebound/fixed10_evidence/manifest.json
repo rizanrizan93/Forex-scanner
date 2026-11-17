@@ -1,0 +1,70 @@
+{
+  "example_failure.png": {
+    "bytes": 259040,
+    "sha256": "529d057ce38a511861931bed5566f057cf7f87b2c8ebaa184a5e71be90ae432d"
+  },
+  "example_success.png": {
+    "bytes": 243142,
+    "sha256": "51952746b50141b2c91383394bb0d82e2a412c58ae183a4ee6ae0e84a18b448f"
+  },
+  "examples.json": {
+    "bytes": 355,
+    "sha256": "6adf90a53dec3b12b648f893f8921b35500da5b526a8e86cb640e4b76ce2bb95"
+  },
+  "fred_macro_snapshot.csv.gz": {
+    "bytes": 102059,
+    "sha256": "7b60c4e998acac0b061497162696155df34f8049179045343acb85e5a717cf2f"
+  },
+  "models.json": {
+    "bytes": 1577,
+    "sha256": "7c276d4935d0d414792a2a7d4320df76e4755e4b70911b1b625cb9c263b1fe00"
+  },
+  "ranking.csv.gz": {
+    "bytes": 267634,
+    "sha256": "57d1e8a5720f1c0088545bccb6083c32921a880512603d9af9896d3594a3a053"
+  },
+  "selected_2019.csv.gz": {
+    "bytes": 80523,
+    "sha256": "ce154a3815858c5f25eb43d53513830d9e57182eaee4716c7b83cbfc6addb4fe"
+  },
+  "selected_2020.csv.gz": {
+    "bytes": 177258,
+    "sha256": "ed05495a3272b61e953cffbee2b18794942d708812b066cc1dc3a389818c6d8a"
+  },
+  "selected_2021.csv.gz": {
+    "bytes": 111203,
+    "sha256": "d3859e0d9a573b8958f528cc18e688079a7f29de23b56c84d7e5a785e1051e32"
+  },
+  "selected_2022.csv.gz": {
+    "bytes": 131260,
+    "sha256": "242d2b94b2ceb77c2af893e8e00e726bbe4bc041f4cf4ab770685f8dbc02bc7b"
+  },
+  "selected_2023.csv.gz": {
+    "bytes": 112907,
+    "sha256": "2c28b3bf2d2c3560f0692a24a670530113d1fb3bd9b75c9365d4c915a66334bb"
+  },
+  "selected_2024.csv.gz": {
+    "bytes": 210193,
+    "sha256": "6b08790e421c05396de1e2daf09dd6c078bffd14b5d4d3db38bff9c4e580b4f7"
+  },
+  "selected_2025.csv.gz": {
+    "bytes": 248916,
+    "sha256": "2db2bccd2b58342e9ac04f7703edb37a33f3fb1872437d61276fd0611deab351"
+  },
+  "selected_2026.csv.gz": {
+    "bytes": 63442,
+    "sha256": "600d7ef1b8483dcfad30b51b10ef32ff1cd7c52e235b5cea480bea6302be5c2d"
+  },
+  "structural_families.json": {
+    "bytes": 8141,
+    "sha256": "26d799873e63ce8a2cee9ee3437b357d73739228d5245ee928a47a3ef6a64cd1"
+  },
+  "summary.json.gz": {
+    "bytes": 27928,
+    "sha256": "5e22729eb6e3f161fa4a221d0137a0f4965cbb9ef1c0f4a12ac165120ae3f7d8"
+  },
+  "verification.json.gz": {
+    "bytes": 1264,
+    "sha256": "853b364a338f6ad3bbe57481f3139c43cd3f9530681c9e13c8dad55d2af4ecab"
+  }
+}

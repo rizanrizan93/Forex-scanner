@@ -1,0 +1,326 @@
+[
+  {
+    "rule": {
+      "family": "BASE_DISPLACEMENT",
+      "tf": 15,
+      "side": 1,
+      "regime": "ATR5",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 169,
+      "train_rate": 0.2485207100591716,
+      "valid_n": 133,
+      "valid_rate": 0.3609022556390977,
+      "score": 0.1894415239332853
+    },
+    "test2025": {
+      "n": 122,
+      "wins": 55,
+      "rate": 0.45081967213114754,
+      "wilson_low": 0.36537290238803116,
+      "data_gaps": 2,
+      "timeouts": 23,
+      "median_minutes_success": 38.0,
+      "median_mae_before_target_success": 1.650000000000091,
+      "median_mfe_240": 10.20100000000025
+    }
+  },
+  {
+    "rule": {
+      "family": "BASE_DISPLACEMENT",
+      "tf": 15,
+      "side": -1,
+      "regime": "ATR5",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 166,
+      "train_rate": 0.3192771084337349,
+      "valid_n": 117,
+      "valid_rate": 0.3333333333333333,
+      "score": 0.2531331544152699
+    },
+    "test2025": {
+      "n": 106,
+      "wins": 32,
+      "rate": 0.3018867924528302,
+      "wilson_low": 0.2226843277028107,
+      "data_gaps": 2,
+      "timeouts": 21,
+      "median_minutes_success": 37.5,
+      "median_mae_before_target_success": 3.660000000000082,
+      "median_mfe_240": 8.009999999999764
+    }
+  },
+  {
+    "rule": {
+      "family": "BREAK_RETEST",
+      "tf": 15,
+      "side": 1,
+      "regime": "ATR5_TREND",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 157,
+      "train_rate": 0.2929936305732484,
+      "valid_n": 158,
+      "valid_rate": 0.4050632911392405,
+      "score": 0.2274261540646497
+    },
+    "test2025": {
+      "n": 126,
+      "wins": 60,
+      "rate": 0.47619047619047616,
+      "wilson_low": 0.3909870103609822,
+      "data_gaps": 3,
+      "timeouts": 15,
+      "median_minutes_success": 40.5,
+      "median_mae_before_target_success": 1.732628784878898,
+      "median_mfe_240": 11.993237191158642
+    }
+  },
+  {
+    "rule": {
+      "family": "BREAK_RETEST",
+      "tf": 15,
+      "side": -1,
+      "regime": "ATR5",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 264,
+      "train_rate": 0.303030303030303,
+      "valid_n": 183,
+      "valid_rate": 0.360655737704918,
+      "score": 0.2507452855146018
+    },
+    "test2025": {
+      "n": 156,
+      "wins": 58,
+      "rate": 0.3717948717948718,
+      "wilson_low": 0.2998913002929936,
+      "data_gaps": 2,
+      "timeouts": 21,
+      "median_minutes_success": 40.0,
+      "median_mae_before_target_success": 3.8206719350416734,
+      "median_mfe_240": 9.734859356944526
+    }
+  },
+  {
+    "rule": {
+      "family": "CONFIRMED_PIVOT",
+      "tf": 15,
+      "side": 1,
+      "regime": "ATR5",
+      "phase": "LONDON",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 237,
+      "train_rate": 0.2953586497890295,
+      "valid_n": 175,
+      "valid_rate": 0.2857142857142857,
+      "score": 0.2239484421620422
+    },
+    "test2025": {
+      "n": 213,
+      "wins": 84,
+      "rate": 0.39436619718309857,
+      "wilson_low": 0.3311629596592097,
+      "data_gaps": 2,
+      "timeouts": 42,
+      "median_minutes_success": 86.0,
+      "median_mae_before_target_success": 2.8565264301307707,
+      "median_mfe_240": 9.198929767524533
+    }
+  },
+  {
+    "rule": {
+      "family": "CONFIRMED_PIVOT",
+      "tf": 15,
+      "side": -1,
+      "regime": "ATR5",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 322,
+      "train_rate": 0.2981366459627329,
+      "valid_n": 245,
+      "valid_rate": 0.3346938775510204,
+      "score": 0.2507912487068923
+    },
+    "test2025": {
+      "n": 236,
+      "wins": 91,
+      "rate": 0.3855932203389831,
+      "wilson_low": 0.32579867772501453,
+      "data_gaps": 5,
+      "timeouts": 37,
+      "median_minutes_success": 47.0,
+      "median_mae_before_target_success": 2.934893131852732,
+      "median_mfe_240": 9.588205129563448
+    }
+  },
+  {
+    "rule": {
+      "family": "FVG",
+      "tf": 60,
+      "side": 1,
+      "regime": "ATR5_TREND",
+      "phase": "ALL",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 173,
+      "train_rate": 0.2658959537572254,
+      "valid_n": 157,
+      "valid_rate": 0.2993630573248407,
+      "score": 0.2056665834338249
+    },
+    "test2025": {
+      "n": 168,
+      "wins": 71,
+      "rate": 0.4226190476190476,
+      "wilson_low": 0.35047192249787507,
+      "data_gaps": 2,
+      "timeouts": 31,
+      "median_minutes_success": 65.0,
+      "median_mae_before_target_success": 2.4229999999997744,
+      "median_mfe_240": 10.216499999999996
+    }
+  },
+  {
+    "rule": {
+      "family": "FVG",
+      "tf": 15,
+      "side": -1,
+      "regime": "ATR5_TREND",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 180,
+      "train_rate": 0.3277777777777778,
+      "valid_n": 111,
+      "valid_rate": 0.3873873873873873,
+      "score": 0.2634275387606302
+    },
+    "test2025": {
+      "n": 99,
+      "wins": 43,
+      "rate": 0.43434343434343436,
+      "wilson_low": 0.34096640246382537,
+      "data_gaps": 3,
+      "timeouts": 9,
+      "median_minutes_success": 37.0,
+      "median_mae_before_target_success": 2.8969999999999345,
+      "median_mfe_240": 10.575000000000045
+    }
+  },
+  {
+    "rule": {
+      "family": "ORDER_BLOCK_PROXY",
+      "tf": 15,
+      "side": 1,
+      "regime": "ATR5",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 221,
+      "train_rate": 0.253393665158371,
+      "valid_n": 184,
+      "valid_rate": 0.3532608695652174,
+      "score": 0.2005980439358662
+    },
+    "test2025": {
+      "n": 149,
+      "wins": 70,
+      "rate": 0.4697986577181208,
+      "wilson_low": 0.39143089339782117,
+      "data_gaps": 3,
+      "timeouts": 17,
+      "median_minutes_success": 38.5,
+      "median_mae_before_target_success": 2.0134999999997945,
+      "median_mfe_240": 11.621499999999969
+    }
+  },
+  {
+    "rule": {
+      "family": "ORDER_BLOCK_PROXY",
+      "tf": 15,
+      "side": -1,
+      "regime": "ATR5",
+      "phase": "NEW_YORK",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 215,
+      "train_rate": 0.3395348837209302,
+      "valid_n": 151,
+      "valid_rate": 0.3576158940397351,
+      "score": 0.2795475748313043
+    },
+    "test2025": {
+      "n": 148,
+      "wins": 65,
+      "rate": 0.4391891891891892,
+      "wilson_low": 0.36177451517285414,
+      "data_gaps": 2,
+      "timeouts": 19,
+      "median_minutes_success": 27.0,
+      "median_mae_before_target_success": 2.1900000000000546,
+      "median_mfe_240": 10.669999999999845
+    }
+  },
+  {
+    "rule": {
+      "family": "SWEEP_ORIGIN_RETURN",
+      "tf": 15,
+      "side": 1,
+      "regime": "ATR5",
+      "phase": "ALL",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 337,
+      "train_rate": 0.2255192878338278,
+      "valid_n": 230,
+      "valid_rate": 0.2260869565217391,
+      "score": 0.1767850652090606
+    },
+    "test2025": {
+      "n": 271,
+      "wins": 91,
+      "rate": 0.33579335793357934,
+      "wilson_low": 0.282207851034869,
+      "data_gaps": 3,
+      "timeouts": 74,
+      "median_minutes_success": 67.0,
+      "median_mae_before_target_success": 2.430000000000291,
+      "median_mfe_240": 8.612999999999829
+    }
+  },
+  {
+    "rule": {
+      "family": "SWEEP_ORIGIN_RETURN",
+      "tf": 15,
+      "side": -1,
+      "regime": "ATR5_TREND",
+      "phase": "ALL",
+      "macro": "NONE",
+      "scenario": "H240_A10",
+      "train_n": 163,
+      "train_rate": 0.263803680981595,
+      "valid_n": 123,
+      "valid_rate": 0.2601626016260163,
+      "score": 0.1907316390097639
+    },
+    "test2025": {
+      "n": 108,
+      "wins": 31,
+      "rate": 0.28703703703703703,
+      "wilson_low": 0.2101936779821008,
+      "data_gaps": 1,
+      "timeouts": 25,
+      "median_minutes_success": 76.0,
+      "median_mae_before_target_success": 3.893000000000029,
+      "median_mfe_240": 7.130000000000109
+    }
+  }
+]

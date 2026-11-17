@@ -1,0 +1,18 @@
+[
+  {
+    "file": "example_success.png",
+    "time_wib": "2025-01-21 20:59:00+07:00",
+    "reference": 2724.715,
+    "lo": 2724.225,
+    "hi": 2724.715,
+    "success": true
+  },
+  {
+    "file": "example_failure.png",
+    "time_wib": "2025-01-06 09:00:00+07:00",
+    "reference": 2640.615,
+    "lo": 2639.755,
+    "hi": 2640.615,
+    "success": false
+  }
+]
