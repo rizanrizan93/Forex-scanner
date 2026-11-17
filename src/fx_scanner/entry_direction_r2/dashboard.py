@@ -59,6 +59,6 @@ def render_entry_direction():
  @st.fragment(run_every='10s')
  def panel():
   try:p=load(int(datetime.now(UTC).timestamp()//5))
-  except (OSError,ValueError,TypeError,KeyError,TimeoutError):p=None
+  except (OSError,ValueError,TypeError,KeyError,TimeoutError,ImportError):p=None
   render_view(p)
  panel()

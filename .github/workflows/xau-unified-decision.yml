@@ -43,5 +43,6 @@ jobs:
           assert 'order_enabled' in p and 'False' in p
           assert 'execute_order(' not in p+d
           assert 'submit_order(' not in p+d
-          assert 'pages/7_XAU_Unified_Decision.py' in Path('main.py').read_text()
+          assert 'render_entry_direction()' in d
+          assert '("XAU_Analisis_Terpadu", "XAUUSD", "Arah Entry")' in Path('main.py').read_text()
           PY
