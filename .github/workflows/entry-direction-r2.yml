@@ -1,0 +1,86 @@
+name: Entry direction R2 panel and isolated reader
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['main.py','pages/8_XAU_Entry_Direction_R2.py','pages/7_XAU_Unified_Decision.py','pages/4_XAU_Decision_Checklist.py','pages/5_USD_Lead_Engine.py','pages/6_XAU_Technical_Engine.py','src/fx_scanner/entry_direction_r2/**','operations/entry_direction_r2/**','scripts/collect_entry_direction_r2.py','tests/test_entry_direction_r2.py','.github/workflows/entry-direction-r2.yml']
+  push:
+    branches: [main]
+    paths: ['main.py','pages/8_XAU_Entry_Direction_R2.py','pages/7_XAU_Unified_Decision.py','pages/4_XAU_Decision_Checklist.py','pages/5_USD_Lead_Engine.py','pages/6_XAU_Technical_Engine.py','src/fx_scanner/entry_direction_r2/**','operations/entry_direction_r2/**','scripts/collect_entry_direction_r2.py','tests/test_entry_direction_r2.py','.github/workflows/entry-direction-r2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: entry-r2-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install test dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3 scipy==1.17.0 scikit-learn==1.8.0 joblib==1.5.3 streamlit==1.62.0 pydantic==2.13.4 PyYAML==6.0.3 pytest==9.0.2
+      - name: Verify model, causal features, source guards, navigation and protected monitor
+        env: {PYTHONPATH: 'src:.'}
+        run: python -m pytest -q tests/test_entry_direction_r2.py tests/test_dashboard_page_navigation.py tests/test_dashboard_pair_tabs.py tests/test_streamlit_entrypoint_v09.py tests/test_manual_r3.py tests/test_professional_terminal_ui.py
+  install-reader:
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Install only the independent R2 market reader
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          work_dir=$(mktemp -d)
+          remote_dir=''
+          host='Rizanrizan@202.74.74.172'
+          opts=()
+          cleanup() {
+            if [[ -n "$remote_dir" ]]; then ssh "${opts[@]}" "$host" "rm -rf -- '$remote_dir'" >/dev/null 2>&1 || true; fi
+            rm -rf -- "$work_dir"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$work_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$work_dir/hosts"
+          ssh-keygen -y -f "$work_dir/key" >/dev/null
+          opts=(-i "$work_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$work_dir/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15)
+          remote_dir=$(ssh "${opts[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-entry-r2.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-entry-r2\.[a-zA-Z0-9]+$ ]]
+          mkdir -p "$work_dir/stage/scripts" "$work_dir/stage/operations/entry_direction_r2" "$work_dir/stage/src/fx_scanner/execution"
+          cp scripts/collect_entry_direction_r2.py "$work_dir/stage/scripts/"
+          cp operations/entry_direction_r2/* "$work_dir/stage/operations/entry_direction_r2/"
+          cp src/fx_scanner/__init__.py src/fx_scanner/models.py src/fx_scanner/exceptions.py "$work_dir/stage/src/fx_scanner/"
+          cp src/fx_scanner/execution/ctrader_session.py src/fx_scanner/execution/ctrader_market_readonly.py "$work_dir/stage/src/fx_scanner/execution/"
+          cp -r src/fx_scanner/entry_direction_r2 "$work_dir/stage/src/fx_scanner/"
+          scp -q -r "${opts[@]}" "$work_dir/stage" "$host:$remote_dir/"
+          ssh "${opts[@]}" "$host" "sudo -n /usr/bin/python3 '$remote_dir/stage/operations/entry_direction_r2/install.py' '$remote_dir/stage'"
+      - name: Verify live advancing market snapshot
+        run: |
+          python3 -u - <<'PY'
+          import json,time,urllib.request
+          from datetime import datetime,timezone
+          url='https://rizan-bridge.duckdns.org:25345/bootstrap125/entry-direction-r2.json'
+          times=[]
+          for i in range(2):
+              with urllib.request.urlopen(url+'?check='+str(i),timeout=20) as response:
+                  assert 'no-store' in response.headers.get('Cache-Control','')
+                  p=json.load(response)
+              assert p['contract']=='RIZAN_ENTRY_DIRECTION_R2_V1' and p['execution_authority'] is False and p['execution_influence'] is False
+              age=(datetime.now(timezone.utc)-datetime.fromisoformat(p['as_of'])).total_seconds()
+              assert -5<=age<90
+              assert p['status'] not in ['WAIT_DATA','WARMUP'],p['status']
+              assert p['history']['XAUUSD']>=60000 and p['history']['EURUSD']>=300
+              times.append(p['as_of']);print('R2_FRESH',p['as_of'],p['status'],p['history'])
+              if i==0:time.sleep(35)
+          assert len(set(times))==2,'R2_TIMER_NOT_ADVANCING'
+          PY

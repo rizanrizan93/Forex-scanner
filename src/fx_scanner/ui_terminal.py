@@ -250,6 +250,7 @@ def render_brand(st) -> None:
 
 
 SECTION_DESCRIPTIONS = {
+    "Arah Entry": ("MANUAL ENTRY", "Arah Entry R2", "Pemantauan setup SELL, skor seleksi, data terbaru, dan hasil historis model R2."),
     "Manual R3": ("MANUAL TRADING", "Range Reclaim R3", "Zona Keltner, bias H1, checklist dan pemicu M1 untuk keputusan trading manual."),
     "Zona reversal": ("REACTION ZONES", "Peta zona reaksi", "Pemantauan zona teknikal; harga dan status validasi berasal dari mesin masing-masing."),
     "Zona A→B": ("PREDICTIVE MAP", "Zona prediktif A→B", "Level dan pemicu teknikal untuk dipantau, bukan instruksi order."),

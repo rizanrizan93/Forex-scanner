@@ -23,7 +23,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
-          pip install scipy==1.17.0 numba==0.63.1
+          pip install scipy==1.17.0 numba==0.63.1 scikit-learn==1.8.0 joblib==1.5.3
       - name: Verify Numba research dependency
         run: |
           python - <<'PY'
