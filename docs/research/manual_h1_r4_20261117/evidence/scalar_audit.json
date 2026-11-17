@@ -1,0 +1,13 @@
+{
+  "samples": 600,
+  "max_absolute_error": 4.547473508864641e-13,
+  "reason_counts": {
+    "1": 377,
+    "3": 60,
+    "2": 98,
+    "4": 65
+  },
+  "status": "PASS",
+  "extended": true,
+  "scope": "Independent Python scalar vs C++ replay on archived M1, not broker-native tick execution."
+}

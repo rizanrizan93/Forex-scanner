@@ -1,0 +1,9 @@
+{
+  "experiment":"MANUAL_H1_R4B_EXTENDED_HOLD",
+  "reason":"Initial intraday R4 search failed its validation admission gates. H1 moves may be truncated by the23:55 WIB cutoff. This is a new exploratory time-exit hypothesis, not a change disguised as the original test.",
+  "registered_before_extended_results":true,
+  "same_inputs_and_entries_as_R4":true,
+  "changes":{"hold_minutes":[480,1440,2880],"time_exit":"No WIB midnight cut. Exit by Friday20:55 UTC; skip entry at/after that cutoff. No weekend hold.","overnight_carry":"Adverse modeled.20 USD/oz per21:00 UTC crossing; .50/oz for1.5x-cost stress,1.00/oz for2x-cost stress. This is a sensitivity assumption, NOT FP Markets swap. Native historical broker swap and triple-charge day are unverified.","selection":"Same train/validation, minimum fills and admission gates as R4. Up to3 per style shortlisted using train only; freeze ranked qualified candidates before2025. If no candidate passes, freeze the top training candidate as DIAGNOSTIC_ONLY and report admission failed. Never select on2025."},
+  "raw_configurations":9072,
+  "limitations":"All years have been reused in prior research. Exploratory historical evidence only. Overnight CFD swap, FX conversion, margin and execution need broker-native validation. News entry guard does not protect positions held through releases."
+}

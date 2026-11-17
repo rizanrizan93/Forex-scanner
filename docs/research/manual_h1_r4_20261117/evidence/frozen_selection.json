@@ -1,0 +1,21 @@
+{
+  "status": "EXPLORATORY_CANDIDATE",
+  "chosen": [
+    {
+      "style": 11,
+      "g": 48,
+      "f": 10,
+      "admitted": true,
+      "rank_score": -0.141648888444568,
+      "train_pf": 1.1132650080120114,
+      "validation_pf": 1.2453497483707296,
+      "stress_validation_pf": 1.049895768800629,
+      "positive_years": 4,
+      "train_n": 238,
+      "validation_n": 101
+    }
+  ],
+  "read_2025_results": false,
+  "shortlist_sha256": "acc78298f9f9ce90eb4c154d2084f69d74fa13ababbf6195ca98f7548b91837d",
+  "validation_sha256": "23a9eb991fcd317ca060e596657fb6c93b270228438f7ea6782133cca90a129b"
+}

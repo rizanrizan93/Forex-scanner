@@ -1,0 +1,238 @@
+{
+  "bars": 2490349,
+  "events": 43778,
+  "styles": [
+    {
+      "style": 0,
+      "family": 0,
+      "scale": 0,
+      "events": 5092,
+      "train": 2936
+    },
+    {
+      "style": 1,
+      "family": 0,
+      "scale": 1,
+      "events": 5078,
+      "train": 2958
+    },
+    {
+      "style": 2,
+      "family": 1,
+      "scale": 0,
+      "events": 3263,
+      "train": 1920
+    },
+    {
+      "style": 3,
+      "family": 1,
+      "scale": 1,
+      "events": 3190,
+      "train": 1895
+    },
+    {
+      "style": 4,
+      "family": 2,
+      "scale": 0,
+      "events": 2563,
+      "train": 1468
+    },
+    {
+      "style": 5,
+      "family": 2,
+      "scale": 1,
+      "events": 1522,
+      "train": 860
+    },
+    {
+      "style": 6,
+      "family": 3,
+      "scale": 0,
+      "events": 5397,
+      "train": 3082
+    },
+    {
+      "style": 7,
+      "family": 3,
+      "scale": 1,
+      "events": 3837,
+      "train": 2210
+    },
+    {
+      "style": 8,
+      "family": 4,
+      "scale": 0,
+      "events": 2226,
+      "train": 1294
+    },
+    {
+      "style": 9,
+      "family": 4,
+      "scale": 1,
+      "events": 1647,
+      "train": 955
+    },
+    {
+      "style": 10,
+      "family": 5,
+      "scale": 0,
+      "events": 2370,
+      "train": 1393
+    },
+    {
+      "style": 11,
+      "family": 5,
+      "scale": 1,
+      "events": 2064,
+      "train": 1228
+    },
+    {
+      "style": 12,
+      "family": 6,
+      "scale": 0,
+      "events": 3371,
+      "train": 1936
+    },
+    {
+      "style": 13,
+      "family": 6,
+      "scale": 1,
+      "events": 2158,
+      "train": 1282
+    }
+  ],
+  "bar_dtype": [
+    [
+      "o",
+      "<f8"
+    ],
+    [
+      "h",
+      "<f8"
+    ],
+    [
+      "l",
+      "<f8"
+    ],
+    [
+      "c",
+      "<f8"
+    ],
+    [
+      "t",
+      "<i8"
+    ],
+    [
+      "day",
+      "<i4"
+    ],
+    [
+      "year",
+      "<i4"
+    ],
+    [
+      "minute",
+      "<i2"
+    ],
+    [
+      "dow",
+      "<i2"
+    ]
+  ],
+  "event_dtype": [
+    [
+      "entry",
+      "<i4"
+    ],
+    [
+      "touch",
+      "<i4"
+    ],
+    [
+      "style",
+      "<i4"
+    ],
+    [
+      "s",
+      "<i4"
+    ],
+    [
+      "atr",
+      "<f8"
+    ],
+    [
+      "level",
+      "<f8"
+    ],
+    [
+      "trend",
+      "<i4"
+    ]
+  ],
+  "provenance": [
+    {
+      "file": "xau-2019.csv",
+      "sha256": "4ab0134dd669d8d319329d63bf932a99f44581ae60e109a91985cb76a89ae332",
+      "rows_used_with_warmup": 409809,
+      "first": "2018-11-01T00:00:00+00:00",
+      "last": "2019-12-31T21:58:00+00:00"
+    },
+    {
+      "file": "xau-2020.csv",
+      "sha256": "77897672bef2e19ed04b56df4d0d2e7647092dcc0c909af86893176d7b4d5703",
+      "rows_used_with_warmup": 354291,
+      "first": "2020-01-01T23:00:00+00:00",
+      "last": "2020-12-31T21:58:00+00:00"
+    },
+    {
+      "file": "xau-2021.csv",
+      "sha256": "884a5b16baca3e93711cabba9b25561a0ff7ed2e87f316c13e93c921f8fe479e",
+      "rows_used_with_warmup": 353386,
+      "first": "2021-01-03T23:00:00+00:00",
+      "last": "2021-12-31T21:58:00+00:00"
+    },
+    {
+      "file": "xau-2022.csv",
+      "sha256": "3a7da430431d0cbcccf8992bc228c53b109f7de801c60a2c20c18a328c2a52f7",
+      "rows_used_with_warmup": 354568,
+      "first": "2022-01-02T23:00:00+00:00",
+      "last": "2022-12-30T21:57:00+00:00"
+    },
+    {
+      "file": "xau-2023.csv",
+      "sha256": "fc259c7743d654ff9e965054debb71816dd8eef63e44d7d86fd5b14b79e44ab8",
+      "rows_used_with_warmup": 308752,
+      "first": "2023-01-02T23:00:00+00:00",
+      "last": "2023-12-29T21:57:00+00:00"
+    },
+    {
+      "file": "xau-2024.csv",
+      "sha256": "42af2a6ece96e557137bb7b0b87955fb09261679b1a783082180c9caae43b656",
+      "rows_used_with_warmup": 355592,
+      "first": "2024-01-01T23:00:00+00:00",
+      "last": "2024-12-31T21:57:00+00:00"
+    },
+    {
+      "file": "xau-2025.csv",
+      "sha256": "1f941902891eeec5d1c89d5f1319f7afda39f46c868ca2948ee2dee4797138b4",
+      "rows_used_with_warmup": 353951,
+      "first": "2025-01-01T23:00:00+00:00",
+      "last": "2025-12-31T21:57:00+00:00"
+    }
+  ],
+  "coverage": {
+    "2019": 352625,
+    "2020": 354291,
+    "2021": 353386,
+    "2022": 354867,
+    "2023": 308752,
+    "2024": 355294,
+    "2025": 353951
+  },
+  "input_hashes": {
+    "bars.bin": "f37af5e70cd84895f5a66c373cf5e051122e23983c48ea5781c629d051d625cf",
+    "h1_close.bin": "a2f056a58ed90be5b21964dd35e6d8de92aaf09bef9d4ea45466bb0bfbc497af",
+    "news.bin": "cda155e10973c22797e936ca08ba778714d5d5a3a823563b0f25cf13be2a3930",
+    "events.bin": "905254981581e9f2481304c85260c0d231adb9de20717f5bfc39044d55a7c0d1"
+  }
+}

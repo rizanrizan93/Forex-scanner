@@ -1,0 +1,58 @@
+[
+  {
+    "file": "events_2016_2025.csv",
+    "sha256": "6ac3b409cbd3c5ece2f398152339a22bdcbcc41c4a80dc5f01a58b2492c78d6e"
+  },
+  {
+    "file": "macro_daily.csv",
+    "sha256": "ce83285c56cb03bffe4bce164959a325330fd4b899dec0df3b71caa2ba943318"
+  },
+  {
+    "file": "xau-2016.csv",
+    "sha256": "8d2b2d4ef05efc9f25d80a583fc7e2c31b91acf7638b6dc52111f705bf0a9ecf"
+  },
+  {
+    "file": "xau-2017.csv",
+    "sha256": "319acced79857059bcb1c646a71db2e99f61e4a95ae50ccae1ea6f07ee17ed23"
+  },
+  {
+    "file": "xau-2018.csv",
+    "sha256": "40b855b33798f0f4de3f86ae16373b7a45e9b199974821c73fb3de0760ad3ec6"
+  },
+  {
+    "file": "xau-2019.csv",
+    "sha256": "4ab0134dd669d8d319329d63bf932a99f44581ae60e109a91985cb76a89ae332"
+  },
+  {
+    "file": "xau-2020.csv",
+    "sha256": "77897672bef2e19ed04b56df4d0d2e7647092dcc0c909af86893176d7b4d5703"
+  },
+  {
+    "file": "xau-2021.csv",
+    "sha256": "884a5b16baca3e93711cabba9b25561a0ff7ed2e87f316c13e93c921f8fe479e"
+  },
+  {
+    "file": "xau-2022.csv",
+    "sha256": "3a7da430431d0cbcccf8992bc228c53b109f7de801c60a2c20c18a328c2a52f7"
+  },
+  {
+    "file": "xau-2023.csv",
+    "sha256": "fc259c7743d654ff9e965054debb71816dd8eef63e44d7d86fd5b14b79e44ab8"
+  },
+  {
+    "file": "xau-2024.csv",
+    "sha256": "42af2a6ece96e557137bb7b0b87955fb09261679b1a783082180c9caae43b656"
+  },
+  {
+    "file": "xau-2025.csv",
+    "sha256": "1f941902891eeec5d1c89d5f1319f7afda39f46c868ca2948ee2dee4797138b4"
+  },
+  {
+    "file": "g-0006.npz",
+    "sha256": "ec9b25f63172fad6235c1d5addcf6b5423b76127d6292359b56d2a89fcde1a24"
+  },
+  {
+    "file": "g-0274.npz",
+    "sha256": "66f553fee73bc47159302887c19fe8320d4fc36d4131ede92d874c37112522a2"
+  }
+]
