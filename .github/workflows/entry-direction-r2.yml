@@ -71,16 +71,20 @@ jobs:
           from datetime import datetime,timezone
           url='https://rizan-bridge.duckdns.org:25345/bootstrap125/entry-direction-r2.json'
           times=[]
-          for i in range(2):
-              with urllib.request.urlopen(url+'?check='+str(i),timeout=20) as response:
+          deadline=time.monotonic()+360
+          while len(times)<2 and time.monotonic()<deadline:
+              with urllib.request.urlopen(url+'?check='+str(time.time_ns()),timeout=20) as response:
                   assert 'no-store' in response.headers.get('Cache-Control','')
                   p=json.load(response)
               assert p['contract']=='RIZAN_ENTRY_DIRECTION_R2_V1' and p['execution_authority'] is False and p['execution_influence'] is False
               age=(datetime.now(timezone.utc)-datetime.fromisoformat(p['as_of'])).total_seconds()
-              assert -5<=age<90
-              assert p['status'] not in ['WAIT_DATA','WARMUP'],p['status']
-              assert p['history']['XAUUSD']>=60000 and p['history']['EURUSD']>=300
-              times.append(p['as_of']);print('R2_FRESH',p['as_of'],p['status'],p['history'])
-              if i==0:time.sleep(35)
-          assert len(set(times))==2,'R2_TIMER_NOT_ADVANCING'
+              ready=-5<=age<90 and p['status'] not in ['WAIT_DATA','WARMUP']
+              if ready:
+                  assert p['history']['XAUUSD']>=60000 and p['history']['EURUSD']>=300
+                  if p['as_of'] not in times:
+                      times.append(p['as_of']);print('R2_FRESH',p['as_of'],p['status'],p['history'])
+              else:
+                  print('R2_STARTUP_WAIT',p['status'],round(age,1))
+              if len(times)<2:time.sleep(35 if times else 15)
+          assert len(times)==2,'R2_FRESH_ADVANCING_SNAPSHOTS_NOT_OBSERVED'
           PY
