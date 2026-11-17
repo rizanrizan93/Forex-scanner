@@ -68,6 +68,19 @@ def test_installer_is_resource_isolated_and_preserves_bridge():
  assert 'alias /var/lib/rizan-entry-r2/snapshot.json' in BLOCK and 'no-store' in BLOCK
  assert 'rizan-bootstrap125-bridge.service' not in UNIT
 
+def test_reinstall_stops_only_the_old_independent_reader(monkeypatch):
+ from operations.entry_direction_r2 import install
+ calls=[]
+ def fake_run(args,**kwargs):
+  calls.append(args)
+  return SimpleNamespace(stdout='loaded\n')
+ monkeypatch.setattr(install,'run',fake_run)
+ install.stop_previous_reader()
+ assert [args for args in calls if args[1]=='stop']==[
+  ['systemctl','stop','rizan-entry-r2.timer'],
+  ['systemctl','stop','rizan-entry-r2.service']]
+ assert all(install.BRIDGE not in args for args in calls)
+
 def test_dashboard_wait_has_honest_metrics_and_no_old_panels():
  from streamlit.testing.v1 import AppTest
  app=AppTest.from_string('from fx_scanner.entry_direction_r2.dashboard import render_view\nrender_view()').run()

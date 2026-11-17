@@ -56,9 +56,16 @@ def run(args,timeout=600):
 
 def identity():return run(['systemctl','show',BRIDGE,'-p','MainPID','-p','ExecMainStartTimestampMonotonic']).stdout
 
+def stop_previous_reader():
+ # Only this independent reader is quiesced. Never interrupt the trading bridge.
+ # Otherwise a slow previous cycle can overwrite the install preflight's state.
+ for unit in ['rizan-entry-r2.timer','rizan-entry-r2.service']:
+  loaded=run(['systemctl','show',unit,'-p','LoadState','--value']).stdout.strip()
+  if loaded!='not-found':run(['systemctl','stop',unit])
+
 def main(source):
  if os.geteuid()!=0 or not BASE.exists() or not Path('/etc/rizan-bootstrap125-monitor-broker.json').exists():raise RuntimeError('READONLY_RUNTIME_REQUIRED')
- before=identity();APP.mkdir(exist_ok=True);OUT.mkdir(exist_ok=True,mode=0o755)
+ before=identity();stop_previous_reader();APP.mkdir(exist_ok=True);OUT.mkdir(exist_ok=True,mode=0o755)
  for name in ['__init__.py','models.py','exceptions.py','execution/ctrader_session.py','execution/ctrader_market_readonly.py']:
   target=APP/'src/fx_scanner'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source/'src/fx_scanner'/name,target)
  (APP/'src/fx_scanner/execution/__init__.py').write_text('')

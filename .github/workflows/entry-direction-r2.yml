@@ -81,7 +81,7 @@ jobs:
               ready=-5<=age<90 and p['status'] not in ['WAIT_DATA','WARMUP']
               if ready:
                   assert p['history']['XAUUSD']>=60000 and p['history']['EURUSD']>=300
-                  if p['as_of'] not in times:
+                  if not times or datetime.fromisoformat(p['as_of'])>datetime.fromisoformat(times[-1]):
                       times.append(p['as_of']);print('R2_FRESH',p['as_of'],p['status'],p['history'])
               else:
                   print('R2_STARTUP_WAIT',p['status'],round(age,1))
