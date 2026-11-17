@@ -30,11 +30,11 @@ def test_mobile_navigation_is_scrollable_and_reuses_original_session_keys():
     assert 'key="rizan_xau_detail"' in src
     assert 'render_brand(st)' in src
     assert 'render_section_intro(st, pair="XAUUSD", detail=selected_detail)' in src
-    assert '"Keputusan", "Analisis Terpadu", "Demand", "Pre-News", "Makro"' in src
-    assert '"pages/7_XAU_Unified_Decision.py"' in src
-    assert '("XAU_Analisis_Terpadu", "XAUUSD", "Analisis Terpadu")' in src
-    assert '("USD_Lead_Engine", "XAUUSD", "Analisis Terpadu")' in src
-    assert '("XAU_Decision_Checklist", "XAUUSD", "Analisis Terpadu")' in src
+    assert '"Demand", "Pre-News", "Makro"' in src
+    assert '"pages/8_XAU_Entry_Direction_R2.py"' in src
+    assert '("XAU_Analisis_Terpadu", "XAUUSD", "Arah Entry")' in src
+    assert '("USD_Lead_Engine", "XAUUSD", "Arah Entry")' in src
+    assert '("XAU_Decision_Checklist", "XAUUSD", "Arah Entry")' in src
     assert 'active_page = st.navigation(routes, position="hidden")' in src
     assert "active_page.run()" in src
 
@@ -49,7 +49,7 @@ def test_every_xau_navigation_label_has_a_section_description():
         )
     )
     assert len(labels) == len(set(labels))
-    assert "Manual R3" in labels
+    assert "Arah Entry" in labels and "Manual R3" not in labels
     assert set(labels).issubset(SECTION_DESCRIPTIONS)
 
 
@@ -89,18 +89,12 @@ def test_progress_is_bounded_and_has_accessibility_summary():
     assert progress_html(passed=0, failed=0, unknown=0, total=0) == ""
 
 
-def test_checklist_and_usd_lead_use_same_presentational_helper_without_logic_edits():
-    xau = (ROOT / "pages/4_XAU_Decision_Checklist.py").read_text()
-    usd = (ROOT / "pages/5_USD_Lead_Engine.py").read_text()
-    for file in (xau, usd):
-        ast.parse(file)
-        assert "render_condition(" in file
-        assert "render_progress(" in file
-        assert "evaluate_" in file
-    assert "yield_nowcast=yield_projection" in usd
-    assert "structure_fresh=market_fresh" in xau
-    assert "broker_spec=broker_spec" in xau
-    assert "Frozen V1" in usd
+def test_retired_analysis_pages_use_the_single_entry_renderer():
+    for name in ['4_XAU_Decision_Checklist.py','5_USD_Lead_Engine.py','6_XAU_Technical_Engine.py','7_XAU_Unified_Decision.py']:
+        source=(ROOT/'pages'/name).read_text()
+        ast.parse(source)
+        assert 'render_entry_direction()' in source
+        assert 'evaluate_unified' not in source
 
 
 
