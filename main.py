@@ -90,7 +90,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Zona reversal", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Analisis Terpadu", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Zona reversal", "Manual R3", "Zona A→B", "Setup", "Hierarki zona", "Keputusan", "Analisis Terpadu", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -99,13 +99,16 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                     horizontal=True, label_visibility="collapsed",
                     on_change=navigate_detail,
                 )
-            paths = [None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/7_XAU_Unified_Decision.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, None, None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/7_XAU_Unified_Decision.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
                     with st.container(key="rizan_xau_detail_content"):
                         if path is None:
-                            if label == "Zona A→B":
+                            if label == "Manual R3":
+                                from fx_scanner.manual_r3_dashboard import render_manual_r3
+                                render_manual_r3()
+                            elif label == "Zona A→B":
                                 from fx_scanner.predictive_zone_dashboard import render_predictive_zone_dashboard
                                 render_predictive_zone_dashboard()
                             else:
@@ -164,6 +167,7 @@ ROUTE_SPECS = [
     ("Frozen_V1", "Frozen V1", "Setup"),
     ("Konsensus_V1", "Konsensus", "Setup"),
     ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"),
+    ("XAU_Manual_R3", "XAUUSD", "Manual R3"),
     ("XAU_Setup", "XAUUSD", "Setup"),
     ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"),
     ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"),
