@@ -54,7 +54,14 @@ AccuracySec=1
 WantedBy=timers.target
 '''
 
-def run(args,timeout=200):return subprocess.run(args,check=True,capture_output=True,text=True,timeout=timeout)
+def run(args,timeout=200):
+    result=subprocess.run(args,capture_output=True,text=True,timeout=timeout)
+    if result.returncode:
+        for line in result.stdout.splitlines():
+            if line.startswith(('R3_COLLECTION_FAILED:','MANUAL_R3_PUBLISH_FAILED:')):print(line,flush=True)
+        print('R3_INSTALL_COMMAND_FAILED:'+Path(args[0]).name,flush=True)
+        result.check_returncode()
+    return result
 def bridge_identity():return run(['systemctl','show',BRIDGE,'-p','MainPID','-p','ExecMainStartTimestampMonotonic']).stdout
 def main(source):
     if os.geteuid()!=0 or not PYTHON.exists():raise RuntimeError('EXISTING_READONLY_RUNTIME_REQUIRED')

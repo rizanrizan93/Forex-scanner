@@ -14,7 +14,11 @@ def main():
     credentials=json.loads(Path('/etc/rizan-bootstrap125-monitor-broker.json').read_text())
     env=dict(os.environ,**{k:credentials[k] for k in ['CTRADER_CLIENT_ID','CTRADER_CLIENT_SECRET','CTRADER_ACCESS_TOKEN']})
     path=OUT/'market.json'
-    subprocess.run([sys.executable,str(APP/'scripts/collect_manual_r3.py'),str(path)],env=env,cwd=APP,check=True,timeout=160,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    result=subprocess.run([sys.executable,str(APP/'scripts/collect_manual_r3.py'),str(path)],env=env,cwd=APP,timeout=160,capture_output=True,text=True)
+    if result.returncode:
+        for line in result.stdout.splitlines():
+            if line.startswith('R3_COLLECTION_FAILED:'):print(line,flush=True)
+        raise RuntimeError('R3_READER_FAILED')
     now=datetime.now(UTC)
     try:calendar=calendar_from_snapshot(read_public(PRE_NEWS_URL+'?r3='+str(int(now.timestamp()//60)),timeout=5,limit=512*1024),now=now)
     except (OSError,ValueError,TypeError,KeyError):calendar={'contract':NEWS_CONTRACT,'observed_at':None,'events':None,'execution_authority':False}

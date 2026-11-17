@@ -66,4 +66,8 @@ if __name__=='__main__':
         with tmp.open('w') as w:json.dump(result,w,separators=(',',':'),allow_nan=False);w.flush();os.fsync(w.fileno())
         tmp.chmod(0o644);os.replace(tmp,p)
         print('R3_MARKET_READONLY',result['as_of'],len(result['m1']))
-    except Exception as e:print('R3_COLLECTION_FAILED:'+type(e).__name__);raise SystemExit(1)
+    except Exception as e:
+        import traceback
+        frames=traceback.extract_tb(e.__traceback__)
+        print('R3_COLLECTION_FAILED:'+type(e).__name__+':'+','.join(Path(f.filename).name+'@'+str(f.lineno) for f in frames),flush=True)
+        raise SystemExit(1)
