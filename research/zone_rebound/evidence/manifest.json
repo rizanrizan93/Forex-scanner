@@ -1,0 +1,21 @@
+{
+  "numpy": "2.3.5",
+  "pandas": "2.2.3",
+  "input": {
+    "sha256": "967a84f61e248143d1dd3d92db132e137441d30445a236827d9b6579593e262b",
+    "rows": 2557244,
+    "first": "2019-01-01T23:00:00+00:00",
+    "last": "2026-03-31T23:59:00+00:00"
+  },
+  "full_touch_ledger_sha256": "de1a5701cabf3495532cb5b7e551136c99ab3dd2ddd7b57a8e68048822f09066",
+  "full_touch_rows": 47643,
+  "selected_touch_rows": 546,
+  "files": {
+    "independent_audit.json": "6596819d7153e3a6d72e6c5d2d18925de68ab1d7a54cdee0ce43975ee616d0ac",
+    "selected_touch_ledger.csv.gz": "7132df5bc3bc9026e88ea1dbe732e41e7e08e68c19d207bea83564b69108a9b5",
+    "train_ranking.csv.gz": "34e8e84578cad5746eff0161fddbac0600184fc6fe6be92a64e386c820fe50ac",
+    "summary.json": "5418ada3f1f5b6ce6413a18305ccf508c622f7827efd321d3ee0b39b88489d0f",
+    "initial_704_summary.json": "15f7402e091d94e0ee727feaceef10804bc7d626ff6b2fa00a116071a71850c3",
+    "selected_touch_ledger.csv": "a79ec83e12cfa5a10c271b87ee871e546d615bbdc2c925f6a04353f5105f9c5d"
+  }
+}

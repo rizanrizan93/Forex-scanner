@@ -6,7 +6,7 @@ APP=Path('/opt/rizan-manual-r3');OUT=Path('/var/lib/rizan-manual-r3')
 sys.path.insert(0,str(APP/'src'))
 
 def atomic(path,data):
-    tmp=path.with_suffix('.tmp')
+    tmp=path.with_name('.'+path.name+'.'+str(os.getpid())+'.tmp')
     with tmp.open('w') as f:json.dump(data,f,separators=(',',':'),allow_nan=False);f.flush();os.fsync(f.fileno())
     tmp.chmod(0o644);os.replace(tmp,path)
 

@@ -63,10 +63,14 @@ def run(args,timeout=200):
         result.check_returncode()
     return result
 def bridge_identity():return run(['systemctl','show',BRIDGE,'-p','MainPID','-p','ExecMainStartTimestampMonotonic']).stdout
+def stop_previous_reader():
+    for unit in [TIMER,SERVICE]:
+        loaded=run(['systemctl','show',unit,'-p','LoadState','--value']).stdout.strip()
+        if loaded!='not-found':run(['systemctl','stop',unit])
 def main(source):
     if os.geteuid()!=0 or not PYTHON.exists():raise RuntimeError('EXISTING_READONLY_RUNTIME_REQUIRED')
     if not Path('/etc/rizan-bootstrap125-monitor-broker.json').exists():raise RuntimeError('READONLY_CREDENTIALS_MISSING')
-    before=bridge_identity();original=SNIPPET.read_text()
+    before=bridge_identity();stop_previous_reader();original=SNIPPET.read_text()
     if 'location ^~ /bootstrap125/' not in original:raise RuntimeError('EXPECTED_ROUTE_MISSING')
     APP.mkdir(exist_ok=True,mode=0o755);OUT.mkdir(exist_ok=True,mode=0o755)
     for n in ['__init__.py','models.py','exceptions.py','manual_r3_feed.py','execution/ctrader_session.py','execution/ctrader_market_readonly.py']:

@@ -1,0 +1,10 @@
+{
+  "independent_scalar_samples": 300,
+  "all_primary_outcomes_match": true,
+  "sample_outcomes": {
+    "BOUNCE": 135,
+    "ADVERSE": 161,
+    "TIMEOUT": 4
+  },
+  "random_seed": 1711
+}

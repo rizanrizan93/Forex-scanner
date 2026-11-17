@@ -78,6 +78,17 @@ def test_installer_is_isolated():
     assert 'manual-r3-news.json' in BLOCK and 'no-store' in BLOCK
     assert 'OnUnitInactiveSec=10' in TIMER_UNIT and '/var/lib/rizan-manual-r3' in UNIT
 
+def test_reinstall_stops_only_manual_reader(monkeypatch):
+    from types import SimpleNamespace
+    from operations.manual_r3 import install
+    calls=[]
+    def fake_run(args,**kwargs):
+        calls.append(args);return SimpleNamespace(stdout='loaded\n')
+    monkeypatch.setattr(install,'run',fake_run)
+    install.stop_previous_reader()
+    assert [a for a in calls if a[1]=='stop']==[['systemctl','stop',install.TIMER],['systemctl','stop',install.SERVICE]]
+    assert all(install.BRIDGE not in a for a in calls)
+
 def test_dashboard_renders_wait_and_navigation_keeps_manual_page(monkeypatch):
     from streamlit.testing.v1 import AppTest
     from fx_scanner import manual_r3_dashboard as dashboard

@@ -1,0 +1,146 @@
+{
+  "contract": "RIZAN_ZONE_REBOUND_RESEARCH_R1",
+  "execution_authority": false,
+  "execution_influence": false,
+  "live_strategy_changed": false,
+  "input": {
+    "sha256": "967a84f61e248143d1dd3d92db132e137441d30445a236827d9b6579593e262b",
+    "rows": 2557244,
+    "first": "2019-01-01T23:00:00+00:00",
+    "last": "2026-03-31T23:59:00+00:00"
+  },
+  "definition": {
+    "primary_bounce_atr_h1": 0.25,
+    "adverse_atr_h1": 0.25,
+    "horizon_minutes": 60,
+    "zone_half_width_atr_h1": 0.05,
+    "favorable_touch_bar_ignored": true,
+    "ambiguous_bar": "ADVERSE_FIRST",
+    "data_gaps_count_as_not_success": true,
+    "context_frozen_before_touch": true,
+    "first_touch_only_per_published_zone": true
+  },
+  "selection": "2019-2022 only; highest Wilson lower bound with >=100 touches per side",
+  "periods_not_untouched": true,
+  "macro_tested": false,
+  "macro_reason": "No publication-time aligned historical macro archive supplied. Current macro must not be backfilled into the historical test.",
+  "audit": {
+    "published_zones": 95331,
+    "gap_through_zone_skips": 3
+  },
+  "touch_events": 47643,
+  "configurations": 704,
+  "selected": [
+    {
+      "rule": {
+        "zone": "KELTNER_M15_2",
+        "side": "BUY",
+        "phase": "ASIA",
+        "filter": "H1_H4"
+      },
+      "periods": {
+        "2019_2022": {
+          "n": 205,
+          "bounce": 123,
+          "rate": 0.6,
+          "wilson_low": 0.5316927231789674,
+          "data_gaps": 1,
+          "timeouts": 4,
+          "median_peak_close_atr": 0.2528351187471103,
+          "small_0_1_bounce_rate": 0.7414634146341463,
+          "large_0_5_bounce_rate": 0.34146341463414637
+        },
+        "2023_2024": {
+          "n": 104,
+          "bounce": 48,
+          "rate": 0.46153846153846156,
+          "wilson_low": 0.3688100475176425,
+          "data_gaps": 1,
+          "timeouts": 6,
+          "median_peak_close_atr": 0.1775007459994408,
+          "small_0_1_bounce_rate": 0.7307692307692307,
+          "large_0_5_bounce_rate": 0.28846153846153844
+        },
+        "2025": {
+          "n": 62,
+          "bounce": 27,
+          "rate": 0.43548387096774194,
+          "wilson_low": 0.31942588902489055,
+          "data_gaps": 0,
+          "timeouts": 1,
+          "median_peak_close_atr": 0.22678504360157492,
+          "small_0_1_bounce_rate": 0.6129032258064516,
+          "large_0_5_bounce_rate": 0.3064516129032258
+        },
+        "2026_Q1": {
+          "n": 14,
+          "bounce": 11,
+          "rate": 0.7857142857142857,
+          "wilson_low": 0.524107694133997,
+          "data_gaps": 0,
+          "timeouts": 0,
+          "median_peak_close_atr": 0.380125905807277,
+          "small_0_1_bounce_rate": 0.7857142857142857,
+          "large_0_5_bounce_rate": 0.7142857142857143
+        }
+      },
+      "passed_80_validation_and_2025": false
+    },
+    {
+      "rule": {
+        "zone": "KELTNER_M15_2.5",
+        "side": "SELL",
+        "phase": "LONDON",
+        "filter": "RANGE20"
+      },
+      "periods": {
+        "2019_2022": {
+          "n": 165,
+          "bounce": 92,
+          "rate": 0.5575757575757576,
+          "wilson_low": 0.4813374248604851,
+          "data_gaps": 0,
+          "timeouts": 0,
+          "median_peak_close_atr": 0.26200893580800017,
+          "small_0_1_bounce_rate": 0.7212121212121212,
+          "large_0_5_bounce_rate": 0.3575757575757576
+        },
+        "2023_2024": {
+          "n": 103,
+          "bounce": 48,
+          "rate": 0.46601941747572817,
+          "wilson_low": 0.3726437920092655,
+          "data_gaps": 0,
+          "timeouts": 0,
+          "median_peak_close_atr": 0.1635845529826771,
+          "small_0_1_bounce_rate": 0.5922330097087378,
+          "large_0_5_bounce_rate": 0.27184466019417475
+        },
+        "2025": {
+          "n": 32,
+          "bounce": 15,
+          "rate": 0.46875,
+          "wilson_low": 0.30869387108068835,
+          "data_gaps": 0,
+          "timeouts": 0,
+          "median_peak_close_atr": 0.18199450505968334,
+          "small_0_1_bounce_rate": 0.75,
+          "large_0_5_bounce_rate": 0.3125
+        },
+        "2026_Q1": {
+          "n": 4,
+          "bounce": 3,
+          "rate": 0.75,
+          "wilson_low": 0.3006418425824019,
+          "data_gaps": 0,
+          "timeouts": 0,
+          "median_peak_close_atr": 0.2856704001416332,
+          "small_0_1_bounce_rate": 0.75,
+          "large_0_5_bounce_rate": 0.25
+        }
+      },
+      "passed_80_validation_and_2025": false
+    }
+  ],
+  "target_80_achieved": false
+}

@@ -62,7 +62,7 @@ def collect(output):
 
 if __name__=='__main__':
     try:
-        p=Path(sys.argv[1]);result=collect(p);tmp=p.with_suffix('.tmp')
+        p=Path(sys.argv[1]);result=collect(p);tmp=p.with_name('.'+p.name+'.'+str(os.getpid())+'.tmp')
         with tmp.open('w') as w:json.dump(result,w,separators=(',',':'),allow_nan=False);w.flush();os.fsync(w.fileno())
         tmp.chmod(0o644);os.replace(tmp,p)
         print('R3_MARKET_READONLY',result['as_of'],len(result['m1']))
