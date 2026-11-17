@@ -1,0 +1,91 @@
+name: Manual R3 indicator and isolated data
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['main.py','src/fx_scanner/manual*r3*.py','operations/manual_r3/**','scripts/collect_manual_r3.py','cbot_indicators/ManualRangeR3/**','tests/test_manual_r3.py','tests/fixtures/manual_r3/**','.github/workflows/manual-r3.yml']
+  push:
+    branches: [main]
+    paths: ['main.py','src/fx_scanner/manual*r3*.py','operations/manual_r3/**','scripts/collect_manual_r3.py','cbot_indicators/ManualRangeR3/**','tests/test_manual_r3.py','tests/fixtures/manual_r3/**','.github/workflows/manual-r3.yml']
+permissions:
+  contents: read
+concurrency:
+  group: manual-r3-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dashboard test dependencies
+        run: python -m pip install pandas==2.2.3 pydantic==2.13.4 PyYAML==6.0.3 streamlit==1.62.0 pytest==9.0.2
+      - name: Verify indicator, feed and navigation
+        env: {PYTHONPATH: 'src:.'}
+        run: python -m pytest -q tests/test_manual_r3.py tests/test_streamlit_entrypoint_v09.py
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '8.0.x'}
+      - name: Build actual cTrader indicator
+        run: dotnet build cbot_indicators/ManualRangeR3/Indicator/RizanManualRangeReclaimR3.csproj -c Release
+  install-data:
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Install independent manual reader
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          remote=''
+          host='Rizanrizan@202.74.74.172'
+          opts=()
+          cleanup() {
+            if [[ -n "$remote" ]]; then ssh "${opts[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15)
+          remote=$(ssh "${opts[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-manual-r3.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-manual-r3\.[a-zA-Z0-9]+$ ]]
+          mkdir -p "$d/stage/scripts" "$d/stage/operations/manual_r3" "$d/stage/src/fx_scanner/execution"
+          cp scripts/collect_manual_r3.py "$d/stage/scripts/"
+          cp operations/manual_r3/*.py "$d/stage/operations/manual_r3/"
+          cp src/fx_scanner/__init__.py src/fx_scanner/models.py src/fx_scanner/exceptions.py src/fx_scanner/manual_r3_feed.py "$d/stage/src/fx_scanner/"
+          cp src/fx_scanner/execution/ctrader_session.py src/fx_scanner/execution/ctrader_market_readonly.py "$d/stage/src/fx_scanner/execution/"
+          scp -q -r "${opts[@]}" "$d/stage" "$host:$remote/"
+          ssh "${opts[@]}" "$host" "sudo -n /usr/bin/python3 '$remote/stage/operations/manual_r3/install.py' '$remote/stage'"
+      - name: Verify fresh advancing M1 source and calendar endpoint
+        run: |
+          python3 -u - <<'PY'
+          import json,time,urllib.request
+          from datetime import datetime,timezone
+          base='https://rizan-bridge.duckdns.org:25345/bootstrap125/'
+          times=[]
+          for i in range(2):
+              with urllib.request.urlopen(base+'manual-r3.json',timeout=15) as r:
+                  assert 'no-store' in r.headers.get('Cache-Control','')
+                  p=json.load(r)
+              assert p['contract']=='RIZAN_MANUAL_R3_MARKET_V1' and p['execution_authority'] is False
+              assert 2000<=len(p['m1'])<=12000
+              age=(datetime.now(timezone.utc)-datetime.fromisoformat(p['as_of'])).total_seconds()
+              assert -5<=age<90, 'MANUAL_MARKET_NOT_FRESH'
+              times.append(p['as_of']);print('MANUAL_R3_FRESH',p['as_of'],len(p['m1']))
+              if i==0:time.sleep(35)
+          assert len(set(times))==2, 'MANUAL_TIMER_NOT_ADVANCING'
+          with urllib.request.urlopen(base+'manual-r3-news.json',timeout=10) as r:n=json.load(r)
+          assert n['contract']=='RIZAN_MANUAL_R3_CALENDAR_V1'
+          print('CALENDAR_OBSERVED',n['observed_at'])
+          PY

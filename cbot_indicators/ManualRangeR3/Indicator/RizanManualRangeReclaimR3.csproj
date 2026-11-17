@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework><LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.0.0</Version><AlgoName>RizanManualRangeReclaimR3</AlgoName><AlgoPublish>false</AlgoPublish><IncludeSource>true</IncludeSource>
+  </PropertyGroup>
+  <ItemGroup><PackageReference Include="cTrader.Automate" Version="1.0.21" /></ItemGroup>
+  <ItemGroup><Compile Include="../ManualR3Core.cs" Link="ManualR3Core.cs" /></ItemGroup>
+</Project>

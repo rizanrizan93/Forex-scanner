@@ -1,0 +1,22 @@
+{
+  "name": "RizanManualRangeReclaimR3",
+  "type": "Indicator",
+  "version": "1.0.0",
+  "built_at_utc": "2026-11-17T03:41:07.646760+00:00",
+  "sdk": "8.0.428",
+  "target": "net6.0",
+  "cTrader_Automate": "1.0.21",
+  "build_errors": 0,
+  "build_warnings": 0,
+  "build_output_name": "ManualRangeR3.algo",
+  "sha256": "afc00e3d267697cb66c4b95df4d52cb119f70a7512506b35ee54079365043480",
+  "size": 20817,
+  "native_terminal_run_verified": false,
+  "parity": {
+    "passed": 10,
+    "max_absolute_error": 0,
+    "core": "RIZAN_MANUAL_RANGE_RECLAIM_R3_V1",
+    "status": "PASS",
+    "scope": "Identical timestamped M1 fixtures; not terminal/broker parity"
+  }
+}

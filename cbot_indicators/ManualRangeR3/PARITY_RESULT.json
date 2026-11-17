@@ -1,0 +1,7 @@
+{
+  "passed": 10,
+  "max_absolute_error": 0,
+  "core": "RIZAN_MANUAL_RANGE_RECLAIM_R3_V1",
+  "status": "PASS",
+  "scope": "Identical timestamped M1 fixtures; not terminal/broker parity"
+}
