@@ -49,7 +49,7 @@ def test_every_xau_navigation_label_has_a_section_description():
         )
     )
     assert len(labels) == len(set(labels))
-    assert "Arah Entry" in labels and "Manual R3" not in labels
+    assert "Arah Entry" in labels and "Manual R3" in labels
     assert set(labels).issubset(SECTION_DESCRIPTIONS)
 
 

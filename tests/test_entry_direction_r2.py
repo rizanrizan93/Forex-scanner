@@ -95,6 +95,6 @@ def test_legacy_navigation_routes_to_entry_without_duplicates(monkeypatch):
  monkeypatch.setattr(runpy,'run_path',lambda path,**kwargs:st.write('PAGE '+Path(path).name))
  app=AppTest.from_file(str(ROOT/'main.py'));app.session_state['rizan_xau_detail']='Analisis Terpadu';app.run()
  assert not app.exception;assert app.radio(key='rizan_xau_detail').value=='Arah Entry'
- for old in ['Analisis Terpadu','Checklist','Teknikal','Manual R3','Keputusan']:assert old not in app.radio(key='rizan_xau_detail').options
+ for old in ['Analisis Terpadu','Checklist','Teknikal','Keputusan']:assert old not in app.radio(key='rizan_xau_detail').options
  assert app.radio(key='rizan_pair').options==['XAUUSD','EURUSD','Frozen V1','cBots']
  assert any('8_XAU_Entry_Direction_R2.py' in x.value for x in app.markdown)

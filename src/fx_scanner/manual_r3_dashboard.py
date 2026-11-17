@@ -19,7 +19,8 @@ def render_view(source=None,error=None,*,now=None):
     import streamlit as st
     now=now or datetime.now(UTC)
     st.subheader('Indikator Manual R3 · Range Reclaim')
-    st.caption('XAUUSD · pita Keltner M15 + kondisi H1 + pemicu M1')
+    st.caption('XAUUSD · zona BUY dan SELL · pita Keltner M15 + kondisi H1 + pemicu M1')
+    st.caption('Zona pantau belum memiliki peluang pantul 80% yang tervalidasi. Tunggu syarat dan pemicu; hasil riset zona dinilai terpisah dari strategi R3 yang sudah diuji.')
     if source is None:
         st.info('MENUNGGU DATA · riwayat M1, harga bid/ask dan kalender sedang diperbarui.')
         st.caption('Zona dan aturan strategi tetap tersedia di bawah; belum ada pemicu entry yang terverifikasi.')

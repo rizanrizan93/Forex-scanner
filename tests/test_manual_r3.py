@@ -80,14 +80,14 @@ def test_installer_is_isolated():
 
 def test_dashboard_renders_wait_and_navigation_keeps_manual_page(monkeypatch):
     from streamlit.testing.v1 import AppTest
-    from fx_scanner.entry_direction_r2 import dashboard
-    monkeypatch.setattr(dashboard,'fetch_snapshot',lambda **k:(_ for _ in ()).throw(OSError()))
+    from fx_scanner import manual_r3_dashboard as dashboard
+    monkeypatch.setattr(dashboard,'fetch_market',lambda **k:(_ for _ in ()).throw(OSError()))
     root=Path(__file__).resolve().parents[1]
     app=AppTest.from_file(str(root/'main.py'),default_timeout=20)
     app.session_state['rizan_xau_detail']='Manual R3';app.run()
     assert not app.exception
-    assert any('Arah Entry R2' in x.value for x in app.subheader)
-    assert 'Arah Entry' in app.radio[1].options and 'Manual R3' not in app.radio[1].options
+    assert any('Range Reclaim' in x.value for x in app.subheader)
+    assert 'Manual R3' in app.radio[1].options and app.radio[1].value=='Manual R3'
 
 def test_dashboard_renders_real_fixture_chart_and_plan():
     from streamlit.testing.v1 import AppTest

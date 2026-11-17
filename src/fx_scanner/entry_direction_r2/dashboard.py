@@ -22,6 +22,7 @@ def render_view(snapshot=None):
  import streamlit as st
  st.subheader('Arah Entry R2 · XAUUSD')
  st.caption('Model selektif · khusus SELL · keputusan entry manual')
+ st.caption('Untuk zona BUY dan SELL, buka tab Manual R3. Model R2 belum memiliki kandidat BUY yang tervalidasi.')
  st.warning('Eksperimental. Validasi 2023–2024: 63,6% dari 110 sinyal; 2025: 43,1% dari 65 sinyal. Target akurasi 80% belum tercapai.')
  labels={'WAIT_DATA':'MENUNGGU DATA','WARMUP':'MENYIAPKAN DATA','WAIT_SESSION':'DI LUAR SESI','WATCH_SETUP':'PANTAU SETUP','WATCH_SCORE':'SKOR BELUM CUKUP','WAIT_LIMIT':'MENUNGGU JEDA','TRIGGER_SELL':'PEMICU SELL'}
  p=snapshot or {'status':'WAIT_DATA','direction':'WAIT','reason':'Sumber harga model sedang diperbarui','checks':[]}

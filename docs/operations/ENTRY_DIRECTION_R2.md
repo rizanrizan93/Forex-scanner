@@ -1,7 +1,8 @@
 # XAU manual entry direction R2
 
 The default XAU panel is Arah Entry R2. Retired decision/checklist/technical,
-USD Lead, consensus and Manual R3 routes resolve to this panel. Macro, Pre-News,
+USD Lead and consensus routes resolve to this panel. Manual R3 remains a separate
+BUY/SELL zone indicator with its own original route. Macro, Pre-News,
 zone maps, EUR, Frozen V1 and cBots keep their existing engines.
 
 This is the frozen experimental SELL-only rule 670, an equally weighted HGB and

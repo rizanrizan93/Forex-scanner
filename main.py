@@ -53,9 +53,9 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
     # Normalize retired analysis labels after a live Streamlit reload.
-    if st.session_state.get("rizan_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead", "Analisis Terpadu", "Manual R3", "Keputusan", "Setup"}:
+    if st.session_state.get("rizan_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead", "Analisis Terpadu", "Keputusan", "Setup"}:
         st.session_state["rizan_xau_detail"] = "Arah Entry"
-    if st.session_state.get("_rizan_last_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead", "Analisis Terpadu", "Manual R3", "Keputusan", "Setup"}:
+    if st.session_state.get("_rizan_last_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead", "Analisis Terpadu", "Keputusan", "Setup"}:
         st.session_state["_rizan_last_xau_detail"] = "Arah Entry"
     if st.session_state.get("rizan_pair") == "Konsensus":
         st.session_state["rizan_pair"] = "XAUUSD"
@@ -88,7 +88,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Arah Entry", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Arah Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -97,13 +97,16 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
                     horizontal=True, label_visibility="collapsed",
                     on_change=navigate_detail,
                 )
-            paths = ["pages/8_XAU_Entry_Direction_R2.py", None, None, "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = ["pages/8_XAU_Entry_Direction_R2.py", None, None, None, "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
                     with st.container(key="rizan_xau_detail_content"):
                         if path is None:
-                            if label == "Zona A→B":
+                            if label == "Manual R3":
+                                from fx_scanner.manual_r3_dashboard import render_manual_r3
+                                render_manual_r3()
+                            elif label == "Zona A→B":
                                 from fx_scanner.predictive_zone_dashboard import render_predictive_zone_dashboard
                                 render_predictive_zone_dashboard()
                             else:
@@ -157,7 +160,7 @@ ROUTE_SPECS = [
     ("XAU_Zona_Reversal", "XAUUSD", "Zona reversal"),
     ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"),
     ("XAU_Arah_Entry_R2", "XAUUSD", "Arah Entry"),
-    ("XAU_Manual_R3", "XAUUSD", "Arah Entry"),
+    ("XAU_Manual_R3", "XAUUSD", "Manual R3"),
     ("XAU_Setup", "XAUUSD", "Arah Entry"),
     ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"),
     ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Arah Entry"),
