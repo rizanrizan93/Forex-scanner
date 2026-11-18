@@ -36,7 +36,7 @@ def year_run(price_csv:Path,*,year:int,spread_scenario_usd:float=.5,
                 'rows':summary(ledger),'generated':len(signals),
                 'active':int((signals.side!=0).sum()),
                 'wait':int((signals.side==0).sum()),
-                'examples':ledger.head(5).to_dict('records') if not ledger.empty else []}
+                'examples':json.loads(ledger.head(5).to_json(orient='records')) if not ledger.empty else []}
     return {'contract':'RIZAN_XAU_H1H4_DIRECTION_R1_REPLAY','year':year,
         'source':'HISTDATA_PUBLIC_M1_NONEXECUTABLE','price_hash':sha256(price_csv),
         'price_rows':len(d),'first_utc':d.index[0].isoformat(),'last_utc':d.index[-1].isoformat(),
