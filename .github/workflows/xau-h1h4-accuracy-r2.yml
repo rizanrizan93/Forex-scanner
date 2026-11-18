@@ -1,0 +1,105 @@
+name: XAU H1 H4 R2 Direction Accuracy (No LIVE)
+on:
+  pull_request:
+    paths:
+      - 'research/zone_rebound/h1h4_accuracy_r2.py'
+      - 'scripts/research_xau_h1h4_accuracy_r2.py'
+      - 'tests/test_xau_h1h4_accuracy_r2.py'
+      - '.github/workflows/xau-h1h4-accuracy-r2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xau-r2-direction-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Causal tests and frozen R1 safeguards
+        env: {PYTHONPATH: 'src:.'}
+        run: python -m pytest -q tests/test_xau_h1h4_accuracy_r2.py tests/test_xau_h1h4_direction_r1.py
+  year:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/rizan-r2-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/rizan-r2-${{ matrix.year }}-source.json
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install pinned market data dependency
+        run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Download real historical XAUUSD M1 (NOT broker executable quotes)
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Enforce data provenance and no failed months
+        run: |
+          python - <<'PY'
+          import json,hashlib,os
+          from pathlib import Path
+          p=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          d=Path(os.environ['XAU_V193_PRICE_CSV'])
+          assert p['normalized_csv_sha256']==hashlib.sha256(d.read_bytes()).hexdigest()
+          assert p['year']==int(os.environ['XAU_V193_YEAR'])
+          assert not p['failed_periods'],f"DATA_GAPS:{p['failed_periods']}"
+          assert p['source']=='HISTDATA_XAUUSD_M1'
+          print('DATA_PROVENANCE_VERIFIED',p['year'],p['rows'],p['last_timestamp_utc'])
+          PY
+      - name: Generate precommitted H1/H4 features and forward labels
+        run: python scripts/research_xau_h1h4_accuracy_r2.py --csv "$XAU_V193_PRICE_CSV" --year ${{ matrix.year }} --out artifacts/r2-year-${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direction-r2-year-${{ matrix.year }}
+          path: |
+            artifacts/r2-year-${{ matrix.year }}.json
+            artifacts/r2-year-${{ matrix.year }}.csv.gz
+          if-no-files-found: error
+          retention-days: 60
+  aggregate:
+    needs: year
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: direction-r2-year-*
+          path: artifacts/shards
+          merge-multiple: true
+      - name: Train 2019-23, select 2024, audit 2025-26
+        env: {PYTHONPATH: 'src:.'}
+        run: |
+          python scripts/research_xau_h1h4_accuracy_r2.py --aggregate artifacts/shards/r2-year-{2019,2020,2021,2022,2023,2024,2025,2026}.json --out artifacts/xau-h1h4-r2-accuracy-2019-2026.json
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/xau-h1h4-r2-accuracy-2019-2026.json'))
+          assert p['years']==list(range(2019,2027))
+          assert p['execution_authority'] is False and p['execution_influence'] is False
+          assert p['not_fp_markets_executable'] is True
+          print('R2_REPLAY_EIGHT_YEARS_COMPLETE')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-r2-h1h4-accuracy-report-2019-2026
+          path: artifacts/xau-h1h4-r2-accuracy-2019-2026.json
+          if-no-files-found: error
+          retention-days: 90
