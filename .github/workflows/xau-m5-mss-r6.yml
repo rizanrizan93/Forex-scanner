@@ -1,0 +1,101 @@
+name: XAU R6 M5 Sweep MSS Direction Replay (Research Only)
+on:
+  pull_request:
+    paths:
+      - 'research/zone_rebound/xau_m5_mss_direction_r6.py'
+      - 'scripts/research_xau_m5_mss_r6.py'
+      - 'tests/test_xau_m5_mss_direction_r6.py'
+      - '.github/workflows/xau-m5-mss-r6.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xau-m5-r6-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Test strictly causal geometry and no LIVE access
+        env: {PYTHONPATH: 'src:.'}
+        run: python -m pytest -q tests/test_xau_m5_mss_direction_r6.py tests/test_xau_h1h4_accuracy_r2.py tests/test_xau_h1h4_direction_r1.py
+  annual:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/rizan-r6-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/rizan-r6-${{ matrix.year }}-source.json
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Download verified historical XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Require source manifest complete, correct SHA and year
+        run: |
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          prov=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          d=Path(os.environ['XAU_V193_PRICE_CSV'])
+          assert prov['year']==int(os.environ['XAU_V193_YEAR'])
+          assert prov['normalized_csv_sha256']==hashlib.sha256(d.read_bytes()).hexdigest()
+          assert prov['failed_periods']==[]
+          assert prov['source']=='HISTDATA_XAUUSD_M1'
+          print('VERIFIED_R6_INPUT',prov['year'],prov['rows'],prov['last_timestamp_utc'])
+          PY
+      - name: R6 sweep and MSS backtest with H1/H4 forward direction
+        run: python scripts/research_xau_m5_mss_r6.py --csv "$XAU_V193_PRICE_CSV" --provenance "$XAU_V193_PRICE_PROVENANCE" --year ${{ matrix.year }} --out artifacts/r6-${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-m5-r6-year-${{ matrix.year }}
+          path: artifacts/r6-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 60
+  aggregate:
+    needs: annual
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-m5-r6-year-*
+          path: artifacts/r6-year
+          merge-multiple: true
+      - name: Select only with 2024, evaluate 2025-2026
+        env: {PYTHONPATH: 'src:.'}
+        run: |
+          python scripts/research_xau_m5_mss_r6.py --aggregate artifacts/r6-year/r6-{2019,2020,2021,2022,2023,2024,2025,2026}.json --out artifacts/xau-r6-m5-mss-2019-2026.json
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/xau-r6-m5-mss-2019-2026.json'))
+          assert x['years']==list(range(2019,2027))
+          assert x['execution_authority'] is False and x['execution_influence'] is False
+          print('R6_ALL_EIGHT_YEARS_AUDITED')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-m5-r6-aggregate-2019-2026
+          path: artifacts/xau-r6-m5-mss-2019-2026.json
+          if-no-files-found: error
+          retention-days: 90
