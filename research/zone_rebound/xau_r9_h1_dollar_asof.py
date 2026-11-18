@@ -66,4 +66,7 @@ def conditional_gate(joined: pd.DataFrame, *, window: str = "ret_1h", mode: str 
     macro_direction = np.sign(joined[window])
     favorable = (joined.side * macro_direction < 0)
     keep = favorable if mode == "aligned" else ~favorable
-    return joined.loc[joined.macro_valid & macro_direction.ne(0) & keep].copy()
+    # NaN must never enter the contrarian arm: NaN != 0 evaluates True.
+    # Each requested lookback must be independently valid, even when 1h exists.
+    eligible = joined.macro_valid & np.isfinite(joined[window]) & macro_direction.ne(0)
+    return joined.loc[eligible & keep].copy()
