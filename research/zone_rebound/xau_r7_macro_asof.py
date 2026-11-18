@@ -28,7 +28,7 @@ def normalize_quote_m1(source:pd.DataFrame,source_id:str)->pd.DataFrame:
     # A timezone-less date is not an as-of historical quote. Reject rather than
     # silently assign UTC (or worse, local workstation time).
     txt=x.timestamp.astype(str)
-    if not txt.str.contains(r'(?:Z|[+-][0-9]{2}:?[0-9]{2})
+    if not (txt.str.endswith('Z') | txt.str.slice(-5).str.fullmatch(r'[+-][0-9]{4}') | txt.str.slice(-6).str.fullmatch(r'[+-][0-9]{2}:[0-9]{2}')).all():
         raise ValueError('MACRO_TIMESTAMP_MUST_HAVE_UTC_OFFSET')
     t=pd.to_datetime(x.timestamp,utc=True,errors='coerce')
     if t.isna().any():raise ValueError('INVALID_MACRO_TIMESTAMP')
