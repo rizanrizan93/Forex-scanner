@@ -574,7 +574,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         tilt = None
         if conflict:
             reasons.append("SOURCE_CONFLICT:" + str(e.get("title")))
-        if paired < MIN_FORECAST_SOURCES:
+        if paired < MIN_FORECAST_SOURCES and e["category"] != "FOMC":
+            # FOMC minutes are a textual release, not a numeric survey.
             reasons.append(
                 "FORECAST_QUORUM:" + str(e.get("title")) +
                 f":{paired}/{MIN_FORECAST_SOURCES}"
