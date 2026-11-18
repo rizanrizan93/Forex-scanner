@@ -1,5 +1,5 @@
 """Mobile-friendly, display-only Pre-News panel with 60-second refresh."""
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from .pre_news_expectation import evaluate_pre_news, timestamp, MIN_FORECAST_SOURCES
 from .pre_news_entry_guidance import evaluate_entry_guidance
@@ -53,9 +53,31 @@ def _reason(value):
         "NO_UPCOMING_SUPPORTED_EVENT_IN_CALENDAR": "Belum ada event mendatang yang sesuai di kalender",
         "UNIT_MISMATCH_EVENT": "Nilai indeks CPI terdeteksi pada kolom persentase; bias ditahan",
         "CONSENSUS_MACRO_DIVERGENCE": "Ekspektasi konsensus dan tekanan makro berlawanan",
-        "FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED": "FOMC: arahan kebijakan dan konferensi pers belum tercakup",
+        "FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED": "FOMC: notulen/pernyataan perlu analisis bahasa; bias numerik tidak dihitung sebelum rilis",
     }
     return labels.get(value, value)
+
+
+
+def _next_fomc_minutes(snapshot, *, now):
+    """Show an official-calendar event from the live discovery feed even without a numeric forecast."""
+    candidates = []
+    for worker in snapshot.get("heartbeats") or []:
+        if worker.get("worker_name") != "ctrader_demo_xau_event_risk_v192":
+            continue
+        risk = (worker.get("details") or {}).get("risk") or {}
+        events = list(risk.get("upcoming_events") or [])
+        if isinstance(risk.get("focal_event"), dict):
+            events.append(risk["focal_event"])
+        for event in events:
+            if not isinstance(event, dict) or str(event.get("category")) != "FOMC":
+                continue
+            if "MINUTE" not in str(event.get("title") or "").upper():
+                continue  # A Fed speaker or rate decision is not a minutes release.
+            at = timestamp(event.get("scheduled_at"))
+            if at is not None and now <= at <= now + timedelta(days=7):
+                candidates.append((at, event))
+    return min(candidates, key=lambda row: row[0])[1] if candidates else None
 
 
 def render_pre_news_dashboard():
@@ -85,6 +107,23 @@ def render_pre_news_dashboard():
             snapshot = {**previous, "publication_fresh": False}
             st.warning("Koneksi feed terganggu. Menampilkan data terakhir sebagai referensi; bias ditahan.")
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
+        fomc_minutes = _next_fomc_minutes(snapshot, now=datetime.now(UTC))
+        if fomc_minutes:
+            release_at = timestamp(fomc_minutes["scheduled_at"])
+            minutes_left = (release_at - datetime.now(UTC)).total_seconds() / 60
+            st.markdown("#### Agenda penting · FOMC Minutes")
+            st.metric("Jadwal rilis (WIB)", _wib(fomc_minutes["scheduled_at"]))
+            st.caption(
+                "Menuju rilis: " + _countdown(minutes_left) +
+                " · dampak: " + str(fomc_minutes.get("impact") or "HIGH") +
+                " · sumber: " + str(fomc_minutes.get("source") or "Kalender")
+            )
+            st.info(
+                "Status: MENUNGGU RILIS. FOMC Minutes adalah notulen kebijakan, bukan "
+                "indikator dengan angka actual/forecast/previous. Kolom konsensus "
+                "numerik tidak berlaku. Bias hawkish/dovish baru dapat dinilai setelah "
+                "teks resmi tersedia dan respons DXY/yield terkonfirmasi."
+            )
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
             published_at = timestamp(snapshot["published_at"])
@@ -255,7 +294,13 @@ def render_pre_news_dashboard():
                 )
                 st.caption("Actual resmi menunjukkan outcome rilis, bukan "
                            "rekonstruksi prediksi sebelum news.")
-            if cluster and view["state"] != "POST_NEWS":
+            if cluster and view["state"] != "POST_NEWS" and event.get("category") == "FOMC":
+                st.info(
+                    "FOMC Minutes: tidak ada quorum forecast angka 0/3 yang perlu dipenuhi. "
+                    "Tunggu notulen resmi dan konfirmasi repricing DXY/US2Y/US10Y. "
+                    "Panduan entry tetap WAIT sebelum bukti terverifikasi."
+                )
+            if cluster and view["state"] != "POST_NEWS" and event.get("category") != "FOMC":
                 min_count = min(int(row.get("forecast_pair_count") or 0) for row in cluster)
                 st.metric(
                     "Quorum forecast+previous per komponen",
