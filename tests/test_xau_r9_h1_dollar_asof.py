@@ -47,3 +47,13 @@ def test_invalid_macro_order():
     m=sample().iloc[::-1].copy()
     with pytest.raises(ValueError,match="chronology"):
         join_r6_events(event("2025-06-02T04:03:00Z"),m)
+
+
+def test_missing_long_lookback_not_admitted_as_contrarian():
+    m = sample()
+    # 1h exists, 6h is unavailable at this decision timestamp.
+    z = join_r6_events(event("2025-06-02T04:03:00Z"), m)
+    assert bool(z.macro_valid.iloc[0])
+    assert np.isnan(z.ret_6h.iloc[0])
+    assert len(conditional_gate(z, window="ret_6h", mode="contrarian")) == 0
+    assert len(conditional_gate(z, window="ret_6h", mode="aligned")) == 0
