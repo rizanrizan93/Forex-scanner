@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from research.zone_rebound.xau_m5_mss_direction_r6 import (
     MODES,CONFIRMS,HORIZONS,policies,_sweep_masks,_events,_attach_outcome,
-    replay_year,aggregate,EXECUTION_AUTHORITY,EXECUTION_INFLUENCE)
+    replay_year,aggregate,_cooldown,EXECUTION_AUTHORITY,EXECUTION_INFLUENCE)
 
 def m5_sweep(side):
     idx=pd.date_range('2025-01-06T00:05:00Z',periods=24,freq='5min')
@@ -61,3 +61,10 @@ def test_replay_contract_and_no_live_authority():
     assert EXECUTION_AUTHORITY is False and EXECUTION_INFLUENCE is False
     with pytest.raises(ValueError,match='COMPLETE_2019_2026'):
         aggregate([])
+
+def test_cooldown_accepts_real_utc_nanoseconds():
+    t=pd.Timestamp('2025-01-01T00:05Z').value
+    rows=pd.DataFrame({'entry_ns':[t,t+10*60_000_000_000,t+65*60_000_000_000],
+                       'side':[1,1,-1]})
+    q=_cooldown(rows,60)
+    assert q.entry_ns.tolist()==[t,t+65*60_000_000_000]
