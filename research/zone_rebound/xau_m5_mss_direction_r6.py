@@ -134,10 +134,11 @@ def _gate(events,gate,session):
 
 def _cooldown(e,horizon):
     if e.empty:return e
-    out=[];last=-10**25
+    out=[];last=None
     for i,(ts,side) in enumerate(zip(e.entry_ns.to_numpy(),e.side.to_numpy())):
-        if ts-last>=horizon*MINUTE_NS:
-            out.append(i);last=int(ts)
+        current=int(ts)
+        if last is None or current-last>=horizon*MINUTE_NS:
+            out.append(i);last=current
     return e.iloc[out].copy()
 
 def _attach_outcome(m1,events,horizon):
