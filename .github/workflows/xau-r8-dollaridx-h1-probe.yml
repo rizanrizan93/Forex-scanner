@@ -1,0 +1,43 @@
+name: XAU R8 Dollar Index H1 Source Probe (Research Only)
+on:
+  pull_request:
+    paths:
+      - 'research/zone_rebound/audit_dollaridx_h1_r8.py'
+      - 'research/zone_rebound/R8_SOURCE_AUDIT_20261118_ID.md'
+      - '.github/workflows/xau-r8-dollaridx-h1-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source_probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pandas==2.2.3 numpy==2.3.5
+      - name: Download small genuine H1 source sample (no minute claim)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research-output
+          npx --yes dukascopy-node@1.51.1 -i dollaridxusd -from 2025-06-02 -to 2025-06-06 -t h1 -f csv
+          find download -maxdepth 2 -type f -name '*.csv' -print
+          FILE=$(find download -maxdepth 2 -type f -name '*.csv' | head -n 1)
+          test -n "$FILE"
+          cp "$FILE" research-output/dollaridxusd-h1-bid-20250602-20250606.csv
+      - name: Validate source and write machine-readable SHA audit
+        shell: bash
+        run: |
+          python research/zone_rebound/audit_dollaridx_h1_r8.py research-output/dollaridxusd-h1-bid-20250602-20250606.csv | tee research-output/source_audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r8-dollaridx-h1-source-probe
+          path: research-output/
+          retention-days: 14
