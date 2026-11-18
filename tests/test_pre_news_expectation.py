@@ -118,6 +118,24 @@ def test_fomc_not_inferred_from_rate_alone():
     assert "FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED" in view["reasons"]
 
 
+
+def test_fomc_minutes_are_visible_without_numeric_consensus():
+    data = snapshot(0, "FOMC")
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["title"] = "FOMC Meeting Minutes"
+    event["forecast"] = None
+    event["previous"] = None
+    event["forecast_quotes"] = []
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["event"]["title"] == "FOMC Meeting Minutes"
+    assert view["event_time_wib"].endswith("+07:00")
+    assert view["state"] == "DATA INCOMPLETE"
+    assert "FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED" in view["reasons"]
+    assert not any(item.startswith("FORECAST_QUORUM:") for item in view["reasons"])
+    assert view["execution_authority"] is False
+
+
+
 def test_compact_payload_and_out_of_order_heartbeat():
     data = snapshot()
     for row in data["heartbeats"]:
