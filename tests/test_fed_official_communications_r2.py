@@ -32,7 +32,7 @@ def make(kind="FOMC_MINUTES",tone="HAWKISH",released=MINUTES_AT,
         "source_text":text,
         "source_text_sha256":sha256(text.encode()).hexdigest(),
         "evidence":[{
-            "excerpt":phrase,"tone":tone,"scope":scope or "COMMITTEE_OUTLOOK",
+            "excerpt":phrase,"tone":tone,"scope":scope or ("INDIVIDUAL" if kind.endswith("_SPEECH") else "COMMITTEE_OUTLOOK"),
             "topic":"MONETARY_POLICY","review_status":"HUMAN_REVIEWED",
         }]
     }
@@ -249,3 +249,9 @@ def test_market_timestamp_future_not_usable():
     r=decide_communication([d],decision_at="2026-11-18T19:05:00Z",market_context=m)
     assert r["trade_search_bias"]=="NONE"
     assert "MARKET_CONFIRMATION_CLOCK_INVALID" in r["reason_codes"]
+
+def test_speech_cannot_claim_committee_consensus():
+    d=make("FED_VOTING_MEMBER_SPEECH",tone="HAWKISH")
+    d["evidence"][0]["scope"]="COMMITTEE_OUTLOOK"
+    with pytest.raises(ValueError,match="SPEECH_CANNOT_CLAIM_FOMC"):
+        validate_document(d)
