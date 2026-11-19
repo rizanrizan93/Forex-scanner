@@ -255,3 +255,21 @@ def test_speech_cannot_claim_committee_consensus():
     d["evidence"][0]["scope"]="COMMITTEE_OUTLOOK"
     with pytest.raises(ValueError,match="SPEECH_CANNOT_CLAIM_FOMC"):
         validate_document(d)
+
+def test_latest_actual_is_retained_as_fact_when_minutes_tone_active():
+    stmt=make("FOMC_STATEMENT",released=STATEMENT_AT,actual=actual_hold())
+    mins=make()
+    r=decide_communication([stmt,mins],decision_at="2026-11-19T19:30:00Z")
+    assert r["source_kind"]=="FOMC_MINUTES"
+    assert r["actual_fomc"] is None  # newest minutes never invent a new rate decision
+    assert r["last_fomc_actual_record"]["decision"]=="HOLD"
+    assert r["last_fomc_actual_record"]["target_range_pct"]==[3.75,4.0]
+    assert r["last_fomc_actual_record"]["historical_fact_not_current_directional_signal"]
+    assert r["recent_communication_timeline"][0]["kind"]=="FOMC_MINUTES"
+    assert r["recent_communication_timeline"][1]["kind"]=="FOMC_STATEMENT"
+
+def test_no_future_actual_record_visible_before_fomc_release():
+    stmt=make("FOMC_STATEMENT",released=STATEMENT_AT,actual=actual_hold())
+    r=decide_communication([stmt],decision_at="2026-10-28T17:59:00Z")
+    assert r["last_fomc_actual_record"] is None
+    assert not r["recent_communication_timeline"]
