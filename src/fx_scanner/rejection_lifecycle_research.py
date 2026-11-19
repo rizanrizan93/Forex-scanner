@@ -65,6 +65,7 @@ def advance_events(prior_events, m1: pd.DataFrame, m5: pd.DataFrame,
                 closed = opened + pd.Timedelta(minutes=1)
                 if closed - cursor != pd.Timedelta(minutes=1):
                     event["state"] = "DATA_GAP"
+                    event["gap_detected_at"] = at.isoformat()
                     event["reason"] = "M1 history gap; prior rejection cannot be verified"
                     break
                 cursor = closed
@@ -112,6 +113,25 @@ def advance_events(prior_events, m1: pd.DataFrame, m5: pd.DataFrame,
                     continue
                 side, name = z["side"], z["name"]
                 if side not in ("BUY","SELL"):
+                    continue
+                # Whole-side cooldown: a breakout or missing observation must
+                # never be disguised as a 'fresh' rejection at a different EMA.
+                blocked = False
+                for older in events:
+                    if older["side"] != side:
+                        continue
+                    if older.get("display_state") == "BREAKOUT_RISK":
+                        blocked = True
+                        break
+                    if older["state"] not in {"REJECTION_INVALIDATED",
+                                               "BREAKOUT_CONFIRMED","DATA_GAP"}:
+                        continue
+                    failure = (older.get("breakout_at") or older.get("invalidated_at")
+                               or older.get("gap_detected_at") or older.get("checked_through"))
+                    if failure and 0 <= (at-_utc(failure)).total_seconds() <= NEW_EVENT_COOLDOWN_MINUTES*60:
+                        blocked = True
+                        break
+                if blocked:
                     continue
                 previous = [e for e in events if e["side"]==side and e["zone_name"]==name]
                 if previous and (
