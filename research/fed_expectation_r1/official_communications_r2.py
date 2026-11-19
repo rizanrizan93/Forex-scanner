@@ -176,7 +176,9 @@ def decide_communication(documents,*,decision_at,market_context=None):
         "at":now.isoformat(),"stage":"NO_VERIFIED_COMMUNICATION",
         "headline_stance":"UNKNOWN","macro_watch_bias":"WAIT",
         "trade_search_bias":"NONE",
-        "actual_fomc":None,"source_kind":None,"source_url":None,
+        "actual_fomc":None,"last_fomc_actual_record":None,
+        "recent_communication_timeline":[],
+        "source_kind":None,"source_url":None,
         "released_at":None,"source_sha256":None,
         "evidence_quotes":[],"event_id":None,
         "score_units":"EVIDENCE_TONE_NOT_A_PROBABILITY",
@@ -185,6 +187,29 @@ def decide_communication(documents,*,decision_at,market_context=None):
         "execution_influence":False,
     }
     verified=[validate_document(d) for d in documents]
+    # Keep the last formally decided target range visible as historic
+    # FACT, even after its announcement has expired as a directional
+    # signal. Never use a later document to rewrite earlier decisions.
+    history=[d for d in verified if d["available_at"]<=now]
+    actual_docs=[d for d in history if d["kind"]=="FOMC_STATEMENT"
+                 and d["actual_policy"] is not None]
+    if actual_docs:
+        last=max(actual_docs,key=lambda d:d["published_utc"])
+        result["last_fomc_actual_record"]={
+            "id":last["id"],"released_at":last["published_utc"].isoformat(),
+            "decision":last["actual_policy"]["decision"],
+            "target_range_pct":last["actual_policy"]["target_range_pct"],
+            "actual_delta_bp":last["actual_policy"]["actual_delta_bp"],
+            "surprise_bp":last["actual_policy"]["surprise_bp"],
+            "dissenting_hike_votes":last["actual_policy"]["dissenting_hike_votes"],
+            "official_source_url":last["source_url"],
+            "historical_fact_not_current_directional_signal":True,
+        }
+    result["recent_communication_timeline"]=[
+        {"id":d["id"],"kind":d["kind"],
+         "released_at":d["published_utc"].isoformat(),
+         "source_url":d["source_url"],"tone":_tone(d)[0]}
+        for d in sorted(history,key=lambda d:d["published_utc"],reverse=True)[:8]]
     eligible=[d for d in verified if d["available_at"]<=now and
               timedelta(0)<=now-d["published_utc"]<=MAX_AGE[d["kind"]]]
     if not eligible:
