@@ -89,6 +89,9 @@ def causal_features(df, events, max_quote_age_seconds=90):
         if valid.empty:
             output.append(dict(event_at=t.isoformat(),status="NO_DXY_ASOF"))
             continue
+        # Choose newest CLOSED bar, not the bar most recently published.
+        # A delayed older packet can arrive after a newer one.
+        valid=valid.sort_values(["closed_at","available_at"])
         last=valid.iloc[-1]
         age=(t-last.closed_at).total_seconds()
         if age<0 or age>max_quote_age_seconds:
@@ -96,7 +99,7 @@ def causal_features(df, events, max_quote_age_seconds=90):
             continue
         # Strictly contiguous M1 windows; no data gap, session closure, or
         # missing published candle may be bridged.
-        by_close=valid.sort_values("closed_at").drop_duplicates("closed_at",keep="last")
+        by_close=valid.drop_duplicates("closed_at",keep="last")
         values={"event_at":t.isoformat(),"status":"OK","quote_age_seconds":age}
         for minutes in (5,15,60):
             w=by_close.tail(minutes+1)
@@ -107,6 +110,12 @@ def causal_features(df, events, max_quote_age_seconds=90):
                 "UP" if w.close.iloc[-1]>w.close.iloc[0] else
                 "DOWN" if w.close.iloc[-1]<w.close.iloc[0] else "FLAT"
             ) if contiguous else None
+        # No direction unless every required minute is available as-of.
+        # Report explicit feature coverage rather than treating a partially
+        # populated row as a valid 60m macro observation.
+        values["complete_5_15_60"]=all(
+            values["dxy_direction_"+str(k)+"m"] is not None for k in (5,15,60)
+        )
         output.append(values)
     return pd.DataFrame(output)
 
