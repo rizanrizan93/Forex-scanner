@@ -25,8 +25,13 @@ def render_rejection_panel():
                 now=datetime.now(UTC)
                 src=read_snapshot(int(now.timestamp()//5))
                 data=src['frame']
+                source_key="live-public-m1"
+                if st.session_state.get("_rejection_event_source")!=source_key:
+                    st.session_state["_rejection_event_source"]=source_key
+                    st.session_state["_rejection_event_history"]=[]
                 outcome=calculate(data,now=now,bid=src.get('bid'),ask=src.get('ask'),
-                                  quote_at=src.get('quote_as_of'))
+                                  quote_at=src.get('quote_as_of'),
+                                  prior_events=st.session_state["_rejection_event_history"])
                 origin="cTrader market data read-only · Manual R3 public contract"
             else:
                 if uploaded is None:
@@ -43,13 +48,20 @@ def render_rejection_panel():
                 raw.index=pd.to_datetime(raw.pop('timestamp'),utc=True,errors='raise')
                 data=raw
                 now=data.index[-1]+pd.Timedelta(minutes=1)
-                outcome=calculate(data,now=now)
+                import hashlib
+                source_key="offline-"+hashlib.sha256(uploaded.getvalue()).hexdigest()[:16]
+                if st.session_state.get("_rejection_event_source")!=source_key:
+                    st.session_state["_rejection_event_source"]=source_key
+                    st.session_state["_rejection_event_history"]=[]
+                outcome=calculate(data,now=now,
+                                  prior_events=st.session_state["_rejection_event_history"])
                 origin="CSV M1 offline · tidak ada quote real-time"
         except (OSError,TimeoutError,ValueError,TypeError,KeyError,
                 pd.errors.ParserError) as exc:
             st.error("WAIT DATA — sumber candle tidak lengkap, stale, atau tidak dapat diakses.")
             st.caption(str(exc))
             return
+        st.session_state["_rejection_event_history"]=outcome["rejection_events"]
         st.caption(origin+" · M1 close "+outcome['last_closed_m1']+
                    " · M5 close "+outcome['last_closed_m5'])
         a,b,c,d=st.columns(4)
@@ -61,6 +73,31 @@ def render_rejection_panel():
             st.warning("Bias H1/H4 belum searah atau riwayat belum cukup. Zona tetap ditampilkan; ENTRY diblokir.")
         if not outcome['quote_valid']:
             st.caption("Quote live tidak tersedia/terlambat: tidak ada status EARLY ENTRY CANDIDATE.")
+        st.markdown("#### Status rejection yang sudah terdeteksi")
+        events=outcome["rejection_events"]
+        priority=[e for e in events if e["display_state"] in
+                  ("BREAKOUT_RISK","REJECTION_INVALIDATED","BREAKOUT_CONFIRMED")]
+        if priority:
+            recent=priority[-1]
+            st.error(recent["side"]+" "+recent["display_state"]+" · "+
+                     recent["zone_name"]+" · "+recent["reason"])
+            st.caption("Invalidasi dibekukan sejak sinyal: "+str(recent["invalidation"])+
+                       " | sinyal "+recent["signal_at"]+
+                       " | bukan instruksi menambah posisi")
+        elif events:
+            recent=events[-1]
+            st.info(recent["side"]+" "+recent["display_state"]+
+                    " · "+recent["zone_name"]+" · "+recent["reason"])
+        else:
+            st.caption("Belum ada event rejection yang tercatat dalam sesi panel ini.")
+        if events:
+            st.dataframe(pd.DataFrame([{
+                "Sinyal UTC":e["signal_at"],"Arah":e["side"],
+                "Titik":e["zone_name"],"Harga sinyal":e["level"],
+                "Status":e["display_state"],"Batas invalidasi tetap":e["invalidation"],
+                "Alasan":e["reason"],
+            } for e in reversed(events[-8:])]),hide_index=True,width="stretch")
+        st.caption("EARLY_REJECTION bukan VALID. REJECTION_CONFIRMED hanya konfirmasi M1, bukan jaminan H1/H4. BREAKOUT_RISK berasal dari quote; INVALIDATED memerlukan close M1, BREAKOUT_CONFIRMED memerlukan close M5.")
         st.markdown("#### Titik pantauan BUY dan SELL")
         st.caption("EMA20/50 M5, support/resistance M5, EMA20 H1, support/resistance H1; 3 zona terdekat PER SISI.")
         for side in ('BUY','SELL'):
@@ -74,5 +111,5 @@ def render_rejection_panel():
                 "Invalidasi referensi":z['invalidation'],
             } for z in zones]),hide_index=True,width="stretch")
         st.caption(f"ATR M5: {outcome['atr_m5']:.3f}. Early rejection memakai candle M1 yang sudah close; tidak menunggu retest wajib.")
-        st.warning("Belum ada validasi probabilitas BUY/SELL atau backtest historis. LEVEL dan EARLY ENTRY adalah kandidat untuk analisis manual, bukan instruksi eksekusi.")
+        st.warning("Mode riset. Status reversal bukan rekomendasi entry dan tidak membatalkan kewajiban mengelola risiko posisi di cTrader. Rejection yang gagal tidak boleh dianggap masih valid.")
     panel()
