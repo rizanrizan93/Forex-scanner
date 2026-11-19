@@ -98,6 +98,22 @@ def render_rejection_panel():
                 "Alasan":e["reason"],
             } for e in reversed(events[-8:])]),hide_index=True,width="stretch")
         st.caption("EARLY_REJECTION bukan VALID. REJECTION_CONFIRMED hanya konfirmasi M1, bukan jaminan H1/H4. BREAKOUT_RISK berasal dari quote; INVALIDATED memerlukan close M1, BREAKOUT_CONFIRMED memerlukan close M5.")
+        st.markdown("#### V4 · Trend Rejection dan Countertrend Reversal")
+        st.caption("Dua jalur untuk BUY & SELL: searah H1/H4 atau reversal melawan tren dengan M1 sweep → reclaim → MSS. ENTRY_CANDIDATE tetap riset; bukan order.")
+        for side in ("BUY","SELL"):
+            xs=[x for x in outcome["v4_setups"] if x["side"]==side]
+            for x in xs:
+                title=side+" · "+x["setup_type"]+" · "+x["stage"]
+                if x["entry_status"]=="ENTRY_CANDIDATE":
+                    st.info(title+" — ENTRY CANDIDATE (RESEARCH)")
+                elif x["entry_status"].startswith("BLOCKED"):
+                    st.warning(title+" — "+x["entry_status"])
+                else:
+                    st.write("**"+title+"** — "+x["entry_status"])
+                st.caption("Watch "+str(x["watch_level"])+
+                           " | Invalidation "+str(x["invalidation"])+
+                           " | Room ATR "+str(x["room_atr"])+
+                           " | "+("; ".join(x["reasons"]) if x["reasons"] else "Gates satisfied"))
         st.markdown("#### Titik pantauan BUY dan SELL")
         st.caption("EMA20/50 M5, support/resistance M5, EMA20 H1, support/resistance H1; 3 zona terdekat PER SISI.")
         for side in ('BUY','SELL'):
