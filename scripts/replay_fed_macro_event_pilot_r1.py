@@ -18,6 +18,7 @@ import pandas as pd
 from scripts.audit_frbsf_usmpd_xlsx_r1 import (
     SOURCE_URL, fetch_official, _as_value, _col_ref, _unshared)
 from scripts.replay_rejection_v2_outcomes import load_csv, future
+from research.fed_expectation_r1.macro_horizons import evaluate_macro_horizons
 
 PINNED_SOURCE_SHA = "2b91297c42cf692dd74f65eabf7ee97f81d452676e23fa02edb222bfa60f0d0a"
 FED_RELEASE_URL="https://www.federalreserve.gov/newsevents/pressreleases/monetary20230920a.htm"
@@ -121,7 +122,10 @@ def replay_official_event(xau_m1, source_bytes, *, xau_sha,manifest):
             h4=future(d,i,side,240,10,5)
             # Do NOT interpolate the New York daily trading-session gap;
             # 60-minute label can be valid while full four hours are not.
+            longer=evaluate_macro_horizons(d,signal_at=at,side=side,
+                                            cost_usd_oz=0.50)
             fwd[side]={
+                "macro_h4_d1_d3_d5_d10":longer["outcomes"],
                 "h1_3before3":h1["state"] if h1 else "CENSORED_GAP_OR_MISSING",
                 "h1_terminal_net_usd_oz":round(h1["net_end"],3) if h1 else None,
                 "h1_complete":h1 is not None,
@@ -156,6 +160,8 @@ def replay_official_event(xau_m1, source_bytes, *, xau_sha,manifest):
         "macro_pit_live_ready_n":0,"eligible_buy_n":0,"eligible_sell_n":0,
         "historical_independent_event_n":1,
         "windows_are_overlapping_not_independent":True,
+        "macro_horizon_semantics":"D1/D3/D5/D10 are NEXT FULL UTC WEEKDAY TRADING SESSION CLOSES; W1=D5 W2=D10; H4 requires 240 contiguous M1",
+        "macro_horizon_outcomes_are_labels_not_live_trade_signals":True,
         "h4_gap_censor_count":sum(1 for x in results for y in x["both_sides_counterfactual"].values() if not y["h4_complete"]),
         "h1_gap_censor_count":sum(1 for x in results for y in x["both_sides_counterfactual"].values() if not y["h1_complete"]),
         "risk_gate":"NO_PRODUCTION",
