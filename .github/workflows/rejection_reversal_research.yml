@@ -1,0 +1,80 @@
+name: Rejection V2 Actual-Price Reversal Replay (RESEARCH ONLY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_rejection_v2_outcomes.py'
+      - 'scripts/rejection_source_histdata_sample.py'
+      - 'tests/test_rejection_reversal_outcomes.py'
+      - '.github/workflows/rejection_reversal_research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay_unit_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - env:
+          PYTHONPATH: src:.
+        run: python -m pytest -q tests/test_rejection_reversal_outcomes.py tests/test_rejection_v2_research.py
+  public_m1_short_window:
+    needs: replay_unit_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - name: Replay actual-price public read-only M1 when available
+        run: |
+          python - <<'PY'
+          import subprocess,sys
+          p=subprocess.run([sys.executable,'scripts/replay_rejection_v2_outcomes.py',
+              '--source','public','--out','artifacts/rejection-public-reversal.json',
+              '--start','6100','--limit','5000'],capture_output=True,text=True,timeout=780)
+          if p.returncode:
+              print('PUBLIC_SOURCE_BLOCKED_OR_INCOMPLETE',p.stderr[-2500:])
+          else:
+              print(p.stdout[-9000:])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rejection-public-real-price-replay
+          path: artifacts/rejection-public-reversal.json
+          if-no-files-found: ignore
+          retention-days: 30
+  fixed_histdata_sept_2023:
+    needs: replay_unit_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: src:.
+      REJECTION_SAMPLE_PATH: /tmp/rejection-histdata-2023.csv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Fetch public secondary-market XAU M1 (fixed predeclared window)
+        run: python scripts/rejection_source_histdata_sample.py
+      - name: Check SHA, completeness and replay without lookahead
+        run: |
+          python scripts/replay_rejection_v2_outcomes.py --source csv \
+            --csv "$REJECTION_SAMPLE_PATH" --start 6100 --limit 6000 \
+            --out artifacts/rejection-histdata-2023-reversal.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rejection-histdata-2023-real-price-replay
+          path: |
+            artifacts/rejection-histdata-2023-reversal.json
+            /tmp/rejection-histdata-2023.csv.provenance.json
+          if-no-files-found: error
+          retention-days: 30
