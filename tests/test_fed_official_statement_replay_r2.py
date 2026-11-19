@@ -42,7 +42,9 @@ def test_empty_or_off_topic_never_infer_rate_from_gold():
     assert parse_official_actual("Gold prices fell as dollar surged.")["actual"]=="UNRESOLVED"
 
 def test_full_replay_requires_exact_eight_year_shards(tmp_path):
-    (tmp_path/"2019.json").write_text(json.dumps({"year":2019}))
+    (tmp_path/"2019.json").write_text(json.dumps({"year":2019,
+        "official_source_sha256":"2b91297c42cf692dd74f65eabf7ee97f81d452676e23fa02edb222bfa60f0d0a",
+        "genuine_pit_backtest":False,"production_ready":False,"events":[]}))
     with pytest.raises(ValueError,match="MISSING_EIGHT_YEAR_ARCHIVE"):
         run([tmp_path/"2019.json"])
 
