@@ -1,0 +1,11 @@
+# R8-B preregistration — failed auction × lagged USD divergence (19 Nov 2026 13:36 WIB)
+
+**New hypothesis; no observed trade or backtest result.** Use the R6 M5 liquidity sweep + MSS event ledger without modifying its event timestamps, side, baseline, execution cost, or cooldown. Classify a *failed auction* when the M5 sweep candle reclaims its pre-event extreme and a later M5 MSS confirmation is present; compare (a) sweep-only, (b) sweep+MSS, (c) sweep+MSS with lagged USD direction concordant, (d) discordant, and (e) abstain if USD unavailable. This is NOT an additional hindsight price filter: confirmation is only actionable at the later completed M5 close.
+
+Distinct falsification: a liquidity sweep against USD momentum may signal reversal rather than continuation. For BUY, define USD lagged DOWN as concordant; for SELL, UP. Divergence hypothesis predicts the discordant group has higher probability of an initial adverse move before favorable continuation, and may benefit from WAIT rather than forced reversal. Use 5/15/60-minute USD changes only when all component candles are already closed and observable at event_at; if only H1 is available, run a **separate** H1 slow-regime experiment with close+2-minute conservative availability.
+
+Data prerequisites: verified actual Dukascopy ticks/S1 with SHA and bid/ask reconstruction, or authenticated H1; raw XAU R6 event ledger; independent bid/ask or clearly marked scenario costs. Reject bars whose source cannot be authenticated. No synthetic OHLC substituted for real history. Freeze features before prospective data, and use 2019–24 as exploratory stratification, not pristine OOS; 2025–26 are already repeatedly inspected.
+
+Report each year and BUY/SELL: R6 baseline n, DXY eligible n, missing n, directional net hit at 60/240m, Wilson95, mean signed net delta, MAE/MFE, USD regime splits, and trade frequency. Compare matched-event ablation and circular time-shift placebo with day blocks; report negative results. Never claim >=60% without independent prospective validation and both sides with adequate sample sizes. $10 target is deferred.
+
+Source correction: https://www.dukascopy-node.app/instrument/dollaridxusd reports M1 NOT PUBLISHED; downloader catalog M1 capability alone does not establish native provider M1. No live system changes.
