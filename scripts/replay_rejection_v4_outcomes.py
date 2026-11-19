@@ -80,7 +80,16 @@ def replay_v4(raw,source,*,start=6100,limit=4000,cooldown=60):
             setup=v["setup_type"];side=v["side"]
             counter[setup+"_"+side+"_"+v["stage"]]+=1
             if v["entry_status"]!="ENTRY_CANDIDATE":
-                counter["blocked_"+side]+=int(v["stage"] in ("MSS_CONFIRMED","RECLAIM_DETECTED"))
+                if v["stage"] in ("MSS_CONFIRMED","RECLAIM_DETECTED"):
+                    counter["blocked_"+setup+"_"+side]+=1
+                    for reason in v.get("reasons", []):
+                        if "Spread" in reason: tag="spread"
+                        elif "opposing" in reason: tag="opposing_room"
+                        elif "too far" in reason: tag="anti_chase"
+                        elif "H1/H4" in reason: tag="htf_unavailable"
+                        elif "quote" in reason: tag="quote"
+                        else: tag="other"
+                        counter["blocked_reason_"+setup+"_"+side+"_"+tag]+=1
                 continue
             key=(setup,side)
             counter["raw_entry_"+setup+"_"+side]+=1
