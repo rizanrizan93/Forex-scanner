@@ -1,0 +1,51 @@
+name: Fed Communication R2 — Actual FOMC + Minutes + Speeches (Research Only)
+on:
+  pull_request:
+    paths:
+      - 'research/fed_expectation_r1/official_communications_r2.py'
+      - 'tests/test_fed_official_communications_r2.py'
+      - 'research/fed_expectation_r1/presentation_r2.py'
+      - 'research/fed_expectation_r1/polarity_guard_r2.py'
+      - 'tests/test_fed_presentation_r2.py'
+      - 'scripts/audit_fed_official_communications_r2.py'
+      - '.github/workflows/fed_communication_r2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r2_integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal dependencies
+        run: python -m pip install pytest==9.0.2
+      - name: Compile and test real release-clocks, action, sentiment and PIT gates
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile research/fed_expectation_r1/official_communications_r2.py scripts/audit_fed_official_communications_r2.py
+          python -m pytest -q tests/test_fed_official_communications_r2.py tests/test_fed_presentation_r2.py tests/test_fed_expectation_r1.py
+  official_fomc_document_audit:
+    needs: r2_integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify Fed actual October 28 HOLD vs delayed November 18 minutes from primary documents
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/audit_fed_official_communications_r2.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-communication-r2-official-audit
+          path: artifacts/fed-communication-r2-official-document-audit.json
+          retention-days: 30
+          if-no-files-found: error
