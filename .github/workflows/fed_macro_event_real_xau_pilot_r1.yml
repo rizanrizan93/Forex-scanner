@@ -1,0 +1,52 @@
+name: Fed Macro R1 — Real XAU Event-Window Falsification (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_macro_event_pilot_r1.py'
+      - 'research/fed_expectation_r1/macro_horizons.py'
+      - 'tests/test_fed_macro_horizons_r1.py'
+      - 'scripts/audit_frbsf_usmpd_xlsx_r1.py'
+      - 'research/fed_expectation_r1/release_gate.py'
+      - 'tests/test_fed_macro_replay_release_gate_r1.py'
+      - '.github/workflows/fed_macro_event_real_xau_pilot_r1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release_gate_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Validate PIT boundary, DST, no-false-production release gate
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest -q tests/test_fed_macro_replay_release_gate_r1.py tests/test_fed_expectation_r1.py tests/test_fed_macro_horizons_r1.py
+  real_xau_2023_fomc_event_pilot:
+    needs: release_gate_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: src:.
+      REJECTION_SAMPLE_PATH: /tmp/rejection-histdata-2023.csv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Verify source SHA + actual 2023 XAU September M1
+        run: python scripts/rejection_source_histdata_sample.py
+      - name: Compare actual XAU future paths following official SF Fed post-event windows
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_macro_event_pilot_r1.py --csv "$REJECTION_SAMPLE_PATH" --out artifacts/fed-macro-r1-expost-2023-09-20.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-macro-r1-real-XAU-expost-2023-sept20
+          path: artifacts/fed-macro-r1-expost-2023-09-20.json
+          if-no-files-found: error
+          retention-days: 30

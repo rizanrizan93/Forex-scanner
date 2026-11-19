@@ -1,0 +1,78 @@
+name: Fed Expectations XAU 2019-2026 — 8 Year Real Price Replay (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_macro_2019_2026_r1.py'
+      - 'scripts/aggregate_fed_macro_2019_2026_r1.py'
+      - 'tests/test_fed_macro_2019_2026_replay_r1.py'
+      - '.github/workflows/fed_macro_2019_2026_r1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  methodology_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Compile full-period no-deploy scripts
+        run: python -m py_compile scripts/replay_fed_macro_2019_2026_r1.py scripts/aggregate_fed_macro_2019_2026_r1.py
+      - name: Event-clock, emergency 2020, anti-leak and baseline unit tests
+        env:
+          PYTHONPATH: 'src:.'
+        run: |
+          python -m pytest -q tests/test_fed_macro_2019_2026_replay_r1.py tests/test_fed_macro_horizons_r1.py
+  real_price_each_year:
+    needs: methodology_tests
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Replay official Fed expectation shocks against real XAUUSD H4 D1 D3 D5 D10
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_macro_2019_2026_r1.py --year ${{ matrix.year }} --out artifacts/fed_macro_${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-macro-research-expost-${{ matrix.year }}
+          path: artifacts/fed_macro_${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 30
+  aggregate_8years:
+    needs: real_price_each_year
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fed-macro-research-expost-*
+          path: artifacts/year_shards
+      - name: Aggregate by year and side, matched long/short baseline and overlap exclusions
+        run: |
+          python scripts/aggregate_fed_macro_2019_2026_r1.py --input-dir artifacts/year_shards --out artifacts/fed_macro_2019_2026_aggregate.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-macro-research-expost-2019-2026-summary
+          path: artifacts/fed_macro_2019_2026_aggregate.json
+          retention-days: 30
+          if-no-files-found: error

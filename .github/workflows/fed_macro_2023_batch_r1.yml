@@ -1,0 +1,33 @@
+name: Fed Macro R1 — 8 FOMC Events Real XAU 2023 (EX-POST, NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_macro_2023_event_batch_r1.py'
+      - '.github/workflows/fed_macro_2023_batch_r1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay_all_eight_2023_fomc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Compile monthly event-window real price replay
+        run: python -m py_compile scripts/replay_fed_macro_2023_event_batch_r1.py
+      - name: Replay 8 scheduled 2023 FOMC meetings with official ex-post USMPD and HistData M1
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_macro_2023_event_batch_r1.py --out artifacts/fed-macro-r1-real-xau-2023-eight-meetings.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-macro-r1-real-xau-2023-eight-events-ORACLE
+          path: artifacts/fed-macro-r1-real-xau-2023-eight-meetings.json
+          if-no-files-found: error
+          retention-days: 30
