@@ -29,6 +29,7 @@ def test_v4_both_sides_matured(monkeypatch):
     assert r["results"]["COUNTERTREND_REVERSAL"]["BUY"]["n"]==1
     assert r["results"]["COUNTERTREND_REVERSAL"]["SELL"]["n"]==1
     assert all(n==at+pd.Timedelta(minutes=1) for at,n in calls)
+    assert r["results"]["RAW_COUNTERTREND_MSS_OBSERVATION"]["BUY"]["n"]==1
     assert r["execution_authority"] is False
 
 def test_v4_absence_of_signals_no_invented_n(monkeypatch):
@@ -51,3 +52,12 @@ def test_same_bar_invalidated_and_target_is_failure():
 def test_no_history_raises():
     with pytest.raises(ValueError,match="INSUFFICIENT"):
         v4.replay_v4(fixture(6200),{},start=6100,limit=100)
+
+def test_blocked_mss_observation_is_not_trading_entry(monkeypatch):
+    def f(frame,*,now,**kw):
+        return {"v4_setups":[dict(mock("BUY"),entry_status="BLOCKED")],
+                "rejection_events":[],"h1_bias":"SELL","h4_bias":"SELL"}
+    monkeypatch.setattr(v4,"calculate",f)
+    r=v4.replay_v4(fixture(),{"source":"SYNTHETIC"},start=6100,limit=2)
+    assert r["results"]["COUNTERTREND_REVERSAL"]["BUY"]["n"]==0
+    assert r["results"]["RAW_COUNTERTREND_MSS_OBSERVATION"]["BUY"]["n"]==1
