@@ -101,7 +101,7 @@ def advance_events(prior_events, m1: pd.DataFrame, m5: pd.DataFrame,
     # Create a new event from the latest closed M1, with a frozen boundary;
     # repeated EMA touches cannot continuously create 'new' valid SELL.
     closed_at = m1.index[-1] + pd.Timedelta(minutes=1)
-    if closed_at == at:
+    if pd.Timedelta(0) <= at-closed_at <= pd.Timedelta(seconds=90):
         last = m1.iloc[-1]
         preceding = m1.iloc[-4:-1]
         if len(preceding) == 3 and all(
@@ -138,4 +138,14 @@ def advance_events(prior_events, m1: pd.DataFrame, m5: pd.DataFrame,
                     "structure_trigger": round(trigger,5),
                     "reason": "M1 wick/reclaim detected; reversal NOT confirmed",
                 })
+    # The latest quote can already be beyond invalidation when a new event is
+    # first detected. Mark risk immediately, even before a new M1 close exists.
+    if quote_valid:
+        for event in events:
+            if event["state"] not in {"EARLY_REJECTION", "REJECTION_CONFIRMED"}:
+                continue
+            quote = ask if event["side"]=="SELL" else bid
+            if quote is not None and _crossed(event["side"],float(quote),float(event["invalidation"])):
+                event["display_state"]="BREAKOUT_RISK"
+                event["risk_reason"]="Quote crossed frozen boundary; confirm with closed candle"
     return events[-MAX_EVENTS:]
