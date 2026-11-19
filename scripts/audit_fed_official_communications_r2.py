@@ -31,6 +31,7 @@ PAGES=[
         "kind":"FOMC_STATEMENT",
         "source_url":"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm",
         "released_at":"2026-10-28T18:00:00Z", # source says 2:00pm EDT
+        "actual_policy_evidence":"The Committee decided to maintain the target range for the federal funds rate at 3-3/4 to 4 percent",
         "actual":{
             "target_lower_bp":375,"target_upper_bp":400,
             "prior_lower_bp":375,"prior_upper_bp":400,
