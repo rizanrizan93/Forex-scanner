@@ -4,7 +4,7 @@ import pandas as pd
 from scripts.replay_rejection_v2_outcomes import future, wilson, replay
 
 def make(vals):
-    n=len(vals)
+    n=len(next(iter(vals.values())))
     idx=pd.date_range('2023-09-04',periods=n,freq='min',tz='UTC')
     return pd.DataFrame(vals,index=idx)
 
