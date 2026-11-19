@@ -6,6 +6,7 @@ A candidate pattern in CLOSED bars is not an executable-fill recommendation.
 from __future__ import annotations
 import math
 import pandas as pd
+from fx_scanner.rejection_lifecycle_research import advance_events
 
 OHLC = ('open', 'high', 'low', 'close')
 
@@ -54,7 +55,7 @@ def _trend(d: pd.DataFrame, short=20, long=50):
         return 'SELL'
     return 'NEUTRAL'
 
-def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None) -> dict:
+def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None, prior_events=None) -> dict:
     """Evaluate completed M1, M5, H1 and H4 with an anti-chase quote gate.
 
     M1 uses open timestamps; HTF resamples use right-aligned close timestamps.
@@ -163,8 +164,21 @@ def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None) -> di
         chosen += [z for z in pool if z not in chosen][:max(0,3-len(chosen))]
         selected += chosen[:3]
     zones=selected
+    event_history=advance_events(
+        prior_events, d, m5, zones, now=now, atr=atr,
+        bid=bid, ask=ask, quote_valid=quote_ok,
+    )
+    # Suppress contradiction: when a frozen SELL/BUY rejection has failed,
+    # the SAME zone may not simultaneously advertise a fresh entry.
+    for z in zones:
+        same=[e for e in event_history if e["side"]==z["side"] and e["zone_name"]==z["name"]]
+        if same and same[-1]["state"] in {"REJECTION_INVALIDATED","BREAKOUT_CONFIRMED","DATA_GAP"}:
+            if (now-pd.Timestamp(same[-1]["signal_at"])).total_seconds()<15*60:
+                z["stage"]=same[-1]["state"]
+                z["entry"]="NO ENTRY — FAILED REJECTION; WAIT NEW STRUCTURE"
     return {'status':'RESEARCH_ONLY','bias':bias,'h1_bias':h1_bias,'h4_bias':h4_bias,
             'as_of':now.isoformat(),'last_closed_m1':closed_at.isoformat(),
             'last_closed_m5':m5.index[-1].isoformat(),'quote_valid':quote_ok,
             'price':round(price,3),'atr_m5':round(atr,3),'zones':zones,
+            'rejection_events':event_history,
             'warning':'No tested accuracy/edge. Candidate only; manual decisions and independent risk controls.'}
