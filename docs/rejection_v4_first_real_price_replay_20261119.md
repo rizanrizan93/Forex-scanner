@@ -69,3 +69,54 @@ historical samples.
 NOT DEMONSTRATED. Insufficient n, no real quote-age or broker fills,
 no prospective comparison. Keep PR #887 **DRAFT**; no Frozen V1,
 Manual R3, cBot LIVE, bridge or order changes.
+
+## Gate diagnosis and ungated MSS ablation (second research pass)
+
+CI: https://github.com/rizanrizan93/Forex-scanner/actions/runs/44532454336
+**32/32** V4/replay/lifecycle unit tests passed. Historical replay
+completes on both read-only sources. The ablation uses the *same*
+predeclared price windows, does **not** change entry thresholds, and
+explicitly counts observation patterns separately from eligible entries.
+
+### Why BUY candidates were rejected
+
+| Source | BUY MSS occurrences | Opposing-room fails | Anti-chase fails | Spread assumption fails |
+|---|---:|---:|---:|---:|
+| Nov 2026 snapshot | 6 | 6 | 4 | 0 |
+| Sep 2023 snapshot | 13 | 11 | 13 | 13 |
+
+Failures overlap. In the 2023 low-volatility sample a **fixed synthetic
+$0.50** spread exceeds the threshold of 20% of ATR(M5) for all 13
+BUY MSS events. This does NOT demonstrate true 2023 broker spreads or
+execution costs. In Nov 2026 all 6 failed the current nearest-M5-high
+opposing-room gate, suggesting the *definition of opposing structure*
+should be audited rather than removing the guard.
+
+### What happens if we ignore entry gates?
+
+Observations are distinct events after a 60-minute cooldown. These
+are **NOT** trades approved by V4, and n is very small.
+
+| Source | Raw bullish MSS n | H1 direction | H4 direction | $3-before-$3 H1 | $3 before frozen invalidation |
+|---|---:|---:|---:|---:|---:|
+| Nov 2026 | 4 | 2/4 (50%) | 1/4 (25%) | 2/4 (50%) | 3/4 (75%) |
+| Sep 2023 | 4 | 2/4 (50%) | 1/4 (25%) | 0/4 (0%) | 0/4 (0%) |
+
+**Interpretation:** no evidence that indiscriminately accepting previously
+blocked BUY MSS patterns improves directional accuracy. It may merely
+increase false positives. The two periods are previously analyzed and
+are not an independent holdout; 4 observations per window do not
+support precise probabilities.
+
+### Decision
+
+- Preserve **BUY WATCH** for countertrend liquidity sweeps and **BUY MSS
+  CONFIRMED** as an observational structural status; do not call either
+  a valid executable BUY entry without passed cost, room and anti-chase.
+- Preserve countertrend SELL with symmetric logic.
+- Further hypothesis: compare significant completed M5/H1 swing levels
+  rather than nearest arbitrary candle high/low for opposing-room,
+  but predeclare an entirely separate causal ablation on other years.
+  Do **not** tune on this known Nov 2026 case and relabel it a holdout.
+- Historical bid/ask, latency and slippage are not verified. Strict
+  >=60% BUY **AND** SELL is still **unproven**; production remains unchanged.
