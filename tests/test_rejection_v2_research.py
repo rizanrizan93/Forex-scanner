@@ -76,3 +76,19 @@ def test_old_quote_never_entry_candidate():
                 quote_at='2026-11-19 03:14:00+00:00')
     assert not r['quote_valid']
     assert all(z['entry']!='EARLY ENTRY CANDIDATE' for z in r['zones'])
+
+@pytest.mark.parametrize('side,expected',[(1,'BUY'),(-1,'SELL')])
+def test_early_entry_candidate_before_m5_close(side,expected):
+    d=mock_m1(side=side,end='2026-11-19 03:13:00+00:00')
+    r0=calculate(d,now='2026-11-19 03:13+00:00')
+    level=next(z['price'] for z in r0['zones'] if z['side']==expected and z['name']=='M5 EMA20')
+    if side==1:
+        d.loc[d.index[-1],['open','high','low','close']]=[level+.01,level+.055,level-.08,level+.025]
+        bid,ask=level+.018,level+.028
+    else:
+        d.loc[d.index[-1],['open','high','low','close']]=[level-.01,level+.08,level-.055,level-.025]
+        bid,ask=level-.028,level-.018
+    r=calculate(d,now='2026-11-19 03:13+00:00',bid=bid,ask=ask,
+                quote_at='2026-11-19 03:13+00:00')
+    assert r['last_closed_m5']=='2026-11-19T03:10:00+00:00'
+    assert any(z['entry']=='EARLY ENTRY CANDIDATE' for z in r['zones'] if z['side']==expected)
