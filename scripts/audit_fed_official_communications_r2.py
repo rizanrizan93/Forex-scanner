@@ -38,7 +38,7 @@ PAGES=[
             "dissenting_hike_votes":2,
         },
         "evidence":[{
-            "excerpt":"Voting against the monetary policy action were Lisa D. Cook and Beth M. Hammack",
+            "excerpt":"who preferred to raise the target range for the federal funds rate by 1/4 percentage point at this meeting",
             "tone":"HAWKISH","scope":"DISSENT",
             "topic":"MONETARY_POLICY","review_status":"HUMAN_REVIEWED",
         }],
