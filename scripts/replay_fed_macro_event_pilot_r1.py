@@ -29,7 +29,12 @@ def excel_et(v):
     if not isinstance(v,(int,float)) or not math.isfinite(v):
         raise ValueError("USMPD_DATE_TIME_INVALID")
     local=EXCEL_EPOCH+timedelta(days=float(v))
-    return local.replace(tzinfo=ET)
+    # XLSX fractional-day arithmetic may differ by microseconds; official
+    # communication timestamps have minute precision, never fabricated seconds.
+    if local.second not in (0,59):
+        raise ValueError("OFFICIAL_EVENT_NOT_MINUTE_ALIGNED")
+    if local.second==59:local+=timedelta(seconds=1)
+    return local.replace(second=0,microsecond=0,tzinfo=ET)
 
 def load_sheet(source_bytes, filename):
     z=zipfile.ZipFile(io.BytesIO(source_bytes))
