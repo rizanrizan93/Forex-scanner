@@ -40,7 +40,15 @@ def make(kind="FOMC_MINUTES",tone="HAWKISH",released=MINUTES_AT,
         doc["meeting_end_date"]="2026-10-28"
     if kind.endswith("_SPEECH"):
         doc["speaker"]="A. Example, Federal Reserve Governor"
-    if actual is not None:doc["actual"]=actual
+    if actual is not None:
+        decision=("maintain" if actual["target_lower_bp"]==actual["prior_lower_bp"]
+                  else "raise" if actual["target_lower_bp"]>actual["prior_lower_bp"]
+                  else "lower")
+        anchor=f"The Committee decided to {decision} the target range for the federal funds rate"
+        doc["source_text"]+=" "+anchor+"."
+        doc["source_text_sha256"]=sha256(doc["source_text"].encode()).hexdigest()
+        doc["actual_policy_evidence"]=anchor
+        doc["actual"]=actual
     return doc
 
 def actual_hold(**extra):
@@ -273,3 +281,43 @@ def test_no_future_actual_record_visible_before_fomc_release():
     r=decide_communication([stmt],decision_at="2026-10-28T17:59:00Z")
     assert r["last_fomc_actual_record"] is None
     assert not r["recent_communication_timeline"]
+
+def test_hawkish_annotation_cannot_relabel_dovish_policy_phrase():
+    d=make(tone="DOVISH")
+    d["evidence"][0]["tone"]="HAWKISH"
+    with pytest.raises(ValueError,match="HAWKISH_DOVISH_LABEL_INVERTED"):
+        validate_document(d)
+
+def test_dovish_annotation_cannot_relabel_hawkish_policy_phrase():
+    d=make(tone="HAWKISH")
+    d["evidence"][0]["tone"]="DOVISH"
+    with pytest.raises(ValueError,match="HAWKISH_DOVISH_LABEL_INVERTED"):
+        validate_document(d)
+
+def test_negated_rate_hike_must_abstain_not_sell():
+    d=make()
+    phrase="The Committee is not likely to raise the target range for the federal funds rate"
+    d["source_text"]="Official Fed minutes. "+phrase+"."
+    d["source_text_sha256"]=sha256(d["source_text"].encode()).hexdigest()
+    d["evidence"][0]["excerpt"]=phrase
+    with pytest.raises(ValueError,match="NEGATED_MIXED_OR_AMBIGUOUS"):
+        validate_document(d)
+
+def test_hold_actual_cannot_claim_hike_in_metadata():
+    d=make("FOMC_STATEMENT",released=STATEMENT_AT,actual=actual_hold())
+    d["actual"]["target_lower_bp"]=400
+    d["actual"]["target_upper_bp"]=425
+    with pytest.raises(ValueError,match="ACTUAL_RATE_ACTION_CONFLICTS"):
+        validate_document(d)
+
+def test_dissent_not_counted_as_committee_hike_even_with_hawkish_words():
+    d=make("FOMC_STATEMENT",released=STATEMENT_AT,actual=actual_hold())
+    r=decide_communication([d],decision_at="2026-10-28T18:05:00Z")
+    assert r["actual_fomc"]["decision"]=="HOLD"
+    assert r["macro_watch_bias"]=="WAIT"
+
+def test_actual_undocumented_source_phrase_rejected():
+    d=make("FOMC_STATEMENT",released=STATEMENT_AT,actual=actual_hold())
+    d["actual_policy_evidence"]="The Committee decided to raise the target range for the federal funds rate"
+    with pytest.raises(ValueError,match="ANCHOR_MISSING"):
+        validate_document(d)
