@@ -154,8 +154,15 @@ def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None) -> di
                           distance_atr=round(distance/atr,3),stage=stage,entry=entry,
                           invalidation=round(invalid,3),
                           countertrend=bias not in (side,'WAIT')))
-    zones=[z for side in ('BUY','SELL') for z in sorted(
-        [x for x in zones if x['side']==side],key=lambda x:x['distance_atr'])[:3]]
+    selected=[]
+    for side in ('BUY','SELL'):
+        pool=sorted([x for x in zones if x['side']==side],key=lambda x:x['distance_atr'])
+        structural=next((z for z in pool if 'SUPPORT' in z['name'] or 'RESISTANCE' in z['name']),None)
+        ema=next((z for z in pool if 'EMA' in z['name']),None)
+        chosen=[z for z in (structural,ema) if z is not None]
+        chosen += [z for z in pool if z not in chosen][:max(0,3-len(chosen))]
+        selected += chosen[:3]
+    zones=selected
     return {'status':'RESEARCH_ONLY','bias':bias,'h1_bias':h1_bias,'h4_bias':h4_bias,
             'as_of':now.isoformat(),'last_closed_m1':closed_at.isoformat(),
             'last_closed_m5':m5.index[-1].isoformat(),'quote_valid':quote_ok,
