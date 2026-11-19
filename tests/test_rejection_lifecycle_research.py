@@ -101,3 +101,17 @@ def test_both_sides_can_be_tracked_independently():
     d2,buy=data("BUY")
     e=evaluate(d2,e,[buy],now=T+pd.Timedelta(minutes=5))
     assert {v["side"] for v in e}=={"SELL","BUY"}
+
+@pytest.mark.parametrize("status",["REJECTION_INVALIDATED","BREAKOUT_CONFIRMED","DATA_GAP"])
+def test_failed_sell_cannot_resurface_under_another_zone_name(status):
+    d,zone=data("SELL")
+    seed=dict(id="older", side="SELL",zone_name="M5 EMA20",
+              signal_at=(T+pd.Timedelta(minutes=1)).isoformat(),
+              checked_through=(T+pd.Timedelta(minutes=4)).isoformat(),
+              structure_trigger=3726.7,invalidation=3728.8,
+              level=3728.0,state=status,display_state=status,
+              reason="past failure",
+              invalidated_at=(T+pd.Timedelta(minutes=4)).isoformat())
+    e=evaluate(d,[seed],[zone],now=T+pd.Timedelta(minutes=5,seconds=5))
+    assert len(e)==1
+    assert e[0]["zone_name"]=="M5 EMA20"
