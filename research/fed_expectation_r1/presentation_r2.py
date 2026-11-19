@@ -37,7 +37,8 @@ def present_r2(report):
     if a is not None and a.get("decision") not in ACTION_LABEL:
         raise ValueError("UNVERIFIED_RATE_ACTION")
     tone=report.get("headline_stance","UNKNOWN")
-    if tone not in TONE_LABEL:
+    communication_tone=report.get("communication_tone","UNKNOWN")
+    if tone not in TONE_LABEL or communication_tone not in TONE_LABEL:
         raise ValueError("UNKNOWN_COMMUNICATION_TONE")
     watch=report.get("macro_watch_bias","WAIT")
     if watch not in BIAS_LABEL:raise ValueError("UNKNOWN_MACRO_BIAS")
@@ -73,7 +74,9 @@ def present_r2(report):
     }
     latest={
         "section":"LATEST_OFFICIAL_COMMUNICATION",
-        "title":TONE_LABEL[tone],
+        "title":TONE_LABEL[communication_tone],
+        "chosen_directional_stance":tone,
+        "communication_tone_is_distinct_from_policy_surprise":True,
         "document_kind":report.get("source_kind"),
         "document_released_at":report.get("released_at"),
         "minutes_meeting_date":report.get("meeting_end_date"),
@@ -87,6 +90,15 @@ def present_r2(report):
     gold={
         "section":"XAU_MACRO_DIRECTION",
         "watch":BIAS_LABEL[watch],
+        "watch_basis":("ACTUAL_POLICY_SURPRISE" if
+                      str(report.get("stage","")).startswith("ACTUAL_POLICY_SURPRISE") else
+                      "ACTUAL_POLICY_ACTION" if
+                      str(report.get("stage","")).startswith("ACTUAL_POLICY_ACTION") else
+                      "COMMUNICATION_TEXT_OR_WAIT"),
+        "statement_vs_surprise_conflict":(
+            tone!=communication_tone and
+            tone in ("HAWKISH","DOVISH") and
+            communication_tone in ("HAWKISH","DOVISH")),
         "search_bias_after_market_confirmation":confirmed,
         "market_confirmation_status":("CONFIRMED_RESEARCH_ONLY"
                                       if confirmed!="NONE" else "NOT_CONFIRMED"),
