@@ -1,7 +1,7 @@
 """The three Fed output fields must never contradict their own source."""
 import copy
 import pytest
-from tests.test_fed_official_communications_r2 import (
+from test_fed_official_communications_r2 import (
     make,actual_hold,STATEMENT_AT,MINUTES_AT,market)
 from research.fed_expectation_r1.official_communications_r2 import decide_communication
 from research.fed_expectation_r1.presentation_r2 import present_r2
