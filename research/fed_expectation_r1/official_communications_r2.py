@@ -260,6 +260,15 @@ def decide_communication(documents,*,decision_at,market_context=None):
         stance=("HAWKISH" if action["actual_delta_bp"]>0 else "DOVISH")
         result["headline_stance"]=stance
         result["stage"]="ACTUAL_POLICY_ACTION_EXPECTATION_UNVERIFIED"
+    elif action and action["actual_delta_bp"]!=0 and surprise is None and (
+            (action["actual_delta_bp"]>0 and communication=="DOVISH") or
+            (action["actual_delta_bp"]<0 and communication=="HAWKISH")):
+        # Rate action and wording disagree. Without pre-release expectations
+        # we cannot pretend to know the sign of the actual market surprise.
+        stance="MIXED"
+        result["headline_stance"]=stance
+        result["stage"]="ACTION_VS_COMMUNICATION_CONFLICT_WAIT"
+        result["reason_codes"].append("UNVERIFIED_POLICY_SURPRISE_AND_OPPOSING_TEXT")
     else:
         stance=communication
         result["headline_stance"]=stance
