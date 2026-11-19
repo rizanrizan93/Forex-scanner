@@ -168,14 +168,21 @@ def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None, prior
         prior_events, d, m5, zones, now=now, atr=atr,
         bid=bid, ask=ask, quote_valid=quote_ok,
     )
-    # Suppress contradiction: when a frozen SELL/BUY rejection has failed,
-    # the SAME zone may not simultaneously advertise a fresh entry.
+    # A failed SELL/BUY rejection is an event-level veto, not just an EMA
+    # label veto. Dynamic zones must not rebrand the same failed thesis.
     for z in zones:
-        same=[e for e in event_history if e["side"]==z["side"] and e["zone_name"]==z["name"]]
-        if same and same[-1]["state"] in {"REJECTION_INVALIDATED","BREAKOUT_CONFIRMED","DATA_GAP"}:
-            if (now-pd.Timestamp(same[-1]["signal_at"])).total_seconds()<15*60:
-                z["stage"]=same[-1]["state"]
-                z["entry"]="NO ENTRY — FAILED REJECTION; WAIT NEW STRUCTURE"
+        same=[e for e in event_history if e["side"]==z["side"]]
+        if not same:
+            continue
+        last_event=same[-1]
+        state=last_event["display_state"]
+        if state not in {"REJECTION_INVALIDATED", "BREAKOUT_CONFIRMED",
+                         "BREAKOUT_RISK", "DATA_GAP"}:
+            continue
+        failed_at=last_event.get("breakout_at") or last_event.get("invalidated_at") or last_event.get("checked_through")
+        if (now-pd.Timestamp(failed_at)).total_seconds()<=15*60:
+            z["stage"]=state
+            z["entry"]="NO ENTRY — PRIOR REJECTION FAILED / BREAKOUT RISK"
     return {'status':'RESEARCH_ONLY','bias':bias,'h1_bias':h1_bias,'h4_bias':h4_bias,
             'as_of':now.isoformat(),'last_closed_m1':closed_at.isoformat(),
             'last_closed_m5':m5.index[-1].isoformat(),'quote_valid':quote_ok,
