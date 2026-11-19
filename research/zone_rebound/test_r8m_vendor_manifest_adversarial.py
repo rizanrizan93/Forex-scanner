@@ -56,5 +56,15 @@ class VendorManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "BAD_SOURCE_URL"):
             self.check({"source_url": "http://example.invalid/sample.bi5"})
 
+    def test_https_without_host_rejected(self):
+        with self.assertRaisesRegex(ValueError, "BAD_SOURCE_URL"):
+            self.check({"source_url": "https:///missing-host/sample.bi5"})
+    def test_url_with_userinfo_rejected(self):
+        with self.assertRaisesRegex(ValueError, "BAD_SOURCE_URL"):
+            self.check({"source_url": "https://dukascopy.example@attacker.invalid/sample.bi5"})
+    def test_url_with_fragment_rejected(self):
+        with self.assertRaisesRegex(ValueError, "BAD_SOURCE_URL"):
+            self.check({"source_url": "https://example.invalid/sample.bi5#not-a-source"})
+
 if __name__ == "__main__":
     unittest.main()
