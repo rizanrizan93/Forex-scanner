@@ -14,7 +14,7 @@ STATEMENT_AT="2026-10-28T18:00:00Z"
 MINUTES_AT="2026-11-18T19:00:00Z"
 HAWK="further action to raise the target range for the federal funds rate"
 DOVE="reductions in the target range for the federal funds rate may be appropriate"
-DISSENT="Voting against the monetary policy action were Lisa D. Cook and Beth M. Hammack"
+DISSENT="who preferred to raise the target range for the federal funds rate by 1/4 percentage point at this meeting"
 
 def make(kind="FOMC_MINUTES",tone="HAWKISH",released=MINUTES_AT,
          ingested=None,scope=None,actual=None,source_url=None):
