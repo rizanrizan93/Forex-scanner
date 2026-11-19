@@ -31,7 +31,8 @@ def _barrier_before_invalidation(d, i, side, target, invalidation, horizon):
 
 def _summarize(rows):
     result={}
-    for setup in ("TREND_REJECTION","COUNTERTREND_REVERSAL"):
+    for setup in ("TREND_REJECTION","COUNTERTREND_REVERSAL",
+                  "RAW_TREND_RECLAIM_OBSERVATION","RAW_COUNTERTREND_MSS_OBSERVATION"):
         result[setup]={}
         for side in ("BUY","SELL"):
             r=[x for x in rows if x["setup"]==setup and x["side"]==side]
@@ -79,6 +80,30 @@ def replay_v4(raw,source,*,start=6100,limit=4000,cooldown=60):
         for v in x["v4_setups"]:
             setup=v["setup_type"];side=v["side"]
             counter[setup+"_"+side+"_"+v["stage"]]+=1
+            # Independent falsification: measure ALL completed structural
+            # patterns before gating. These are OBSERVATIONS, NOT entries.
+            if v["stage"] in ("MSS_CONFIRMED","RECLAIM_DETECTED"):
+                observational=("RAW_COUNTERTREND_MSS_OBSERVATION" if
+                               setup=="COUNTERTREND_REVERSAL" else
+                               "RAW_TREND_RECLAIM_OBSERVATION")
+                obkey=(observational,side)
+                if obkey not in last or (at-last[obkey]).total_seconds()>=cooldown*60:
+                    raw_labels=[future(d,i,side,60,3,3),future(d,i,side,60,5,3),
+                                future(d,i,side,240,10,5)]
+                    invalid=v.get("invalidation")
+                    frozen=(_barrier_before_invalidation(d,i,side,3,float(invalid),60)
+                            if invalid is not None else None)
+                    if frozen is not None and all(q is not None for q in raw_labels):
+                        events.append({"at_utc":at.isoformat(),"setup":observational,
+                                       "side":side,"watch_level":v["watch_level"],
+                                       "invalidation":invalid,"mss_closed":v["mss_closed"],
+                                       "room_atr":v["room_atr"],
+                                       "h1_bias":x["h1_bias"],"h4_bias":x["h4_bias"],
+                                       "x3":raw_labels[0],"x5":raw_labels[1],
+                                       "x10":raw_labels[2],"frozen_outcome":frozen,
+                                       "observation_only":True})
+                        last[obkey]=at
+                        counter["raw_observation_"+observational+"_"+side]+=1
             if v["entry_status"]!="ENTRY_CANDIDATE":
                 if v["stage"] in ("MSS_CONFIRMED","RECLAIM_DETECTED"):
                     counter["blocked_"+setup+"_"+side]+=1
@@ -114,6 +139,7 @@ def replay_v4(raw,source,*,start=6100,limit=4000,cooldown=60):
             "counters":dict(counter),"results":_summarize(events),"events":events,
             "execution_authority":False,"execution_influence":False,
             "cautions":[
+                "RAW_MSS and RAW_TREND_RECLAIM are observational ablations, NOT permitted entries",
                 "Simulated quotes; no archive of executed or emitted LIVE signals",
                 "Same-bar target and adverse treated as loss",
                 "HTF context requires both H1 and H4 known; otherwise watch only",
