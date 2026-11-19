@@ -6,6 +6,8 @@ on:
       - 'tests/test_fed_expectation_r1.py'
       - 'tests/test_frbsf_usmpd_source_audit_r1.py'
       - 'scripts/audit_frbsf_usmpd_surprises_r1.py'
+      - 'scripts/audit_frbsf_usmpd_xlsx_r1.py'
+      - 'scripts/replay_fed_macro_event_pilot_r1.py'
       - '.github/workflows/fed_expectation_macro_r1.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +24,7 @@ jobs:
       - name: Install pytest
         run: python -m pip install pytest==9.0.2
       - name: Compile point-in-time research code
-        run: python -m py_compile research/fed_expectation_r1/engine.py scripts/audit_frbsf_usmpd_surprises_r1.py
+        run: python -m py_compile research/fed_expectation_r1/engine.py scripts/audit_frbsf_usmpd_surprises_r1.py scripts/audit_frbsf_usmpd_xlsx_r1.py
       - name: Test hawkish/dovish symmetry and time guards
         env:
           PYTHONPATH: .
@@ -42,5 +44,22 @@ jobs:
         with:
           name: fed-expectation-r1-official-source-audit
           path: artifacts/frbsf-usmpd-source-audit.json
+          retention-days: 30
+          if-no-files-found: error
+  full_official_usmpd_xlsx_audit:
+    needs: pit_integrity_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Audit full official USMPD workbook fields and date coverage
+        run: python scripts/audit_frbsf_usmpd_xlsx_r1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-expectation-r1-full-usmpd-audit
+          path: artifacts/frbsf-usmpd-xlsx-audit.json
           retention-days: 30
           if-no-files-found: error
