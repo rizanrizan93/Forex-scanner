@@ -116,3 +116,22 @@ def test_structural_and_ema_watch_levels_both_directions():
         names=[z['name'] for z in r['zones'] if z['side']==side]
         assert any('EMA' in name for name in names)
         assert any('SUPPORT' in name or 'RESISTANCE' in name for name in names)
+
+@pytest.mark.parametrize("side,dir", [("SELL",1),("BUY",-1)])
+def test_failed_rejection_vetoes_ghost_signals_on_other_dynamic_zones(side,dir):
+    d=mock_m1(side=dir)
+    now=pd.Timestamp('2026-11-19 03:15:00+00:00')
+    current=float(d.close.iloc[-1])
+    fail_boundary=current-1 if side=="SELL" else current+1
+    seed=dict(id="frozen", side=side,zone_name="M5 EMA20",level=current,
+              zone_low=current-.5,zone_high=current+.5,
+              signal_at=(now-pd.Timedelta(minutes=2)).isoformat(),
+              checked_through=(now-pd.Timedelta(minutes=2)).isoformat(),
+              invalidation=fail_boundary,
+              structure_trigger=current-5 if side=="SELL" else current+5,
+              state="EARLY_REJECTION",display_state="EARLY_REJECTION",reason="prior")
+    r=calculate(d,now=now,prior_events=[seed],bid=current-.05,ask=current+.05,quote_at=now)
+    assert r["rejection_events"][-1]["state"]=="BREAKOUT_CONFIRMED"
+    assert all(z["entry"].startswith("NO ENTRY") for z in r["zones"] if z["side"]==side)
+    assert any(z["entry"]!="NO ENTRY — PRIOR REJECTION FAILED / BREAKOUT RISK"
+               for z in r["zones"] if z["side"]!=side)
