@@ -174,6 +174,23 @@ def main():
     data=load_csv(a.csv)
     raw=fetch_official()
     out=replay_official_event(data,raw,xau_sha=sha,manifest=manifest)
+    from research.fed_expectation_r1.release_gate import evaluate
+    report=evaluate({
+        "paired_real_xau_events":False, # offline oracle is NOT a PIT event
+        "futures_same_contract_pit":False,
+        "intraday_cash_us2y_pit":False,
+        "usd_proxy_pit":False,
+        "source_hashes_valid":True,
+        "utc_release_windows_verified":True,
+        "real_quote_age_and_spread_valid":False,
+        "commission_slippage_included":False,
+        "genuine_prospective_holdout":False,
+        "buy":{"n":0,"wins":0,"nonoverlapping":True,"net_expectancy_usd":0.0},
+        "sell":{"n":0,"wins":0,"nonoverlapping":True,"net_expectancy_usd":0.0},
+        "years":[2023]})
+    if report["read_only_production_review_eligible"]:
+        raise AssertionError("EXPOST_SOURCE_CANNOT_UNLOCK_PRODUCTION")
+    out["release_gate"]=report
     a.out.parent.mkdir(exist_ok=True,parents=True)
     a.out.write_text(json.dumps(out,indent=2,allow_nan=False)+"\n")
     print("FED_MACRO_REAL_XAU_PILOT",json.dumps({k:v for k,v in out.items()
