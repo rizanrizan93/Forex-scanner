@@ -1,0 +1,74 @@
+name: XAU Rejection V3 Historical Price Replay — Research Only
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_rejection_v3_outcomes.py'
+      - 'tests/test_rejection_v3_replay.py'
+      - '.github/workflows/rejection_v3_replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v3_causality_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Compile V3 research code
+        run: python -m py_compile scripts/replay_rejection_v3_outcomes.py src/fx_scanner/rejection_lifecycle_research.py src/fx_scanner/rejection_v2_research.py
+      - name: Unit tests for real-price replay methodology
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest -q tests/test_rejection_v3_replay.py tests/test_rejection_lifecycle_research.py tests/test_rejection_reversal_outcomes.py
+  v3_public_ctrader_m1:
+    needs: v3_causality_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - name: Replay V3 from public read-only XAU M1 snapshot
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_rejection_v3_outcomes.py --source public --start 6100 --limit 5000 --out artifacts/rejection-v3-ctrader-2026.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rejection-v3-ctrader-real-m1
+          path: artifacts/rejection-v3-ctrader-2026.json
+          if-no-files-found: error
+          retention-days: 30
+  v3_fixed_histdata_2023:
+    needs: v3_causality_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONPATH: src:.
+      REJECTION_SAMPLE_PATH: /tmp/rejection-histdata-2023.csv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Download and verify fixed 2023 XAU M1 period
+        run: python scripts/rejection_source_histdata_sample.py
+      - name: Replay V3 using real historic OHLC with verified manifest
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_rejection_v3_outcomes.py --source csv --csv "$REJECTION_SAMPLE_PATH" --start 6100 --limit 5000 --out artifacts/rejection-v3-histdata-2023.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rejection-v3-histdata-2023-real-m1
+          path: artifacts/rejection-v3-histdata-2023.json
+          if-no-files-found: error
+          retention-days: 30
