@@ -66,7 +66,7 @@ def inspect_xlsx(raw, *, url=SOURCE_URL):
             raise ValueError("UNTRUSTED_SHEET_PATH")
         root=ET.fromstring(z.read(filename))
         rows=root.findall(".//x:sheetData/x:row",NS)
-        samples=[]; headers=None; event_years=Counter()
+        samples=[]; headers=None; event_years=Counter(); matched_events=[]; readme=[]
         count_rows=0
         for row in rows:
             values={}
@@ -80,8 +80,19 @@ def inspect_xlsx(raw, *, url=SOURCE_URL):
                 headers=[str(x or "") for x in record]
                 continue
             count_rows+=1
+            if s.attrib["name"]=="README":
+                readme.append([x for x in record if isinstance(x,str) and x.strip()])
             if len(samples)<4:
                 samples.append(record[:20])
+            if s.attrib["name"] in ("Statements","Monetary Events","Minutes","Press Conferences"):
+                paired={h:record[k] if k<len(record) else None
+                        for k,h in enumerate(headers) if h in
+                        ("Date","date_time","MP1","MP2","FF1","OIS1Y","UST2Y","UST10Y","DXY","EURUSD")}
+                date=paired.get("Date")
+                if isinstance(date,(int,float)):
+                    actual=(datetime(1899,12,30,tzinfo=timezone.utc)+timedelta(days=date)).date().isoformat()
+                    if actual in ("2023-09-20","2026-10-28","2026-07-29","2023-11-01","2023-06-14"):
+                        matched_events.append({"actual_date":actual,**paired})
             # Excel native numeric dates are around 43000..47000 in 2019-26
             for i,h in enumerate(headers):
                 if h.lower() in {"date","eventdate","fomc date"} and i<len(record):
@@ -93,7 +104,9 @@ def inspect_xlsx(raw, *, url=SOURCE_URL):
                        "rows":count_rows,"columns":len(headers or []),
                        "headers":headers[:200] if headers else [],
                        "sample_rows_first20":samples,
-                       "date_rows_2019_2026":dict(event_years)})
+                       "date_rows_2019_2026":dict(event_years),
+                       "selected_event_rows":matched_events,
+                       "README_LINES":readme if s.attrib["name"]=="README" else None})
     return {"contract":"OFFICIAL_FRBSF_USMPD_XLSX_AUDIT_V1",
             "source_url":url,"raw_sha256":hashlib.sha256(raw).hexdigest(),
             "raw_bytes":len(raw),"sheets":sheets,
