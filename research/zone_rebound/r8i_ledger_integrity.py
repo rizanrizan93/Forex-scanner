@@ -17,7 +17,7 @@ def audit(path):
     reader=csv.DictReader(raw.decode("utf-8-sig").splitlines())
     if not reader.fieldnames or not FIELDS.issubset(reader.fieldnames):
         raise ValueError("MISSING_R6_COLUMNS")
-    seen=set();groups=defaultdict(list);counts=defaultdict(int)
+    seen=set();identities={};groups=defaultdict(list);counts=defaultdict(int)
     for i,r in enumerate(reader,2):
         eid=r["event_id"].strip()
         ts=r["event_utc"].strip()
@@ -29,6 +29,10 @@ def audit(path):
         if side not in ("BUY","SELL") or h not in HORIZONS: raise ValueError(f"BAD_SIDE_HORIZON:{i}")
         if r["success"].strip().lower() not in ("true","false"): raise ValueError(f"BAD_OUTCOME:{i}")
         if not SHA.fullmatch(r["xau_source_sha256"]): raise ValueError(f"BAD_XAU_SHA:{i}")
+        identity=(ts,year,side,r["xau_source_sha256"])
+        if eid in identities and identities[eid]!=identity:
+            raise ValueError(f"EVENT_IDENTITY_MISMATCH:{i}")
+        identities[eid]=identity
         key=(eid,h)
         if key in seen: raise ValueError(f"DUPLICATE_EVENT_HORIZON:{i}")
         seen.add(key);counts[(year,h,side)]+=1;groups[(h,side)].append(t)
