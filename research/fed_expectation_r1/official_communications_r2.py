@@ -11,7 +11,7 @@ Trade-search authorization remains locked until the R1 PIT market repricing
 confirms the same event and direction.
 """
 from __future__ import annotations
-from datetime import timedelta
+from datetime import timedelta, date
 from hashlib import sha256
 from math import isfinite
 from urllib.parse import urlsplit
@@ -138,8 +138,12 @@ def validate_document(doc):
     if doc["kind"]=="FOMC_MINUTES":
         if not doc.get("meeting_end_date"):
             raise ValueError("MINUTES_MEETING_DATE_FOR_DISPLAY_REQUIRED")
-        meeting_end=utc(doc["meeting_end_date"])
-        if meeting_end>release:raise ValueError("FUTURE_MINUTES_MEETING_DATE")
+        try:
+            meeting_day=date.fromisoformat(doc["meeting_end_date"])
+        except (TypeError,ValueError):
+            raise ValueError("MINUTES_MEETING_DATE_NOT_ISO_DATE")
+        if meeting_day>release.date():
+            raise ValueError("FUTURE_MINUTES_MEETING_DATE")
     if doc["kind"].endswith("_SPEECH") and not str(doc.get("speaker","")).strip():
         raise ValueError("SPEAKER_ID_REQUIRED")
     actual=_numeric_actual(doc)
