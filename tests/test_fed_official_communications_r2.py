@@ -321,3 +321,17 @@ def test_actual_undocumented_source_phrase_rejected():
     d["actual_policy_evidence"]="The Committee decided to raise the target range for the federal funds rate"
     with pytest.raises(ValueError,match="ANCHOR_MISSING"):
         validate_document(d)
+
+def test_unexpected_dovish_text_during_hike_without_futures_is_wait():
+    a=dict(target_lower_bp=400,target_upper_bp=425,
+           prior_lower_bp=375,prior_upper_bp=400)
+    d=make("FOMC_STATEMENT",released=STATEMENT_AT,actual=a)
+    d["source_text"]+=" "+DOVE+"."
+    d["source_text_sha256"]=sha256(d["source_text"].encode()).hexdigest()
+    d["evidence"]=[{"excerpt":DOVE,"tone":"DOVISH","scope":"COMMITTEE",
+                   "topic":"MONETARY_POLICY","review_status":"HUMAN_REVIEWED"}]
+    r=decide_communication([d],decision_at="2026-10-28T18:05:00Z")
+    assert r["actual_fomc"]["decision"]=="HIKE"
+    assert r["headline_stance"]=="MIXED"
+    assert r["macro_watch_bias"]=="WAIT"
+    assert "UNVERIFIED_POLICY_SURPRISE_AND_OPPOSING_TEXT" in r["reason_codes"]
