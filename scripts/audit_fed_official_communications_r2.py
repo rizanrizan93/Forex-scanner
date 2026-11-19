@@ -13,6 +13,7 @@ import json,re,urllib.request
 from research.fed_expectation_r1.official_communications_r2 import (
     validate_document,decide_communication,
 )
+from research.fed_expectation_r1.presentation_r2 import present_r2
 
 # Waller speech has a date-only official page. The exact public release
 # minute is NOT established; audit text but do not assign a fake timestamp.
@@ -133,6 +134,7 @@ def main():
         "ingested_utc":now,"official_documents":checks,
         "speech_date_only_source_audit":speech_audit,
         "current_directional_watch":out,
+        "user_presentation_contract":present_r2(out),
         "production_eligible":False,
         "model_predictive_accuracy_tested":False,
         "explanation":"Actual target was HOLD; minutes are later text, not an October live signal. This retrospective source fetch provides no before/after futures yield or DXY feed.",
