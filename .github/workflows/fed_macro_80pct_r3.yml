@@ -1,0 +1,52 @@
+name: Fed Macro 80pct R3 — 2019-2026 Yield Dollar Ablation (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_macro_80pct_r3.py'
+      - 'tests/test_fed_macro_80pct_r3.py'
+      - '.github/workflows/fed_macro_80pct_r3.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  direction_integrity_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install minimal test environment
+        run: python -m pip install pytest==9.0.2
+      - name: Test 8 symmetric macro models, units, source-provenance lock and low-n rejection
+        env: {PYTHONPATH: '.'}
+        run: |
+          python -m py_compile scripts/replay_fed_macro_80pct_r3.py
+          python -m pytest -q tests/test_fed_macro_80pct_r3.py
+  full_eight_year_ablation:
+    needs: direction_integrity_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {PYTHONPATH: '.'}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Read-only download of sealed real-price 2019-2026 event ledgers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: fed-macro-research-expost-20*
+          path: artifacts/annual
+          run-id: 44621561755
+          github-token: ${{ github.token }}
+      - name: Run Fed vs US2Y/US10Y/DXY directional ablation, both sides each horizon
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_macro_80pct_r3.py --input-dir artifacts/annual --out artifacts/fed-macro-R3-2019-2026-80pct-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-macro-r3-80pct-research-2019-2026-ablation
+          path: artifacts/fed-macro-R3-2019-2026-80pct-audit.json
+          retention-days: 30
+          if-no-files-found: error
