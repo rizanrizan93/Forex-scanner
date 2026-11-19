@@ -68,9 +68,9 @@ Early/late watch events and entry-eligible events are explicitly separated.
   bid/ask spread, commissions, slippage and rollover are not measured.
 - 2025–2026 already influenced research, and the 2023 month is a
   falsification sample, not pristine out-of-sample.
-- The 2026 screening window ends Nov 18; it **does not cover the user's
-  Nov 19 intraday screenshot sequence**. Do not pretend it validates
-  the specific 3728->3723->3735 market path.
+- The initial 2026 screening window ends Nov 18. A separately labeled
+  Nov 19 post-hoc diagnostic was therefore run (see below). Neither run
+  represents archived LIVE scanner emissions.
 - `confirmed_M1_pct` is an *eventual structural level crossing* metric,
   not proof confirmation occurred before invalidation. Do not cite it as
   predictive accuracy; a strict event-order audit is required.
@@ -91,3 +91,39 @@ Early/late watch events and entry-eligible events are explicitly separated.
    **post-hoc diagnostic**, with adequate forward history and without
    claiming it is an independent holdout.
 5. Leave PR #887 **draft** until causality and empirical dual-side gates pass.
+
+## Explicit Nov 19 post-hoc diagnostic: failed early SELL
+
+CI run: https://github.com/rizanrizan93/Forex-scanner/actions/runs/44495555972
+
+- Public read-only cTrader M1 snapshot published **2026-11-19 09:21:11 UTC**;
+  normalized frame SHA-256
+  `f715564b57005407ed84b3a6cc62d0c7b7b03f56b64def21f7890a3d2e6583f1`.
+- Screened `2026-11-16 19:55 UTC` through
+  `2026-11-19 05:19 UTC` (12:19 WIB); complete forward outcomes were
+  observed after that cutoff, not used to decide the signal.
+- 3,235 successfully evaluated closed M1, fixed hypothetical spread $0.50/oz.
+- Latest overlapping sample: **BUY eligible n=0**, **SELL eligible early
+  n=8**, SELL early H1 correct **4/8 (50%)**, H4 correct **6/8 (75%)**,
+  $3-before-$3 **6/8 (75%)**, $10-before-$5 **3/8 (37.5%)**.
+  These **overlap** the earlier Nov 2026 sample; do NOT pool them as
+  independent observations.
+- The specific 2026-11-19 04:52 UTC (11:52 WIB) event was
+  `ELIGIBLE_EARLY_ENTRY SELL M5 EMA20`, frozen level **3723.369**,
+  invalidation **3724.83121**. The +$3 target was **NOT** reached
+  before adverse −$3 in the next 60 minutes (ADVERSE_FIRST); the
+  rejection crossed its invalidation boundary on a closed M1 within
+  60 minutes and a completed M5 close confirmed a breakout within 240m.
+- The 04:56 UTC (11:56 WIB) `ELIGIBLE_RETEST SELL` at the same
+  zone also produced `ADVERSE_FIRST` and was invalidated within H1.
+- This resembles the user's posted fall-then-bullish-spike scenario, but
+  source quotes, alert issuance, and fill cannot be matched to screenshots
+  precisely. It is a **negative falsification example** of the current
+  entry timing despite the lifecycle kill-switch.
+
+**Result:** V3 is **NOT ready for production**. The invalidation control works
+conceptually, but does not by itself prevent over-late SELL entries next to
+support or price acceleration. Do not post-hoc tune thresholds against this
+known Nov 19 case and then represent it as a pristine holdout; formulate
+predeclared, forward-only diagnostics for proximity to opposing liquidity,
+M1/M5 impulsive regime, and quote age on other historical periods.
