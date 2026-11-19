@@ -107,12 +107,25 @@ def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None) -> di
     wick_buy=float(min(last.open,last.close)-last.low)/span
     wick_sell=float(last.high-max(last.open,last.close))/span
     zones=[]
+    recent=d.iloc[-6:-1]
     for side,name,level in levels:
         distance=abs(price-level)
         touched=float(last.low)<=level+width and float(last.high)>=level-width
         reclaim=(last.close>level and last.close>=last.open and wick_buy>=.30 if side=='BUY'
                  else last.close<level and last.close<=last.open and wick_sell>=.30)
         candidate=bool(touched and reclaim)
+        past_rejects=[]
+        for ts,bar in recent.iterrows():
+            age=(closed_at-(ts+pd.Timedelta(minutes=1))).total_seconds()
+            span_bar=max(float(bar.high-bar.low),1e-9)
+            wick=(float(min(bar.open,bar.close)-bar.low)/span_bar if side=='BUY' else
+                  float(bar.high-max(bar.open,bar.close))/span_bar)
+            had_touch=float(bar.low)<=level+width and float(bar.high)>=level-width
+            had_reclaim=(bar.close>level and bar.close>=bar.open if side=='BUY' else
+                         bar.close<level and bar.close<=bar.open)
+            if 0<=age<=300 and had_touch and had_reclaim and wick>=.30:
+                past_rejects.append(ts)
+        retest_event=past_rejects[-1] if past_rejects else None
         entry_price=float(ask if side=='BUY' else bid) if quote_ok else price
         chase=(entry_price-level)/atr if side=='BUY' else (level-entry_price)/atr
         if candidate:
@@ -120,6 +133,15 @@ def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None) -> di
             entry=('EARLY ENTRY CANDIDATE' if quote_ok and bias==side and
                    (spread or 0)<=.20*atr and 0<=chase<=.60
                    else 'WAIT / CHECK BIAS, QUOTE, DISTANCE')
+        elif retest_event is not None and touched:
+            stage='RETEST AT WATCH ZONE'
+            direction_ok=(last.close>last.open and last.close>level if side=='BUY' else
+                          last.close<last.open and last.close<level)
+            entry=('RETEST RECLAIM CANDIDATE' if quote_ok and bias==side and direction_ok and
+                   (spread or 0)<=.20*atr and 0<=chase<=.60 else 'WAIT RETEST RECLAIM')
+        elif retest_event is not None:
+            stage='WAIT RETEST' if distance<=atr else 'MISSED / AVOID CHASE'
+            entry='WAIT RETEST' if distance<=atr else 'NO ENTRY'
         elif touched:
             stage,entry='TOUCHED; WAIT REACTION','WAIT M1 RECLAIM'
         elif distance<=.35*atr:
