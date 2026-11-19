@@ -119,11 +119,18 @@ def replay_official_event(xau_m1, source_bytes, *, xau_sha,manifest):
         for side in ("BUY","SELL"):
             h1=future(d,i,side,60,3,3)
             h4=future(d,i,side,240,10,5)
-            if h1 is None or h4 is None:
-                raise ValueError(f"XAU_FORWARD_GAP_OR_INCOMPLETE_{kind}_{side}")
-            fwd[side]={"h1_3before3":h1["state"],"h1_terminal_net_usd_oz":round(h1["net_end"],3),
-                       "h4_10before5":h4["state"],"h4_terminal_net_usd_oz":round(h4["net_end"],3),
-                       "mfe_1h_usd_oz":round(h1["mfe"],3),"mae_1h_usd_oz":round(h1["mae"],3)}
+            # Do NOT interpolate the New York daily trading-session gap;
+            # 60-minute label can be valid while full four hours are not.
+            fwd[side]={
+                "h1_3before3":h1["state"] if h1 else "CENSORED_GAP_OR_MISSING",
+                "h1_terminal_net_usd_oz":round(h1["net_end"],3) if h1 else None,
+                "h1_complete":h1 is not None,
+                "h4_10before5":h4["state"] if h4 else "CENSORED_GAP_OR_MISSING",
+                "h4_terminal_net_usd_oz":round(h4["net_end"],3) if h4 else None,
+                "h4_complete":h4 is not None,
+                "mfe_1h_usd_oz":round(h1["mfe"],3) if h1 else None,
+                "mae_1h_usd_oz":round(h1["mae"],3) if h1 else None,
+            }
         offline=classify_offline_window(row)
         results.append({"kind":kind,"window_end_et":window_end_et.isoformat(),
                         "window_end_utc":at.isoformat(),"xau_last_closed_m1_utc":d.index[i].isoformat(),
@@ -149,6 +156,8 @@ def replay_official_event(xau_m1, source_bytes, *, xau_sha,manifest):
         "macro_pit_live_ready_n":0,"eligible_buy_n":0,"eligible_sell_n":0,
         "historical_independent_event_n":1,
         "windows_are_overlapping_not_independent":True,
+        "h4_gap_censor_count":sum(1 for x in results for y in x["both_sides_counterfactual"].values() if not y["h4_complete"]),
+        "h1_gap_censor_count":sum(1 for x in results for y in x["both_sides_counterfactual"].values() if not y["h1_complete"]),
         "risk_gate":"NO_PRODUCTION",
         "caveats":["Official USMPD event-study data calculated retrospectively; not historically archived live quotes",
                    "All window-level directions are ex-post oracle diagnostics, not eligible backtest signals",
