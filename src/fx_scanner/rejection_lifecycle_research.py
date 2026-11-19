@@ -127,10 +127,11 @@ def advance_events(prior_events, m1: pd.DataFrame, m5: pd.DataFrame,
                            else max(float(last.high), zone_upper)+0.10*atr)
                 trigger = float(preceding.high.max() if side=="BUY" else preceding.low.min())
                 events.append({
-                    "id": side+"|"+name+"|"+at.isoformat(),
+                    "id": side+"|"+name+"|"+closed_at.isoformat(),
                     "side": side, "zone_name": name,
                     "level": float(z["price"]), "zone_low": zone_lower,
-                    "zone_high": zone_upper, "signal_at": at.isoformat(),
+                    "zone_high": zone_upper, "signal_at": closed_at.isoformat(),
+                    "observed_at": at.isoformat(),
                     "checked_through": closed_at.isoformat(),
                     "state": "EARLY_REJECTION",
                     "display_state": "EARLY_REJECTION",
