@@ -132,6 +132,8 @@ def validate_document(doc):
             raise ValueError("EVIDENCE_QUOTE_NOT_IN_OFFICIAL_DOCUMENT")
         if item["tone"] not in STANCE or item["scope"] not in SCOPE_WEIGHT:
             raise ValueError("INVALID_TONE_OR_SCOPE")
+        if doc["kind"].endswith("_SPEECH") and item["scope"] not in ("INDIVIDUAL","CHAIR"):
+            raise ValueError("INDIVIDUAL_SPEECH_CANNOT_CLAIM_FOMC_CONSENSUS")
         if item["topic"]!="MONETARY_POLICY" or item["review_status"]!="HUMAN_REVIEWED":
             raise ValueError("UNREVIEWED_OR_NONMONETARY_POLICY_EVIDENCE")
         checked.append(item)
