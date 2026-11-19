@@ -7,6 +7,7 @@ from __future__ import annotations
 import math
 import pandas as pd
 from fx_scanner.rejection_lifecycle_research import advance_events
+from fx_scanner.rejection_v4_research import evaluate_v4
 
 OHLC = ('open', 'high', 'low', 'close')
 
@@ -183,9 +184,22 @@ def calculate(m1: pd.DataFrame, *, now, bid=None, ask=None, quote_at=None, prior
         if (now-pd.Timestamp(failed_at)).total_seconds()<=15*60:
             z["stage"]=state
             z["entry"]="NO ENTRY — PRIOR REJECTION FAILED / BREAKOUT RISK"
+    v4=evaluate_v4(d,prev5,h1_bias=h1_bias,h4_bias=h4_bias,
+                   atr_m5=atr,now=now,quote_valid=quote_ok,bid=bid,ask=ask)
+    for candidate in v4:
+        same=[e for e in event_history if e["side"]==candidate["side"]]
+        for prior in reversed(same):
+            if prior["display_state"] not in {
+                "REJECTION_INVALIDATED","BREAKOUT_CONFIRMED","BREAKOUT_RISK","DATA_GAP"}:
+                continue
+            failed_at=prior.get("breakout_at") or prior.get("invalidated_at") or prior.get("checked_through")
+            if (now-pd.Timestamp(failed_at)).total_seconds()<=15*60:
+                candidate["entry_status"]="BLOCKED_PREVIOUS_FAILED_REJECTION"
+                candidate["reasons"].append("V3 same-side breakout/invalidated event cooldown")
+            break
     return {'status':'RESEARCH_ONLY','bias':bias,'h1_bias':h1_bias,'h4_bias':h4_bias,
             'as_of':now.isoformat(),'last_closed_m1':closed_at.isoformat(),
             'last_closed_m5':m5.index[-1].isoformat(),'quote_valid':quote_ok,
             'price':round(price,3),'atr_m5':round(atr,3),'zones':zones,
-            'rejection_events':event_history,
+            'rejection_events':event_history,'v4_setups':v4,
             'warning':'No tested accuracy/edge. Candidate only; manual decisions and independent risk controls.'}
