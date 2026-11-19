@@ -109,3 +109,10 @@ def test_optional_retest_after_early_rejection(side,expected):
     r=calculate(d,now='2026-11-19 03:13+00:00',bid=bid,ask=ask,
                 quote_at='2026-11-19 03:13+00:00')
     assert any(z['entry']=='RETEST RECLAIM CANDIDATE' for z in r['zones'] if z['side']==expected)
+
+def test_structural_and_ema_watch_levels_both_directions():
+    r=calculate(mock_m1(),now='2026-11-19 03:15+00:00')
+    for side in ('BUY','SELL'):
+        names=[z['name'] for z in r['zones'] if z['side']==side]
+        assert any('EMA' in name for name in names)
+        assert any('SUPPORT' in name or 'RESISTANCE' in name for name in names)
