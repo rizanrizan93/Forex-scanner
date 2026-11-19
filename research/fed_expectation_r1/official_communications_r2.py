@@ -140,7 +140,7 @@ def validate_document(doc):
         observed=safe_interpretation(item["tone"],excerpt)
         if observed=="CONTRADICTORY_LABEL":
             raise ValueError("HAWKISH_DOVISH_LABEL_INVERTED")
-        if observed=="UNRESOLVED":
+        if observed=="UNRESOLVED" and item["tone"]!="NEUTRAL":
             raise ValueError("NEGATED_MIXED_OR_AMBIGUOUS_POLICY_TEXT")
         checked.append(item)
     if doc["kind"]=="FOMC_MINUTES":
