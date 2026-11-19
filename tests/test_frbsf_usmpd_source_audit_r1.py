@@ -12,7 +12,8 @@ def test_audit_labels_ex_post_data_not_trading_accuracy():
     assert len(r["zip_sha256"])==64
     assert r["xau_h1_h4_accuracy_tested"] is False
     assert r["only_causal_after_window_closes"] is True
-    assert r["files"][0]["first_line_header_or_text"]=="date,MP1,MP2"\n    assert r["files"][0]["date_column_has_utc_event_window_end"] is False
+    assert r["files"][0]["first_line_header_or_text"]=="date,MP1,MP2"
+    assert r["files"][0]["date_column_has_utc_event_window_end"] is False
 
 def test_reject_invalid_zip():
     with pytest.raises(ValueError,match="NOT_BOUNDED_ZIP"):
