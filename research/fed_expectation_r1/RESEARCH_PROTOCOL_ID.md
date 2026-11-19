@@ -106,3 +106,39 @@ connection bridges, or override Frozen V1. `EXECUTION_AUTHORITY=False`
 and `EXECUTION_INFLUENCE=False`. It does not merge with production,
 `main.py`, Manual R3 or existing V4 behavior. Only promote after
 independent dual-side >=60% with adequate n and after transaction costs.
+
+## Real source audit completed (GitHub CI)
+
+Verified CI: https://github.com/rizanrizan93/Forex-scanner/actions/runs/44613817824
+
+- 19 / 19 PIT/unit tests passed after fixing a test-file escaped
+  newline on the first rerun. This is software integrity, **not alpha**.
+- The official SF Fed public ZIP downloaded successfully: **78,948
+  bytes**, SHA-256
+  `ee9f98bc6a2b49e43078dde0028413c6ca008df39fa57104ca1bf1174c27af0d`.
+  Zip has 6 members; no code from the archive was executed.
+- `mps.csv` contains **280 rows** with `Date,STMT,PC,ME`.
+  Date row counts: 2019 9; 2020 13; 2021 8; 2022 8; 2023 8;
+  2024 8; 2025 8; 2026 7.
+- `mps_minutes.csv` contains **175 rows** with `Date,MIN`;
+  2019–2026 year row counts respectively 8, 8, 8, 8, 8, 8, 9, 6.
+- `y1.csv` contains **8,197 rows** with `Date,SVENY01`.
+  This data is not an intraday US2Y market quote feed.
+- All these CSVs contain **calendar Date, not event-window-end UTC
+  timestamps**. They MUST NOT be joined to an M1/H1 XAU entry decision
+  on date alone. The event publication timestamp, window end, any
+  postprocessing and data release availability must be sourced
+  independently.
+- The publicly downloaded MPS factors may involve sample-based
+  estimation/normalization; use expanding-window estimation if a
+  genuinely point-in-time retrospective feature is required.
+- **No XAU accuracy n or 60% result has been produced.** No actual
+  as-of matched futures expectation snapshots + intraday cash US2Y +
+  DXY proxy + XAU entry outcomes are yet archived in this PR.
+
+Next falsifiable action: obtain a timestamped, comparable same-contract
+historical Fed Funds/SOFR futures expectation series and genuine
+intraday US2Y quote series with provenance, or report source
+unavailable. Then compare macro filters at **identical frozen XAU M5
+rejection events** with realistic costs, separate BUY/SELL and year
+counts, and genuinely future prospective validation.
