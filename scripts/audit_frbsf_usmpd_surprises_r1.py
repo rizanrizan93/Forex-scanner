@@ -6,7 +6,7 @@ contain ex-post monetary policy surprises whose measurement windows only
 finish AFTER FOMC communication. They cannot be used before publication.
 """
 from __future__ import annotations
-import hashlib, io, json, urllib.request, zipfile
+import csv, hashlib, io, json, re, urllib.request, zipfile
 from pathlib import Path
 
 URL="https://www.frbsf.org/wp-content/uploads/monetary-policy-surprises.zip"
@@ -24,9 +24,32 @@ def audit(raw:bytes, *, url=URL):
         if item.filename.lower().endswith((".csv",".txt",".r",".tsv")):
             preview=z.open(item).read(1024).decode("utf-8-sig","replace")
             first_line=preview.splitlines()[0][:300] if preview.splitlines() else None
-        contents.append({"filename":item.filename,
-                         "uncompressed_bytes":item.file_size,
-                         "first_line_header_or_text":first_line})
+        entry={"filename":item.filename,
+               "uncompressed_bytes":item.file_size,
+               "first_line_header_or_text":first_line}
+        if item.filename.lower().endswith(".csv"):
+            with z.open(item) as stream:
+                reader=csv.DictReader(io.TextIOWrapper(stream,encoding="utf-8-sig"))
+                years={}; rows=0; fields=list(reader.fieldnames or [])
+                populated={key:0 for key in fields}
+                for rec in reader:
+                    rows+=1
+                    for key in fields:
+                        if str(rec.get(key) or "").strip():
+                            populated[key]+=1
+                    # Date is event DATE only, not time-of-day; never join as
+                    # an as-of intraday event without a separately sourced
+                    # and verified event window-close UTC timestamp.
+                    day=str(rec.get("Date") or "").strip()
+                    year=day[:4]
+                    if re.fullmatch(r"20[0-9]{2}",year) and 2019<=int(year)<=2026:
+                        years[year]=years.get(year,0)+1
+                entry.update({"rows":rows,
+                              "columns":fields,
+                              "nonblank_by_column":populated,
+                              "date_column_has_utc_event_window_end":False,
+                              "rows_by_event_year_2019_2026":years})
+        contents.append(entry)
     return {
         "contract":"FRBSF_USMPD_PUBLIC_ZIP_SOURCE_AUDIT_V1",
         "source_url":url,"zip_sha256":hashlib.sha256(raw).hexdigest(),
