@@ -51,7 +51,9 @@ def test_action_vs_surprise_separate():
     p=present_r2(r)
     assert p["actual_fomc"]["title"]=="ACTUAL RATE HOLD"
     assert p["actual_fomc"]["rate_surprise_bp"]==25
-    assert p["communication"]["title"]=="HAWKISH COMMUNICATION"
+    assert p["communication"]["title"]=="NEUTRAL COMMUNICATION"
+    assert p["communication"]["chosen_directional_stance"]=="HAWKISH"
+    assert p["gold_bias"]["watch_basis"]=="ACTUAL_POLICY_SURPRISE"
     assert p["gold_bias"]["watch"]=="SELL ON REBOUND — WATCH ONLY"
 
 def test_no_fake_probability_or_filled_trade():
