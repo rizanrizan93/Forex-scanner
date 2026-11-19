@@ -92,3 +92,20 @@ def test_early_entry_candidate_before_m5_close(side,expected):
                 quote_at='2026-11-19 03:13+00:00')
     assert r['last_closed_m5']=='2026-11-19T03:10:00+00:00'
     assert any(z['entry']=='EARLY ENTRY CANDIDATE' for z in r['zones'] if z['side']==expected)
+
+@pytest.mark.parametrize('side,expected',[(1,'BUY'),(-1,'SELL')])
+def test_optional_retest_after_early_rejection(side,expected):
+    d=mock_m1(side=side,end='2026-11-19 03:13+00:00')
+    r0=calculate(d,now='2026-11-19 03:13+00:00')
+    level=next(z['price'] for z in r0['zones'] if z['side']==expected and z['name']=='M5 EMA20')
+    if side==1:
+        d.loc[d.index[-2],['open','high','low','close']]=[level+.015,level+.060,level-.08,level+.03]
+        d.loc[d.index[-1],['open','high','low','close']]=[level+.015,level+.080,level-.005,level+.045]
+        bid,ask=level+.030,level+.040
+    else:
+        d.loc[d.index[-2],['open','high','low','close']]=[level-.015,level+.08,level-.060,level-.03]
+        d.loc[d.index[-1],['open','high','low','close']]=[level-.015,level+.005,level-.080,level-.045]
+        bid,ask=level-.040,level-.030
+    r=calculate(d,now='2026-11-19 03:13+00:00',bid=bid,ask=ask,
+                quote_at='2026-11-19 03:13+00:00')
+    assert any(z['entry']=='RETEST RECLAIM CANDIDATE' for z in r['zones'] if z['side']==expected)
