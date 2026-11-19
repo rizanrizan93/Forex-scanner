@@ -17,6 +17,7 @@ from math import isfinite
 from urllib.parse import urlsplit
 import re
 from research.fed_expectation_r1.engine import utc
+from research.fed_expectation_r1.polarity_guard_r2 import safe_interpretation,actual_decision_phrase
 
 EXECUTION_AUTHORITY=False
 EXECUTION_INFLUENCE=False
@@ -136,6 +137,11 @@ def validate_document(doc):
             raise ValueError("INDIVIDUAL_SPEECH_CANNOT_CLAIM_FOMC_CONSENSUS")
         if item["topic"]!="MONETARY_POLICY" or item["review_status"]!="HUMAN_REVIEWED":
             raise ValueError("UNREVIEWED_OR_NONMONETARY_POLICY_EVIDENCE")
+        observed=safe_interpretation(item["tone"],excerpt)
+        if observed=="CONTRADICTORY_LABEL":
+            raise ValueError("HAWKISH_DOVISH_LABEL_INVERTED")
+        if observed=="UNRESOLVED":
+            raise ValueError("NEGATED_MIXED_OR_AMBIGUOUS_POLICY_TEXT")
         checked.append(item)
     if doc["kind"]=="FOMC_MINUTES":
         if not doc.get("meeting_end_date"):
@@ -149,6 +155,13 @@ def validate_document(doc):
     if doc["kind"].endswith("_SPEECH") and not str(doc.get("speaker","")).strip():
         raise ValueError("SPEAKER_ID_REQUIRED")
     actual=_numeric_actual(doc)
+    if actual is not None:
+        anchor=doc.get("actual_policy_evidence")
+        if (not isinstance(anchor,str) or
+                len(anchor)<24 or _norm(anchor) not in _norm(text)):
+            raise ValueError("ACTUAL_RATE_ACTION_ANCHOR_MISSING_FROM_OFFICIAL_DOCUMENT")
+        if actual_decision_phrase(anchor)!=actual["decision"]:
+            raise ValueError("ACTUAL_RATE_ACTION_CONFLICTS_WITH_OFFICIAL_TEXT")
     return {**doc,"published_utc":release,"available_at":max(release,ingested),
             "digest_verified_locally":True,"checked_evidence":checked,
             "actual_policy":actual}
