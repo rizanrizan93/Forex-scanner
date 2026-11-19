@@ -39,7 +39,11 @@ def verify(manifest_path, raw_path):
         raise ValueError("BAD_RAW_HASH")
     if type(m["raw_size_bytes"]) is not int or m["raw_size_bytes"] <= 0:
         raise ValueError("BAD_RAW_SIZE")
-    if not isinstance(m["source_url"], str) or urlparse(m["source_url"]).scheme != "https":
+    if not isinstance(m["source_url"], str):
+        raise ValueError("BAD_SOURCE_URL")
+    parsed_url = urlparse(m["source_url"])
+    if (parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username is not None
+            or parsed_url.password is not None or parsed_url.fragment):
         raise ValueError("BAD_SOURCE_URL")
     if not isinstance(m["raw_file_name"], str) or Path(m["raw_file_name"]).name != m["raw_file_name"]:
         raise ValueError("BAD_RAW_FILENAME")
