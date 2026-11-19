@@ -1,0 +1,60 @@
+name: Fed R4 — TIPS, OIS, Equity Information Shock Replay 2019-26 (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_information_shock_r4.py'
+      - 'tests/test_fed_information_shock_r4.py'
+      - 'research/fed_expectation_r1/policy_information_watch_r4.py'
+      - 'tests/test_fed_policy_information_watch_r4.py'
+      - '.github/workflows/fed_information_shock_r4.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  unit_source_and_polarity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install R4 scientific dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Unit-check yields, real rates, inflation breakeven, information shock and anti-inversion
+        run: |
+          python -m py_compile scripts/replay_fed_information_shock_r4.py
+          python -m pytest -q tests/test_fed_information_shock_r4.py tests/test_fed_policy_information_watch_r4.py tests/test_fed_macro_80pct_r3.py
+  full_real_xau_event_replay:
+    needs: unit_source_and_polarity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install parser and science dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - name: Download sealed 2019–26 XAUUSD event/price ledgers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: fed-macro-research-expost-20*
+          path: artifacts/r1_sealed
+          run-id: 44621561755
+          github-token: ${{ github.token }}
+      - name: Read official full SF Fed USMPD XLSX & replay TIPS/OIS/equities shock regimes against price
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_information_shock_r4.py --input-dir artifacts/r1_sealed --out artifacts/fed-r4-TIPS-OIS-SP500-2019-2026.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-R4-real-yield-information-shock-XAU-2019-26
+          path: artifacts/fed-r4-TIPS-OIS-SP500-2019-2026.json
+          retention-days: 30
+          if-no-files-found: error
