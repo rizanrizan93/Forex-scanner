@@ -1,0 +1,30 @@
+name: Rejection Engine Research Tests
+on:
+  pull_request:
+    paths:
+      - 'src/fx_scanner/rejection_*research.py'
+      - 'tests/test_rejection_v2_research.py'
+      - 'tests/test_rejection_lifecycle_research.py'
+      - 'tests/test_rejection_v4_research.py'
+      - 'src/fx_scanner/rejection_dashboard_research.py'
+      - '.github/workflows/rejection_engine_research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rejection_engine_synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: pip install pandas==2.2.3 pytest==9.0.2
+      - name: Compile read-only UI and engine
+        run: python -m py_compile main.py src/fx_scanner/rejection_v2_research.py src/fx_scanner/rejection_v4_research.py src/fx_scanner/rejection_lifecycle_research.py src/fx_scanner/rejection_dashboard_research.py
+      - name: Run deterministic regression scenarios
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/test_rejection_v2_research.py tests/test_rejection_lifecycle_research.py tests/test_rejection_v4_research.py
