@@ -14,6 +14,17 @@ from research.fed_expectation_r1.official_communications_r2 import (
     validate_document,decide_communication,
 )
 
+# Waller speech has a date-only official page. The exact public release
+# minute is NOT established; audit text but do not assign a fake timestamp.
+SPEECH_AUDIT_ONLY={
+    "id":"WALLER-SPEECH-2026-11-10",
+    "source_url":"https://www.federalreserve.gov/newsevents/speech/waller20261110a.htm",
+    "reported_published_date":"2026-11-10",
+    "speaker":"Christopher J. Waller",
+    "excerpt":"I would still support a 25 basis point increase in the FOMC's policy rate at our December meeting",
+    "tone":"HAWKISH",
+    "scope":"INDIVIDUAL",
+}
 PAGES=[
     {
         "id":"FOMC-2026-10-28-STATEMENT",
@@ -94,6 +105,23 @@ def main():
             "actual_policy":validated["actual_policy"],
             "note":"Excerpt review is human-curated, not a validated sentiment model",
         })
+    # Never convert date-only speeches into minute-precise historical
+    # alerts; only timestamped capture creates prospective eligibility.
+    req=urllib.request.Request(SPEECH_AUDIT_ONLY["source_url"],
+        headers={"User-Agent":"RIZAN-Research-Audit/2.0"})
+    with urllib.request.urlopen(req,timeout=20) as response:
+        speech_html=response.read(2_000_001)
+    speech_text=extract_visible_text(speech_html.decode("utf-8","replace"))
+    if len(speech_html)>2_000_000 or SPEECH_AUDIT_ONLY["excerpt"].casefold() not in speech_text.casefold():
+        raise ValueError("OFFICIAL_SPEECH_QUOTE_NOT_VERIFIED")
+    speech_audit={
+        **SPEECH_AUDIT_ONLY,"source_raw_sha256":sha256(speech_html).hexdigest(),
+        "source_text_sha256":sha256(speech_text.encode()).hexdigest(),
+        "first_observed_at":now,
+        "actual_publication_minute_verified":False,
+        "historical_signal_eligible":False,
+        "note":"This is one Fed governor's view, not the FOMC decision",
+    }
     out=decide_communication(documents,decision_at=now)
     if out["event_id"]!=PAGES[1]["id"] or out["headline_stance"]!="HAWKISH":
         raise AssertionError("NEWER_RELEASED_MINUTES_NOT_SELECTED_CORRECTLY")
@@ -102,6 +130,7 @@ def main():
     report={
         "contract":"FED_COMMUNICATION_R2_ACTUAL_SOURCE_AUDIT",
         "ingested_utc":now,"official_documents":checks,
+        "speech_date_only_source_audit":speech_audit,
         "current_directional_watch":out,
         "production_eligible":False,
         "model_predictive_accuracy_tested":False,
