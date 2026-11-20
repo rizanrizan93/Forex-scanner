@@ -176,9 +176,9 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
     d = frame[["open","high","low","close"]].copy()
     d.index = d.index.tz_convert("UTC")
     d = d[d.index + pd.Timedelta(minutes=1) <= now]
-    if (len(d)<2500 or d.index.has_duplicates or
+    if (len(d)<2000 or d.index.has_duplicates or
         not d.index.is_monotonic_increasing or d.isna().any().any()):
-        out["reason"] = "NEED_2500_VALID_SORTED_M1"
+        out["reason"] = "NEED_2000_VALID_SORTED_M1"
         return out
     valid_ohlc=((d.low>0)&(d.high>=d.low)&
                 (d.low<=d[["open","close"]].min(axis=1))&
