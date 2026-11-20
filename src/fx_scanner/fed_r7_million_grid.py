@@ -17,8 +17,8 @@ import pandas as pd
 CONTRACT="RIZAN_R7_MILLION_GRID_LATEST_VINTAGE_DIAGNOSTIC_V1"
 FEATURES=(
     "real10_delta_5_bps","nom2_delta_5_bps",
-    "breakeven10_delta_5_bps","broad_usd_ret5_pct",
-    "vix_ret5_pct","xau_mom5_pct",
+    "nom10_delta_5_bps","broad_usd_ret5_pct",
+    "xau_range5_pct","xau_mom5_pct",
     "xau_mom21_pct","xau_rvol21_pct",
 )
 HORIZONS={"D1":1,"W1":5,"M1":21,"Y1":252}
@@ -115,7 +115,7 @@ def search_one_horizon(panel, *, horizon, batch_weights=256,
         "candidate_selected_on":"2023-2024_ONLY",
         "holdout":"2025-2026_UNTOUCHED_DURING_SELECTION",
         "train":"2019-2022_FEATURE_NORMALIZATION",
-        "macro_provenance":"RETROSPECTIVE_FRED_LATEST_VINTAGE_LAG_ASSUMPTION_NOT_PIT",
+        "macro_provenance":"RETROSPECTIVE_IN_REPO_FRED_LATEST_VINTAGE_LAG_ASSUMPTION_NOT_PIT",
         "full_r7_factor_universe":False,
         "actual_original_publication_timestamps_verified":False,
         "historical_comex_cot_etf_fed_surprise_included":False,
@@ -237,10 +237,9 @@ def search_one_horizon(panel, *, horizon, batch_weights=256,
     momentumhold=_stats(
         np.where(xtest[:,5]>=0,1,-1).astype(np.int8),moves_test)
     groups={
-        "REAL_RATES":float(np.abs(weight[:3]).sum()),
-        "USD_BROAD_PROXY":float(abs(weight[3])),
-        "RISK_VIX":float(abs(weight[4])),
-        "PRICE_ONLY":float(np.abs(weight[5:]).sum()),
+        "REAL_RATES_AND_NOMINAL":float(np.abs(weight[:3]).sum()),
+        "USD_BROAD_PROXY_NOT_DXY":float(abs(weight[3])),
+        "PRICE_ONLY_VOLATILITY_MOMENTUM":float(np.abs(weight[4:]).sum()),
     }
     result_weight=dict(zip(FEATURES,[round(float(z),6) for z in weight]))
     group_pct={k:round(100*v,3) for k,v in groups.items()}
