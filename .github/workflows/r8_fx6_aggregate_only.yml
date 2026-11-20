@@ -1,0 +1,52 @@
+name: R8 FX6 Historical Aggregate From Verified Shards
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/r8_fx6_aggregate_only.yml'
+      - 'scripts/r8_replay_r6_usd.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  aggregate_verified_8y:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - name: Download immutable 2019-2026 completed run shards, not refetch markets
+        shell: bash
+        run: |
+          mkdir -p artifacts/fx6-existing
+          gh run download 44756827925 --repo rizanrizan93/Forex-scanner --pattern 'r8-fx6-year-*' --dir artifacts/fx6-existing
+          find artifacts/fx6-existing -type f -name 'r8_fx6_year_*.json' -print | sort -V
+      - name: Discover nested JSON, verify years and aggregate before publication
+        shell: bash
+        run: |
+          mapfile -t files < <(find artifacts/fx6-existing -type f -name 'r8_fx6_year_*.json' | sort -V)
+          if [[ ${#files[@]} -ne 8 ]]; then echo "EXPECTED_EIGHT_SHARDS: ${#files[@]}"; exit 1; fi
+          python scripts/r8_replay_r6_usd.py --shards "${files[@]}" --out artifacts/r8_fx6_macro_h1h4_2019_2026.json
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/r8_fx6_macro_h1h4_2019_2026.json'))
+          assert x['years']==list(range(2019,2027))
+          assert x['macro_source_contract']=='R8_RECONSTRUCTED_DXY_6FX_HISTDATA_V1'
+          assert x['first_seen_provenance'].startswith('UNVERIFIED')
+          assert x['execution_authority'] is False and x['execution_influence'] is False
+          for row in x['summary']:
+              if row['split']=='reused_test_2025_2026' and row['assumed_delay_min']==1 and row['cohort'] in ('BASE_R6','DXY_15_AND_60_ALIGNED'):
+                  print('R8_REAL_HISTORIC_RESULT_ASSUMED_LAG',row)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r8-fx6-macro-8year-aggregate
+          path: artifacts/r8_fx6_macro_h1h4_2019_2026.json
+          if-no-files-found: error
+          retention-days: 90

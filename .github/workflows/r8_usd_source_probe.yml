@@ -1,0 +1,69 @@
+name: R8 USD source-byte acquisition probe (research only)
+on:
+  push:
+    branches:
+      - research/xau-r8-dollaridx-provenance-20261119
+    paths:
+      - .github/workflows/r8_usd_source_probe.yml
+  pull_request:
+    paths:
+      - .github/workflows/r8_usd_source_probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Cross-year raw Dukascopy BI5 and alternate FXCM datafeed availability matrix
+        shell: bash
+        run: |
+          mkdir -p research_artifacts
+          python - <<'PY'
+          import concurrent.futures,datetime as dt,hashlib,json,pathlib,urllib.error,urllib.request
+          base='https://datafeed.dukascopy.com/datafeed'
+          pairs=[
+            ('USD_M1_2019_JAN','DOLLARIDXUSD/2019/00/02/BID_candles_min_1.bi5'),
+            ('USD_M1_2019_JUN','DOLLARIDXUSD/2019/05/03/BID_candles_min_1.bi5'),
+            ('USD_M5_2019_JUN','DOLLARIDXUSD/2019/05/03/BID_candles_min_5.bi5'),
+            ('USD_TICK_2019_ACTIVE','DOLLARIDXUSD/2019/00/02/15h_ticks.bi5'),
+            ('USD_M1_2020','DOLLARIDXUSD/2020/05/03/BID_candles_min_1.bi5'),
+            ('USD_M1_2021','DOLLARIDXUSD/2021/05/03/BID_candles_min_1.bi5'),
+            ('USD_M1_2024','DOLLARIDXUSD/2024/10/18/BID_candles_min_1.bi5'),
+            ('USD_M1_2025','DOLLARIDXUSD/2025/10/19/BID_candles_min_1.bi5'),
+            ('USD_M1_2026','DOLLARIDXUSD/2026/10/19/BID_candles_min_1.bi5'),
+            ('XAU_M1_2019','XAUUSD/2019/00/02/BID_candles_min_1.bi5'),
+            ('EUR_M1_2019','EURUSD/2019/00/02/BID_candles_min_1.bi5')]
+          tasks=[(name,base+'/'+path) for name,path in pairs]
+          tasks += [('FXCM_USDOLLAR_2019','https://candledata.fxcorporate.com/m1/USDOLLAR/2019/1.csv.gz'),
+                    ('FXCM_USDOLLAR_2025','https://candledata.fxcorporate.com/m1/USDOLLAR/2025/1.csv.gz'),
+                    ('FXCM_EURUSD_2019','https://candledata.fxcorporate.com/m1/EURUSD/2019/1.csv.gz')]
+          def probe(x):
+              name,url=x
+              row={'name':name,'source_url':url,'acquired_at_utc':dt.datetime.now(dt.timezone.utc).isoformat()}
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'R8-Research-SourceAudit/1.0'})
+                  with urllib.request.urlopen(req,timeout=16) as response:
+                      raw=response.read();row['status']=response.status;row['final_url']=response.url
+                  row['bytes']=len(raw);row['sha256']=hashlib.sha256(raw).hexdigest()
+                  row['valid_nonempty']=row['status']==200 and len(raw)>0
+              except urllib.error.HTTPError as e:
+                  row['status']=e.code;row['error_type']='HTTPError'
+              except Exception as e:
+                  row['status']=None;row['error_type']=type(e).__name__;row['error']=str(e)[:200]
+              return row
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+              rows=list(pool.map(probe,tasks))
+          for r in rows:print('R8_SOURCE_MATRIX',r['name'],r.get('status'),r.get('bytes',0),flush=True)
+          out=pathlib.Path('research_artifacts/source_matrix.json')
+          out.write_text(json.dumps({'contract':'R8_MULTI_SOURCE_ORIGINAL_BYTE_PROBE_20261120',
+                                     'acquisition_only_no_market_replay':True,'results':rows},indent=2)+'\n')
+          PY
+      - name: Upload source availability evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-multi-source-availability-20261120
+          path: research_artifacts/source_matrix.json
+          retention-days: 30
+          if-no-files-found: error
