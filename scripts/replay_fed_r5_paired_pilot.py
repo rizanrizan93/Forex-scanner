@@ -18,7 +18,8 @@ from scripts.replay_fed_macro_2019_2026_r1 import event_plan
 from scripts.replay_fed_macro_event_pilot_r1 import PINNED_SOURCE_SHA,fetch_official
 from scripts.replay_fed_information_shock_r4 import source_join,classify
 from scripts.replay_rejection_v2_outcomes import load_csv,future,COST
-from fx_scanner.rejection_v2_research import calculate
+from fx_scanner.rejection_v2_research import calculate,completed
+from research.fed_expectation_r1.fomc_continuation_observation_r5 import evaluate_continuation
 
 TARGET_DATE="2023-09-20"
 RULES=("MP2_TIPS10_DXY","POLICY_OIS1Y_TIPS10_SP500_VETO",
@@ -62,6 +63,32 @@ def replay(d, *,manifest,event,expost_source_sha):
             continue
         state=res["rejection_events"]
         counts["screened_m1_closes"]+=1
+        # Independent post-event momentum path: OBSERVATIONAL ONLY,
+        # separate from V4. Never described as approved R5 entry.
+        unique_sides=sorted({side for side in directions.values()
+                            if side in ("BUY","SELL")})
+        for side in unique_sides:
+            try:
+                m5=completed(frame.iloc[:i+1],5,at)
+                observation=evaluate_continuation(
+                    frame.iloc[:i+1],m5,at=at,side=side,
+                    bid=float(row.close)-COST/2,
+                    ask=float(row.close)+COST/2,
+                    atr_m5=res["atr_m5"])
+            except (ValueError,TypeError,KeyError):
+                counts["continuation_data_unavailable"]+=1;continue
+            if observation["event_detected"]:
+                counts["continuation_raw_"+side]+=1
+                for rule,macro_side in directions.items():
+                    if macro_side!=side:continue
+                    counts["continuation_"+rule+"_same_side_raw"]+=1
+                    label=future(frame,i,side,60,3,3)
+                    if label is None:
+                        counts["continuation_"+rule+"_h1_censored"]+=1
+                        continue
+                    counts["continuation_"+rule+"_h1_evaluable"]+=1
+                    if label["net_end"]>0:
+                        counts["continuation_"+rule+"_h1_direction_right"]+=1
         for setup in res["v4_setups"]:
             side=setup["side"]
             counts["v4_"+side+"_"+setup["entry_status"]]+=1
@@ -109,6 +136,7 @@ def replay(d, *,manifest,event,expost_source_sha):
         "input_history_rows":len(frame),
         "prespecified_screen_minutes":AFTER_EVENT_SCREEN_MINUTES,
         "macro_oracle_directions":directions,
+        "continuation_is_OBSERVATION_ONLY_not_a_V4_entry":True,
         "official_source_sha256":expost_source_sha,
         "xau_source_sha256":manifest.get("sha256_csv"),
         "counters":dict(counts),
