@@ -10,13 +10,15 @@ on:
       - 'scripts/r8_replay_r6_usd.py'
       - 'tests/test_r8_vendor_m1.py'
       - 'tests/test_r8_replay_r6_usd.py'
+      - 'scripts/r8_fx6_basket.py'
+      - 'tests/test_r8_fx6_basket.py'
       - '.github/workflows/research_r8_dollaridx.yml'
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: r8-usd-proxy-research-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   r8_integrity:
     runs-on: ubuntu-latest
@@ -29,8 +31,8 @@ jobs:
       - name: Validate both legacy and new R8 causal tests
         env: {PYTHONPATH: 'src:.'}
         run: |
-          python -m py_compile scripts/research_r8_dollaridx_asof_audit.py scripts/research_r8c_r6_dollaridx_ablation.py scripts/r8_vendor_m1.py scripts/r8_replay_r6_usd.py
-          python -m pytest -q tests/test_research_r8_dollaridx_asof_audit.py tests/test_research_r8c_r6_dollaridx_ablation.py tests/test_r8_vendor_m1.py tests/test_r8_replay_r6_usd.py
+          python -m py_compile scripts/research_r8_dollaridx_asof_audit.py scripts/research_r8c_r6_dollaridx_ablation.py scripts/r8_vendor_m1.py scripts/r8_replay_r6_usd.py scripts/r8_fx6_basket.py
+          python -m pytest -q tests/test_research_r8_dollaridx_asof_audit.py tests/test_research_r8c_r6_dollaridx_ablation.py tests/test_r8_vendor_m1.py tests/test_r8_replay_r6_usd.py tests/test_r8_fx6_basket.py
   source_probe:
     needs: r8_integrity
     runs-on: ubuntu-latest
@@ -177,3 +179,76 @@ jobs:
           path: artifacts/fx6/source_probe.json
           if-no-files-found: error
           retention-days: 30
+
+
+  fx6_annual:
+    needs: [r8_integrity, fx6_source_probe]
+    runs-on: ubuntu-latest
+    timeout-minutes: 160
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      PYTHONPATH: 'src:.'
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/r8-fx6-xau-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/r8-fx6-xau-${{ matrix.year }}-manifest.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install pinned providers for research only
+        run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Acquire genuine six FX M1 sources and reconstruct non-ICE dollar proxy
+        run: python scripts/r8_fx6_basket.py --year ${{ matrix.year }} --out /tmp/r8-fx6
+      - name: Acquire genuine XAUUSD M1 baseline source
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Hold fixed R6 event definition; event-time FX6 momentum 5/15/60
+        run: |
+          python scripts/r8_replay_r6_usd.py --xau-csv "$XAU_V193_PRICE_CSV" --xau-manifest "$XAU_V193_PRICE_PROVENANCE" --usd-csv /tmp/r8-fx6/r8_reconstructed_usd6_${{ matrix.year }}.csv --usd-manifest /tmp/r8-fx6/r8_reconstructed_usd6_${{ matrix.year }}_provenance.json --year ${{ matrix.year }} --out artifacts/r8_fx6_year_${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r8-fx6-year-${{ matrix.year }}
+          path: |
+            artifacts/r8_fx6_year_${{ matrix.year }}.json
+            /tmp/r8-fx6/r8_reconstructed_usd6_${{ matrix.year }}_provenance.json
+          if-no-files-found: warn
+          retention-days: 90
+  fx6_aggregate:
+    needs: fx6_annual
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r8-fx6-year-*
+          path: artifacts/fx6-years
+          merge-multiple: true
+      - name: Aggregate fixed R6 macro ablations for all 8 years, report both sides
+        env: {PYTHONPATH: 'src:.'}
+        run: |
+          python scripts/r8_replay_r6_usd.py --shards artifacts/fx6-years/r8_fx6_year_{2019,2020,2021,2022,2023,2024,2025,2026}.json --out artifacts/r8_fx6_macro_h1h4_2019_2026.json
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/r8_fx6_macro_h1h4_2019_2026.json'))
+          assert x['macro_source_contract']=='R8_RECONSTRUCTED_DXY_6FX_HISTDATA_V1'
+          assert x['first_seen_provenance'].startswith('UNVERIFIED')
+          for row in x['summary']:
+              if row['split']=='reused_test_2025_2026' and row['assumed_delay_min']==1 and row['cohort'] in ('BASE_R6','DXY_15_AND_60_ALIGNED'):
+                  print('R8_FX6_HISTORIC_RESULT',row)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r8-fx6-macro-ablation-2019-2026
+          path: artifacts/r8_fx6_macro_h1h4_2019_2026.json
+          if-no-files-found: error
+          retention-days: 90
