@@ -1,0 +1,54 @@
+name: Fed R6 — Causal Swing Pivot + H1 Adverse-Risk Pilot (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'src/fx_scanner/rejection_confirmed_swing_r6_research.py'
+      - 'src/fx_scanner/fomc_continuation_risk_r6_research.py'
+      - 'tests/test_rejection_confirmed_swing_r6.py'
+      - 'tests/test_fomc_continuation_risk_r6.py'
+      - 'tests/test_fed_r5_paired_pilot.py'
+      - 'scripts/replay_fed_r5_paired_pilot.py'
+      - '.github/workflows/fed_r6_pivot_risk_pilot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  causal_structural_and_adverse_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: No peek into future pivots, same-bar adverse first, preserve all technical blockers
+        run: |
+          python -m py_compile src/fx_scanner/rejection_confirmed_swing_r6_research.py src/fx_scanner/fomc_continuation_risk_r6_research.py scripts/replay_fed_r5_paired_pilot.py
+          python -m pytest -q tests/test_rejection_confirmed_swing_r6.py tests/test_fomc_continuation_risk_r6.py tests/test_fed_r5_paired_pilot.py
+  real_xau_fomc_2023_pilot:
+    needs: causal_structural_and_adverse_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: 'src:.'
+      REJECTION_SAMPLE_PATH: /tmp/fed-r6-histdata-2023.csv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Fetch pinned real secondary-market XAU M1, September 2023
+        run: python scripts/rejection_source_histdata_sample.py
+      - name: Audit pivot room and first unique continuation H1 risk, no orders
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_r5_paired_pilot.py --csv "$REJECTION_SAMPLE_PATH" --out artifacts/fed_r6_2023_pivot_risk_observations.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-r6-2023-pivot-adverse-risk-pilot
+          path: artifacts/fed_r6_2023_pivot_risk_observations.json
+          if-no-files-found: error
+          retention-days: 30
