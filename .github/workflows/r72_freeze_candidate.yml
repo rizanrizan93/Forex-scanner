@@ -1,0 +1,97 @@
+name: R7.2 Precommit Frozen One-Day Price Model (No Orders)
+on:
+  push:
+    branches: ['research/r72-frozen-forward-shadow-20261121']
+    paths:
+      - '.github/workflows/r72_freeze_candidate.yml'
+      - 'src/fx_scanner/fed_r72_frozen_candidate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fit_and_freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      R72_TRAIN_SHARDS: '/tmp/r72-original'
+      R72_REPAIRED_2023: '/tmp/r72-repaired'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install deterministic numerical packages
+        run: python -m pip install numpy pandas==2.2.3 pytest==9.0.2
+      - name: Obtain historical 2018 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2018
+          path: /tmp/r72-original/2018
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Obtain historical 2019 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2019
+          path: /tmp/r72-original/2019
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Obtain historical 2020 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2020
+          path: /tmp/r72-original/2020
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Obtain historical 2021 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2021
+          path: /tmp/r72-original/2021
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Obtain historical 2022 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2022
+          path: /tmp/r72-original/2022
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Obtain historical 2023 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2023
+          path: /tmp/r72-original/2023
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Obtain historical 2024 price archive (previously source-audited)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2024
+          path: /tmp/r72-original/2024
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download independent archived 2023 repair source
+        uses: actions/download-artifact@v4
+        with:
+          name: r71-repaired-independent-dukas-2023
+          path: /tmp/r72-repaired
+          run-id: 44831450440
+          github-token: ${{ github.token }}
+      - name: Fit one pre-declared candidate exclusively on 2018-24
+        run: python -m fx_scanner.fed_r72_frozen_candidate
+      - name: Source code SHA and immutable parameter payload fingerprint
+        run: |
+          echo "R72_SOURCE_SHA256=$(sha256sum src/fx_scanner/fed_r72_frozen_candidate.py)"
+          echo "R72_BUILD_COMMIT=$(git rev-parse HEAD)"
+          sha256sum artifacts/r72-frozen-candidate.json
+      - name: Upload ONLY candidate frozen parameters and receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: r72-one-candidate-precommit-params
+          path: artifacts/r72-frozen-candidate.json
+          if-no-files-found: error
+          retention-days: 90

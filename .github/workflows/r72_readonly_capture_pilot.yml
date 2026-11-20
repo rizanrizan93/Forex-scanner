@@ -1,0 +1,67 @@
+name: R7.2 Post-Freeze Raw Price Receipt and Shadow Snapshot (NO ORDERS)
+on:
+  push:
+    branches: ['research/r72-frozen-forward-shadow-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r72_capture_forward.py'
+      - '.github/workflows/r72_readonly_capture_pilot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquisition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: 'src:.'
+      R72_FROZEN_MODEL: 'research/frozen/r72_d1_price_only_v1.json'
+      R72_MODEL_FREEZE_COMMIT: '9e6a426c2ee6b586d8ba6d7acc40a1a8711b454e'
+      R72_FREEZE_COMMITTED_AT: '2026-11-20T23:11:24Z'
+      R72_RAW_H1: '/tmp/r72-public-source/xau-h1-raw.csv'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install numerical and pinned no-trading historical data collector
+        run: |
+          python -m pip install numpy pandas==2.2.3
+          npm install --no-save --ignore-scripts dukascopy-node@1.51.1
+      - name: Verify immutable frozen candidate and unchanged model source
+        run: |
+          test "$(sha256sum src/fx_scanner/fed_r72_frozen_candidate.py | cut -d' ' -f1)" = "d7ccb365407eda50d0f6d504eae87a9d3d2f77792ffe9303cb48ea50edfa17e1"
+          python - <<'PY'
+          import json
+          from fx_scanner.fed_r72_frozen_candidate import _hash
+          m=json.load(open('research/frozen/r72_d1_price_only_v1.json'))
+          assert m['frozen_payload_sha256']=='7f5397487839e6bd0d0a9289dd1229294c04c655e2ca952b513a1367bec73a99'
+          assert _hash({k:v for k,v in m.items() if k!='frozen_payload_sha256'})==m['frozen_payload_sha256']
+          assert m['trained_2025_2026_outcomes'] is False
+          assert m['production_order_authority'] is False
+          PY
+      - name: Fetch raw H1 price history from public source, recording REAL acquisition times
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r72-public-source
+          echo "R72_SRC_FETCH_STARTED_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          END=$(date -u -d '+1 day' +%Y-%m-%d)
+          mkdir -p /tmp/r72-original
+          ./node_modules/.bin/dukascopy-node -i xauusd -from 2026-06-01 -to "$END" -t h1 -p bid -f csv -dir /tmp/r72-original --retries 2 --batch-pause 1000
+          test "$(find /tmp/r72-original -name '*.csv' | wc -l)" -eq 1
+          cp /tmp/r72-original/*.csv /tmp/r72-public-source/xau-h1-raw.csv
+          echo "R72_SRC_FETCH_RECEIVED_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          sha256sum /tmp/r72-public-source/xau-h1-raw.csv
+          wc -l /tmp/r72-public-source/xau-h1-raw.csv
+      - name: Create receipt manifest and strict WAIT or future-only signal
+        run: python -m fx_scanner.fed_r72_capture_forward
+      - name: Package raw historical source with newly observed intake timestamp
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r72-auditable-public-quote-receipt-${{ github.run_id }}
+          path: |
+            /tmp/r72-public-source/xau-h1-raw.csv
+            artifacts/r72-receipt/r72-source-receipt-manifest.json
+          if-no-files-found: warn
+          retention-days: 90

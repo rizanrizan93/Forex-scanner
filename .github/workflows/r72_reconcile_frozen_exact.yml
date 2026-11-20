@@ -1,0 +1,51 @@
+name: R7.2 Byte-Exact Original Frozen Artifact Reconciliation
+on:
+  push:
+    branches: ['research/r72-frozen-forward-shadow-20261121']
+    paths: ['.github/workflows/r72_reconcile_frozen_exact.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  fix_from_original_training_artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch ORIGINAL source-generated model bytes; do not reserialize floats
+        uses: actions/download-artifact@v4
+        with:
+          name: r72-one-candidate-precommit-params
+          path: /tmp/r72-original-model
+          run-id: 44834150729
+          github-token: ${{ github.token }}
+      - name: Assert exact original fitted payload checksum and display discrepancies
+        run: |
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          a=json.loads(Path('/tmp/r72-original-model/r72-frozen-candidate.json').read_text())
+          b=json.loads(Path('research/frozen/r72_d1_price_only_v1.json').read_text())
+          h=lambda x:hashlib.sha256(json.dumps(x,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+          original=h({k:v for k,v in a.items() if k!='frozen_payload_sha256'})
+          print('ORIGINAL_SOURCE_GENERATED_SHA',original,'EXPECTED',a['frozen_payload_sha256'])
+          assert original=='7f5397487839e6bd0d0a9289dd1229294c04c655e2ca952b513a1367bec73a99'
+          for k in a:
+              if a[k]!=b[k]:
+                  print('MANUAL_SERIALIZATION_FIELD_DIFFERENCE',k,str(type(a[k])),str(type(b.get(k))))
+          print('CURRENT_MANUAL_SERIALIZED_SHA',h({k:v for k,v in b.items() if k!='frozen_payload_sha256'}))
+          PY
+      - name: Update only isolated research freeze JSON to original artifact bytes (not main)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: 'research/r72-frozen-forward-shadow-20261121'
+        run: |
+          set -euo pipefail
+          FILE='research/frozen/r72_d1_price_only_v1.json'
+          BLOB=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${FILE}?ref=${TARGET_BRANCH}" --jq '.sha')
+          BYTES=$(base64 -w0 /tmp/r72-original-model/r72-frozen-candidate.json)
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${FILE}" \
+            -f branch="${TARGET_BRANCH}" \
+            -f sha="${BLOB}" \
+            -f message='freeze(R7.2): restore byte-exact original training artifact for canonical SHA integrity' \
+            -f content="${BYTES}" --jq '{sha:.commit.sha,content_sha:.content.sha}'
