@@ -69,6 +69,49 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
         " · quote bid/ask: "+_wib(report.get("quote_at"))+
         " · status: "+str(report["status"])
     )
+    if market_context["direction"] in ("BUY","SELL"):
+        st.info(
+            "Arah "+market_context["direction"]+" untuk **pantauan manual**, "
+            "berdasarkan yield Treasury harian dan konfirmasi DXY/yield "
+            "intraday bila segar. Status "+market_context["strength"]+
+            ". Ini bukan perintah entry atau hasil FOMC R4."
+        )
+    else:
+        st.warning(
+            "BIAS PASAR WAIT · "+market_context["reason"].replace("_"," ")+
+            ". Data dolar/yield mungkin tidak lengkap atau saling bertentangan."
+        )
+    with st.expander("Audit arah pasar · sumber, timestamp dan pembatasan",expanded=False):
+        cols=[]
+        for name,v in market_context.get("daily_yields",{}).items():
+            cols.append({"Indikator":name,
+                         "Nilai":v.get("yield_pct"),
+                         "Perubahan":v.get("daily_delta_bps"),
+                         "Sumber":v.get("provider"),
+                         "Waktu WIB":_wib(v.get("observed_at")),
+                         "Segar":v.get("valid_official_daily")})
+        dxy=market_context.get("dxy",{})
+        cols.append({"Indikator":"DXY (proksi)",
+                     "Nilai":dxy.get("current"),
+                     "Perubahan":dxy.get("change_pct"),
+                     "Sumber":dxy.get("source"),
+                     "Waktu WIB":_wib(dxy.get("observed_at")),
+                     "Segar":dxy.get("fresh")})
+        intra=market_context.get("intraday_yield",{})
+        cols.append({"Indikator":"Treasury intraday",
+                     "Nilai":intra.get("futures_price"),
+                     "Perubahan":intra.get("pressure"),
+                     "Sumber":intra.get("basis"),
+                     "Waktu WIB":_wib(intra.get("observed_at")),
+                     "Segar":intra.get("available_for_direction")})
+        st.dataframe(cols,hide_index=True,width="stretch")
+        st.caption(
+            "Treasury resmi harian bukan intraday. ZN futures hanya proksi "
+            "tekanan yield. DXY Yahoo bukan ICE resmi. Kualitas engine asal: "+
+            market_context["quality_state"]+" / "+market_context["quality_screened_bias"]+
+            ". BUY/SELL belum terkalibrasi sebagai probabilitas menang."
+        )
+
     if report["macro_direction"]=="WAIT":
         st.warning(
             "MACRO WAIT · sumber intraday R4 (OIS 1Y, real yield TIPS, "
@@ -121,7 +164,8 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
                         )
                         st.caption(
                             "Konfirmasi M1: "+("teramati" if z["trigger_confirmed"] else "belum")+
-                            " · macro alignment: "+z["macro_alignment"]
+                            " · macro alignment: "+z["macro_alignment"]+
+                            " · bias pasar: "+z["market_context_alignment"]
                         )
                         with st.expander("Checklist syarat · "+side+" "+str(idx), expanded=False):
                             st.dataframe(
