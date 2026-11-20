@@ -6,19 +6,133 @@ on:
       - 'tests/test_research_r8_dollaridx_asof_audit.py'
       - 'scripts/research_r8c_r6_dollaridx_ablation.py'
       - 'tests/test_research_r8c_r6_dollaridx_ablation.py'
+      - 'scripts/r8_vendor_m1.py'
+      - 'scripts/r8_replay_r6_usd.py'
+      - 'tests/test_r8_vendor_m1.py'
+      - 'tests/test_r8_replay_r6_usd.py'
       - '.github/workflows/research_r8_dollaridx.yml'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: r8-usd-proxy-research-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   r8_integrity:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Validate both legacy and new R8 causal tests
+        env: {PYTHONPATH: 'src:.'}
+        run: |
+          python -m py_compile scripts/research_r8_dollaridx_asof_audit.py scripts/research_r8c_r6_dollaridx_ablation.py scripts/r8_vendor_m1.py scripts/r8_replay_r6_usd.py
+          python -m pytest -q tests/test_research_r8_dollaridx_asof_audit.py tests/test_research_r8c_r6_dollaridx_ablation.py tests/test_r8_vendor_m1.py tests/test_r8_replay_r6_usd.py
+  source_probe:
+    needs: r8_integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - name: Retrieve original USD index M1 from Dukascopy (3 sample days)
+        env: {PYTHONPATH: 'src:.'}
+        shell: bash
+        run: |
+          mkdir -p artifacts/r8-probe
+          python - <<'PY'
+          import datetime as dt, json, pathlib
+          from scripts.r8_vendor_m1 import fetch_day
+          out=pathlib.Path('artifacts/r8-probe');logs=[]
+          days=[dt.date(2019,1,2),dt.date(2024,11,18),dt.date(2026,11,19)]
+          for day in days:
+              rec,rows=fetch_day(day,retries=2)
+              logs.append(rec)
+              print('ORIGINAL_USD_PROBE',day,rec['status'],len(rows),flush=True)
+          (out/'provenance.json').write_text(json.dumps(logs,indent=2)+'\n')
+          if not all(r['status']=='OK' for r in logs):
+              raise SystemExit('VENDOR_BI5_SAMPLE_SOURCE_NOT_VERIFIED')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          python-version: '3.11'
-      - run: pip install pandas==2.2.3 pytest==9.0.2
-      - run: python -m py_compile scripts/research_r8_dollaridx_asof_audit.py scripts/research_r8c_r6_dollaridx_ablation.py
-      - run: python -m pytest -q tests/test_research_r8_dollaridx_asof_audit.py tests/test_research_r8c_r6_dollaridx_ablation.py
+          name: r8-original-usd-probe
+          path: artifacts/r8-probe
+          if-no-files-found: error
+          retention-days: 30
+  annual:
+    needs: source_probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      PYTHONPATH: 'src:.'
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/r8-xau-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/r8-xau-${{ matrix.year }}-manifest.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install pinned research dependencies and original XAU downloader
+        run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Acquire original Dukascopy DOLLARIDXUSD M1 candles and raw-source SHA catalog
+        run: python scripts/r8_vendor_m1.py --year ${{ matrix.year }} --workers 4 --out /tmp/r8-usd
+      - name: Acquire verified historical XAUUSD M1 (same source as R6)
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Locked R6 event replay with USD index 5/15/60m and lag scenarios
+        run: |
+          python scripts/r8_replay_r6_usd.py --xau-csv "$XAU_V193_PRICE_CSV" --xau-manifest "$XAU_V193_PRICE_PROVENANCE" --usd-csv /tmp/r8-usd/dollaridxusd_m1_${{ matrix.year }}.csv --usd-manifest /tmp/r8-usd/dollaridxusd_m1_${{ matrix.year }}_provenance.json --year ${{ matrix.year }} --out artifacts/r8_year_${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r8-year-${{ matrix.year }}
+          path: |
+            artifacts/r8_year_${{ matrix.year }}.json
+            /tmp/r8-usd/dollaridxusd_m1_${{ matrix.year }}_provenance.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: annual
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r8-year-*
+          path: artifacts/r8-years
+          merge-multiple: true
+      - name: Report BUY and SELL n by year / H1 / H4 / lag and fixed macro filters
+        env: {PYTHONPATH: 'src:.'}
+        run: |
+          python scripts/r8_replay_r6_usd.py --shards artifacts/r8-years/r8_year_{2019,2020,2021,2022,2023,2024,2025,2026}.json --out artifacts/r8_macro_h1h4_2019_2026.json
+          python - <<'PY'
+          import json
+          r=json.load(open('artifacts/r8_macro_h1h4_2019_2026.json'))
+          assert r['years']==list(range(2019,2027))
+          assert not r['execution_authority'] and not r['execution_influence']
+          for x in r['summary']:
+              if x['split']=='reused_test_2025_2026' and x['assumed_delay_min']==1 and x['cohort'] in ('BASE_R6','DXY_15_AND_60_ALIGNED'):
+                  print('R8_RESULT',x)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r8-h1h4-macro-ablation-2019-2026
+          path: artifacts/r8_macro_h1h4_2019_2026.json
+          if-no-files-found: error
+          retention-days: 90
