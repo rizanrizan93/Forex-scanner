@@ -1,0 +1,53 @@
+name: R8 USD source-byte acquisition probe (research only)
+on:
+  push:
+    branches:
+      - research/xau-r8-dollaridx-provenance-20261119
+    paths:
+      - .github/workflows/r8_usd_source_probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch one original Dukascopy BI5 hour and record provenance
+        shell: bash
+        run: |
+          mkdir -p research_artifacts
+          python - <<'PY'
+          import datetime as dt, hashlib, json, os, pathlib, urllib.request, urllib.error
+          out=pathlib.Path("research_artifacts")
+          url="https://datafeed.dukascopy.com/datafeed/DOLLARIDXUSD/2019/00/02/00h_ticks.bi5"
+          record={"instrument":"DOLLARIDXUSD","date_utc":"2019-01-02T00:00:00Z",
+                  "source_url":url,"vendor_month_zero_indexed":True,
+                  "note":"Acquisition time in 2026 does NOT establish 2019 first_seen_at. Historical macro as-of requires a preregistered assumed lag or independent availability evidence."}
+          try:
+              req=urllib.request.Request(url,headers={"User-Agent":"R8-Research-Provenance/1.0"})
+              with urllib.request.urlopen(req,timeout=35) as response:
+                  data=response.read()
+                  record["http_status"]=response.status
+                  record["response_final_url"]=response.url
+              record["acquired_at_utc"]=dt.datetime.now(dt.timezone.utc).isoformat()
+              record["raw_byte_count"]=len(data)
+              record["raw_sha256"]=hashlib.sha256(data).hexdigest()
+              if data:
+                  (out/"DOLLARIDXUSD_2019-01-02_00h_ticks.bi5").write_bytes(data)
+              record["status"]="acquired" if data and record["http_status"]==200 else "empty_or_non200"
+          except Exception as e:
+              record["acquired_at_utc"]=dt.datetime.now(dt.timezone.utc).isoformat()
+              record["status"]="failed"
+              record["error_type"]=type(e).__name__
+              record["error"]=str(e)[:500]
+          (out/"source_probe.json").write_text(json.dumps(record,indent=2)+"\n")
+          print(json.dumps(record,indent=2))
+          PY
+      - name: Upload original bytes and provenance (private run artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-dollaridxusd-2019-01-02-00h
+          path: research_artifacts/
+          retention-days: 7
+          if-no-files-found: error
