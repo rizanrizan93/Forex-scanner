@@ -1,0 +1,41 @@
+name: R7.1 Independent Historical Dollar Index Quote Archive (Not ICE)
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths: ['.github/workflows/r71_dollar_index_history.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dollar-index-hourly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2018,2019,2020,2021,2022,2023,2024]
+    env:
+      YEAR: ${{ matrix.year }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install pinned broker index quote collector
+        run: npm install --no-save --ignore-scripts dukascopy-node@1.51.1
+      - name: Retrieve original hourly timestamped Dollar Index CFD bars (NOT official ICE DXY)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r71-dollar
+          NEXT=$(( YEAR + 1 ))
+          ./node_modules/.bin/dukascopy-node -i dollaridxusd -from "${YEAR}-01-01" -to "${NEXT}-01-01" -t h1 -p bid -f csv -dir /tmp/r71-dollar --retries 2 --batch-pause 1000
+          test -n "$(find /tmp/r71-dollar -name '*.csv' -print -quit)"
+          wc -l /tmp/r71-dollar/*.csv
+          head -n 2 /tmp/r71-dollar/*.csv
+      - name: Store vendor raw historical H1 data with timestamps
+        uses: actions/upload-artifact@v4
+        with:
+          name: r71-duka-dollar-idx-h1-${{ matrix.year }}
+          path: /tmp/r71-dollar/*.csv
+          if-no-files-found: error
+          retention-days: 30

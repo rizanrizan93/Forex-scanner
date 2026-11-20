@@ -1,0 +1,45 @@
+name: R7.1 Independent 2023 Dukascopy Full-Year M1 Recovery
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths: ['.github/workflows/r71_dukas_2023_full.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r71-duka-2023-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  monthly-public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        month: ['01','02','03','04','05','06','07','08','09','10','11','12']
+    env:
+      MONTH: ${{ matrix.month }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install pinned historical Dukascopy collector (not a broker connection)
+        run: npm install --no-save --ignore-scripts dukascopy-node@1.51.1
+      - name: Download public Dukascopy BID M1 observations with real timestamps
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r71-duka
+          FIRST="2023-${MONTH}-01"
+          END=$(date -u -d "${FIRST} +1 month" +%F)
+          ./node_modules/.bin/dukascopy-node -i xauusd -from "${FIRST}" -to "${END}" -t m1 -p bid -f csv -dir /tmp/r71-duka --retries 3 --batch-pause 1000
+          test -n "$(find /tmp/r71-duka -name '*.csv' -print -quit)"
+          head -n 2 /tmp/r71-duka/*.csv
+          wc -l /tmp/r71-duka/*.csv
+      - name: Save immutable raw vendor monthly CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: r71-dukascopy-2023-${{ matrix.month }}
+          path: /tmp/r71-duka/*.csv
+          if-no-files-found: error
+          retention-days: 30

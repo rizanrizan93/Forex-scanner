@@ -1,0 +1,32 @@
+name: R7.1 XAU 2023 Dukascopy Independent Recovery Pilot
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths: ['.github/workflows/r71_dukas_2023_repair.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Pin public independent M1 price collector
+        run: npm install --no-save --ignore-scripts dukascopy-node@1.51.1
+      - name: Fetch week where HistData 2023 has almost no valid days
+        run: |
+          mkdir -p /tmp/r71-dukas
+          ./node_modules/.bin/dukascopy-node -i xauusd -from 2023-03-06 -to 2023-03-13 -t m1 -p bid -f csv -dir /tmp/r71-dukas --retries 2 --batch-pause 1000
+          find /tmp/r71-dukas -type f -maxdepth 3 -printf '%p %s bytes\n'
+          find /tmp/r71-dukas -type f -name '*.csv' -exec head -n 3 {} \;
+      - name: Archive pilot raw output even when vendor download errors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r71-xau-2023-dukas-pilot
+          path: /tmp/r71-dukas
+          if-no-files-found: warn
+          retention-days: 7

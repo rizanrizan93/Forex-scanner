@@ -1,0 +1,48 @@
+name: R7.1 Assemble and Audit Independent 2023 Price Repair
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths: ['.github/workflows/r71_dukas_2023_aggregate.yml','src/fx_scanner/fed_r71_repair_2023.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: 'src:.'
+      R71_DUKA_MONTH_DIR: '/tmp/r71-source-months'
+      R71_HISTDATA_2023_CSV: '/tmp/r71-old-reference/xau-daily-2023.csv'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install pinned numeric library
+        run: python -m pip install numpy pandas==2.2.3
+      - name: Download the 12 independent source month artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r71-dukascopy-2023-*
+          path: /tmp/r71-source-months
+          merge-multiple: false
+          run-id: 44831088385
+          github-token: ${{ github.token }}
+      - name: Reuse ORIGINAL 2023 HistData accepted UTC daily evidence for overlap test
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2023
+          path: /tmp/r71-old-reference
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Validate full year, label vendor and compare overlapping dates
+        run: python -m fx_scanner.fed_r71_repair_2023
+      - name: Save recoverable full year, comparison and 12 monthly hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r71-repaired-independent-dukas-2023
+          path: artifacts/r71-dukas-repair/*
+          if-no-files-found: warn
+          retention-days: 30
