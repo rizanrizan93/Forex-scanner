@@ -28,6 +28,7 @@ def _empty(event_id,at,reason):
         "event_id":event_id,"decision_at":at.isoformat(),
         "direction":"WAIT","watch_bias":"WAIT",
         "policy_information_regime":"UNKNOWN",
+        "market_data_status":"UNVERIFIED",
         "reason_codes":[reason],
         "measured_ois1y_bp":None,
         "measured_real_yield10y_bp":None,
@@ -126,6 +127,7 @@ def watch(event,points,*,decision_at,r2_context=None):
     real=delta["TIPS10Y_INTRADAY_YIELD_BP"]
     stocks=delta["SP500_INDEX_LEVEL"]
     usd=delta["USD_INDEX_PROXY_LEVEL"]
+    result["market_data_status"]="VALIDATED_CAPTURED_PRE_POST_INTRADAY"
     result.update(measured_ois1y_bp=round(ois,5),
                   measured_real_yield10y_bp=round(real,5),
                   measured_sp500_return_pct=round(stocks,5),
