@@ -80,8 +80,24 @@ def audit_forward_shadow(records,*,horizon,frozen_model_sha,frozen_params_sha,
         if outcome<=made:
             discarded.append((index,"NON_FUTURE_OUTCOME"))
             continue
-        entry=float(item["entry_price"])
-        close=float(item["outcome_price"])
+        # A timestamp 1 minute later is not a completed D1/W1/M1/Y1
+        # horizon. Require separately recorded count of CLOSED market
+        # sessions, plus a receipt at or after the sampled outcome.
+        try:
+            captured=_utc(item["outcome_captured_at"])
+            sessions=item["completed_trading_sessions"]
+            if (isinstance(sessions,bool) or not isinstance(sessions,int)
+                or sessions < HORIZONS[horizon]):
+                discarded.append((index,"HORIZON_TRADING_SESSIONS_INCOMPLETE"))
+                continue
+            if captured<outcome:
+                discarded.append((index,"OUTCOME_CAPTURE_BEFORE_OUTCOME"))
+                continue
+            entry=float(item["entry_price"])
+            close=float(item["outcome_price"])
+        except (KeyError,TypeError,ValueError,OverflowError):
+            discarded.append((index,"INVALID_OUTCOME_RECEIPT_OR_PRICE"))
+            continue
         if not all(isfinite(x) and x>0 for x in (entry,close)):
             discarded.append((index,"INVALID_PRICE"))
             continue
@@ -92,8 +108,10 @@ def audit_forward_shadow(records,*,horizon,frozen_model_sha,frozen_params_sha,
             "side":item["side"],"state":"OBSERVED_PROVISIONAL",
             "signed_move_usd_per_oz":round(signed_return,5),
             "correct_after_hypothetical_0_40_spread":signed_return>0.4,
-            "original_ingestion_manifest_independently_verified":
-                independent_acquisition_manifest_verified,
+            "outcome_captured_at":captured.isoformat(),
+            "completed_trading_sessions_claimed":sessions,
+            # A caller-supplied Boolean is NOT independently audited.
+            "original_ingestion_manifest_independently_verified":False,
         })
     completed=[x for x in results if x["state"]=="OBSERVED_PROVISIONAL"]
     buy=sum(x["side"]=="BUY" for x in completed)
@@ -104,14 +122,17 @@ def audit_forward_shadow(records,*,horizon,frozen_model_sha,frozen_params_sha,
     return {
         "contract":CONTRACT,
         "horizon":horizon,"frozen_at":frozen.isoformat(),
-        "source_capture_clocks_are_attested":
+        "source_capture_clocks_are_attested":False,
+        "external_manifest_verification_claimed":
             bool(independent_acquisition_manifest_verified),
+        "source_manifest_independently_rechecked":False,
         "completed_future_records":len(completed),
         "pending_future_records":sum(x["state"].startswith("PENDING") for x in results),
         "buy_completed":buy,"sell_completed":sell,
         "excluded_reused_or_invalid_records":len(discarded),
         "excluded_reasons":discarded,
-        "min_independent_forward_evidence_met":bool(eligible),
+        "min_provisional_forward_sample_count_met":bool(eligible),
+        "min_independent_forward_evidence_met":False,
         "status":("FORWARD_OBSERVATION_PROVISIONAL" if completed else
                   "WAIT_NEW_POST_FREEZE_MARKET_OUTCOMES"),
         "independent_forward_accuracy_verified":False,
