@@ -36,8 +36,13 @@ def load_verified(xau_csv:Path,xau_manifest:Path,usd_csv:Path,usd_manifest:Path,
     if xp.get('year')!=year or xp.get('source')!='HISTDATA_XAUUSD_M1' or xp.get('failed_periods'):
         raise ValueError('XAU_SOURCE_PROVENANCE_FAILED')
     if xp.get('normalized_csv_sha256')!=sha(xau_csv):raise ValueError('XAU_SHA_MISMATCH')
-    if up.get('year')!=year or up.get('instrument')!='DOLLARIDXUSD' or up.get('contract')!='R8_USD_ORIGINAL_BI5_M1_V1':
+    allowed={('DOLLARIDXUSD','R8_USD_ORIGINAL_BI5_M1_V1'),
+             ('RECONSTRUCTED_DXY_6FX_HISTDATA','R8_RECONSTRUCTED_DXY_6FX_HISTDATA_V1')}
+    if up.get('year')!=year or (up.get('instrument'),up.get('contract')) not in allowed:
         raise ValueError('USD_SOURCE_PROVENANCE_FAILED')
+    if up.get('instrument')=='RECONSTRUCTED_DXY_6FX_HISTDATA':
+        if len(up.get('component_sources',[]))!=6 or any(s.get('failed_periods') for s in up['component_sources']):
+            raise ValueError('SIX_FX_PROVENANCE_INCOMPLETE')
     if up.get('csv_sha256')!=sha(usd_csv):raise ValueError('USD_SHA_MISMATCH')
     if 'HISTORICAL_FIRST_SEEN_UNKNOWN' not in up.get('availability_model',''):
         raise ValueError('USD_AVAILABILITY_MUST_BE_LABELLED_SCENARIO')
@@ -57,7 +62,7 @@ def make_r6_events(xau,year,horizon):
         e=e.loc[years==year]
     return r6._attach_outcome(m1,e,horizon)
 
-def macro_at_events(usd,events,delay_minutes=1,max_quote_age_minutes=5):
+def macro_at_events(usd,events,delay_minutes=1,max_quote_age_minutes=5,source_contract='R8_USD_ORIGINAL_BI5_M1_V1'):
     """Observed M1 prices; explicit fixed assumed latency and actual bar-close quote age.
 
     Output is NEVER a claim of true historical first_seen_at.
@@ -68,7 +73,19 @@ def macro_at_events(usd,events,delay_minutes=1,max_quote_age_minutes=5):
     if events.empty:
         return pd.DataFrame(columns=['entry_ns','macro_ready','quote_age_minutes',
                 'return_5m_pct','return_15m_pct','return_60m_pct'])
-    m=normalize_quote_m1(usd,PROXY_ID)
+    if source_contract=='R8_USD_ORIGINAL_BI5_M1_V1':
+        m=normalize_quote_m1(usd,PROXY_ID)
+    elif source_contract=='R8_RECONSTRUCTED_DXY_6FX_HISTDATA_V1':
+        if not {'timestamp','open','high','low','close'}.issubset(usd):raise ValueError('FX6_REQUIRED_COLUMNS')
+        if not usd.timestamp.astype(str).str.endswith(('Z','+00:00')).all():raise ValueError('FX6_UTC_REQUIRED')
+        stamps=pd.to_datetime(usd.timestamp,utc=True,errors='raise')
+        if stamps.duplicated().any() or not stamps.is_monotonic_increasing:raise ValueError('FX6_BAD_TIMESTAMP')
+        m=usd[['open','high','low','close']].astype('float64')
+        if not np.isfinite(m.to_numpy()).all() or (m.low<=0).any():raise ValueError('FX6_BAD_PRICE')
+        if (m.high < m[['open','close']].max(axis=1)).any() or (m.low>m[['open','close']].min(axis=1)).any():
+            raise ValueError('FX6_BAD_PRICE_GEOMETRY')
+        m.index=pd.DatetimeIndex(stamps)
+    else:raise ValueError('UNKNOWN_MACRO_SOURCE')
     r=_known_returns(m)
     r['bar_close_ns']=m.index.asi8+MINUTE_NS
     r['assumed_available_ns']=r.bar_close_ns+delay_minutes*MINUTE_NS
@@ -129,11 +146,12 @@ def replay_one_year(xau_csv,xau_manifest,usd_csv,usd_manifest,year):
                      'full_future_path':int(events.complete.sum()),'invalid_future_path':int((~events.complete).sum())})
         valid=events.loc[events.complete]
         for delay in ASSUMED_DELAY_MINUTES:
-            macro=macro_at_events(usd,valid,delay_minutes=delay,max_quote_age_minutes=MAX_QUOTE_AGE_MINUTES)
+            macro=macro_at_events(usd,valid,delay_minutes=delay,max_quote_age_minutes=MAX_QUOTE_AGE_MINUTES,source_contract=up['contract'])
             rows.extend(evaluate_events(events,macro,year,horizon,delay))
     return {'contract':'RIZAN_R8_HISTORICAL_CONDITIONAL_ABLATION_V1','year':year,
             'xau_sha256':xp['normalized_csv_sha256'],'usd_sha256':up['csv_sha256'],
-            'usd_days_ok':up['days_ok'],'usd_missing_weekdays':up['missing_weekdays'],
+            'usd_days_ok':up.get('days_ok'),'usd_missing_weekdays':up.get('missing_weekdays'),
+            'macro_source_contract':up['contract'],'macro_instrument':up['instrument'],
             'availability_status':'HISTORICAL_FIRST_SEEN_UNVERIFIED_ASSUMED_LAG_SENSITIVITY_ONLY',
             'horizon_diagnostics':diag,'results':rows,'execution_authority':False,'execution_influence':False}
 
@@ -143,6 +161,8 @@ def aggregate(shards):
         raise ValueError('EIGHT_YEAR_SHARDS_REQUIRED')
     if any(x['contract']!='RIZAN_R8_HISTORICAL_CONDITIONAL_ABLATION_V1' for x in data):
         raise ValueError('INVALID_SHARD_CONTRACT')
+    source_ids={x.get('macro_source_contract') for x in data}
+    if len(source_ids)!=1 or None in source_ids:raise ValueError('MIXED_OR_UNKNOWN_MACRO_SOURCE')
     rows=pd.DataFrame([r for shard in data for r in shard['results']])
     result=[]
     for (h,side,lag,cohort),g in rows.groupby(['horizon','side','assumed_delay_min','cohort'],sort=True):
@@ -155,6 +175,7 @@ def aggregate(shards):
     return {'contract':'RIZAN_R8_HISTORICAL_CONDITIONAL_AGGREGATE_V1',
             'years':list(range(2019,2027)),'cost_scenario_usd_oz':COST_USD_OZ,
             'locked_R6_policies':FIXED_POLICIES,
+            'macro_source_contract':next(iter(source_ids)),
             'first_seen_provenance':'UNVERIFIED_HISTORIC_VENDOR_AVAILABILITY; CANNOT CLAIM REAL POINT_IN_TIME',
             'evaluation_warning':'2025-2026 repeatedly inspected, NOT pristine project holdout. No calibration on it.',
             'execution_authority':False,'execution_influence':False,
