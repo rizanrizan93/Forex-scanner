@@ -1,0 +1,102 @@
+name: R7 Millions Real XAU and Lagged Macro Proxy Research (No Orders)
+on:
+  push:
+    branches: ['research/r7-xau-multihorizon-20261120']
+    paths:
+      - 'src/fx_scanner/fed_r7_histdata_daily.py'
+      - 'src/fx_scanner/fed_r7_fred_proxy_panel.py'
+      - 'src/fx_scanner/fed_r7_million_grid.py'
+      - 'src/fx_scanner/fed_r7_million_calibration_runner.py'
+      - 'tests/test_fed_r7_million_grid.py'
+      - '.github/workflows/fed_r7_million_calibration.yml'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/fx_scanner/fed_r7_histdata_daily.py'
+      - 'src/fx_scanner/fed_r7_fred_proxy_panel.py'
+      - 'src/fx_scanner/fed_r7_million_grid.py'
+      - 'src/fx_scanner/fed_r7_million_calibration_runner.py'
+      - 'tests/test_fed_r7_million_grid.py'
+      - '.github/workflows/fed_r7_million_calibration.yml'
+permissions:
+  contents: read
+concurrency:
+  group: r7-million-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install pinned repository packages
+        run: python -m pip install -r requirements.txt
+      - name: Compile model and admission tests
+        run: |
+          python -m py_compile src/fx_scanner/fed_r7_histdata_daily.py src/fx_scanner/fed_r7_fred_proxy_panel.py src/fx_scanner/fed_r7_million_grid.py src/fx_scanner/fed_r7_million_calibration_runner.py
+          python -m pytest -q tests/test_fed_r7_million_grid.py tests/test_fed_r7_multihorizon_factor_model.py
+  real-price-shards:
+    needs: regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      R7_PRICE_YEAR: ${{ matrix.year }}
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install historical vendor snapshot
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download verified real XAUUSD M1 from secondary provider
+        run: python -m fx_scanner.fed_r7_histdata_daily
+      - name: Attach UTC daily shards and source fingerprints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r7-xau-price-${{ matrix.year }}
+          path: artifacts/r7-daily/xau-daily-${{ matrix.year }}.*
+          if-no-files-found: warn
+          retention-days: 14
+  million-grid:
+    needs: real-price-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONPATH: 'src:.'
+      R7_SOURCE_SHARDS: /tmp/r7-price-shards
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install model dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Obtain all historical annual price shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r7-xau-price-*
+          path: /tmp/r7-price-shards
+          merge-multiple: false
+      - name: Read FRED retrospective proxies and screen million configurations
+        run: python -m fx_scanner.fed_r7_million_calibration_runner
+      - name: Publish full reproducible report with provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r7-three-million-factor-grid-results
+          path: artifacts/r7-million-grid-results.json
+          if-no-files-found: warn
+          retention-days: 30
