@@ -35,6 +35,10 @@ RETRO_MACRO_FEATURES=(
     "real10_delta_5_bps","nom2_delta_5_bps",
     "nom10_delta_5_bps","broad_usd_ret5_pct",
 )
+OFFICIAL_OBSERVATION_MACRO_FEATURES=(
+    "tips10y_delta5_bps","ust2y_delta5_bps",
+    "ust10y_delta5_bps","duka_dollaridx_5d_pct",
+)
 STATES=("BULLISH","BEARISH","LIQUIDITY_STRESS","NEUTRAL")
 COST_USD_PER_OZ=0.4
 
@@ -72,6 +76,8 @@ def _out(horizon,features,excluded):
         "quality":"DEVELOPMENT_DIAGNOSTIC_ONLY",
         "factor_set":list(features),
         "uses_latest_vintage_macro_proxy":any(x in RETRO_MACRO_FEATURES for x in features),
+        "uses_official_treasury_observation_and_broker_dollar_index_proxy":
+            any(x in OFFICIAL_OBSERVATION_MACRO_FEATURES for x in features),
         "official_ICE_DXY_PIT_verified":False,
         "original_release_timestamp_pit_verified":False,
         "quarantined_2025_2026_rows_not_read":excluded,
@@ -230,13 +236,17 @@ def _one(d,features,year,h,params, y,dollars,admitted):
 
 
 def nested_regime_walk_forward(frame,*,horizon,include_retrospective_macro=False,
+                               include_official_observation_macro=False,
                                outer_years=(2021,2022,2023,2024)):
+    if include_retrospective_macro and include_official_observation_macro:
+        raise ValueError("TWO_MACRO_SOURCE_FAMILIES_CANNOT_SHARE_ONE_FIT")
     if horizon not in HORIZONS:
         raise ValueError("UNSUPPORTED_HORIZON")
     if any(y not in (2021,2022,2023,2024) for y in outer_years):
         raise ValueError("OUTER_FOLD_MUST_BE_PRE_2025_DEVELOPMENT")
     features=PRICE_FEATURES+(
-        RETRO_MACRO_FEATURES if include_retrospective_macro else ())
+        OFFICIAL_OBSERVATION_MACRO_FEATURES if include_official_observation_macro
+        else RETRO_MACRO_FEATURES if include_retrospective_macro else ())
     d,excluded=_valid_frame(frame,features)
     output=_out(horizon,features,excluded)
     y,dollars=_windows(d,HORIZONS[horizon])
@@ -287,7 +297,11 @@ def nested_regime_walk_forward(frame,*,horizon,include_retrospective_macro=False
             f:round(float(abs_global[j]/tot*100),3) if tot>1e-12 else 0.0
             for j,f in enumerate(features)}
         for state,fit in model["local"].items():
-            b=(1-blend)*model["global"]["beta"]+blend*fit["beta"]
+            # Regime-local ridge uses a DIFFERENT feature SD than
+            # the global fit. Convert local beta to GLOBAL-standard
+            # deviation units before comparing or displaying weights.
+            comparable_local=fit["beta"]*model["global"]["sd"]/fit["sd"]
+            b=(1-blend)*model["global"]["beta"]+blend*comparable_local
             tot=float(np.abs(b).sum())
             weight[state]={
                 f:round(float(100*abs(b[j])/tot),3) if tot>1e-12 else 0.0
