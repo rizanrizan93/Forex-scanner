@@ -214,6 +214,9 @@ def render_fed_r6_manual_areas():
     @st.cache_data(ttl=8,show_spinner=False)
     def load(slot):
         return fetch_market()
+    @st.cache_data(ttl=20,show_spinner=False)
+    def load_macro(slot):
+        return fetch_pre_news_snapshot()
     @st.fragment(run_every="15s")
     def panel():
         now=datetime.now(UTC)
@@ -221,5 +224,9 @@ def render_fed_r6_manual_areas():
             source=load(int(now.timestamp()//8))
         except (OSError,ValueError,TypeError,KeyError,TimeoutError):
             source=None
-        render_view(source,now=now)
+        try:
+            macro=load_macro(int(now.timestamp()//20))
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError):
+            macro=None
+        render_view(source,macro_snapshot=macro,now=now)
     panel()
