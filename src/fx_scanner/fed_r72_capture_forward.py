@@ -138,10 +138,21 @@ def build_capture(*,raw_h1_path,model_path,source_started_at,
         # later H1 bars after the most recent fully completed UTC day.
         last_complete=daily.index[-1]
         any_after=(quotes.timestamp>=last_complete+pd.Timedelta(days=1)).any()
-        if any_after:
+        # Pilot D1 decisions are made only during Saturday/Sunday
+        # WEEKEND when Friday 00-24 UTC daily candle is fully closed
+        # and before Sunday 21:00 UTC potential gold reopening.
+        # Avoid any new intra-week decision whose next-session open
+        # could have occurred before receipt under UTC-day labeling.
+        weekend_preopen=(clock.dayofweek==5 or
+                         (clock.dayofweek==6 and clock.hour<21))
+        if not weekend_preopen:
+            capture["reason"]="WAIT_ONLY_WEEKEND_PRE_NEXT_SESSION_D1_PILOT"
+        elif any_after:
             capture["reason"]="NEXT_UTC_TRADING_SESSION_ALREADY_STARTED"
-        elif clock-last_complete>pd.Timedelta(days=5):
-            capture["reason"]="LAST_COMPLETE_PRICE_DAY_TOO_OLD"
+        elif last_complete.dayofweek!=4:
+            capture["reason"]="REQUIRE_MOST_RECENT_COMPLETE_FRIDAY_UTC"
+        elif clock-last_complete>pd.Timedelta(days=3):
+            capture["reason"]="FRIDAY_PRICE_SESSION_TOO_OLD"
         else:
             # This deliberately prevents a signal before model was
             # actually committed as a frozen source artifact.
@@ -151,7 +162,13 @@ def build_capture(*,raw_h1_path,model_path,source_started_at,
                 capture["reason"]="MODEL_NOT_FROZEN_WHEN_SIGNAL_CONSTRUCTED"
             else:
                 p=predict_from_frozen(model,daily[["open","high","low","close"]])
+                event_id=hashlib.sha256(
+                    (model["frozen_payload_sha256"]+"|"+
+                     last_complete.isoformat()+"|D1").encode("utf-8")).hexdigest()
                 capture.update(
+                    prospective_event_id=event_id,
+                    shadow_target="FIRST_COMPLETE_NEXT_GOLD_TRADING_SESSION_AFTER_WEEKEND",
+                    max_one_unique_event_per_completed_friday=True,
                     signal_status="SHADOW_SEARCH_ONLY",
                     reason="PRE_NEXT_UTC_SESSION_FROZEN_SIGNAL",
                     prediction=p,
