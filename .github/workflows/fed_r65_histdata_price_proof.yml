@@ -1,5 +1,12 @@
 name: R6.5 Empirical XAU Four-Hour Price-only Pilot (No Orders)
 on:
+  push:
+    branches: ['research/r63-liquidity-stress-20261120']
+    paths:
+      - 'src/fx_scanner/fed_r65_histdata_price_audit.py'
+      - 'src/fx_scanner/fed_r65_histdata_yearmonth_runner.py'
+      - 'tests/test_fed_r65_histdata_price_audit.py'
+      - '.github/workflows/fed_r65_histdata_price_proof.yml'
   pull_request:
     paths:
       - 'src/fx_scanner/fed_r65_histdata_price_audit.py'
