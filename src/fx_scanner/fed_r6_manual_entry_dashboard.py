@@ -6,6 +6,7 @@ from .fed_r6_manual_entry_areas import evaluate_areas
 from .manual_r3_feed import fetch_market
 from .fed_r61_operational_macro_direction import assess_market_direction
 from .fed_r62_tested_horizon_policy import audited_horizon_context
+from .fed_r63_macro_price_divergence import evaluate_divergence
 from .pre_news_transport import fetch_pre_news_snapshot
 
 
@@ -37,9 +38,11 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
     market_context=assess_market_direction(macro_snapshot,now=now)
     if source is None:
         report = {
+            "contract":"RIZAN_XAU_FED_R6_MANUAL_AREA_V1",
+            "as_of":now.isoformat(),
             "status":"WAIT","reason":"FEED_XAU_UNAVAILABLE",
             "macro_direction":"WAIT","macro_reason":"NO_VERIFIED_R4_REALTIME_FEED",
-            "bias_h1":"UNKNOWN","bias_h4":"UNKNOWN",
+            "bias_m15":"UNKNOWN","bias_h1":"UNKNOWN","bias_h4":"UNKNOWN",
             "price":None,"atr_m5":None,"quote_at":None,
             "last_closed_m1":None,"zones":[],
             "entry_allowed":False,"authority_to_send_orders":False,
@@ -56,7 +59,8 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
             macro=None,market_context=market_context,
         )
     a,b,c,d = st.columns(4)
-    a.metric("Yield + DXY · konfirmasi",market_context["direction"])
+    price_action=evaluate_divergence(market_context,report)
+    a.metric("Makro · yield + DXY",market_context["direction"])
     st.caption(
         "Kekuatan: "+market_context["strength"]+
         " · Kecenderungan Treasury harian: "+market_context["daily_direction"]+
@@ -64,12 +68,52 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
         " · sumber makro: "+_wib(market_context.get("source_observed_at"))
     )
     b.metric("Harga referensi",_fmt(report["price"]))
-    c.metric("Struktur H1 / H4",report["bias_h1"]+" / "+report["bias_h4"])
+    c.metric("Tren M15 / H1",report["bias_m15"]+" / "+report["bias_h1"])
     d.metric("ATR M5",_fmt(report["atr_m5"]))
     st.caption(
         "M1 terakhir selesai: "+_wib(report.get("last_closed_m1"))+
         " · quote bid/ask: "+_wib(report.get("quote_at"))+
         " · status: "+str(report["status"])
+    )
+    st.markdown("#### Konflik makro vs pergerakan XAU · pengaman R6.3")
+    col_price,col_final=st.columns(2)
+    col_price.metric("Tren M15 / H1 / H4",
+                     report["bias_m15"]+" / "+report["bias_h1"]+" / "+report["bias_h4"])
+    col_final.metric("Arah setelah konfirmasi harga",
+                     price_action["display_direction"])
+    if price_action["divergence"]:
+        st.warning(
+            "**DIVERGENSI — hindari entry melawan struktur XAU.** "
+            "Yield harian / konteks dolar tidak searah dengan tren EMA20 "
+            "M15 dan H1 yang sudah selesai. "
+            "Tren XAU: "+price_action["price_structure"]+
+            "; kecenderungan Treasury: "+price_action["daily_yield_lean"]+
+            "; konteks makro yield+DXY: "+price_action["macro_context"]+
+            ". Jangan menganggap korelasi makro sebagai pemicu BUY atau SELL."
+        )
+    elif price_action["state"]=="MACRO_AND_PRICE_ALIGNED_WATCH":
+        st.info(
+            "Makro dan tren candle selesai M15/H1 searah "+
+            price_action["display_direction"]+
+            " · **WATCH saja**, belum memenuhi release gate Fed R4 atau order cBot."
+        )
+    elif price_action["state"]=="TECHNICAL_DIRECTION_ONLY_MACRO_WAIT":
+        st.info(
+            "Tren harga XAU "+price_action["price_structure"]+
+            ", tetapi yield+DXY belum memberikan konfirmasi searah. "
+            "Status akhir WAIT, tidak ada izin entry."
+        )
+    else:
+        st.caption(
+            "Konfirmasi harga WAIT: "+
+            price_action["reason"].replace("_"," ")+
+            ". Tidak ada kesimpulan harga bila quote/candle stale."
+        )
+    st.caption(
+        "Ini adalah veto pengamatan harga dengan EMA20 M15/H1 dan H4 "
+        "jika cukup candle, **bukan** model baru dengan tingkat akurasi "
+        "yang telah diuji 2019–2026. Tidak menyimpulkan bahwa yield "
+        "dan DXY harus bergerak serentak pada interval harian dan intraday."
     )
     horizon=audited_horizon_context(
         market_direction=market_context["direction"],
