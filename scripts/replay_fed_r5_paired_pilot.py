@@ -44,14 +44,22 @@ def replay(d, *,manifest,event,expost_source_sha):
     # release. Full PC window itself may finish +90 minutes after
     # statement, allowing only 60 minutes of this first event regime.
     expiry=release+pd.Timedelta(minutes=150)
-    if cut<release or cut>=expiry:
-        raise ValueError("FOMC_WINDOW_AFTER_R4_MACRO_EXPIRY")
-    screen_end=min(cut+pd.Timedelta(minutes=AFTER_EVENT_SCREEN_MINUTES),expiry)
+    if cut<release:
+        raise ValueError("COMMUNICATION_WINDOW_END_BEFORE_FOMC_RELEASE")
+    # Exceptional emergency Fed announcements can span longer than the
+    # initial 150min R4 regime. Count them as a real source + BLOCKED
+    # event (zero executable research windows), not a missing price
+    # source and never infer fresh monetary direction.
+    window_usable=cut<expiry
+    screen_end=(min(cut+pd.Timedelta(minutes=AFTER_EVENT_SCREEN_MINUTES),expiry)
+                if window_usable else cut)
     if event.get("r4_source_join")!="VERIFIED_DATE_WINDOW_AND_EVENT_CLOCK":
         raise ValueError("UNTRUSTED_OFFICIAL_EVENT_MATCH")
     if not event.get("r4_features"):raise ValueError("MISSING_FOMC_PRICE_RESPONSE_FACTORS")
     directions={rule:classify(event["r4_features"],rule) for rule in RULES}
     counts=Counter()
+    if not window_usable:
+        counts["macro_expired_before_completed_communication_window"]=1
     observations=[]
     state=[]
     last_by_key={}
@@ -160,6 +168,7 @@ def replay(d, *,manifest,event,expost_source_sha):
         "event_release_at_utc":release.isoformat(),
         "research_macro_expiry_utc":expiry.isoformat(),
         "actual_scan_end_exclusive_utc":screen_end.isoformat(),
+        "completed_window_macro_context_still_valid":window_usable,
         "continuation_same_side_cooldown_minutes":continuation_cooldown_minutes,
         "continuation_event_unit":"FIRST M1 STRUCTURE BREAK PER RULE/SIDE/FOMC MEETING; all other M1 observations correlated",
         "continuation_pick_policy":"FIRST_RAW_DETECTION_EVEN_IF_FORWARD_LABEL_CENSORED",
