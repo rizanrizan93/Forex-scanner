@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from fx_scanner.fed_r7_million_grid import (
     FEATURES,GRID_PER_HORIZON,HORIZONS,search_one_horizon,_weights_from_ids,_segment)
-from fx_scanner.fed_r7_fred_proxy_panel import align_retrospective_proxies,SERIES
+from fx_scanner.fed_r7_fred_proxy_panel import align_retrospective_proxies,SERIES,fetch_fred_proxies
 
 
 def fixture_panel():
@@ -92,3 +92,13 @@ def test_missing_real_macro_columns_fail_closed_not_imputed():
     with pytest.raises(ValueError,match="MISSING_MACRO_PRICE"):
         search_one_horizon(p,horizon="D1",
                            max_weight_vectors=64,batch_weights=64)
+
+
+def test_real_in_repo_fred_snapshot_loader_declares_latest_vintage_not_pit():
+    values,meta=fetch_fred_proxies()
+    assert set(values)=={"DFII10","DGS2","DGS10","DTWEXBGS"}
+    assert len(values["DFII10"])>=5000
+    assert values["DTWEXBGS"].index.tz is not None
+    assert meta["DFII10"]["historical_original_vintage_verified"] is False
+    assert meta["DFII10"]["verified_exact_publication_time"] is False
+    assert len(meta["DFII10"]["sha256"])==64
