@@ -1,4 +1,5 @@
 name: R7 Reuse Audited XAU Shards for Million Calibration (No Orders)
+# Rerun v2: FRED source parsing fixed; tests now read the actual in-repo archive.
 on:
   push:
     branches: ['research/r7-xau-multihorizon-20261120']
