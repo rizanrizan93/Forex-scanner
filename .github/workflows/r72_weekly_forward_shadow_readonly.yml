@@ -1,0 +1,123 @@
+name: R7.2 Weekly Frozen D1 Forward Shadow and Receipt Archive (Read Only)
+# Only this separate workflow lives on main so GitHub's schedule runs.
+# Actual research source checkout is pinned by immutable commit below.
+# No cTrader credentials, order bridge, dashboard or live strategy imports.
+on:
+  schedule:
+    - cron: '20 0 * * 6'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: r72-shadow-weekly-receipt-archive
+  cancel-in-progress: false
+jobs:
+  frozen_shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      R72_RAW_H1: '/tmp/r72-public-source/xau-h1-raw.csv'
+      R72_PRIOR_LEDGER_ROOT: '_r72-ledger/research/forward-evidence/r72'
+      R72_MODEL_FREEZE_COMMIT: '9e6a426c2ee6b586d8ba6d7acc40a1a8711b454e'
+      R72_FREEZE_COMMITTED_AT: '2026-11-20T23:11:24Z'
+      R72_FROZEN_MODEL: 'research/frozen/r72_d1_price_only_v1.json'
+    steps:
+      - name: Checkout audited exact R7.2 source commit, NOT main production code
+        uses: actions/checkout@v4
+        with:
+          ref: d7b68772c8d41e851cf08ef87af4f842742c1f3b
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install fixed numeric dependencies and public no-trade H1 collector
+        run: |
+          python -m pip install numpy pandas==2.2.3
+          npm install --no-save --ignore-scripts dukascopy-node@1.51.1
+      - name: Confirm model parameters and original training code are frozen
+        run: |
+          test "$(sha256sum src/fx_scanner/fed_r72_frozen_candidate.py | cut -d' ' -f1)" = "d7ccb365407eda50d0f6d504eae87a9d3d2f77792ffe9303cb48ea50edfa17e1"
+          python - <<'PY'
+          import json
+          from fx_scanner.fed_r72_frozen_candidate import _hash
+          m=json.load(open('research/frozen/r72_d1_price_only_v1.json'))
+          assert m['frozen_payload_sha256']=='7f5397487839e6bd0d0a9289dd1229294c04c655e2ca952b513a1367bec73a99'
+          assert _hash({k:v for k,v in m.items() if k!='frozen_payload_sha256'})==m['frozen_payload_sha256']
+          assert m['trained_2025_2026_outcomes'] is False
+          assert not m['production_order_authority']
+          PY
+      - name: Find prospective metadata-only archive branch if it exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/research/r72-forward-evidence" > /dev/null 2>&1; then
+            echo 'R72_LEDGER_EXISTS=yes' >> "$GITHUB_ENV"
+          else
+            echo 'R72_LEDGER_EXISTS=no' >> "$GITHUB_ENV"
+          fi
+      - name: Download already-committed previous frozen shadow records for scoring
+        if: env.R72_LEDGER_EXISTS == 'yes'
+        uses: actions/checkout@v4
+        with:
+          ref: research/r72-forward-evidence
+          path: _r72-ledger
+          persist-credentials: false
+      - name: Acquire newly received XAUUSD H1 historical quote source and record actual receipt
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r72-public-source /tmp/r72-raw-original
+          echo "R72_SRC_FETCH_STARTED_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          FROM=$(date -u -d '170 days ago' +%Y-%m-%d)
+          END=$(date -u -d '+1 day' +%Y-%m-%d)
+          ./node_modules/.bin/dukascopy-node -i xauusd -from "$FROM" -to "$END" -t h1 -p bid -f csv -dir /tmp/r72-raw-original --retries 2 --batch-pause 1000
+          test "$(find /tmp/r72-raw-original -name '*.csv' | wc -l)" -eq 1
+          cp /tmp/r72-raw-original/*.csv /tmp/r72-public-source/xau-h1-raw.csv
+          echo "R72_SRC_FETCH_RECEIVED_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          sha256sum /tmp/r72-public-source/xau-h1-raw.csv
+      - name: Record source receipt and issue only valid prospective Saturday pre-open signal
+        run: python -m fx_scanner.fed_r72_capture_forward
+      - name: Audit previous genuine post-freeze shadow outcomes (if any)
+        run: python -m fx_scanner.fed_r72_forward_evaluation
+      - name: Archive exact raw source and completed metadata to this unique Actions run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r72-weekly-xau-post-freeze-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/r72-public-source/xau-h1-raw.csv
+            artifacts/r72-receipt/r72-source-receipt-manifest.json
+            artifacts/r72-receipt/r72-forward-outcomes.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Create-only permanent per-run research manifest and outcome commit, never rewrite records
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REF='research/r72-forward-evidence'
+          REPO="${GITHUB_REPOSITORY}"
+          if ! gh api "repos/${REPO}/git/ref/heads/${REF}" > /dev/null 2>&1; then
+            BASE=$(gh api "repos/${REPO}/git/ref/heads/main" --jq '.object.sha')
+            gh api --method POST "repos/${REPO}/git/refs" \
+              -f ref="refs/heads/${REF}" -f sha="${BASE}" > /dev/null
+          fi
+          PREFIX="research/forward-evidence/r72/$(date -u +%Y)/$(date -u +%Y-%m-%d)"
+          for NAME in r72-source-receipt-manifest r72-forward-outcomes; do
+            INPUT="artifacts/r72-receipt/${NAME}.json"
+            test -s "${INPUT}"
+            FILE="${PREFIX}/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${NAME}.json"
+            # PUT without SHA is CREATE ONLY. Existing evidence can
+            # never be overwritten by a rerun.
+            BYTES=$(base64 -w0 "${INPUT}")
+            gh api --method PUT "repos/${REPO}/contents/${FILE}" \
+              -f branch="${REF}" \
+              -f message="audit(R7.2): new read-only market receipt ${GITHUB_RUN_ID} for ${NAME}" \
+              -f content="${BYTES}" \
+              --jq '{source_run_id:"${GITHUB_RUN_ID}",new_commit:.commit.sha,content_sha:.content.sha}'
+          done
