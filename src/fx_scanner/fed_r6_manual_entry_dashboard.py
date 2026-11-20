@@ -5,6 +5,7 @@ import json
 from .fed_r6_manual_entry_areas import evaluate_areas
 from .manual_r3_feed import fetch_market
 from .fed_r61_operational_macro_direction import assess_market_direction
+from .fed_r62_tested_horizon_policy import audited_horizon_context
 from .pre_news_transport import fetch_pre_news_snapshot
 
 
@@ -55,9 +56,10 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
             macro=None,market_context=market_context,
         )
     a,b,c,d = st.columns(4)
-    a.metric("Bias pasar XAU",market_context["direction"])
+    a.metric("Yield + DXY · konfirmasi",market_context["direction"])
     st.caption(
         "Kekuatan: "+market_context["strength"]+
+        " · Kecenderungan Treasury harian: "+market_context["daily_direction"]+
         " · Fed R4 asli: "+report["macro_direction"]+
         " · sumber makro: "+_wib(market_context.get("source_observed_at"))
     )
@@ -69,6 +71,49 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
         " · quote bid/ask: "+_wib(report.get("quote_at"))+
         " · status: "+str(report["status"])
     )
+    horizon=audited_horizon_context(
+        market_direction=market_context["direction"],
+        daily_direction=market_context["daily_direction"],
+        fed_r4_direction=report["macro_direction"],
+    )
+    st.markdown("#### Arah 1 hari–1 minggu · hanya bukti historis yang telah diuji")
+    st.caption(
+        "D1: watch FOMC hanya bila kejutan OIS/TIPS/saham terekam dan divalidasi saat rilis; "
+        "jika tidak, gunakan yield/DXY hanya sebagai KONTEKS. "
+        "D5: WAIT — belum ada model BUY dan SELL mingguan yang lolos uji. "
+        "Hasil riset 69 event bukan pengujian semua hari perdagangan."
+    )
+    col_d1,col_yield,col_d5=st.columns(3)
+    col_d1.metric("Event Fed · D1",horizon["d1_event_research_watch"])
+    col_yield.metric("Konteks harian (belum tervalidasi)",market_context["daily_direction"])
+    col_d5.metric("Sinyal 5 hari",horizon["d5"])
+    with st.expander("Lihat pembuktian D1 vs D5 · FOMC dan yield/DXY",expanded=False):
+        result=[]
+        for model,title in (
+            ("FOMC_OIS1Y_TIPS10_SP500_POLICY_LIKE",
+             "Fed repricing + OIS1Y + real yield + saham"),
+            ("FOMC_WINDOW_UST2Y_UST10Y_DXY",
+             "Reaksi US2Y + US10Y + DXY saat FOMC"),
+        ):
+            for term in ("D1","D5"):
+                b=next(x for x in horizon["evidence"]
+                       if x["model"]==model and x["horizon"]==term and x["side"]=="BUY")
+                v=next(x for x in horizon["evidence"]
+                       if x["model"]==model and x["horizon"]==term and x["side"]=="SELL")
+                result.append({
+                    "Filter historis":title,"Periode":term,
+                    "BUY benar":f'{b["wins"]}/{b["n_evaluable"]} ({b["direction_accuracy_pct"]:.1f}%)',
+                    "SELL benar":f'{v["wins"]}/{v["n_evaluable"]} ({v["direction_accuracy_pct"]:.1f}%)',
+                })
+        st.dataframe(result,hide_index=True,width="stretch")
+        st.caption(
+            "D1/D5 = sesi berikutnya, bukan durasi order otomatis. "
+            "Semua variabel studi USMPD bersifat ex-post; beberapa model "
+            "menggunakan pertemuan yang sama dan tidak dapat dibandingkan "
+            "seolah eksperimen kausal independen. Yield/DXY live R6.1 "
+            "belum pernah terbukti dari replay ini. Tidak ada akurasi 80% "
+            "dua arah atau izin cBot."
+        )
     if market_context["direction"] in ("BUY","SELL"):
         st.info(
             "Arah "+market_context["direction"]+" untuk **pantauan manual**, "
