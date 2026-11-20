@@ -12,6 +12,7 @@ def sample():
     event={
         "event_id":"FOMC-2023-09-20-1","window":"FULL_MONETARY",
         "window_end_utc":at,
+        "release_at_utc":"2023-09-20T18:00:00Z",
         "r4_source_join":"VERIFIED_DATE_WINDOW_AND_EVENT_CLOCK",
         "r4_features":{"MP2":3.0,"TIPS10Y":2.0,"DXY":.2,
                        "OIS1Y":2.0,"SP500":-.3}
@@ -47,3 +48,10 @@ def test_missing_m1_offset_never_inferred():
     d.index=d.index.tz_localize(None)
     with pytest.raises(ValueError,match="UNTRUSTED_HISTORICAL"):
         replay(d,manifest=m,event=e,expost_source_sha="sha")
+
+def test_window_never_exceeds_validity_of_original_fomc_macro():
+    d,m,e=sample()
+    out=replay(d,manifest=m,event=e,expost_source_sha="sha")
+    assert out["actual_scan_end_exclusive_utc"]=="2023-09-20T20:30:00+00:00"
+    assert out["research_macro_expiry_utc"]=="2023-09-20T20:30:00+00:00"
+    assert out["counters"].get("screened_m1_closes",0)<=60
