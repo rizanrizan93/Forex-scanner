@@ -138,3 +138,21 @@ def test_r63_rejects_untrusted_liquidity_contract():
     x=evaluate_divergence(macro(),price(liq={"contract":"BAD","risk_veto":False}))
     assert x["state"]=="WAIT_UNTRUSTED_LIQUIDITY_CLASSIFIER"
     assert x["display_direction"]=="WAIT"
+
+
+def test_post_stress_cooldown_survives_one_normal_m5_bar():
+    d=bars()
+    d.iloc[-2]=[100.,105.,95.,100.]
+    x=assess_liquidity_stress(d,now=NOW)
+    assert x["state"]=="POST_STRESS_COOLDOWN"
+    assert x["risk_veto"] is True
+    assert x["stress_age_bars"]==1
+    assert x["prior_stress_state"] in ("SWEEP_LOW_RECLAIM","VOLATILITY_SPIKE")
+
+
+def test_post_stress_cooldown_expires_after_three_completed_m5_bars():
+    d=bars()
+    d.iloc[-5]=[100.,105.,95.,100.]
+    x=assess_liquidity_stress(d,now=NOW)
+    assert x["state"]=="NORMAL"
+    assert x["risk_veto"] is False
