@@ -179,7 +179,7 @@ def aggregate(shards):
             'first_seen_provenance':'UNVERIFIED_HISTORIC_VENDOR_AVAILABILITY; CANNOT CLAIM REAL POINT_IN_TIME',
             'evaluation_warning':'2025-2026 repeatedly inspected, NOT pristine project holdout. No calibration on it.',
             'execution_authority':False,'execution_influence':False,
-            'per_year':rows.to_dict(orient='records'),'summary':result}
+            'per_year':json.loads(rows.to_json(orient='records')),'summary':result}
 
 def main():
     a=argparse.ArgumentParser()
