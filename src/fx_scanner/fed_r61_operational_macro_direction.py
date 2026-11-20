@@ -174,33 +174,41 @@ def assess_market_direction(snapshot, *, now=None):
     if daily_sign is None:
         out["reason"]="DAILY_YIELDS_MISSING_FLAT_OR_CONFLICT"
         return out
-    out["direction"]=out["daily_direction"]
-    out["strength"]="INDICATIVE_DAILY"
-    out["mode"]="OFFICIAL_DAILY_REGIME"
-    out["reason"]="TWO_OFFICIAL_DAILY_YIELDS_ALIGNED_NOT_FED_R4"
-    if (dollar_sign is not None and yield_sign is not None
-            and dollar_sign in (1,-1) and yield_sign in (1,-1)):
-        out["intraday_direction"]="BUY" if dollar_sign==yield_sign==1 else (
-            "SELL" if dollar_sign==yield_sign==-1 else "WAIT")
-        if dollar_sign!=yield_sign or dollar_sign!=daily_sign:
-            out["direction"]="WAIT"
+    # R3 tested the *same three direction signs* around completed FOMC
+    # event windows, not these mixed-frequency rolling daily/vendor sources.
+    # Hence this is still an UNVALIDATED context, never a validated
+    # 2019-2026 BUY/SELL trading model or a D5 holding recommendation.
+    # Daily Treasury alone is a LEAN, not an actionable market direction.
+    out["direction"]="WAIT"
+    out["strength"]="WAIT_FOR_DXY_CONFLUENCE"
+    out["mode"]="OFFICIAL_DAILY_LEAN_ONLY"
+    out["reason"]="OFFICIAL_YIELDS_ALIGNED_BUT_DXY_NOT_CONFIRMED"
+    if dollar_sign not in (1,-1):
+        # Intraday yields alone cannot replace the required DXY vote.
+        if yield_sign in (1,-1) and yield_sign!=daily_sign:
             out["strength"]="CONFLICT"
             out["mode"]="MIXED_MARKETS"
-            out["reason"]="LIVE_DXY_AND_YIELD_CONFLICT_OR_DAILY_DIVERGENCE"
-        else:
-            out["strength"]="ALIGNED_MARKET_CONTEXT"
-            out["mode"]="INTRADAY_AND_DAILY_ALIGNED"
-            out["reason"]="TREASURY_DAILY_DXY_AND_INTRADAY_YIELD_ALIGNED"
-    elif dollar_sign is not None and dollar_sign in (1,-1) and dollar_sign!=daily_sign:
-        out["direction"]="WAIT"
+            out["reason"]="FRESH_INTRADAY_YIELD_OPPOSES_DAILY_YIELDS"
+        return out
+    if dollar_sign!=daily_sign:
         out["strength"]="CONFLICT"
         out["mode"]="MIXED_MARKETS"
         out["reason"]="FRESH_DXY_OPPOSES_DAILY_YIELDS"
-    elif yield_sign is not None and yield_sign in (1,-1) and yield_sign!=daily_sign:
-        out["direction"]="WAIT"
+        return out
+    if yield_sign in (1,-1) and yield_sign!=daily_sign:
         out["strength"]="CONFLICT"
         out["mode"]="MIXED_MARKETS"
         out["reason"]="FRESH_INTRADAY_YIELD_OPPOSES_DAILY_YIELDS"
+        return out
+    out["direction"]=out["daily_direction"]
+    out["strength"]="YIELD_DXY_DIRECTIONAL_CONTEXT"
+    out["mode"]="DAILY_YIELD_PLUS_FRESH_DXY"
+    out["reason"]="OFFICIAL_US2Y_US10Y_AND_FRESH_DXY_ALIGNED"
+    if yield_sign==daily_sign:
+        out["intraday_direction"]=out["direction"]
+        out["strength"]="ALIGNED_MARKET_CONTEXT"
+        out["mode"]="INTRADAY_AND_DAILY_ALIGNED"
+        out["reason"]="TREASURY_DAILY_DXY_AND_INTRADAY_YIELD_ALIGNED"
     # Even the strongest directional market CONTEXT is not FOMC R4.
     out["validated_fed_r4"]=False
     out["entry_permission"]=False
