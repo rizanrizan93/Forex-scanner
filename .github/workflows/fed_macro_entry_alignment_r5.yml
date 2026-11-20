@@ -7,6 +7,8 @@ on:
       - 'src/fx_scanner/rejection_dashboard_research.py'
       - 'tests/test_fed_macro_entry_alignment_r5.py'
       - 'tests/test_fed_r4_v4_entry_integration_r5.py'
+      - 'research/fed_expectation_r1/fomc_continuation_observation_r5.py'
+      - 'tests/test_fed_r5_continuation_observation.py'
       - '.github/workflows/fed_macro_entry_alignment_r5.yml'
   workflow_dispatch:
 permissions:
@@ -28,4 +30,4 @@ jobs:
           python -m py_compile research/fed_expectation_r1/macro_entry_alignment_r5.py research/fed_expectation_r1/policy_information_watch_r4.py src/fx_scanner/rejection_dashboard_research.py
       - name: Validate symmetric macro filter, V4 patterns, stale feeds, no execution
         run: |
-          python -m pytest -q tests/test_fed_macro_entry_alignment_r5.py tests/test_fed_r4_v4_entry_integration_r5.py tests/test_fed_policy_information_watch_r4.py tests/test_rejection_v4_research.py
+          python -m pytest -q tests/test_fed_macro_entry_alignment_r5.py tests/test_fed_r4_v4_entry_integration_r5.py tests/test_fed_r5_continuation_observation.py tests/test_fed_policy_information_watch_r4.py tests/test_rejection_v4_research.py
