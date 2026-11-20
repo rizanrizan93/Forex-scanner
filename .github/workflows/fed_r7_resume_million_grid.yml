@@ -1,0 +1,46 @@
+name: R7 Reuse Audited XAU Shards for Million Calibration (No Orders)
+# Rerun v2: FRED source parsing fixed; tests now read the actual in-repo archive.
+on:
+  push:
+    branches: ['research/r7-xau-multihorizon-20261120']
+    paths:
+      - '.github/workflows/fed_r7_resume_million_grid.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  retrospective-grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONPATH: src:.
+      R7_SOURCE_SHARDS: /tmp/r7-price-shards
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install pinned numerical software
+        run: python -m pip install -r requirements.txt
+      - name: Regression tests on snapshot source and million-grid sampler
+        run: python -m pytest -q tests/test_fed_r7_million_grid.py tests/test_fed_r7_multihorizon_factor_model.py
+      - name: Reuse independently audited annual original XAU shards, no refetch
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r7-xau-price-*
+          path: /tmp/r7-price-shards
+          merge-multiple: false
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Run 3.1M real-XAU with in-repo source-hashed lagged FRED macro proxies
+        run: python -m fx_scanner.fed_r7_million_calibration_runner
+      - name: Save exact research outcome and input SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r7-resumed-million-factor-results
+          path: artifacts/r7-million-grid-results.json
+          if-no-files-found: warn
+          retention-days: 30
