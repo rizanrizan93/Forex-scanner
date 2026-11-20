@@ -8,8 +8,8 @@ from fx_scanner.fed_r72_capture_forward import HARD_FREEZE_COMMIT
 from fx_scanner.fed_r72_frozen_candidate import CONTRACT as MODEL
 
 
-def _raw(tmp_path):
-    dt=pd.date_range("2026-07-01","2026-12-05 23:00:00",freq="h",tz="UTC")
+def _raw(tmp_path,end="2026-11-28 00:00:00"):
+    dt=pd.date_range("2026-07-01",end,freq="h",tz="UTC")
     rng=np.random.default_rng(72)
     close=4000+np.cumsum(rng.normal(0,.6,len(dt)))
     prev=np.r_[close[0],close[:-1]]
@@ -52,7 +52,7 @@ def test_lookahead_horizon_is_checked_against_later_source_receipt(tmp_path):
     assert e["original_decision_at"].startswith("2026-11-21")
     assert e["new_outcome_session_utc"].startswith("2026-11-23")
     assert e["outcome_market_capture_at"].startswith("2026-11-28")
-    assert e["production_approval"] is False if "production_approval" in e else True
+    assert out["production_approval"] is False
     assert out["cBot_trade_permission"] is False
     assert out["calibrated_probability"] is None
 
@@ -70,7 +70,7 @@ def test_pre_freeze_2025_decision_is_not_allowed_as_untouched(tmp_path):
 
 
 def test_missing_new_complete_session_waits_without_fabricating_result(tmp_path):
-    raw=_raw(tmp_path)
+    raw=_raw(tmp_path,"2026-12-05 23:00:00")
     ledger=_manifest(tmp_path,decision="2026-12-05T00:20:00Z",
                      last_session="2026-12-04T00:00:00Z")
     out=audit_future_outcomes(
