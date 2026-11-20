@@ -62,3 +62,49 @@ def test_duplicate_event_ids_forced_error():
 def test_outside_2019_2026_year_rejected():
     with pytest.raises(ValueError,match="YEAR_OUTSIDE"):
         year_replay(2027)
+
+def test_r6_risk_uses_meeting_n_not_overlapping_m1_raw_counts():
+    years=[mk_year(y) for y in YEARS]
+    for y in years:
+        y["events"]=[event(i,y["year"],side="BUY" if i%2 else "SELL")
+                     for i in range(y["official_events"])]
+    first=years[0]["events"][1]
+    rule=RULES[0]
+    first["rule_stats"][rule].update({
+        "r6_risk_evaluable_n":1,"r6_target3_first_n":0,
+        "r6_adverse3_first_n":1,"r6_neither_barrier_n":0,
+        "r6_static_stop_before_target_n":1,
+        "r6_total_mae_usd_oz":4.5,
+        "r6_total_mfe_usd_oz":5.5,
+        "r6_pivot_first_unique_signal_n":0,
+        "r6_pivot_risk_evaluable_n":0,
+        "r6_pivot_h1_right_n":0})
+    first["r6_unfiltered_first_continuation_by_side"]={
+        "BUY":{"first_event_n":1,"h1_evaluable_n":1,"h1_correct_n":1,
+               "target_first_n":0,"stop_first_n":1},
+        "SELL":{"first_event_n":0,"h1_evaluable_n":0,"h1_correct_n":0,
+                "target_first_n":0,"stop_first_n":0}}
+    r=aggregate(years)
+    metric=r["per_rule_by_side"][rule]["BUY"]
+    assert metric["r6_h1_risk_evaluable_unique_meetings"]==1
+    assert metric["r6_h1_target3_before_adverse3_pct"]==0
+    assert metric["r6_h1_static_structural_stop_before_target_n"]==1
+    assert metric["r6_h1_mean_mae_usd_oz"]==4.5
+    assert r["r6_first_unfiltered_continuation_by_side"]["BUY"]["first_unique_meetings"]==1
+    assert r["production_ready"] is False
+
+def test_r6_missing_price_source_for_one_of_69_fails_aggregation():
+    years=[mk_year(y) for y in YEARS]
+    for y in years:
+        y["events"]=[event(i,y["year"]) for i in range(y["official_events"])]
+    years[0]["events"].pop()
+    with pytest.raises(ValueError,match="R6_INCOMPLETE_69_EVENTS"):
+        aggregate(years)
+
+def test_r6_duplicate_first_signal_must_not_be_scored_as_multiple_wins():
+    years=[mk_year(y) for y in YEARS]
+    for y in years:
+        y["events"]=[event(i,y["year"]) for i in range(y["official_events"])]
+    years[0]["events"][0]["rule_stats"][RULES[0]]["r6_risk_evaluable_n"]=2
+    with pytest.raises(ValueError,match="R6_DUPLICATE_RISK_EVENTS"):
+        aggregate(years)
