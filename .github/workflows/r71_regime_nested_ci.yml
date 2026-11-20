@@ -1,0 +1,36 @@
+name: R7.1 PIT and Nested Regime No-Order Regression
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r71_pit_provenance.py'
+      - 'src/fx_scanner/fed_r71_regime_map.py'
+      - 'src/fx_scanner/fed_r71_nested_regime.py'
+      - 'tests/test_fed_r71_regime_pit.py'
+      - '.github/workflows/r71_regime_nested_ci.yml'
+  pull_request:
+    paths:
+      - 'src/fx_scanner/fed_r71_pit_provenance.py'
+      - 'src/fx_scanner/fed_r71_regime_map.py'
+      - 'src/fx_scanner/fed_r71_nested_regime.py'
+      - 'tests/test_fed_r71_regime_pit.py'
+      - '.github/workflows/r71_regime_nested_ci.yml'
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy pandas==2.2.3 pytest==9.0.2
+      - name: Compile point-in-time and regime modules
+        run: python -m py_compile src/fx_scanner/fed_r71_pit_provenance.py src/fx_scanner/fed_r71_regime_map.py src/fx_scanner/fed_r71_nested_regime.py
+      - name: Verify anti-lookahead and nested period quarantine
+        run: python -m pytest -q tests/test_fed_r71_regime_pit.py
