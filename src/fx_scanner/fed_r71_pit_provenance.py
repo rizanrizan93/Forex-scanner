@@ -114,7 +114,9 @@ def verify_record(record:Mapping,*,decision_at,required_symbol=None):
                 purported_original_captured_at=captured.isoformat())
             return out
         if method in RECONSTRUCTED and r["source_class"]=="ALFRED_VINTAGE":
-            if not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}",str(r["vintage_date"])):
+            vintage_text=str(r["vintage_date"])
+            if not (len(vintage_text)==10 and vintage_text[4]=="-" and
+                    vintage_text[7]=="-" and vintage_text.replace("-","").isdigit()):
                 out["reason"]="ALFRED_VINTAGE_MUST_BE_DATE_ONLY"
                 return out
             vintage=pd.Timestamp(r["vintage_date"])
