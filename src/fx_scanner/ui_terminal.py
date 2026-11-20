@@ -251,6 +251,7 @@ def render_brand(st) -> None:
 
 SECTION_DESCRIPTIONS = {
     "Arah Entry": ("MANUAL ENTRY", "Arah Entry R2", "Pemantauan setup SELL, skor seleksi, data terbaru, dan hasil historis model R2."),
+    "Fed R6 · Area Entry": ("FED MACRO / SMC", "Area Entry R6", "Zona swing M5, trigger M1, invalidasi, TP skenario, dan filter arah Fed yang gagal-tertutup ketika data belum valid."),
     "Manual R3": ("MANUAL TRADING", "Range Reclaim R3", "Zona Keltner, bias H1, checklist dan pemicu M1 untuk keputusan trading manual."),
     "Zona reversal": ("REACTION ZONES", "Peta zona reaksi", "Pemantauan zona teknikal; harga dan status validasi berasal dari mesin masing-masing."),
     "Zona A→B": ("PREDICTIVE MAP", "Zona prediktif A→B", "Level dan pemicu teknikal untuk dipantau, bukan instruksi order."),
