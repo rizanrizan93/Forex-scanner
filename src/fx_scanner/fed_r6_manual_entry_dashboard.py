@@ -44,6 +44,7 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
             "macro_direction":"WAIT","macro_reason":"NO_VERIFIED_R4_REALTIME_FEED",
             "bias_m15":"UNKNOWN","bias_h1":"UNKNOWN","bias_h4":"UNKNOWN",
             "price":None,"atr_m5":None,"quote_at":None,
+            "liquidity_context":None,"liquidity_pools":None,
             "last_closed_m1":None,"zones":[],
             "entry_allowed":False,"authority_to_send_orders":False,
             "market_context":market_context,
@@ -94,6 +95,21 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
                    str(liq.get("reason"))+". Tidak ada persetujuan entry.")
     elif liq.get("state")=="NORMAL":
         st.caption("Filter likuiditas M5: NORMAL (bukan jaminan bebas likuidasi).")
+    pools=report.get("liquidity_pools") or {}
+    with st.expander("Peta likuiditas · sesi selesai (bukan order book)",expanded=False):
+        st.caption(
+            "Peta HIGH/LOW sebelumnya mengikuti hari FX yang berakhir 17:00 NY "
+            "serta sesi Asia 08.00–13.00 WIB. Level hanya dipublikasi setelah "
+            "periode selesai; ini bukan bukti stop order, margin call atau bandar."
+        )
+        if pools.get("levels"):
+            st.dataframe(
+                [{"Pool":x["name"],"Level":x["price"],
+                  "Sesi":x["session_date"],"Terkonfirmasi":_wib(x["confirmed_at"])}
+                 for x in pools["levels"]],
+                hide_index=True,width="stretch")
+        else:
+            st.caption("Level belum dapat dipastikan: "+str(pools.get("reason","NO_SOURCE")))
     if price_action["divergence"]:
         st.warning(
             "**DIVERGENSI — hindari entry melawan struktur XAU.** "
