@@ -24,6 +24,7 @@ from fx_scanner.rejection_confirmed_swing_r6_research import (
     compare_v4_candidate,VALID_PATTERN_STAGES
 )
 from fx_scanner.fomc_continuation_risk_r6_research import continuation_h1_risk
+from scripts.fed_r63_price_veto_ab import original_r63_price_veto
 
 TARGET_DATE="2023-09-20"
 RULES=("MP2_TIPS10_DXY","POLICY_OIS1Y_TIPS10_SP500_VETO",
@@ -65,6 +66,9 @@ def replay(d, *,manifest,event,expost_source_sha):
     if not window_usable:
         counts["macro_expired_before_completed_communication_window"]=1
     observations=[]
+    # One permanently first-selected, same-time R63 A/B record per
+    # FOMC / rule / side, including censored outcomes.
+    r63_ab=[]
     state=[]
     last_by_key={}
     last_continuation_by_rule_side={}
@@ -136,6 +140,40 @@ def replay(d, *,manifest,event,expost_source_sha):
                     # even if the first label is censored. No selecting a
                     # later winning overlap after the first failed clock.
                     last_continuation_by_rule_side[key_cont]=at
+                    # A/B: first candidate only; NO replacing this
+                    # blocked signal with a later favorable M1 match.
+                    # All price features are drawn from <= at bars.
+                    r63_gate=original_r63_price_veto(
+                        frame.iloc[:i+1],at=at,historical_macro_side=side)
+                    r63_label=continuation_h1_risk(
+                        frame,i,side=side,atr_m5=res["atr_m5"])
+                    row_ab={
+                        "event_id":event["event_id"],
+                        "official_window":event["window"],
+                        "rule":rule,"side":side,
+                        "signal_at_utc":at.isoformat(),
+                        "r63_pass":r63_gate["pass_r63_price_veto"],
+                        "r63_state":r63_gate["state"],
+                        "r63_blocked_reason":r63_gate["blocked_reason"],
+                        "r63_price_trend":r63_gate["price_trend"],
+                        "r63_price_closed_at":r63_gate["timeframe_closed_at"],
+                        "risk_status":r63_label["status"],
+                        "h1_direction_correct":(
+                            r63_label.get("terminal_direction_correct_after_cost")
+                            if r63_label["status"]=="EVALUATED" else None),
+                        "target3_before_adverse3":(
+                            r63_label["target3_vs_adverse3"]=="TARGET_FIRST"
+                            if r63_label["status"]=="EVALUATED" else None),
+                        "static_stop_before_target":(
+                            r63_label["static_stop_before_target3"]
+                            if r63_label["status"]=="EVALUATED" else None),
+                        "h1_net_usd_oz":r63_label.get("terminal_net_usd_oz"),
+                        "macro_source":"USMPD_EXPOST_EVENT_WINDOW_NOT_POINT_IN_TIME",
+                        "xau_source":"HISTDATA_M1_SECONDARY_MARKET",
+                        "cost_assumed_usd_oz":0.50,
+                        "authority_to_trade":False,
+                    }
+                    r63_ab.append(row_ab)
                     label=future(frame,i,side,60,3,3)
                     if label is None:
                         counts["continuation_"+rule+"_h1_censored"]+=1
@@ -254,6 +292,9 @@ def replay(d, *,manifest,event,expost_source_sha):
         "xau_source_sha256":manifest.get("sha256_csv"),
         "counters":dict(counts),
         "observations":observations,
+        "r63_first_event_fixed_time_paired_ab":r63_ab,
+        "r63_macro_input_is_retro_oracle_not_pit":True,
+        "r63_original_first_candidate_never_reselected":True,
         "true_macro_pit_buy_n":0,
         "true_macro_pit_sell_n":0,
         "production_eligible":False,
