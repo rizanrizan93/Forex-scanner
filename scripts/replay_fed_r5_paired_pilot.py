@@ -20,6 +20,10 @@ from scripts.replay_fed_information_shock_r4 import source_join,classify
 from scripts.replay_rejection_v2_outcomes import load_csv,future,COST
 from fx_scanner.rejection_v2_research import calculate,completed
 from research.fed_expectation_r1.fomc_continuation_observation_r5 import evaluate_continuation
+from fx_scanner.rejection_confirmed_swing_r6_research import (
+    compare_v4_candidate,VALID_PATTERN_STAGES
+)
+from fx_scanner.fomc_continuation_risk_r6_research import continuation_h1_risk
 
 TARGET_DATE="2023-09-20"
 RULES=("MP2_TIPS10_DXY","POLICY_OIS1Y_TIPS10_SP500_VETO",
@@ -64,6 +68,8 @@ def replay(d, *,manifest,event,expost_source_sha):
     state=[]
     last_by_key={}
     last_continuation_by_rule_side={}
+    first_unfiltered_by_side={}
+    first_r6_swing_by_rule_side={}
     continuation_cooldown_minutes=60
     # Restrict to FIRST pattern of each direction/model at each meeting.
     # Exact closed M1 following the PREDEFINED completed official window.
@@ -84,6 +90,10 @@ def replay(d, *,manifest,event,expost_source_sha):
             continue
         state=res["rejection_events"]
         counts["screened_m1_closes"]+=1
+        # Match V4's pre-touch source exactly: M5 ending at the
+        # completed signal M1 timestamp is NOT a source for this M1.
+        m5=completed(frame.iloc[:i+1],5,at)
+        pivot_m5=m5.loc[m5.index<=idx]
         # Independent post-event momentum path: OBSERVATIONAL ONLY,
         # separate from V4. Never described as approved R5 entry.
         # Measure unfiltered continuation patterns on BOTH sides as
@@ -91,7 +101,6 @@ def replay(d, *,manifest,event,expost_source_sha):
         unique_sides=("BUY","SELL")
         for side in unique_sides:
             try:
-                m5=completed(frame.iloc[:i+1],5,at)
                 observation=evaluate_continuation(
                     frame.iloc[:i+1],m5,at=at,side=side,
                     bid=float(row.close)-COST/2,
@@ -101,6 +110,21 @@ def replay(d, *,manifest,event,expost_source_sha):
                 counts["continuation_data_unavailable"]+=1;continue
             if observation["event_detected"]:
                 counts["continuation_raw_"+side]+=1
+                # Matched same-event UNFILTERED first structure break
+                # per side. Never count multiple M1 as independent.
+                if side not in first_unfiltered_by_side:
+                    first_unfiltered_by_side[side]=at
+                    baseline_risk=continuation_h1_risk(
+                        frame,i,side=side,atr_m5=res["atr_m5"])
+                    counts["r6_unfiltered_"+side+"_first_event_n"]+=1
+                    if baseline_risk["status"]=="EVALUATED":
+                        counts["r6_unfiltered_"+side+"_h1_evaluable_n"]+=1
+                        counts["r6_unfiltered_"+side+"_h1_correct_n"]+=int(
+                            baseline_risk["terminal_direction_correct_after_cost"])
+                        counts["r6_unfiltered_"+side+"_h1_target_first_n"]+=int(
+                            baseline_risk["target3_vs_adverse3"]=="TARGET_FIRST")
+                        counts["r6_unfiltered_"+side+"_h1_stop_first_n"]+=int(
+                            baseline_risk["static_stop_before_target3"])
                 for rule,macro_side in directions.items():
                     if macro_side!=side:continue
                     counts["continuation_"+rule+"_same_side_raw"]+=1
@@ -119,6 +143,25 @@ def replay(d, *,manifest,event,expost_source_sha):
                     counts["continuation_"+rule+"_h1_evaluable"]+=1
                     if label["net_end"]>0:
                         counts["continuation_"+rule+"_h1_direction_right"]+=1
+                    risk=continuation_h1_risk(
+                        frame,i,side=side,atr_m5=res["atr_m5"])
+                    if risk["status"]=="EVALUATED":
+                        prefix="r6_continuation_"+rule+"_"
+                        counts[prefix+"h1_risk_evaluable_n"]+=1
+                        counts[prefix+"h1_target3_before_adverse3_n"]+=int(
+                            risk["target3_vs_adverse3"]=="TARGET_FIRST")
+                        counts[prefix+"h1_adverse3_first_n"]+=int(
+                            risk["target3_vs_adverse3"]=="ADVERSE_FIRST")
+                        counts[prefix+"h1_neither_barrier_n"]+=int(
+                            risk["target3_vs_adverse3"]=="NEITHER")
+                        counts[prefix+"h1_static_stop_before_target3_n"]+=int(
+                            risk["static_stop_before_target3"])
+                        counts[prefix+"h1_total_mae_usd_oz"]+=float(
+                            risk["max_adverse_excursion_usd_oz"])
+                        counts[prefix+"h1_total_mfe_usd_oz"]+=float(
+                            risk["max_favorable_excursion_net_usd_oz"])
+                    else:
+                        counts["r6_continuation_"+rule+"_h1_risk_censored_n"]+=1
         for setup in res["v4_setups"]:
             side=setup["side"]
             counts["v4_"+side+"_"+setup["entry_status"]]+=1
@@ -127,6 +170,36 @@ def replay(d, *,manifest,event,expost_source_sha):
             pattern=setup["stage"] in ("MSS_CONFIRMED","RECLAIM_DETECTED")
             if not (raw or pattern):continue
             counts["observed_pattern_"+side]+=1
+            if pattern and len(pivot_m5)>10:
+                ab=compare_v4_candidate(
+                    setup,pivot_m5,
+                    price=float(row.close)+COST/2 if side=="BUY" else
+                          float(row.close)-COST/2,
+                    atr_m5=res["atr_m5"],now=at)
+                counts["r6_pivot_"+side+"_pattern_n"]+=1
+                counts["r6_pivot_"+side+"_other_gates_ok_n"]+=int(
+                    ab["pattern_and_other_gates_ok"])
+                counts["r6_pivot_"+side+"_hypothetical_n"]+=int(
+                    ab["r6_hypothetical_candidate"])
+                counts["r6_pivot_"+side+"_old_room_only_recovered_n"]+=int(
+                    ab["r6_recovered_old_room_only"])
+                counts["r6_pivot_"+side+"_old_candidate_blocked_n"]+=int(
+                    ab["r6_blocked_old_candidate"])
+                if ab["r6_hypothetical_candidate"]:
+                    for rule,macro in directions.items():
+                        if macro!=side:continue
+                        k=(rule,side)
+                        if k in first_r6_swing_by_rule_side:continue
+                        first_r6_swing_by_rule_side[k]=at
+                        risk=continuation_h1_risk(
+                            frame,i,side=side,atr_m5=res["atr_m5"])
+                        counts["r6_pivot_"+rule+"_first_unique_signal_n"]+=1
+                        if risk["status"]=="EVALUATED":
+                            counts["r6_pivot_"+rule+"_risk_evaluable_n"]+=1
+                            counts["r6_pivot_"+rule+"_h1_right_n"]+=int(
+                                risk["terminal_direction_correct_after_cost"])
+                            counts["r6_pivot_"+rule+"_stop_before_target_n"]+=int(
+                                risk["static_stop_before_target3"])
             for rule,macro in directions.items():
                 if macro not in ("BUY","SELL"):
                     counts["rule_"+rule+"_WAIT"]+=1
@@ -174,6 +247,9 @@ def replay(d, *,manifest,event,expost_source_sha):
         "continuation_pick_policy":"FIRST_RAW_DETECTION_EVEN_IF_FORWARD_LABEL_CENSORED",
         "macro_oracle_directions":directions,
         "continuation_is_OBSERVATION_ONLY_not_a_V4_entry":True,
+        "r6_pivot_and_h1_risk_are_AB_OBSERVATIONS_ONLY":True,
+        "r6_pivot_protocol":"confirmed M5 strict 2 left / 2 right, 96 bars",
+        "r6_adverse_first_policy":"same M1 target+stop counts as adverse; frozen pre-signal 3 M1 levels",
         "official_source_sha256":expost_source_sha,
         "xau_source_sha256":manifest.get("sha256_csv"),
         "counters":dict(counts),
