@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pandas as pd
 import streamlit as st
 from fx_scanner.rejection_v2_research import calculate
+from research.fed_expectation_r1.macro_entry_alignment_r5 import align_macro_v4
 
 def render_rejection_panel():
     st.subheader("RIZAN Rejection Engine · Early BUY / SELL")
@@ -98,6 +99,22 @@ def render_rejection_panel():
                 "Alasan":e["reason"],
             } for e in reversed(events[-8:])]),hide_index=True,width="stretch")
         st.caption("EARLY_REJECTION bukan VALID. REJECTION_CONFIRMED hanya konfirmasi M1, bukan jaminan H1/H4. BREAKOUT_RISK berasal dari quote; INVALIDATED memerlukan close M1, BREAKOUT_CONFIRMED memerlukan close M5.")
+        st.markdown("#### R5 · Filter arah Fed → V4 (RESEARCH ONLY)")
+        # Deliberately no fabricated live FOMC feed: R4 needs real
+        # intraday OIS1Y + TIPS10Y + stock + DXY ingestion.
+        # Until connected, both V4 directions must be BLOCKED.
+        fed_gate=align_macro_v4(outcome["v4_setups"],None,None,evaluated_at=now)
+        st.warning("R5 MACRO WAIT — belum ada feed intraday OIS/TIPS/S&P/DXY "
+                   "dengan timestamp rilis & ingestion terverifikasi. "
+                   "Tidak ada kandidat entry yang lolos filter arah makro.")
+        st.dataframe(pd.DataFrame([{
+            "Arah":v["side"],"Setup V4":v["setup_type"],
+            "Kelayakan V4":v["original_v4_entry_status"],
+            "Gate R5":v["macro_alignment_gate"],
+        } for v in fed_gate["research_candidates"]]),hide_index=True,width="stretch")
+        st.caption("Hasil V4 di bawah ini adalah kandidat TEKNIKAL saja. "
+                   "R5 selalu memblokir order dan tidak mengklaim akurasi 80%. "
+                   "R4 belum terhubung ke market feed live.")
         st.markdown("#### V4 · Trend Rejection dan Countertrend Reversal")
         st.caption("Dua jalur untuk BUY & SELL: searah H1/H4 atau reversal melawan tren dengan M1 sweep → reclaim → MSS. ENTRY_CANDIDATE tetap riset; bukan order.")
         for side in ("BUY","SELL"):
@@ -105,7 +122,7 @@ def render_rejection_panel():
             for x in xs:
                 title=side+" · "+x["setup_type"]+" · "+x["stage"]
                 if x["entry_status"]=="ENTRY_CANDIDATE":
-                    st.info(title+" — ENTRY CANDIDATE (RESEARCH)")
+                    st.info(title+" — V4 TECHNICAL CANDIDATE ONLY; R5 MACRO BLOCKED")
                 elif x["entry_status"].startswith("BLOCKED"):
                     st.warning(title+" — "+x["entry_status"])
                 else:
