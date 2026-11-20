@@ -57,29 +57,32 @@ revalidation of yields, OIS/TIPS, DXY, other Fed speeches and news.
 - Official San Francisco Fed USMPD original XLSX SHA
   `2b91297c42cf692dd74f65eabf7ee97f81d452676e23fa02edb222bfa60f0d0a`.
 - Full FOMC communication window ended exactly
-  **2023-09-20 19:30Z**. Examined the next 90
-  closed M1 minutes, no future bars for signal detection.
+  **2023-09-20 19:30Z**; initial R4 context expired
+  **20:30Z** (=150 minutes after the 18:00Z statement release).
+  Therefore only **60 closed M1 minutes** were scored.
+  The earlier 90-minute exploratory run was superseded because
+  it included 30 minutes beyond the initial event-context limit.
 - Ex-post macro filters:
   `MP2_TIPS10_DXY` = WAIT,
   `POLICY_OIS1Y_TIPS10_SP500_VETO` = SELL,
   `OIS1Y_TIPS10_DXY` = SELL.
 - V4 technically qualified entry candidate count = **0**;
-  BUY watch-only M1 = 51, SELL watch-only M1 = 73,
-  existing invalidated/cooldown blocked BUY 39 and SELL 17
+  BUY watch-only M1 = 39, SELL watch-only M1 = 43,
+  existing invalidated/cooldown blocked BUY 21 and SELL 17
   (counts represent M1 statuses, NOT independent trades).
 - A separate EXPLORATORY continuation observation found
   **3 raw SELL M1 structural break observations**, all technically
-  after the completed communication window. These observations
-  share one market event and overlapping H1 price windows,
-  so cannot be called three independent winning trades.
-  Final replay uses FIRST signal per rule/side/event only,
-  including censoring; the 2023 source was previously
+  after the completed communication window. Two repeated patterns
+  were excluded; the FIRST unique event-window observation was
+  **1/1 H1 direction correct** after synthetic $0.50/oz cost.
+  The whole sample is ONE FOMC meeting, NOT three independent
+  winners or a validated 100% strategy. The 2023 source was previously
   researched, NOT untouched OOS.
 
 ## Full-year scale-out
 
 - `scripts/replay_fed_r5_2019_2026_paired.py`:
-  69 FOMC meetings, per-year real XAU M1 (20 prior to 7 following
+  69 FOMC meetings, per-year real XAU M1 (20 days before to 7 following
   calendar days), original event type and exact Eastern release
   time, closed M1/M5 and synthetic spread.
 - `scripts/aggregate_fed_r5_paired_2019_2026.py`:
