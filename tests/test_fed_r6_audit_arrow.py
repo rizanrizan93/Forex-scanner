@@ -44,7 +44,7 @@ def test_mixed_futures_proxy_and_numeric_delta_serializes_without_arrowinvalid()
     }
     rows = _macro_audit_rows(context)
     assert [r["Perubahan"] for r in rows] == [
-        "-4.00 bps", "—", "+0.00 %", "YIELD_DOWN_PROXY"
+        "-4.00 bps", "—", "+0.0038 %", "YIELD_DOWN_PROXY"
     ]
     assert all(isinstance(cell, str) for row in rows for cell in row.values())
     df = pd.DataFrame(rows)
