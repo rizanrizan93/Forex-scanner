@@ -63,6 +63,9 @@ def _segment(df,h,start,end):
                        (df.index<pd.Timestamp(end,tz="UTC")))
     idx=idx[idx+h<len(df)]
     idx=idx[df.index[idx+h]<pd.Timestamp(end,tz="UTC")]
+    # Exclude labels that jump over multi-session collection gaps.
+    gap=(df.index.to_series().diff()>pd.Timedelta(days=5)).cumsum().to_numpy()
+    idx=idx[gap[idx]==gap[idx+h]]
     # Disjoint forward horizon outcomes, not every overlapping day.
     return idx[::h]
 
@@ -132,14 +135,12 @@ def search_one_horizon(panel, *, horizon, batch_weights=256,
     allfeatures=np.clip(
         (d[list(FEATURES)].to_numpy(dtype=float)-mu)/sd,-4,4)
     xdev=allfeatures[dev_idx]
-    xtest=allfeatures[test_idx]
-    if not np.isfinite(xdev).all() or not np.isfinite(xtest).all():
+    if not np.isfinite(xdev).all():
         return out
     closes=d.close.to_numpy(dtype=float)
     opens=d.open.to_numpy(dtype=float)
     # NEXT available session open -> end of h-th subsequent session.
     moves_dev=closes[dev_idx+h]-opens[dev_idx+1]
-    moves_test=closes[test_idx+h]-opens[test_idx+1]
     yrdev=d.index.year.to_numpy()[dev_idx]
     levels=len(WEIGHT_LEVELS)**len(FEATURES)
     if max_weight_vectors is not None:
@@ -219,6 +220,11 @@ def search_one_horizon(panel, *, horizon, batch_weights=256,
         return out
     weight=_weights_from_ids(np.array([winner["id"]]))[0]
     # HOLDOUT ACCESSED FIRST TIME HERE. No hyperparam re-selection.
+    xtest=allfeatures[test_idx]
+    moves_test=closes[test_idx+h]-opens[test_idx+1]
+    if not np.isfinite(xtest).all():
+        out["status"]="HOLDOUT_HAS_INVALID_FACTOR_DATA"
+        return out
     signal=np.where(xtest@weight>winner["threshold"],1,
                     np.where(xtest@weight< -winner["threshold"],-1,0))
     devsignal=np.where(xdev@weight>winner["threshold"],1,
