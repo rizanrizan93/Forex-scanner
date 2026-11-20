@@ -44,7 +44,7 @@ def _read_quotes(path):
         (millis>1_850_000_000_000).any()):
         raise ValueError("SOURCE_EPOCH_MS_UNEXPECTED")
     x["timestamp"]=pd.to_datetime(millis,unit="ms",utc=True)
-    if x.timestamp.has_duplicates or not x.timestamp.is_monotonic_increasing:
+    if x.timestamp.duplicated().any() or not x.timestamp.is_monotonic_increasing:
         raise ValueError("DUPLICATE_OR_UNSORTED_RAW_H1")
     for k in ("open","high","low","close"):
         x[k]=pd.to_numeric(x[k],errors="raise")
