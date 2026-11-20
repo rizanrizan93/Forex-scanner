@@ -1,0 +1,85 @@
+name: Fed R6.3 — First-Entry Macro-Price Veto A/B 2019-2026 (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/fed_r63_price_veto_ab.py'
+      - 'scripts/replay_fed_r5_paired_pilot.py'
+      - 'scripts/replay_fed_r5_2019_2026_paired.py'
+      - 'scripts/aggregate_fed_r63_paired_ab_2019_2026.py'
+      - 'tests/test_fed_r63_historical_paired_ab.py'
+      - 'src/fx_scanner/fed_r63_macro_price_divergence.py'
+      - 'src/fx_scanner/fed_r6_manual_entry_areas.py'
+      - '.github/workflows/fed_r63_historical_price_veto_ab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  paired_protocol_causal_unit_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Python dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Compile historical R6.3 test modules
+        run: |
+          python -m py_compile scripts/fed_r63_price_veto_ab.py scripts/replay_fed_r5_paired_pilot.py scripts/replay_fed_r5_2019_2026_paired.py scripts/aggregate_fed_r63_paired_ab_2019_2026.py
+      - name: Unit tests same-time first signal, no lookahead, both BUY and SELL
+        run: python -m pytest -q tests/test_fed_r63_historical_paired_ab.py tests/test_fed_r5_2019_2026_paired.py
+  year_2019_2026_real_xau_fomc:
+    needs: paired_protocol_causal_unit_tests
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install pinned replay stack
+        run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Compare same FIRST event macro signal with versus without 15m/1h price veto
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_r5_2019_2026_paired.py --year ${{ matrix.year }} --out artifacts/fed_r63_paired_${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-r63-fixed-first-ab-${{ matrix.year }}
+          path: artifacts/fed_r63_paired_${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 30
+  aggregate_paired_69_fomc:
+    needs: year_2019_2026_real_xau_fomc
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fed-r63-fixed-first-ab-*
+          path: artifacts/source
+      - name: Verify complete source coverage and unchanged R6 baseline, report retained/blocked wins and losses
+        run: |
+          python scripts/aggregate_fed_r63_paired_ab_2019_2026.py --input-dir artifacts/source --out artifacts/fed-r63-fixed-first-h1-ab-2019-2026.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-r63-2019-2026-final-paired-veto-audit
+          path: artifacts/fed-r63-fixed-first-h1-ab-2019-2026.json
+          if-no-files-found: error
+          retention-days: 30
