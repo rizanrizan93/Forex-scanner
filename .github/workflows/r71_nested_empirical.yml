@@ -1,0 +1,93 @@
+name: R7.1 Nested Regime Historical Repaired-vs-Original Data Study
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r71_nested_real_runner.py'
+      - '.github/workflows/r71_nested_empirical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  nested:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      R71_ORIGINAL_SHARDS: '/tmp/r71-original'
+      R71_DUKA_REPAIR: '/tmp/r71-repaired'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install locked numerical dependencies
+        run: python -m pip install numpy pandas==2.2.3
+      - name: Download original 2018 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2018
+          path: /tmp/r71-original/2018
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download original 2019 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2019
+          path: /tmp/r71-original/2019
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download original 2020 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2020
+          path: /tmp/r71-original/2020
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download original 2021 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2021
+          path: /tmp/r71-original/2021
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download original 2022 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2022
+          path: /tmp/r71-original/2022
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download original 2023 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2023
+          path: /tmp/r71-original/2023
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Download original 2024 XAU shard only (no 2025-26)
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2024
+          path: /tmp/r71-original/2024
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Fetch source-audited Dukascopy 2023 repair
+        uses: actions/download-artifact@v4
+        with:
+          name: r71-repaired-independent-dukas-2023
+          path: /tmp/r71-repaired
+          run-id: 44831450440
+          github-token: ${{ github.token }}
+      - name: Evaluate pre-2025 nested folds across 4 horizons, both price vendors and factor sets
+        run: python -m fx_scanner.fed_r71_nested_real_runner
+      - name: Preserve all fold metrics, per-regime weights and source checksums
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r71-nested-2018-24-regimes-provenance
+          path: artifacts/r71-nested-results.json
+          if-no-files-found: warn
+          retention-days: 30
