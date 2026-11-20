@@ -77,6 +77,28 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
                     "raw_m1_continuation_observations":counters.get(col+"same_side_raw",0),
                     "correlated_m1_duplicates":counters.get(col+"deduplicated_overlap",0),
                     "h1_censored":counters.get(col+"h1_censored",0),
+                    "r6_risk_evaluable_n":counters.get(
+                        "r6_continuation_"+rule+"_h1_risk_evaluable_n",0),
+                    "r6_target3_first_n":counters.get(
+                        "r6_continuation_"+rule+"_h1_target3_before_adverse3_n",0),
+                    "r6_adverse3_first_n":counters.get(
+                        "r6_continuation_"+rule+"_h1_adverse3_first_n",0),
+                    "r6_neither_barrier_n":counters.get(
+                        "r6_continuation_"+rule+"_h1_neither_barrier_n",0),
+                    "r6_static_stop_before_target_n":counters.get(
+                        "r6_continuation_"+rule+"_h1_static_stop_before_target3_n",0),
+                    "r6_total_mae_usd_oz":counters.get(
+                        "r6_continuation_"+rule+"_h1_total_mae_usd_oz",0.0),
+                    "r6_total_mfe_usd_oz":counters.get(
+                        "r6_continuation_"+rule+"_h1_total_mfe_usd_oz",0.0),
+                    "r6_pivot_first_unique_signal_n":counters.get(
+                        "r6_pivot_"+rule+"_first_unique_signal_n",0),
+                    "r6_pivot_risk_evaluable_n":counters.get(
+                        "r6_pivot_"+rule+"_risk_evaluable_n",0),
+                    "r6_pivot_h1_right_n":counters.get(
+                        "r6_pivot_"+rule+"_h1_right_n",0),
+                    "r6_pivot_stop_before_target_n":counters.get(
+                        "r6_pivot_"+rule+"_stop_before_target_n",0),
                     "v4_directional_entry_h1_evaluable_n":sum(x["rule"]==rule for x in observations),
                     "v4_directional_entry_h1_right_n":sum(
                         x["rule"]==rule and
@@ -94,6 +116,32 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
                 "v4_original_buy_candidate_m1":counters.get("v4_BUY_ENTRY_CANDIDATE",0),
                 "v4_original_sell_candidate_m1":counters.get("v4_SELL_ENTRY_CANDIDATE",0),
                 "rule_stats":rule_stats,
+                "r6_unfiltered_first_continuation_by_side":{
+                    side:{
+                        "first_event_n":counters.get(
+                            "r6_unfiltered_"+side+"_first_event_n",0),
+                        "h1_evaluable_n":counters.get(
+                            "r6_unfiltered_"+side+"_h1_evaluable_n",0),
+                        "h1_correct_n":counters.get(
+                            "r6_unfiltered_"+side+"_h1_correct_n",0),
+                        "target_first_n":counters.get(
+                            "r6_unfiltered_"+side+"_h1_target_first_n",0),
+                        "stop_first_n":counters.get(
+                            "r6_unfiltered_"+side+"_h1_stop_first_n",0),
+                    } for side in ("BUY","SELL")},
+                "r6_pivot_ablation_by_side":{
+                    side:{
+                        "pattern_n":counters.get(
+                            "r6_pivot_"+side+"_pattern_n",0),
+                        "other_gates_ok_n":counters.get(
+                            "r6_pivot_"+side+"_other_gates_ok_n",0),
+                        "hypothetical_n":counters.get(
+                            "r6_pivot_"+side+"_hypothetical_n",0),
+                        "old_room_only_recovered_n":counters.get(
+                            "r6_pivot_"+side+"_old_room_only_recovered_n",0),
+                        "old_candidate_blocked_n":counters.get(
+                            "r6_pivot_"+side+"_old_candidate_blocked_n",0),
+                    } for side in ("BUY","SELL")},
                 "retro_macro_not_pit":True,
             })
         except Exception as ex:
@@ -107,7 +155,15 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
         keys=("first_observational_h1_evaluable_n","first_observational_h1_right_n",
               "raw_m1_continuation_observations","correlated_m1_duplicates",
               "h1_censored","v4_directional_entry_h1_evaluable_n",
-              "v4_directional_entry_h1_right_n")
+              "v4_directional_entry_h1_right_n",
+              "r6_risk_evaluable_n","r6_target3_first_n",
+              "r6_adverse3_first_n","r6_neither_barrier_n",
+              "r6_static_stop_before_target_n",
+              "r6_total_mae_usd_oz","r6_total_mfe_usd_oz",
+              "r6_pivot_first_unique_signal_n",
+              "r6_pivot_risk_evaluable_n",
+              "r6_pivot_h1_right_n",
+              "r6_pivot_stop_before_target_n")
         per_rule[rule]={
             "macro_buy_meetings":sum(r["expost_macro_side"]=="BUY" for r in chosen),
             "macro_sell_meetings":sum(r["expost_macro_side"]=="SELL" for r in chosen),
@@ -128,6 +184,20 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
         "window":"FIRST_90_CLOCK_MINUTES_AFTER_COMPLETED_FOMC_COMMUNICATION",
         "entry_cost_assumption_usd_oz":0.50,
         "per_rule_summary":per_rule,
+        "r6_unfiltered_baseline_by_side":{
+            side:{
+                k:sum(e["r6_unfiltered_first_continuation_by_side"][side][k]
+                      for e in summaries)
+                for k in ("first_event_n","h1_evaluable_n",
+                          "h1_correct_n","target_first_n","stop_first_n")}
+            for side in ("BUY","SELL")},
+        "r6_pivot_ablation_by_side":{
+            side:{
+                k:sum(e["r6_pivot_ablation_by_side"][side][k]
+                      for e in summaries)
+                for k in ("pattern_n","other_gates_ok_n","hypothetical_n",
+                          "old_room_only_recovered_n","old_candidate_blocked_n")}
+            for side in ("BUY","SELL")},
         "events":summaries,
         "price_sources":provenance,
         "original_v4_entry_candidates_m1":sum(
