@@ -14,6 +14,7 @@ CONTRACT = "RIZAN_R63_LIQUIDITY_STRESS_RESEARCH_READONLY_V1"
 STRESS = frozenset((
     "DOWNSIDE_DISPLACEMENT", "UPSIDE_DISPLACEMENT", "VOLATILITY_SPIKE",
     "SWEEP_LOW_RECLAIM", "SWEEP_HIGH_REJECT", "WIDE_SPREAD",
+    "POST_STRESS_COOLDOWN",
 ))
 
 
@@ -26,6 +27,8 @@ def _base(reason: str = "NO_VALID_CLOSED_M5"):
         "atr_reference": None,
         "previous_20_low": None,
         "previous_20_high": None,
+        "prior_stress_state": None,
+        "stress_age_bars": None,
         "risk_veto": False,
         "liquidation_confirmed": False,
         "open_interest_confirmation": False,
@@ -37,7 +40,7 @@ def _base(reason: str = "NO_VALID_CLOSED_M5"):
     }
 
 
-def assess_liquidity_stress(m5, *, now, spread=None):
+def assess_liquidity_stress(m5, *, now, spread=None, _scan_prior=True):
     """Causal closed-M5 displacement/sweep screen; no future-data access.
 
     Definitions (all research-only):
@@ -58,7 +61,7 @@ def assess_liquidity_stress(m5, *, now, spread=None):
             return out
         if not isinstance(m5.index, pd.DatetimeIndex) or m5.index.tz is None:
             return _base("NAIVE_CANDLE_CLOCK")
-        d = m5[["open", "high", "low", "close"]].copy().tail(32)
+        d = m5[["open", "high", "low", "close"]].copy().tail(36)
         d.index = d.index.tz_convert("UTC")
         if len(d) < 30 or not d.index.is_monotonic_increasing or d.index.has_duplicates:
             return _base("INSUFFICIENT_OR_INVALID_M5")
@@ -115,6 +118,22 @@ def assess_liquidity_stress(m5, *, now, spread=None):
             state = "VOLATILITY_SPIKE"
         else:
             state = "NORMAL"
+        # A liquidations-like displacement must not become "NORMAL"
+        # after just one harmless M5. Preserve a 3-closed-bar WATCH
+        # cooldown using only already completed bars. No future data.
+        if state == "NORMAL" and _scan_prior:
+            for lag in (1,2,3):
+                previous=d.iloc[:-lag]
+                if len(previous)<30:
+                    break
+                prior = assess_liquidity_stress(
+                    previous, now=previous.index[-1], spread=None,
+                    _scan_prior=False)
+                if prior["state"] in STRESS and prior["state"]!="WIDE_SPREAD":
+                    state="POST_STRESS_COOLDOWN"
+                    out["prior_stress_state"]=prior["state"]
+                    out["stress_age_bars"]=lag
+                    break
         out["state"] = state
         out["reason"] = (
             "CLOSED_BAR_PRICE_STRESS_NOT_PROOF_OF_FORCED_LIQUIDATION"
