@@ -1,0 +1,48 @@
+name: Fed R5 — Paired Real XAU M1 FOMC/V4 Pilot (Research ONLY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_r5_paired_pilot.py'
+      - 'tests/test_fed_r5_paired_pilot.py'
+      - '.github/workflows/fed_r5_paired_real_price_pilot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  causality_unit_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - run: python -m py_compile scripts/replay_fed_r5_paired_pilot.py
+      - run: python -m pytest -q tests/test_fed_r5_paired_pilot.py tests/test_fed_r4_v4_entry_integration_r5.py
+  official_fomc_2023_real_price_pairing:
+    needs: causality_unit_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: 'src:.'
+      REJECTION_SAMPLE_PATH: /tmp/fed-r5-histdata-2023.csv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Fetch September 2023 verified XAUUSD M1 with provenance
+        run: python scripts/rejection_source_histdata_sample.py
+      - name: Join actual completed FOMC event window to closed-bar V4 and screen only matching macro direction
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_r5_paired_pilot.py --csv "$REJECTION_SAMPLE_PATH" --out artifacts/fed_r5_2023Sep20_paired_FOMC_V4_EXPOST.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-r5-2023sep20-macro-v4-paired-expost
+          path: artifacts/fed_r5_2023Sep20_paired_FOMC_V4_EXPOST.json
+          if-no-files-found: error
+          retention-days: 30
