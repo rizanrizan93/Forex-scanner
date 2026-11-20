@@ -45,7 +45,7 @@ def _out(now, reason):
         "status": "WAIT", "reason": reason, "macro_direction": "WAIT",
         "macro_reason": "NO_VERIFIED_R4_REALTIME_FEED",
         "price": None, "quote_at": None, "last_closed_m1": None,
-        "atr_m5": None, "bias_h1": "UNKNOWN", "bias_h4": "UNKNOWN",
+        "atr_m5": None, "bias_m15":"UNKNOWN", "bias_h1": "UNKNOWN", "bias_h4": "UNKNOWN",
         "zones": [], "entry_allowed": False,
         "authority_to_send_orders": False, "authority_to_modify_cbots": False,
         "score_is_accuracy": False, "backtested_80pct_both_sides": False,
@@ -195,6 +195,7 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
         out["reason"] = "STALE_M1_NO_LIVE_AREAS"
         return out
     m5 = _completed_tf(d,5,now)
+    m15 = _completed_tf(d,15,now)
     h1 = _completed_tf(d,60,now)
     h4 = _completed_tf(d,240,now)
     if len(m5)<50:
@@ -205,6 +206,7 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
         out["reason"]="ATR_NOT_READY"
         return out
     out["atr_m5"]=round(atr,4)
+    out["bias_m15"]=_bias(m15)
     out["bias_h1"]=_bias(h1)
     out["bias_h4"]=_bias(h4)
     out["macro_direction"],out["macro_reason"]=verified_macro_direction(macro,now)
@@ -293,6 +295,7 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
             "MACRO_R4_VERIFIED":direction_ok,
             "OPERATIONAL_CONTEXT_ALIGNED":out["market_context"].get("direction")==side,
             "H1_H4_CONFIRMED":htf_ok,
+            "M15_CONFIRMATION":out["bias_m15"]==side,
             "QUOTE_SPREAD_FRESH":quote_ok,
             "NEWS_WINDOW_OK":news_ok,
             "SWING_ROOM_GE_1_5R":room is not None and room>=1.5,
