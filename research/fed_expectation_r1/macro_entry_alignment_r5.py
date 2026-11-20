@@ -70,6 +70,17 @@ def align_macro_v4(v4_candidates, macro, event, *, evaluated_at):
             "ENTRY_CANDIDATE","WATCH_ONLY","BLOCKED",
             "BLOCKED_PREVIOUS_FAILED_REJECTION") for x in v4_candidates):
         raise ValueError("UNKNOWN_V4_ENTRY_STATUS")
+    if event is None:
+        result=_result(now,None,"OFFICIAL_FOMC_EVENT_NOT_CONNECTED",v4_candidates)
+        result["research_candidates"]=[
+            {"side":x["side"],"setup_type":x.get("setup_type"),
+             "v4_stage":x.get("stage"),"original_v4_entry_status":x["entry_status"],
+             "macro_alignment_gate":"BLOCKED_NO_FOMC_MARKET_SOURCE",
+             "watch_level":x.get("watch_level"),
+             "invalidation":x.get("invalidation"),"cannot_execute":True}
+            for x in v4_candidates
+        ]
+        return result
     if not isinstance(event,dict):
         raise ValueError("OFFICIAL_EVENT_REQUIRED")
     if not {"event_id","event_kind","release_at","source_url"}.issubset(event):
