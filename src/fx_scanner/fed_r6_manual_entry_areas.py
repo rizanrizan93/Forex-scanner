@@ -268,6 +268,10 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
             "status":"WATCH_FRESH" if not touched else "WATCH_RETESTED",
             "macro_alignment":"WAIT" if out["macro_direction"]=="WAIT" else
                               ("ALIGNED" if out["macro_direction"]==side else "OPPOSITE"),
+            "market_context_alignment":(
+                "ALIGNED_WATCH" if out["market_context"].get("direction")==side else
+                "OPPOSITE_WATCH" if out["market_context"].get("direction") in ("BUY","SELL")
+                else "WAIT"),
             "entry_eligible":False,"trigger_confirmed":False,
             "execution_authority":False,
         }
