@@ -61,7 +61,7 @@ def test_down_gold_from_live_dollar_blocks_bullish_daily_yield():
     x=classify(worker(dxy_pct=.12))
     assert x["direction"]=="WAIT"
     assert x["strength"]=="CONFLICT"
-    assert x["reason"]=="LIVE_DXY_AND_YIELD_CONFLICT_OR_DAILY_DIVERGENCE"
+    assert x["reason"]=="FRESH_DXY_OPPOSES_DAILY_YIELDS"
 
 def test_both_daily_yields_up_and_intraday_concur_is_sell():
     x=classify(worker(two_year=4,ten_year=3,dxy_pct=.18,zn="YIELD_UP_PROXY"))
