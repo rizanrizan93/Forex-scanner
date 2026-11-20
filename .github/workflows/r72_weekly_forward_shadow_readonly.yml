@@ -3,6 +3,9 @@ name: R7.2 Weekly Frozen D1 Forward Shadow and Receipt Archive (Read Only)
 # Actual research source checkout is pinned by immutable commit below.
 # No cTrader credentials, order bridge, dashboard or live strategy imports.
 on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/r72_weekly_forward_shadow_readonly.yml']
   schedule:
     - cron: '20 0 * * 6'
   workflow_dispatch:
