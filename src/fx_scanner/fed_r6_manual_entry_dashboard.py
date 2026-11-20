@@ -7,6 +7,7 @@ from .manual_r3_feed import fetch_market
 from .fed_r61_operational_macro_direction import assess_market_direction
 from .fed_r62_tested_horizon_policy import audited_horizon_context
 from .fed_r63_macro_price_divergence import evaluate_divergence
+from .fed_r65_four_hour_search import evaluate_four_hour_search
 from .pre_news_transport import fetch_pre_news_snapshot
 
 
@@ -61,6 +62,47 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
         )
     a,b,c,d = st.columns(4)
     price_action=evaluate_divergence(market_context,report)
+    forecast=evaluate_four_hour_search(
+        report,market_context,now=now,
+        news_events=source.get("news_events") if source is not None else None)
+    st.markdown("#### R6.5 · Arah pencarian XAU 4 jam ke depan")
+    fc1,fc2,fc3=st.columns(3)
+    fc1.metric("Fokus 4 jam",forecast["search_side"])
+    fc2.metric("Skor bukti (bukan win rate)",
+               str(forecast["evidence_score"])+"/"+str(forecast["max_score"]))
+    fc3.metric("Status engine",forecast["status"])
+    st.caption(
+        "Keputusan "+_wib(forecast["issued_at"])+
+        " · horizon hingga "+_wib(forecast["target_at"])+
+        " · tinjau ulang setiap 15 menit. "+
+        "Skor hanya konfluensi deterministik, BUKAN peluang keberhasilan."
+    )
+    if forecast["status"]=="RESEARCH_WATCH":
+        st.info(
+            "Arah penelitian 4 jam: **"+forecast["search_side"]+"**. "+
+            "Ini memprioritaskan mencari zona sesuai arah, bukan memprediksi "+
+            "kepastian harga atau membuka transaksi. Mode makro "+
+            forecast["macro_mode"]+", kalender "+forecast["calendar_state"]+
+            "; tetap wajib menunggu trigger harga terpisah."
+        )
+    else:
+        st.warning(
+            "4H WAIT — "+forecast["reason"].replace("_"," ")+
+            ". Arah teknikal yang teramati: "+forecast["watch_side"]+
+            ". Jangan memaksakan BUY/SELL saat gate belum terpenuhi."
+        )
+    if forecast.get("nearest_pool"):
+        near=forecast["nearest_pool"]
+        st.caption(
+            "Pool sesi selesai terdekat: "+str(near["name"])+
+            " @ "+_fmt(near["price"])+
+            ", jarak "+str(near["distance_atr_m5"])+" × range M5 median/ATR referensi."
+        )
+    st.caption(
+        "R6.5 masih **riset read-only**, belum ada replay akurasi D4h "+
+        "terkalibrasi 2019–2026. Tidak mengendalikan Frozen V1, cBot, "+
+        "order, leverage atau stop-loss."
+    )
     a.metric("Makro · yield + DXY",market_context["direction"])
     st.caption(
         "Kekuatan: "+market_context["strength"]+
