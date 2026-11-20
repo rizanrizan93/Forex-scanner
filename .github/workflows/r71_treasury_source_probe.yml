@@ -1,0 +1,55 @@
+name: R7.1 Treasury Official Yield Archive Source Probe (No Orders)
+on:
+  push:
+    branches: ['research/r71-regime-pit-20261121']
+    paths: ['.github/workflows/r71_treasury_source_probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  treasury-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Fetch original Treasury nominal and TIPS nominal/real archive data
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from hashlib import sha256
+          import xml.etree.ElementTree as ET
+          urls={
+              "nominal_1990_2023":"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rate-archives/par-yield-curve-rates-1990-2023.csv",
+              "real_2003_2023":"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rate-archives/par-real-yield-curve-rates-2003-2023.csv",
+              "nominal_2024":"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2024",
+              "real_2024":"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2024",
+          }
+          out=Path("artifacts/r71-treasury-original");out.mkdir(parents=True,exist_ok=True)
+          for name,url in urls.items():
+              with urlopen(Request(url,headers={"User-Agent":"RIZANResearchR71/1.0"}),timeout=30) as resp:
+                  data=resp.read(4000000)
+              if len(data)<100 or len(data)>3500000:
+                  raise RuntimeError("BAD_SOURCE_SIZE:"+name)
+              p=out/(name+(".xml" if name.endswith("2024") else ".csv"))
+              p.write_bytes(data)
+              print("R71_TREASURY_RAW",name,"bytes",len(data),"sha256",sha256(data).hexdigest(),
+                    "head",repr(data[:130]))
+              if name.endswith("2024"):
+                  root=ET.fromstring(data)
+                  print("R71_TREASURY_XML_ROOT",name,root.tag,
+                        "first_children",[c.tag for c in list(root)[:2]])
+                  for e in list(root)[:1]:
+                      print("R71_TREASURY_XML_ENTRY",name,
+                            [(x.tag,x.text and x.text[:70]) for x in list(e)[:5]])
+          PY
+      - name: Upload verified raw Treasury official data for subsequent PIT audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r71-treasury-nominal-real-2018-2024-original
+          path: artifacts/r71-treasury-original/*
+          if-no-files-found: warn
+          retention-days: 30
