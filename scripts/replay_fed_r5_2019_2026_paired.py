@@ -112,6 +112,11 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
             "macro_buy_meetings":sum(r["expost_macro_side"]=="BUY" for r in chosen),
             "macro_sell_meetings":sum(r["expost_macro_side"]=="SELL" for r in chosen),
             "macro_wait_meetings":sum(r["expost_macro_side"] not in ("BUY","SELL") for r in chosen),
+            "by_side":{
+                side:{k:sum(r[k] for r in chosen if r["expost_macro_side"]==side)
+                      for k in keys}
+                for side in ("BUY","SELL")
+            },
             **{k:sum(r[k] for r in chosen) for k in keys},
         }
     return {
