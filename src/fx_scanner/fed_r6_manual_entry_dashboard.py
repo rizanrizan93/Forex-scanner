@@ -81,6 +81,19 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
                      report["bias_m15"]+" / "+report["bias_h1"]+" / "+report["bias_h4"])
     col_final.metric("Arah setelah konfirmasi harga",
                      price_action["display_direction"])
+    liq=report.get("liquidity_context") or {}
+    if liq.get("risk_veto") is True:
+        st.warning(
+            "R6.3 PENGAMAN LIKUIDITAS · "+str(liq.get("state"))+
+            ". Candle M5 tertutup menunjukkan kemungkinan sweep/displacement/volatilitas. "+
+            "TUNGGU konfirmasi ulang; jangan langsung BUY karena yield/DXY turun "+
+            "atau mengejar SELL saat harga terjun. Ini BUKAN bukti margin call/likuidasi paksa."
+        )
+    elif liq.get("state")=="UNKNOWN":
+        st.caption("Filter likuiditas belum dapat diverifikasi dari M5 selesai: "+
+                   str(liq.get("reason"))+". Tidak ada persetujuan entry.")
+    elif liq.get("state")=="NORMAL":
+        st.caption("Filter likuiditas M5: NORMAL (bukan jaminan bebas likuidasi).")
     if price_action["divergence"]:
         st.warning(
             "**DIVERGENSI — hindari entry melawan struktur XAU.** "
