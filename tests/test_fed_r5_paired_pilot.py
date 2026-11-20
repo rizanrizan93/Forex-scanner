@@ -64,3 +64,13 @@ def test_extra_long_emergency_fomc_ends_after_macro_expiry_no_entry():
     assert out["counters"]["macro_expired_before_completed_communication_window"]==1
     assert out["counters"].get("screened_m1_closes",0)==0
     assert out["production_eligible"] is False
+
+def test_r6_causal_pivot_and_continuation_risk_audit_observational_only():
+    d,m,e=sample()
+    out=replay(d,manifest=m,event=e,expost_source_sha="sha")
+    assert out["r6_pivot_and_h1_risk_are_AB_OBSERVATIONS_ONLY"] is True
+    assert out["production_eligible"] is False
+    assert out["true_macro_pit_buy_n"]==0
+    assert out["true_macro_pit_sell_n"]==0
+    assert out["counters"].get("r6_pivot_BUY_old_room_only_recovered_n",0)>=0
+    assert out["counters"].get("r6_pivot_SELL_old_room_only_recovered_n",0)>=0
