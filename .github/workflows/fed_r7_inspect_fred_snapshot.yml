@@ -1,0 +1,31 @@
+name: R7 Audit Existing FRED CSV Snapshot (Read Only)
+on:
+  push:
+    branches: ['research/r7-xau-multihorizon-20261120']
+    paths:
+      - '.github/workflows/fed_r7_inspect_fred_snapshot.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install pandas==2.2.3
+      - name: Audit historical FRED columns and dates without modifying source
+        run: |
+          python - <<'PY'
+          import hashlib,pandas as pd
+          from pathlib import Path
+          p=Path('research/zone_rebound/fixed10_evidence/fred_macro_snapshot.csv.gz')
+          d=pd.read_csv(p)
+          print('R7_FRED_REPO_COLUMNS',list(d.columns))
+          print('R7_FRED_REPO_ROWS',len(d))
+          print('R7_FRED_REPO_SHA256',hashlib.sha256(p.read_bytes()).hexdigest())
+          for c in d.columns:
+              print('R7_FRED_COLUMN',c,'non_null',int(d[c].notna().sum()),
+                    'first',str(d[c].iloc[0]),'last',str(d[c].iloc[-1]))
+          PY
