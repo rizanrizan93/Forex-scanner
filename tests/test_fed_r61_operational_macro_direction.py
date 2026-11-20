@@ -40,9 +40,10 @@ def classify(w):
 def test_realistic_20nov_daily_yields_down_dxy_flat_is_buy_indicative_not_r4():
     x=classify(worker())
     assert x["contract"]==CONTRACT
-    assert x["direction"]=="BUY"
-    assert x["strength"]=="INDICATIVE_DAILY"
-    assert x["mode"]=="OFFICIAL_DAILY_REGIME"
+    assert x["direction"]=="WAIT"
+    assert x["daily_direction"]=="BUY"
+    assert x["strength"]=="WAIT_FOR_DXY_CONFLUENCE"
+    assert x["mode"]=="OFFICIAL_DAILY_LEAN_ONLY"
     assert x["dxy_direction"]=="FLAT"
     assert x["quality_state"]=="WAIT_DAILY_DATA"
     assert x["entry_permission"] is False
@@ -60,7 +61,7 @@ def test_down_gold_from_live_dollar_blocks_bullish_daily_yield():
     x=classify(worker(dxy_pct=.12))
     assert x["direction"]=="WAIT"
     assert x["strength"]=="CONFLICT"
-    assert x["reason"]=="LIVE_DXY_AND_YIELD_CONFLICT_OR_DAILY_DIVERGENCE"
+    assert x["reason"]=="FRESH_DXY_OPPOSES_DAILY_YIELDS"
 
 def test_both_daily_yields_up_and_intraday_concur_is_sell():
     x=classify(worker(two_year=4,ten_year=3,dxy_pct=.18,zn="YIELD_UP_PROXY"))
@@ -71,14 +72,15 @@ def test_both_daily_yields_up_and_intraday_concur_is_sell():
 
 def test_stale_dxy_does_not_become_live_sell():
     x=classify(worker(dxy_pct=.23,dxy_at="2026-11-20T02:31:00Z"))
-    assert x["direction"]=="BUY"
-    assert x["strength"]=="INDICATIVE_DAILY"
+    assert x["direction"]=="WAIT"
+    assert x["daily_direction"]=="BUY"
+    assert x["strength"]=="WAIT_FOR_DXY_CONFLUENCE"
     assert not x["dxy"]["fresh"]
 
 def test_stale_zn_does_not_use_old_cash_time():
     x=classify(worker(dxy_pct=-.12,zn_at="2026-11-20T02:20:00Z"))
     assert x["direction"]=="BUY"
-    assert x["strength"]=="INDICATIVE_DAILY"
+    assert x["strength"]=="YIELD_DXY_DIRECTIONAL_CONTEXT"
     assert x["intraday_yield"]["available_for_direction"] is False
     assert x["intraday_yield"]["cash_yield_claimed_from_futures"] is False
 
@@ -104,8 +106,22 @@ def test_isolated_existing_r6_manual_zones_do_not_inherit_r61_trading_authority(
     context=classify(worker())
     r=evaluate_areas(bars,now=NOW,bid=99.95,ask=100.05,
                      quote_at=NOW,news_events=[],market_context=context)
-    assert r["market_context"]["direction"]=="BUY"
+    assert r["market_context"]["direction"]=="WAIT"
+    assert r["market_context"]["daily_direction"]=="BUY"
     assert r["macro_direction"]=="WAIT" and r["entry_allowed"] is False
     assert r["authority_to_send_orders"] is False
-    assert any(z["market_context_alignment"]=="ALIGNED_WATCH" for z in r["zones"])
+    assert all(z["market_context_alignment"]=="WAIT" for z in r["zones"])
     assert all(z["entry_eligible"] is False for z in r["zones"])
+
+def test_flat_dxy_does_not_promote_daily_yield_lean_to_trade_direction():
+    x=classify(worker(dxy_pct=0.0,zn="YIELD_DOWN_PROXY"))
+    assert x["daily_direction"]=="BUY"
+    assert x["direction"]=="WAIT"
+    assert x["entry_permission"] is False
+
+def test_yield_and_dxy_agree_with_stale_zn_context_still_not_fomc_r4():
+    x=classify(worker(dxy_pct=-0.06,zn_at="2026-11-20T01:00:00Z"))
+    assert x["direction"]=="BUY"
+    assert x["strength"]=="YIELD_DXY_DIRECTIONAL_CONTEXT"
+    assert x["validated_fed_r4"] is False
+    assert x["entry_permission"] is False
