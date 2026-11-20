@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Mapping
+import re
 import pandas as pd
 
 CONTRACT="RIZAN_R71_POINT_IN_TIME_FACTOR_PROVENANCE_V1"
@@ -45,6 +46,8 @@ def verify_record(record:Mapping,*,decision_at,required_symbol=None):
         "contract":CONTRACT,"status":"REJECT",
         "reason":"MISSING_OR_UNTRUSTED_PROVENANCE",
         "intraday_point_in_time_verified":False,
+        "claimed_receipt_order_consistent":False,
+        "independent_capture_attestation_verified":False,
         "daily_vintage_consistent":False,
         "causal_model_input_permitted":False,
         "dxy_ice_verified":False,
@@ -93,18 +96,27 @@ def verify_record(record:Mapping,*,decision_at,required_symbol=None):
                                       "BROKER_DXY_PROXY"):
                 out["reason"]="SOURCE_IS_ONLY_PROXY_NOT_ORIGINAL_PIT"
                 return out
+            # A supplied SHA256 and strings for past timestamps are not
+            # independent proof: a caller could fabricate them. Only
+            # verify temporal ORDER here. Historical provenance remains
+            # UNATTESTED unless later checked against a trusted archive
+            # manifest and acquisition logs outside this function.
             out.update(
-                status="PASS_ORIGINAL_RECEIPT",
-                reason="ORIGINAL_RECORD_AND_RELEASE_OR_EXCHANGE_CLOCK_ASOF",
-                intraday_point_in_time_verified=True,
-                daily_vintage_consistent=True,
-                causal_model_input_permitted=True,
-                dxy_ice_verified=(symbol in ("DXY","USDX","DX")
-                                 and r["source_class"] in ("ICE_DXY_INDEX","ICE_DX_FUTURES")),
-                published_at=published.isoformat(),
-                original_captured_at=captured.isoformat())
+                status="TEMPORAL_ORDER_PASS_MANIFEST_UNVERIFIED",
+                reason="TIMESTAMPS_SELF_REPORTED_NOT_INDEPENDENTLY_ATTESTED",
+                claimed_receipt_order_consistent=True,
+                intraday_point_in_time_verified=False,
+                independent_capture_attestation_verified=False,
+                daily_vintage_consistent=False,
+                causal_model_input_permitted=False,
+                dxy_ice_verified=False,
+                purported_published_at=published.isoformat(),
+                purported_original_captured_at=captured.isoformat())
             return out
         if method in RECONSTRUCTED and r["source_class"]=="ALFRED_VINTAGE":
+            if not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}",str(r["vintage_date"])):
+                out["reason"]="ALFRED_VINTAGE_MUST_BE_DATE_ONLY"
+                return out
             vintage=pd.Timestamp(r["vintage_date"])
             if pd.isna(vintage) or vintage.tzinfo is not None:
                 out["reason"]="VINTAGE_MUST_BE_ISO_DATE_WITHOUT_TIMEZONE"
