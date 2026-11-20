@@ -31,6 +31,8 @@ def audit_future_outcomes(*,raw_h1_path,old_manifests_dir,
     if now.tzinfo is None or now<receipt:
         raise ValueError("PROSPECTIVE_OUTCOME_AUDIT_TIME_INVALID")
     quotes,sha,_=_read_quotes(raw_h1_path)
+    if quotes.timestamp.iloc[-1]>receipt+pd.Timedelta(minutes=2):
+        raise ValueError("FUTURE_QUOTE_BAR_AFTER_DECLARED_SOURCE_RECEIPT")
     quotes["utc_day"]=quotes.timestamp.dt.floor("D")
     daily=quotes.groupby("utc_day").agg(
         open=("open","first"),high=("high","max"),low=("low","min"),
