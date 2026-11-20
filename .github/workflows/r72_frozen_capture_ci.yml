@@ -1,0 +1,37 @@
+name: R7.2 Frozen Candidate and Forward Receipt Regression (No Orders)
+on:
+  push:
+    branches: ['research/r72-frozen-forward-shadow-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r72_frozen_candidate.py'
+      - 'src/fx_scanner/fed_r72_capture_forward.py'
+      - 'research/frozen/r72_d1_price_only_v1.json'
+      - 'tests/test_fed_r72_frozen_capture.py'
+      - '.github/workflows/r72_frozen_capture_ci.yml'
+  pull_request:
+    paths:
+      - 'src/fx_scanner/fed_r72_frozen_candidate.py'
+      - 'src/fx_scanner/fed_r72_capture_forward.py'
+      - 'research/frozen/r72_d1_price_only_v1.json'
+      - 'tests/test_fed_r72_frozen_capture.py'
+      - '.github/workflows/r72_frozen_capture_ci.yml'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install exact runtime numerical libraries
+        run: python -m pip install numpy pandas==2.2.3 pytest==9.0.2
+      - name: Compile and regression test committed immutable frozen parameters
+        run: |
+          python -m py_compile src/fx_scanner/fed_r72_frozen_candidate.py src/fx_scanner/fed_r72_capture_forward.py
+          python -m pytest -q tests/test_fed_r72_frozen_capture.py tests/test_fed_r71_forward_shadow_gate.py
