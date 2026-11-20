@@ -44,8 +44,11 @@ def test_original_ice_dxy_archival_capture_cannot_arrive_after_decision():
         "proof_method":"EXCHANGE_TIMESTAMP_WITH_ARCHIVE_RECEIPT"}
     good=verify_record(base,decision_at="2023-06-01T10:02:00Z")
     assert good["contract"]==CONTRACT
-    assert good["intraday_point_in_time_verified"] is True
-    assert good["dxy_ice_verified"] is True
+    assert good["status"]=="TEMPORAL_ORDER_PASS_MANIFEST_UNVERIFIED"
+    assert good["claimed_receipt_order_consistent"] is True
+    assert good["intraday_point_in_time_verified"] is False
+    assert good["dxy_ice_verified"] is False
+    assert good["causal_model_input_permitted"] is False
     bad=verify_record(base,decision_at="2023-06-01T10:00:02Z")
     assert bad["status"]=="REJECT"
     assert bad["reason"]=="PUBLICATION_OR_CAPTURE_AFTER_DECISION"
@@ -127,3 +130,30 @@ def test_forbid_arbitrary_outer_validation_using_seen_2025_2026():
     d=synthetic_daily()
     with pytest.raises(ValueError,match="PRE_2025"):
         nested_regime_walk_forward(d,horizon="D1",outer_years=(2025,))
+
+
+def test_fabricated_source_sha_and_original_timestamp_cannot_certify_pit():
+    record={
+        "symbol":"DXY","source_class":"ICE_DXY_INDEX","value":104.5,
+        "observed_at":"2023-06-01T10:00:00Z",
+        "published_at":"2023-06-01T10:00:01Z",
+        "original_captured_at":"2023-06-01T10:00:02Z",
+        "source_sha256":"0"*64,
+        "proof_method":"EXCHANGE_TIMESTAMP_WITH_ARCHIVE_RECEIPT"}
+    got=verify_record(record,decision_at="2023-06-02T00:00:00Z")
+    assert got["claimed_receipt_order_consistent"]
+    assert not got["independent_capture_attestation_verified"]
+    assert not got["intraday_point_in_time_verified"]
+    assert not got["causal_model_input_permitted"]
+
+
+def test_vintage_datetime_instead_of_day_is_rejected():
+    record={
+        "symbol":"DFII10","source_class":"ALFRED_VINTAGE","value":1.4,
+        "observed_at":"2023-06-01T00:00:00Z",
+        "vintage_date":"2023-06-02T12:00:00",
+        "source_sha256":"f"*64,
+        "proof_method":"ALFRED_VINTAGE_DATE_ONLY"}
+    got=verify_record(record,decision_at="2023-06-04T00:00:00Z")
+    assert got["status"]=="REJECT"
+    assert got["reason"]=="ALFRED_VINTAGE_MUST_BE_DATE_ONLY"
