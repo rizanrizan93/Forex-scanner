@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from fx_scanner.fed_r7_multihorizon_factor_model import (
-    CONTRACT,FEATURES,HORIZONS,fit_asof,audit_walk_forward)
+    CONTRACT,FEATURES,HORIZONS,fit_asof,audit_walk_forward,audit_group_ablation)
 
 
 def synthetic(n=650, names=("dxy_change_pct","real_yield_10y_change_bps")):
@@ -112,3 +112,18 @@ def test_all_horizon_definitions_are_distinct():
     assert "central_bank_net_tonnes" in FEATURES["Y1"]
     assert "futures_orderflow_z" in FEATURES["D1"]
     assert "futures_orderflow_z" not in FEATURES["Y1"]
+
+
+def test_group_ablation_learns_from_exact_same_nonoverlapping_holdout_dates():
+    d=synthetic(580)
+    res=audit_group_ablation(
+        d,horizon="D1",first_test_at=d.index[-80],
+        feature_names=("dxy_change_pct","real_yield_10y_change_bps"),
+        min_train_rows=100)
+    assert res["contract"]=="RIZAN_XAU_R7_OOS_GROUP_ABLATION_V1"
+    assert res["causal_importance_verified"] is False
+    assert res["reference_n"]>=60
+    assert res["groups"]["USD"]["paired_n"]==res["reference_n"]
+    assert res["groups"]["REAL_RATES"]["paired_n"]==res["reference_n"]
+    assert (res["groups"]["USD"]["rmse_increase_when_removed_pct_points"]>0)
+    assert res["execution_authority"] is False
