@@ -65,13 +65,13 @@ def test_forward_input_is_not_used_to_update_model_weights():
 def test_raw_source_sha_and_receive_clock_are_recorded_pre_next_session(tmp_path,monkeypatch):
     raw=tmp_path/"quote_h1.csv"
     _bars().to_csv(raw,index=False)
-    monkeypatch.setenv("R72_FREEZE_COMMITTED_AT","2026-11-20T23:06:37Z")
+    # Frozen 2026-11-20T23:09:50Z is hardcoded in audited source
     a=build_capture(
         raw_h1_path=raw,model_path=FROZEN,
         source_started_at="2026-11-21T00:03:00Z",
         source_received_at="2026-11-21T00:04:00Z",
         output_dir=tmp_path/"out",
-        declared_model_commit="ac41ed445142a6e8157223edcff710cd3af21057",
+        declared_model_commit="a2fa0b2704a7a0a6381283626d5c4ded9e6fa62e",
         github_run_id="synthetic",github_run_attempt="1",
         now="2026-11-21T00:05:00Z")
     assert a["signal_status"]=="SHADOW_SEARCH_ONLY"
@@ -89,13 +89,13 @@ def test_once_next_market_session_started_before_receipt_it_must_wait(tmp_path,m
     q.loc[len(q)-1,"timestamp"]=pd.Timestamp(
         "2026-11-21T01:00:00Z").value//1_000_000
     q.to_csv(raw,index=False)
-    monkeypatch.setenv("R72_FREEZE_COMMITTED_AT","2026-11-20T23:06:37Z")
+    # Frozen 2026-11-20T23:09:50Z is hardcoded in audited source
     a=build_capture(
         raw_h1_path=raw,model_path=FROZEN,
         source_started_at="2026-11-21T02:00:00Z",
         source_received_at="2026-11-21T02:01:00Z",
         output_dir=tmp_path/"out2",
-        declared_model_commit="ac41ed445142a6e8157223edcff710cd3af21057",
+        declared_model_commit="a2fa0b2704a7a0a6381283626d5c4ded9e6fa62e",
         now="2026-11-21T02:02:00Z")
     assert a["signal_status"]=="WAIT"
     assert a["newly_completed_post_freeze_d1_outcomes"]==0
@@ -104,13 +104,13 @@ def test_once_next_market_session_started_before_receipt_it_must_wait(tmp_path,m
 def test_capture_before_commit_is_not_prospective(tmp_path,monkeypatch):
     raw=tmp_path/"raw.csv"
     _bars().to_csv(raw,index=False)
-    monkeypatch.setenv("R72_FREEZE_COMMITTED_AT","2026-11-21T01:00:00Z")
+    # The precommit datetime is immutable; create a pre-freeze receipt instead.
     a=build_capture(
         raw_h1_path=raw,model_path=FROZEN,
-        source_started_at="2026-11-21T00:03:00Z",
-        source_received_at="2026-11-21T00:04:00Z",
+        source_started_at="2026-11-20T23:05:00Z",
+        source_received_at="2026-11-20T23:06:00Z",
         output_dir=tmp_path/"out3",
-        declared_model_commit="ac41ed445142a6e8157223edcff710cd3af21057",
-        now="2026-11-21T00:05:00Z")
-    assert a["reason"]=="MODEL_NOT_FROZEN_WHEN_SIGNAL_CONSTRUCTED"
+        declared_model_commit="a2fa0b2704a7a0a6381283626d5c4ded9e6fa62e",
+        now="2026-11-20T23:07:00Z")
+    assert a["reason"]=="WAIT_ONLY_WEEKEND_PRE_NEXT_SESSION_D1_PILOT"
     assert a["prediction"] is None
