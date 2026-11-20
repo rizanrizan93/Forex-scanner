@@ -48,7 +48,8 @@ def _out(now, reason):
         "atr_m5": None, "bias_h1": "UNKNOWN", "bias_h4": "UNKNOWN",
         "zones": [], "entry_allowed": False,
         "authority_to_send_orders": False, "authority_to_modify_cbots": False,
-        "score_is_accuracy": False, "backtested_80pct_both_sides": False,\n        "market_context": {"direction":"WAIT","strength":"UNAVAILABLE","mode":"UNAVAILABLE"},
+        "score_is_accuracy": False, "backtested_80pct_both_sides": False,
+        "market_context": {"direction":"WAIT","strength":"UNAVAILABLE","mode":"UNAVAILABLE"},
     }
 
 
@@ -167,7 +168,9 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
     authorized. Prior touched/broken zones are never represented fresh.
     """
     now = _utc(now)
-    out = _out(now, "MARKET_DATA_UNAVAILABLE")\n    if isinstance(market_context,dict) and market_context.get("contract")=="RIZAN_XAU_R61_MARKET_DIRECTION_CONTEXT_V1":\n        out["market_context"]=market_context
+    out = _out(now, "MARKET_DATA_UNAVAILABLE")
+    if isinstance(market_context,dict) and market_context.get("contract")=="RIZAN_XAU_R61_MARKET_DIRECTION_CONTEXT_V1":
+        out["market_context"]=market_context
     if not isinstance(frame, pd.DataFrame) or not set(
             ("open","high","low","close")).issubset(frame.columns):
         return out
@@ -283,7 +286,8 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
         htf_ok=out["bias_h1"]==side and out["bias_h4"]==side
         quote_ok=quote_valid and (a-b)<=.2*atr
         zone["checks"]={
-            "MACRO_R4_VERIFIED":direction_ok,\n            "OPERATIONAL_CONTEXT_ALIGNED":out["market_context"].get("direction")==side,
+            "MACRO_R4_VERIFIED":direction_ok,
+            "OPERATIONAL_CONTEXT_ALIGNED":out["market_context"].get("direction")==side,
             "H1_H4_CONFIRMED":htf_ok,
             "QUOTE_SPREAD_FRESH":quote_ok,
             "NEWS_WINDOW_OK":news_ok,
