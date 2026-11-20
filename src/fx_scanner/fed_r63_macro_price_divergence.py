@@ -33,6 +33,8 @@ def evaluate_divergence(market, price):
         "price_m15": "UNKNOWN",
         "price_h1": "UNKNOWN",
         "price_h4": "UNKNOWN",
+        "liquidity_state": "UNAVAILABLE",
+        "liquidity_risk_veto": False,
         "reason": "MISSING_OR_MISMATCHED_SOURCE_CONTRACTS",
         "watch_side": "WAIT",
         "divergence": False,
@@ -91,6 +93,14 @@ def evaluate_divergence(market, price):
         base["reason"] = "H4_OPPOSING_STRONG_PRICE_DIRECTION"
         return base
     base["price_structure"]=side
+    liq = price.get("liquidity_context")
+    if liq is not None:
+        if not isinstance(liq,dict) or liq.get("contract") != "RIZAN_R63_LIQUIDITY_STRESS_RESEARCH_READONLY_V1":
+            base["state"] = "WAIT_UNTRUSTED_LIQUIDITY_CLASSIFIER"
+            base["reason"] = "BAD_LIQUIDITY_SOURCE_CONTRACT"
+            return base
+        base["liquidity_state"] = liq.get("state", "UNKNOWN")
+        base["liquidity_risk_veto"] = liq.get("risk_veto") is True
     if macro not in ("BUY","SELL"):
         if lean in ("BUY","SELL") and lean!=side:
             base["state"]="DAILY_MACRO_LEAN_VS_XAU_DIVERGENCE"
@@ -106,6 +116,11 @@ def evaluate_divergence(market, price):
         base["divergence"]=True
         base["reason"]="MARKET_MACRO_SIDE_OPPOSES_CLOSED_XAU_M15_H1"
         base["watch_side"]=side
+        return base
+    if liq is not None and (base["liquidity_state"] == "UNKNOWN" or base["liquidity_risk_veto"]):
+        base["state"]="WAIT_LIQUIDITY_STRESS" if base["liquidity_risk_veto"] else "WAIT_LIQUIDITY_DATA_INCOMPLETE"
+        base["watch_side"]=side
+        base["reason"]="CLOSED_M5_STRESS_OR_SWEEP_REQUIRES_RECONFIRMATION" if base["liquidity_risk_veto"] else "CLOSED_M5_LIQUIDITY_STATE_NOT_VERIFIED"
         return base
     base["state"]="MACRO_AND_PRICE_ALIGNED_WATCH"
     base["watch_side"]=side
