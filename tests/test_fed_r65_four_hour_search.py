@@ -11,9 +11,10 @@ def macro(side="BUY", daily=None, **changes):
         "contract":"RIZAN_XAU_R61_MARKET_DIRECTION_CONTEXT_V1",
         "as_of_utc":NOW.isoformat(),"direction":side,
         "daily_direction":daily or side,
+        "dxy_direction":side,
         "daily_yields":{
-            "US2Y":{"valid_official_daily":True},
-            "US10Y":{"valid_official_daily":True}},
+            "US2Y":{"valid_official_daily":True,"gold_direction":side},
+            "US10Y":{"valid_official_daily":True,"gold_direction":side}},
         "dxy":{"fresh":True},
         "entry_permission":False,
     }
