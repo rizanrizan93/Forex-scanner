@@ -124,8 +124,7 @@ def test_duplicate_or_invalid_ohlc_fails_closed():
 def test_old_or_already_broken_pivot_cannot_be_used():
     d=candles()
     # Subsequent completed M5 closes below low of an old swing.
-    x=d.index[-18]
-    d.loc[x,["open","high","low","close"]]=[94.5,95.,94.,94.5]
+    # A whole five-minute candle closes BELOW the old swing 96.\n    # One stray M1 wick would be merely a touch, not an M5 break.\n    start=pd.Timestamp("2026-11-20T08:30:00Z")\n    end=start+pd.Timedelta(minutes=4)\n    d.loc[start:end,["open","high","low","close"]]=[94.5,95.,94.,94.5]
     r=evaluate_areas(d,now=NOW,bid=99.95,ask=100.05,quote_at=NOW,news_events=[])
     assert not any(z["side"]=="BUY" and abs(z["low"]-96)<0.001
                    for z in r["zones"])
