@@ -136,3 +136,44 @@ jobs:
           path: artifacts/r8_macro_h1h4_2019_2026.json
           if-no-files-found: error
           retention-days: 90
+
+
+  fx6_source_probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install pinned HistData provider
+        run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Audit six true FX M1 sources before attempting reconstructed USD basket
+        shell: bash
+        run: |
+          mkdir -p artifacts/fx6
+          python - <<'PY'
+          import datetime as dt,json,pathlib
+          from histdata_fetcher import fetch_data
+          results=[]
+          for pair in ('EURUSD','USDJPY','GBPUSD','USDCAD','USDSEK','USDCHF'):
+              try:
+                  x=fetch_data(pair=pair,start_date=dt.date(2019,1,1),end_date=dt.date(2019,1,31),
+                               timeframe='1min',output_format=None,max_workers=1)
+                  item={'pair':pair,'rows':int(len(x.data)),'failed_periods':[str(y) for y in x.failed_periods],
+                        'first_row':str(x.data.iloc[0]['datetime']) if len(x.data) else None}
+              except Exception as e:
+                  item={'pair':pair,'error_type':type(e).__name__,'error':str(e)[:150]}
+              results.append(item);print('R8_FX6_SOURCE',json.dumps(item),flush=True)
+          pathlib.Path('artifacts/fx6/source_probe.json').write_text(json.dumps(results,indent=2)+'\n')
+          if any(r.get('rows',0)<5000 or r.get('failed_periods') for r in results):
+              raise SystemExit('FX6_M1_BASKET_SOURCE_INCOMPLETE')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r8-fx6-histdata-source-probe
+          path: artifacts/fx6/source_probe.json
+          if-no-files-found: error
+          retention-days: 30
