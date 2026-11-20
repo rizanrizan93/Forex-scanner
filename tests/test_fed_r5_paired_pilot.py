@@ -55,3 +55,12 @@ def test_window_never_exceeds_validity_of_original_fomc_macro():
     assert out["actual_scan_end_exclusive_utc"]=="2023-09-20T20:30:00+00:00"
     assert out["research_macro_expiry_utc"]=="2023-09-20T20:30:00+00:00"
     assert out["counters"].get("screened_m1_closes",0)<=60
+
+def test_extra_long_emergency_fomc_ends_after_macro_expiry_no_entry():
+    d,m,e=sample()
+    e["release_at_utc"]="2023-09-20T16:00:00Z"
+    out=replay(d,manifest=m,event=e,expost_source_sha="sha")
+    assert out["completed_window_macro_context_still_valid"] is False
+    assert out["counters"]["macro_expired_before_completed_communication_window"]==1
+    assert out["counters"].get("screened_m1_closes",0)==0
+    assert out["production_eligible"] is False
