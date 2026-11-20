@@ -69,7 +69,9 @@ def test_gap_crossing_session_horizon_is_censored():
 
 def test_latest_vintage_fred_lag_keeps_future_observation_hidden():
     ix=pd.date_range("2025-01-01",periods=100,freq="B",tz="UTC")
-    d=pd.DataFrame({"open":2000.,"close":2000.+np.arange(len(ix))},index=ix)
+    d=pd.DataFrame({"open":2000.,"close":2000.+np.arange(len(ix)),
+                    "high":2001.+np.arange(len(ix)),
+                    "low":1999.+np.arange(len(ix))},index=ix)
     source={}
     for key in SERIES:
         source[key]=pd.Series(np.arange(len(ix))+10.,index=ix)
@@ -82,6 +84,7 @@ def test_latest_vintage_fred_lag_keeps_future_observation_hidden():
     # Trade-weighted broad USD is released with 10-business-day lag.
     assert np.isnan(panel["broad_usd_ret5_pct"].iloc[13])
     assert np.isfinite(panel["broad_usd_ret5_pct"].iloc[20])
+    assert np.isfinite(panel["xau_range5_pct"].iloc[6])
 
 
 def test_missing_real_macro_columns_fail_closed_not_imputed():
