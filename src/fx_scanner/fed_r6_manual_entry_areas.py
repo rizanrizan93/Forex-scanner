@@ -234,7 +234,7 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
         lo=base if side=="BUY" else base-width
         hi=base+width if side=="BUY" else base
         # A swing may have been revisited or broken AFTER confirmation.
-        newer=m5.iloc[p["confirm_index"]+1:]
+        newer=m5.loc[m5.index>at]
         touched=bool(((newer.low<=hi)&(newer.high>=lo)).any())
         broken=bool((newer.close<base).any()) if side=="BUY" else bool((newer.close>base).any())
         if broken:
