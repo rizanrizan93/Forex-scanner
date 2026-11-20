@@ -47,6 +47,7 @@ def replay(d, *,manifest,event,expost_source_sha):
     last_by_key={}
     last_continuation_by_rule_side={}
     continuation_cooldown_minutes=60
+    # Restrict to FIRST pattern of each direction/model at each meeting.
     # Exact closed M1 following the PREDEFINED completed official window.
     # Restrict scan to 90 clock minutes, not 90 observed candles.
     eligible_index=frame.index[(frame.index+pd.Timedelta(minutes=1)>=cut)&(
@@ -85,17 +86,18 @@ def replay(d, *,manifest,event,expost_source_sha):
                     if macro_side!=side:continue
                     counts["continuation_"+rule+"_same_side_raw"]+=1
                     key_cont=(rule,side)
-                    if (key_cont in last_continuation_by_rule_side and
-                        (at-last_continuation_by_rule_side[key_cont]).total_seconds() <
-                        continuation_cooldown_minutes*60):
+                    if key_cont in last_continuation_by_rule_side:
                         counts["continuation_"+rule+"_deduplicated_overlap"]+=1
                         continue
+                    # One FOMC meeting = one candidate per rule and side,
+                    # even if the first label is censored. No selecting a
+                    # later winning overlap after the first failed clock.
+                    last_continuation_by_rule_side[key_cont]=at
                     label=future(frame,i,side,60,3,3)
                     if label is None:
                         counts["continuation_"+rule+"_h1_censored"]+=1
                         continue
                     counts["continuation_"+rule+"_h1_evaluable"]+=1
-                    last_continuation_by_rule_side[key_cont]=at
                     if label["net_end"]>0:
                         counts["continuation_"+rule+"_h1_direction_right"]+=1
         for setup in res["v4_setups"]:
@@ -145,7 +147,8 @@ def replay(d, *,manifest,event,expost_source_sha):
         "input_history_rows":len(frame),
         "prespecified_screen_minutes":AFTER_EVENT_SCREEN_MINUTES,
         "continuation_same_side_cooldown_minutes":continuation_cooldown_minutes,
-        "continuation_event_unit":"ONE FOMC MEETING; nested M1 patterns correlated even after cooldown",
+        "continuation_event_unit":"FIRST M1 STRUCTURE BREAK PER RULE/SIDE/FOMC MEETING; all other M1 observations correlated",
+        "continuation_pick_policy":"FIRST_RAW_DETECTION_EVEN_IF_FORWARD_LABEL_CENSORED",
         "macro_oracle_directions":directions,
         "continuation_is_OBSERVATION_ONLY_not_a_V4_entry":True,
         "official_source_sha256":expost_source_sha,
