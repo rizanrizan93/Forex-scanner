@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 import json
 from .fed_r6_manual_entry_areas import evaluate_areas
 from .manual_r3_feed import fetch_market
+from .fed_r61_operational_macro_direction import assess_market_direction
+from .pre_news_transport import fetch_pre_news_snapshot
 
 
 def _fmt(value):
@@ -17,7 +19,7 @@ def _wib(value):
     return pd.Timestamp(value).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")
 
 
-def render_view(source=None, *, now=None):
+def render_view(source=None, macro_snapshot=None, *, now=None):
     import streamlit as st
     now = now or datetime.now(UTC)
     st.subheader("Fed R6 · Peta Area Entry XAUUSD")
@@ -31,6 +33,7 @@ def render_view(source=None, *, now=None):
         "belum membuktikan akurasi entry 80% untuk BUY dan SELL. "
         "Tidak ada limit order, market order, atau perubahan Frozen V1."
     )
+    market_context=assess_market_direction(macro_snapshot,now=now)
     if source is None:
         report = {
             "status":"WAIT","reason":"FEED_XAU_UNAVAILABLE",
@@ -39,6 +42,7 @@ def render_view(source=None, *, now=None):
             "price":None,"atr_m5":None,"quote_at":None,
             "last_closed_m1":None,"zones":[],
             "entry_allowed":False,"authority_to_send_orders":False,
+            "market_context":market_context,
         }
     else:
         report = evaluate_areas(
@@ -48,10 +52,15 @@ def render_view(source=None, *, now=None):
             # No live OIS1Y + intraday TIPS10Y + SP500 + DXY R4
             # first-ingestion record is wired. Never invent it from FRED
             # daily or the historical retrospective FOMC replay.
-            macro=None,
+            macro=None,market_context=market_context,
         )
     a,b,c,d = st.columns(4)
-    a.metric("Arah Fed R4",report["macro_direction"])
+    a.metric("Bias pasar XAU",market_context["direction"])
+    st.caption(
+        "Kekuatan: "+market_context["strength"]+
+        " · Fed R4 asli: "+report["macro_direction"]+
+        " · sumber makro: "+_wib(market_context.get("source_observed_at"))
+    )
     b.metric("Harga referensi",_fmt(report["price"]))
     c.metric("Struktur H1 / H4",report["bias_h1"]+" / "+report["bias_h4"])
     d.metric("ATR M5",_fmt(report["atr_m5"]))
