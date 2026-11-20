@@ -119,7 +119,9 @@ def evaluate_four_hour_search(price, macro, *, now=None, news_events=None):
         official=macro.get("daily_yields") or {}
         dxy=macro.get("dxy") or {}
         if (macro.get("daily_direction")!=macro_side
+            or macro.get("dxy_direction")!=macro_side
             or any(official.get(k,{}).get("valid_official_daily") is not True
+                   or official.get(k,{}).get("gold_direction")!=macro_side
                    for k in ("US2Y","US10Y"))
             or dxy.get("fresh") is not True):
             out["state"]=out["reason"]="MACRO_ALIGNMENT_UNVERIFIED"
