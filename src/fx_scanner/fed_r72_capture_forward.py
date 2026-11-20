@@ -22,6 +22,8 @@ from .fed_r72_frozen_candidate import (
     CONTRACT as MODEL_CONTRACT,_hash,predict_from_frozen)
 
 CONTRACT="RIZAN_R72_PUBLIC_PRICE_RECEIPT_LEDGER_V1"
+HARD_FREEZE_COMMIT="a2fa0b2704a7a0a6381283626d5c4ded9e6fa62e"
+HARD_FREEZE_UTC="2026-11-20T23:09:50Z"
 
 
 def _clock(value):
@@ -77,9 +79,8 @@ def build_capture(*,raw_h1_path,model_path,source_started_at,
     model=json.loads(model_raw)
     if model.get("model_contract")!=MODEL_CONTRACT:
         raise ValueError("WRONG_FROZEN_MODEL")
-    if len(str(declared_model_commit))!=40 or not re.fullmatch(
-        r"[a-f0-9]{40}",str(declared_model_commit)):
-        raise ValueError("PINNED_PRE_FROZEN_GIT_COMMIT_REQUIRED")
+    if declared_model_commit!=HARD_FREEZE_COMMIT:
+        raise ValueError("UNRECOGNIZED_PRECOMMITTED_MODEL_GIT_HASH")
     if _hash({k:v for k,v in model.items() if k!="frozen_payload_sha256"})!=model["frozen_payload_sha256"]:
         raise ValueError("FROZEN_MODEL_TAMPERED")
     quotes,sha,nbytes=_read_quotes(raw_h1_path)
@@ -156,8 +157,7 @@ def build_capture(*,raw_h1_path,model_path,source_started_at,
         else:
             # This deliberately prevents a signal before model was
             # actually committed as a frozen source artifact.
-            pinned=_clock(os.environ.get("R72_FREEZE_COMMITTED_AT",
-                         "2026-11-21T00:00:00+07:00"))
+            pinned=_clock(HARD_FREEZE_UTC)
             if clock<pinned:
                 capture["reason"]="MODEL_NOT_FROZEN_WHEN_SIGNAL_CONSTRUCTED"
             else:
