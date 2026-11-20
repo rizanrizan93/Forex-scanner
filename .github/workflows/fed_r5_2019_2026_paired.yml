@@ -1,0 +1,81 @@
+name: Fed R5 — 2019-2026 Paired Macro/V4 XAU Real M1 (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/replay_fed_r5_2019_2026_paired.py'
+      - 'scripts/aggregate_fed_r5_paired_2019_2026.py'
+      - 'scripts/replay_fed_r5_paired_pilot.py'
+      - 'research/fed_expectation_r1/fomc_continuation_observation_r5.py'
+      - 'tests/test_fed_r5_2019_2026_paired.py'
+      - '.github/workflows/fed_r5_2019_2026_paired.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source_and_event_unit_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - run: |
+          python -m py_compile scripts/replay_fed_r5_2019_2026_paired.py scripts/aggregate_fed_r5_paired_2019_2026.py
+          python -m pytest -q tests/test_fed_r5_2019_2026_paired.py tests/test_fed_r5_paired_pilot.py tests/test_fed_r5_continuation_observation.py
+  per_year_real_xau_technical_paired:
+    needs: source_and_event_unit_tests
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - run: python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Real XAU M1 20d before to 7d after each official 2019–26 FOMC
+        run: |
+          mkdir -p artifacts
+          python scripts/replay_fed_r5_2019_2026_paired.py --year ${{ matrix.year }} --out artifacts/fed_r5_paired_${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-r5-paired-${{ matrix.year }}
+          path: artifacts/fed_r5_paired_${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 30
+  aggregate_69_official_fomc_meetings:
+    needs: per_year_real_xau_technical_paired
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fed-r5-paired-*
+          path: artifacts/annual
+      - name: Distinct FOMC meeting unit counts, BUY/SELL Wilson and censoring
+        run: |
+          python scripts/aggregate_fed_r5_paired_2019_2026.py --input-dir artifacts/annual --out artifacts/fed_r5_paired_2019_2026_aggregate.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fed-r5-2019-2026-macro-V4-entry-paired-aggregate
+          path: artifacts/fed_r5_paired_2019_2026_aggregate.json
+          if-no-files-found: error
+          retention-days: 30
