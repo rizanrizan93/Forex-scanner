@@ -85,3 +85,39 @@ Original 2019–2026 R6 research:
 https://github.com/rizanrizan93/Forex-scanner/actions/runs/44653729303
 
 Prior R6 research PR: https://github.com/rizanrizan93/Forex-scanner/pull/894
+
+
+## R6.1 — Operational market direction (20 November 2026)
+
+The public healthy pre-news macro worker already supplies official
+DAILY US2Y/US10Y yields and timestamped vendor DXY / ZN futures
+yield-pressure proxies. The previous R6 view did **not** consume that
+worker and always passed \`macro=None\` to its R4 validator.
+
+R6.1 adds a DISTINCT informational BUY/SELL/WAIT layer from that worker,
+validated with the existing source-contract and heartbeat freshness
+rules. Both official daily US2Y and US10Y must have corresponding
+same-sign >=1bp moves, published within 72h. The display calls this
+\`INDICATIVE_DAILY\` even when old broad macro score says bullish.
+A stronger label \`ALIGNED_MARKET_CONTEXT\` requires independently
+fresh DXY <=5m (absolute change >=0.05%) and intraday ZN-futures-price
+yield-pressure <=5m (or *genuine* timestamped cash yield <=2m),
+both agreeing with official daily direction. Any opposing fresh dollar
+or yield vote forces WAIT.
+
+Daily Treasury yields are NOT intraday; ZN FUTURES PRICE changes are
+NOT cash Treasury yields, and Yahoo's index is a DXY proxy, not
+ICE's official feed. Unlike R4, R6.1 does NOT measure unexpected
+Fed communication market surprise (no OIS/TIPS original as-of
+feed), does NOT have a validated historical hit rate and does
+NOT authorize any order or override the unverified R4 entry gate.
+
+The dashboard displays operational market direction and source
+timestamps next to R6 area cards and reports per-side
+\`ALIGNED_WATCH\` / \`OPPOSITE_WATCH\` / \`WAIT\`. Manual alert,
+trade routing and account risk remain unchanged.
+
+Snapshot example as of 2026-11-20 02:49Z: US2Y daily -4bp, US10Y
+-3bp, real yield 0bp, DXY +0.0038% nearly flat with vendor
+quote older than 5 minutes. Operational context: \`BUY\` with
+\`INDICATIVE_DAILY\` strength, **not confirmed R4 BUY or entry**.

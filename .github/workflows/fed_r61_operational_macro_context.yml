@@ -1,0 +1,29 @@
+name: XAU R6.1 — Operational Macro Context (No Orders)
+on:
+  pull_request:
+    paths:
+      - 'src/fx_scanner/fed_r61_operational_macro_direction.py'
+      - 'src/fx_scanner/fed_r6_manual_entry_areas.py'
+      - 'src/fx_scanner/fed_r6_manual_entry_dashboard.py'
+      - 'tests/test_fed_r61_operational_macro_direction.py'
+      - '.github/workflows/fed_r61_operational_macro_context.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prove_source_causality_and_buy_sell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Check Python syntax
+        run: |
+          python -m py_compile src/fx_scanner/fed_r61_operational_macro_direction.py src/fx_scanner/fed_r6_manual_entry_areas.py src/fx_scanner/fed_r6_manual_entry_dashboard.py
+      - name: Regression macro BUY/SELL/WAIT, source stale, zone no-order
+        run: python -m pytest -q tests/test_fed_r61_operational_macro_direction.py tests/test_fed_r6_manual_entry_areas.py
