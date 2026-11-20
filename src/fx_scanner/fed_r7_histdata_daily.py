@@ -45,10 +45,17 @@ def download_year(year:int):
     daily["max_interbar_gap_s"]=(
         d.groupby("session_utc")["intraday_gap_s"].max()
          .reindex(daily.index).fillna(60))
-    daily=daily[daily.max_interbar_gap_s<=1800].copy()
+    # Spot gold routinely has a daily maintenance break; an M1 hole
+    # >30m is not by itself corrupted history. Admit up to 2h, still
+    # demand >=1000 observed source minutes and record maximum gaps.
+    eligible_before=int(len(daily))
+    daily=daily[daily.max_interbar_gap_s<=7200].copy()
     daily=daily[(daily.index.dayofweek<5)]
     if len(daily)<100:
-        raise RuntimeError("TOO_FEW_VALID_TRADING_SESSIONS")
+        raise RuntimeError(
+            f"TOO_FEW_VALID_TRADING_SESSIONS:year={year}"
+            f":before_gap_screen={eligible_before}:after={len(daily)}"
+            f":source_m1={len(d)}")
     outdir=Path("artifacts/r7-daily");outdir.mkdir(parents=True,exist_ok=True)
     dest=outdir/f"xau-daily-{year}.csv"
     daily.reset_index().to_csv(dest,index=False,float_format="%.7f")
