@@ -1,0 +1,32 @@
+name: R7 XAU Multi-Horizon Factor Research (No Orders)
+on:
+  push:
+    branches: ['research/r63-liquidity-stress-20261120']
+    paths:
+      - 'src/fx_scanner/fed_r7_multihorizon_factor_model.py'
+      - 'tests/test_fed_r7_multihorizon_factor_model.py'
+      - '.github/workflows/fed_r7_multihorizon_factor.yml'
+  pull_request:
+    paths:
+      - 'src/fx_scanner/fed_r7_multihorizon_factor_model.py'
+      - 'tests/test_fed_r7_multihorizon_factor_model.py'
+      - '.github/workflows/fed_r7_multihorizon_factor.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install existing pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile standalone multi-horizon research
+        run: python -m py_compile src/fx_scanner/fed_r7_multihorizon_factor_model.py
+      - name: Check 1D/1W/1M/1Y, PIT provenance, embargo and group importance
+        run: python -m pytest -q tests/test_fed_r7_multihorizon_factor_model.py
