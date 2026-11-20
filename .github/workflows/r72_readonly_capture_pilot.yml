@@ -15,8 +15,8 @@ jobs:
     env:
       PYTHONPATH: 'src:.'
       R72_FROZEN_MODEL: 'research/frozen/r72_d1_price_only_v1.json'
-      R72_MODEL_FREEZE_COMMIT: 'ac41ed445142a6e8157223edcff710cd3af21057'
-      R72_FREEZE_COMMITTED_AT: '2026-11-20T23:06:37Z'
+      R72_MODEL_FREEZE_COMMIT: 'a2fa0b2704a7a0a6381283626d5c4ded9e6fa62e'
+      R72_FREEZE_COMMITTED_AT: '2026-11-20T23:09:50Z'
       R72_RAW_H1: '/tmp/r72-public-source/xau-h1-raw.csv'
     steps:
       - uses: actions/checkout@v4
