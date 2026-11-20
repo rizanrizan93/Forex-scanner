@@ -51,3 +51,5 @@ jobs:
           path: research_artifacts/
           retention-days: 7
           if-no-files-found: error
+
+# Acquisition retry 2026-11-20: research-only push trigger; no production changes.
