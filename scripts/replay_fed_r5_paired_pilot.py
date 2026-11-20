@@ -68,8 +68,9 @@ def replay(d, *,manifest,event,expost_source_sha):
         counts["screened_m1_closes"]+=1
         # Independent post-event momentum path: OBSERVATIONAL ONLY,
         # separate from V4. Never described as approved R5 entry.
-        unique_sides=sorted({side for side in directions.values()
-                            if side in ("BUY","SELL")})
+        # Measure unfiltered continuation patterns on BOTH sides as
+        # a matched event-clock baseline, then apply the macro side veto.
+        unique_sides=("BUY","SELL")
         for side in unique_sides:
             try:
                 m5=completed(frame.iloc[:i+1],5,at)
