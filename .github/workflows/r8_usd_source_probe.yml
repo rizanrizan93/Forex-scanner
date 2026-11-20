@@ -6,53 +6,64 @@ on:
     paths:
       - .github/workflows/r8_usd_source_probe.yml
   pull_request:
-    branches:
-      - research/xau-m5-sweep-mss-direction-r6-20261118
+    paths:
+      - .github/workflows/r8_usd_source_probe.yml
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   source-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
-      - name: Fetch one original Dukascopy BI5 hour and record provenance
+      - name: Cross-year raw Dukascopy BI5 and alternate FXCM datafeed availability matrix
         shell: bash
         run: |
           mkdir -p research_artifacts
           python - <<'PY'
-          import datetime as dt, hashlib, json, os, pathlib, urllib.request, urllib.error
-          out=pathlib.Path("research_artifacts")
-          url="https://datafeed.dukascopy.com/datafeed/DOLLARIDXUSD/2019/00/02/00h_ticks.bi5"
-          record={"instrument":"DOLLARIDXUSD","date_utc":"2019-01-02T00:00:00Z",
-                  "source_url":url,"vendor_month_zero_indexed":True,
-                  "note":"Acquisition time in 2026 does NOT establish 2019 first_seen_at. Historical macro as-of requires a preregistered assumed lag or independent availability evidence."}
-          try:
-              req=urllib.request.Request(url,headers={"User-Agent":"R8-Research-Provenance/1.0"})
-              with urllib.request.urlopen(req,timeout=35) as response:
-                  data=response.read()
-                  record["http_status"]=response.status
-                  record["response_final_url"]=response.url
-              record["acquired_at_utc"]=dt.datetime.now(dt.timezone.utc).isoformat()
-              record["raw_byte_count"]=len(data)
-              record["raw_sha256"]=hashlib.sha256(data).hexdigest()
-              if data:
-                  (out/"DOLLARIDXUSD_2019-01-02_00h_ticks.bi5").write_bytes(data)
-              record["status"]="acquired" if data and record["http_status"]==200 else "empty_or_non200"
-          except Exception as e:
-              record["acquired_at_utc"]=dt.datetime.now(dt.timezone.utc).isoformat()
-              record["status"]="failed"
-              record["error_type"]=type(e).__name__
-              record["error"]=str(e)[:500]
-          (out/"source_probe.json").write_text(json.dumps(record,indent=2)+"\n")
-          print(json.dumps(record,indent=2))
+          import concurrent.futures,datetime as dt,hashlib,json,pathlib,urllib.error,urllib.request
+          base='https://datafeed.dukascopy.com/datafeed'
+          pairs=[
+            ('USD_M1_2019_JAN','DOLLARIDXUSD/2019/00/02/BID_candles_min_1.bi5'),
+            ('USD_M1_2019_JUN','DOLLARIDXUSD/2019/05/03/BID_candles_min_1.bi5'),
+            ('USD_M5_2019_JUN','DOLLARIDXUSD/2019/05/03/BID_candles_min_5.bi5'),
+            ('USD_TICK_2019_ACTIVE','DOLLARIDXUSD/2019/00/02/15h_ticks.bi5'),
+            ('USD_M1_2020','DOLLARIDXUSD/2020/05/03/BID_candles_min_1.bi5'),
+            ('USD_M1_2021','DOLLARIDXUSD/2021/05/03/BID_candles_min_1.bi5'),
+            ('USD_M1_2024','DOLLARIDXUSD/2024/10/18/BID_candles_min_1.bi5'),
+            ('USD_M1_2025','DOLLARIDXUSD/2025/10/19/BID_candles_min_1.bi5'),
+            ('USD_M1_2026','DOLLARIDXUSD/2026/10/19/BID_candles_min_1.bi5'),
+            ('XAU_M1_2019','XAUUSD/2019/00/02/BID_candles_min_1.bi5'),
+            ('EUR_M1_2019','EURUSD/2019/00/02/BID_candles_min_1.bi5')]
+          tasks=[(name,base+'/'+path) for name,path in pairs]
+          tasks += [('FXCM_USDOLLAR_2019','https://candledata.fxcorporate.com/m1/USDOLLAR/2019/1.csv.gz'),
+                    ('FXCM_USDOLLAR_2025','https://candledata.fxcorporate.com/m1/USDOLLAR/2025/1.csv.gz'),
+                    ('FXCM_EURUSD_2019','https://candledata.fxcorporate.com/m1/EURUSD/2019/1.csv.gz')]
+          def probe(x):
+              name,url=x
+              row={'name':name,'source_url':url,'acquired_at_utc':dt.datetime.now(dt.timezone.utc).isoformat()}
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'R8-Research-SourceAudit/1.0'})
+                  with urllib.request.urlopen(req,timeout=16) as response:
+                      raw=response.read();row['status']=response.status;row['final_url']=response.url
+                  row['bytes']=len(raw);row['sha256']=hashlib.sha256(raw).hexdigest()
+                  row['valid_nonempty']=row['status']==200 and len(raw)>0
+              except urllib.error.HTTPError as e:
+                  row['status']=e.code;row['error_type']='HTTPError'
+              except Exception as e:
+                  row['status']=None;row['error_type']=type(e).__name__;row['error']=str(e)[:200]
+              return row
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+              rows=list(pool.map(probe,tasks))
+          for r in rows:print('R8_SOURCE_MATRIX',r['name'],r.get('status'),r.get('bytes',0),flush=True)
+          out=pathlib.Path('research_artifacts/source_matrix.json')
+          out.write_text(json.dumps({'contract':'R8_MULTI_SOURCE_ORIGINAL_BYTE_PROBE_20261120',
+                                     'acquisition_only_no_market_replay':True,'results':rows},indent=2)+'\n')
           PY
-      - name: Upload original bytes and provenance (private run artifact)
+      - name: Upload source availability evidence
         uses: actions/upload-artifact@v4
         with:
-          name: r8-dollaridxusd-2019-01-02-00h
-          path: research_artifacts/
-          retention-days: 7
+          name: r8-multi-source-availability-20261120
+          path: research_artifacts/source_matrix.json
+          retention-days: 30
           if-no-files-found: error
-
-# Acquisition retry 2026-11-20: research-only push trigger; no production changes.
