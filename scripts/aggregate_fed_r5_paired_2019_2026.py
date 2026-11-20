@@ -46,8 +46,10 @@ def aggregate(years):
                 "wilson95_pct":wilson95(wins,n),
                 "technical_missing_or_censored_fomc_n":len(selected)-n,
                 "by_year":by_year,
-                "statistically_valid_80pct":bool(n>=30 and
+                "expost_wilson_lower_ge80_n30_descriptive":bool(n>=30 and
                      wilson95(wins,n) and wilson95(wins,n)[0]>=80),
+                "statistically_valid_80pct":False,
+                "reason_not_validated":"RETROSPECTIVE_DATA_AND_NO_PROSPECTIVE_POINT_IN_TIME_FEED",
                 "genuine_pit_n":0,
                 "execution_authority":False,
             }
