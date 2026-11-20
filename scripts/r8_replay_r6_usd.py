@@ -65,6 +65,9 @@ def macro_at_events(usd,events,delay_minutes=1,max_quote_age_minutes=5):
     from research.zone_rebound.xau_r7_macro_asof import normalize_quote_m1,_known_returns
     if delay_minutes<0 or max_quote_age_minutes<0:raise ValueError('INVALID_DELAY_OR_AGE')
     if events.entry_ns.duplicated().any():raise ValueError('DUPLICATE_EVENT')
+    if events.empty:
+        return pd.DataFrame(columns=['entry_ns','macro_ready','quote_age_minutes',
+                'return_5m_pct','return_15m_pct','return_60m_pct'])
     m=normalize_quote_m1(usd,PROXY_ID)
     r=_known_returns(m)
     r['bar_close_ns']=m.index.asi8+MINUTE_NS
@@ -88,7 +91,7 @@ def evaluate_events(events,macro,year,horizon,delay_minutes):
     if events.empty:
         event_cols=['entry_ns','side','complete','delta']
         events=pd.DataFrame(columns=event_cols)
-    q=events.loc[events.complete].copy()
+    q=events.iloc[0:0].copy() if events.empty else events.loc[events.complete].copy()
     if q.empty:q=q.assign(macro_ready=pd.Series(dtype=bool),quote_age_minutes=pd.Series(dtype=float))
     else:q=q.merge(macro,on='entry_ns',how='left',validate='one_to_one')
     for mnt in (5,15,60):
