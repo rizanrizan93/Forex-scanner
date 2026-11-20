@@ -38,18 +38,13 @@ def download_year(year:int):
     daily=daily[daily.minute_rows>=1000]
     if daily.empty:
         raise RuntimeError("NO_COMPLETE_DAILY_XAU_BARS")
-    # On a day with intraday collection holes, do not fabricate prices.
-    gaps=d.timestamp.diff().dt.total_seconds().fillna(60)
-    d["gap_s"]=gaps
-    worst=d.groupby("session_utc")["gap_s"].max()
-    daily["max_interbar_gap_s"]=worst.reindex(daily.index).fillna(60)
-    # Daily midnight or weekend gap can cross trading sessions.
-    # Exclude truly unobserved intraday holes after day start.
-    for at in daily.index:
-        q=d[d.session_utc==at]
-        inside=q.timestamp.diff().dt.total_seconds().iloc[1:]
-        if inside.gt(1800).any():
-            daily.loc[at,"max_interbar_gap_s"]=float(inside.max())
+    # Compute gaps WITHIN each UTC day, excluding weekend rollover.
+    # No forward-filled or interpolated missing intraday bars.
+    d["intraday_gap_s"]=(
+        d.groupby("session_utc")["timestamp"].diff().dt.total_seconds().fillna(60))
+    daily["max_interbar_gap_s"]=(
+        d.groupby("session_utc")["intraday_gap_s"].max()
+         .reindex(daily.index).fillna(60))
     daily=daily[daily.max_interbar_gap_s<=1800].copy()
     daily=daily[(daily.index.dayofweek<5)]
     if len(daily)<100:
