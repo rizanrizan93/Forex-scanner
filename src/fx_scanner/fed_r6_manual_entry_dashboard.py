@@ -35,7 +35,8 @@ def _audit_change(value, unit=""):
     if isinstance(value, Real) and not isinstance(value, bool):
         if not isfinite(float(value)):
             return "—"
-        return f"{value:+.2f} {unit}".strip()
+        precision = 4 if unit == "%" else 2
+        return f"{value:+.{precision}f} {unit}".strip()
     return str(value)
 
 
