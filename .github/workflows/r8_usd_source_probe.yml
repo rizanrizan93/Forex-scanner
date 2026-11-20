@@ -5,6 +5,9 @@ on:
       - research/xau-r8-dollaridx-provenance-20261119
     paths:
       - .github/workflows/r8_usd_source_probe.yml
+  pull_request:
+    branches:
+      - research/xau-m5-sweep-mss-direction-r6-20261118
   workflow_dispatch:
 permissions:
   contents: read
