@@ -1,13 +1,14 @@
 """R8-T: research-only causal USD availability gate; no market performance claims."""
 from bisect import bisect_right
+from math import isfinite
 from datetime import timedelta
 
 def causal_window(bar_open_times, event_utc, lag_seconds=120, max_age_seconds=300,
                   windows=(5,15,60)):
     """Require completed, published, UTC minute-aligned candles for each lookback."""
     if (isinstance(lag_seconds,bool) or not isinstance(lag_seconds,(int,float)) or
-        lag_seconds<0 or isinstance(max_age_seconds,bool) or
-        not isinstance(max_age_seconds,(int,float)) or max_age_seconds<0):
+        not isfinite(lag_seconds) or lag_seconds<0 or isinstance(max_age_seconds,bool) or
+        not isinstance(max_age_seconds,(int,float)) or not isfinite(max_age_seconds) or max_age_seconds<0):
         raise ValueError("BAD_DELAY")
     if not windows or any(isinstance(n,bool) or not isinstance(n,int) or n<1 for n in windows):
         raise ValueError("BAD_WINDOW")
