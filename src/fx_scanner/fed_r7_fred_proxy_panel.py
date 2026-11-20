@@ -33,7 +33,7 @@ def fetch_fred_proxies(*,path=FRED_SNAPSHOT):
     frame=pd.read_csv(p,compression="gzip")
     if not {"observation_date",*SERIES}.issubset(frame.columns):
         raise ValueError("R7_REPOSITORY_FRED_SOURCE_SCHEMA_MISMATCH")
-    dates=pd.to_datetime(frame.observation_date,utc=True,errors="raise")
+    dates=pd.DatetimeIndex(pd.to_datetime(frame["observation_date"],utc=True,errors="raise"))
     if dates.has_duplicates or not dates.is_monotonic_increasing:
         raise ValueError("R7_REPOSITORY_FRED_UNSORTED")
     out={}
