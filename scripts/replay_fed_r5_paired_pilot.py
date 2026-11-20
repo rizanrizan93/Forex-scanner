@@ -37,6 +37,16 @@ def replay(d, *,manifest,event,expost_source_sha):
     cut=pd.Timestamp(event["window_end_utc"])
     if cut.tzinfo is None:raise ValueError("NO_FOMC_RELEASE_CLOCK")
     cut=cut.tz_convert("UTC")
+    release=pd.Timestamp(event["release_at_utc"])
+    if release.tzinfo is None:raise ValueError("NO_OFFICIAL_RELEASE_UTC_CLOCK")
+    release=release.tz_convert("UTC")
+    # R4's actual initial FOMC market watch expires 150 minutes after
+    # release. Full PC window itself may finish +90 minutes after
+    # statement, allowing only 60 minutes of this first event regime.
+    expiry=release+pd.Timedelta(minutes=150)
+    if cut<release or cut>=expiry:
+        raise ValueError("FOMC_WINDOW_AFTER_R4_MACRO_EXPIRY")
+    screen_end=min(cut+pd.Timedelta(minutes=AFTER_EVENT_SCREEN_MINUTES),expiry)
     if event.get("r4_source_join")!="VERIFIED_DATE_WINDOW_AND_EVENT_CLOCK":
         raise ValueError("UNTRUSTED_OFFICIAL_EVENT_MATCH")
     if not event.get("r4_features"):raise ValueError("MISSING_FOMC_PRICE_RESPONSE_FACTORS")
@@ -51,7 +61,7 @@ def replay(d, *,manifest,event,expost_source_sha):
     # Exact closed M1 following the PREDEFINED completed official window.
     # Restrict scan to 90 clock minutes, not 90 observed candles.
     eligible_index=frame.index[(frame.index+pd.Timedelta(minutes=1)>=cut)&(
-        frame.index+pd.Timedelta(minutes=1)<cut+pd.Timedelta(minutes=AFTER_EVENT_SCREEN_MINUTES))]
+        frame.index+pd.Timedelta(minutes=1)<screen_end)]
     for idx in eligible_index:
         i=frame.index.get_loc(idx)
         at=idx+pd.Timedelta(minutes=1)
@@ -147,6 +157,9 @@ def replay(d, *,manifest,event,expost_source_sha):
         "official_window_end_utc":cut.isoformat(),
         "input_history_rows":len(frame),
         "prespecified_screen_minutes":AFTER_EVENT_SCREEN_MINUTES,
+        "event_release_at_utc":release.isoformat(),
+        "research_macro_expiry_utc":expiry.isoformat(),
+        "actual_scan_end_exclusive_utc":screen_end.isoformat(),
         "continuation_same_side_cooldown_minutes":continuation_cooldown_minutes,
         "continuation_event_unit":"FIRST M1 STRUCTURE BREAK PER RULE/SIDE/FOMC MEETING; all other M1 observations correlated",
         "continuation_pick_policy":"FIRST_RAW_DETECTION_EVEN_IF_FORWARD_LABEL_CENSORED",
