@@ -1,0 +1,68 @@
+{
+  "fit_is_validated_alpha": false,
+  "fitted_beta_log_return_per_standardized_feature": [
+    -0.00008628915081562053,
+    -0.0000836868045205694,
+    -0.00028257340687700425,
+    0.00010006254939495704
+  ],
+  "fitted_intercept_log_return": 0.00036135091203543207,
+  "frozen_payload_sha256": "7f5397487839e6bd0d0a9289dd1229294c04c655e2ca952b513a1367bec73a99",
+  "genuinely_untouched_holdout_evaluated": false,
+  "model_contract": "RIZAN_R72_D1_PRICE_ONLY_GLOBAL_RIDGE_FREEZE_V1",
+  "original_macro_publication_clock_verified": false,
+  "params": {
+    "cBot_execution_authority": false,
+    "daily_session_clock": "UTC_00:00_24:00",
+    "factor_names": [
+      "xau_range5_pct",
+      "xau_mom5_pct",
+      "xau_mom21_pct",
+      "xau_rvol21_pct"
+    ],
+    "frozen_v1_modification": false,
+    "horizon": "D1",
+    "horizon_trading_sessions": 1,
+    "hypothetical_cost_usd_per_oz": 0.4,
+    "macro_or_ICE_DXY_used": false,
+    "min_edge_bp": 0,
+    "original_pit_macro_required": false,
+    "price_vendor_policy": "HistData_2018-2022_2024;Dukascopy_2023",
+    "regime_blend": 0,
+    "ridge_penalty": 500,
+    "search_only": true,
+    "target": "next_session_open_to_next_session_close",
+    "train_years": "2018-2024_only"
+  },
+  "price_source_sha256_by_year": {
+    "2018": "dfeee4afd99b69f45afbbba141ff6f23765f0694d0b8d3c07a507e52c5b5d72f",
+    "2019": "e5525e6d0546485d6b50dff349be908538eee60336d6090c0f94e511fc68e",
+    "2020": "2ad8c1022580ccdfada083e50cea115f325ae1bee90f908067d6050227b6093c",
+    "2021": "8cb99c6852f9cbbd66cfa0b70be1b5636c0e88db0d26f8c1e62a299ec5f2b55a",
+    "2022": "d15eba7805a6640bff3b334fb03d816a2e637a6c99f8cde447ce3f38e32fae9d",
+    "2024": "53c93fe12c70ea777b182ca9fa26e17f8b77948e8e5ae8d6f1acc6ab285f8f68",
+    "2023_dukas": "c7ffcdaeeb34f8756feb3bbbedb825bd42c4b80401ef4c6d0895ae32bec3ee44"
+  },
+  "production_order_authority": false,
+  "provider_2023_repaired_rows": 259,
+  "source_2023_histdata_original_sha256": "b9781ae9f0256625f4ab842231c71f3034da755cf5be6d25f6e3065d99d1f85f",
+  "source_2023_substitution_repair_checksum": "c7ffcdaeeb34f8756feb3bbbedb825bd42c4b80401ef4c6d0895ae32bec3ee44",
+  "source_reproducibility": "provenance_has_source_SHA256_and_actions_run_ids",
+  "trained_2025_2026_outcomes": false,
+  "training_date_min_utc": "2018-08-02T00:00:00+00:00",
+  "training_feature_mean": [
+    1.3445675452359682,
+    0.2563225493541186,
+    1.0620508843277725,
+    0.8613571429950968
+  ],
+  "training_feature_std": [
+    0.5043772732610482,
+    2.0368218721359965,
+    3.8655796813182013,
+    0.30216395683430386
+  ],
+  "training_last_decision_utc": "2024-12-27T00:00:00+00:00",
+  "training_last_label_end_utc": "2024-12-30T00:00:00+00:00",
+  "training_rows": 1622
+}
