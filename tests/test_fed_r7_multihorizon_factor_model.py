@@ -31,7 +31,9 @@ def test_weight_learning_produces_horizon_score_without_auto_order():
     assert x["contract"]==CONTRACT
     assert x["status"]=="RESEARCH_ESTIMATE"
     assert x["search_side"] in ("RESEARCH_SEARCH_BUY","RESEARCH_SEARCH_SELL","WAIT")
-    assert x["point_in_time_history_verified"] is True
+    assert x["point_in_time_history_verified"] is False
+    assert x["receipt_timestamp_checks_passed"] is True
+    assert x["independent_source_provenance_audited"] is False
     assert x["out_of_sample_validated"] is False
     assert x["calibrated_probability"] is None
     assert x["execution_authority"] is False
