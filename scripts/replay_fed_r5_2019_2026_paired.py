@@ -116,6 +116,7 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
                 "v4_original_buy_candidate_m1":counters.get("v4_BUY_ENTRY_CANDIDATE",0),
                 "v4_original_sell_candidate_m1":counters.get("v4_SELL_ENTRY_CANDIDATE",0),
                 "rule_stats":rule_stats,
+                "r63_first_fixed_candidate_paired_ab":result["r63_first_event_fixed_time_paired_ab"],
                 "r6_unfiltered_first_continuation_by_side":{
                     side:{
                         "first_event_n":counters.get(
@@ -200,6 +201,10 @@ def year_replay(year,*,fetcher=load_real_xau,official=None):
             for side in ("BUY","SELL")},
         "events":summaries,
         "price_sources":provenance,
+        "r63_research_ab_first_candidates":sum(
+            len(e["r63_first_fixed_candidate_paired_ab"]) for e in summaries),
+        "r63_original_first_candidate_never_reselected":True,
+        "r63_macro_inputs_genuine_pit_n":0,
         "original_v4_entry_candidates_m1":sum(
             x["v4_original_buy_candidate_m1"]+
             x["v4_original_sell_candidate_m1"] for x in summaries),
