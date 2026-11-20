@@ -86,7 +86,7 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
     col_d1,col_yield,col_d5=st.columns(3)
     col_d1.metric("Event Fed · D1",horizon["d1_event_research_watch"])
     col_yield.metric("Konteks harian (belum tervalidasi)",market_context["daily_direction"])
-    col_d5.metric("Sinyal 5 hari",horizon["d5"])
+    col_d5.metric("Sinyal 5 hari",horizon["d5"].split("_")[0])
     with st.expander("Lihat pembuktian D1 vs D5 · FOMC dan yield/DXY",expanded=False):
         result=[]
         for model,title in (
