@@ -265,3 +265,61 @@ def audit_walk_forward(data: pd.DataFrame, *, horizon: str,
         "execution_authority":False,"cbot_influence":False,
         "events":rows,
     }
+
+
+def audit_group_ablation(data: pd.DataFrame, *, horizon: str,
+                         first_test_at,feature_names=None,
+                         min_train_rows=None,ridge_penalty=30.0):
+    """Out-of-sample loss delta by removing one factor *GROUP* and refitting.
+
+    If drop raises OOS MSE, that group helped this evaluation cohort.
+    A negative delta means the group hurt. These are observational,
+    *not* causal importance or proof of stable future relationships.
+    Comparison dates must match across models; never use separate
+    groups with different test rows.
+    """
+    names=_features(horizon,feature_names)
+    full=audit_walk_forward(
+        data,horizon=horizon,first_test_at=first_test_at,
+        feature_names=names,min_train_rows=min_train_rows,
+        ridge_penalty=ridge_penalty,min_edge_pct=0.0)
+    reference={x["at"]:x for x in full["events"]}
+    out={
+        "contract":"RIZAN_XAU_R7_OOS_GROUP_ABLATION_V1",
+        "horizon":horizon,"status":full["status"],
+        "groups":{},"reference_n":len(reference),
+        "causal_importance_verified":False,
+        "out_of_sample_tuning_freeze_verified":False,
+        "entry_permission":False,"execution_authority":False,
+    }
+    for group in GROUPS:
+        subset=tuple(x for x in names if FEATURE_GROUP[x]!=group)
+        if len(subset)==len(names) or not subset:
+            continue
+        partial=audit_walk_forward(
+            data,horizon=horizon,first_test_at=first_test_at,
+            feature_names=subset,min_train_rows=min_train_rows,
+            ridge_penalty=ridge_penalty,min_edge_pct=0.0)
+        alternative={x["at"]:x for x in partial["events"]}
+        shared=sorted(set(reference)&set(alternative))
+        if len(shared)<MIN_OOS[horizon]:
+            out["groups"][group]={
+                "status":"INSUFFICIENT_PAIRED_OOS_SAMPLES","paired_n":len(shared),
+                "loss_increase_when_removed":None}
+            continue
+        full_sq=sum(
+            (reference[t]["predicted_return_pct"]-
+             reference[t]["realised_return_pct"])**2 for t in shared)/len(shared)
+        reduced_sq=sum(
+            (alternative[t]["predicted_return_pct"]-
+             reference[t]["realised_return_pct"])**2 for t in shared)/len(shared)
+        out["groups"][group]={
+            "status":"DESCRIPTIVE_OOS_LOSS_DIFFERENCE","paired_n":len(shared),
+            "full_rmse_pct":round(sqrt(full_sq),5),
+            "without_group_rmse_pct":round(sqrt(reduced_sq),5),
+            "rmse_increase_when_removed_pct_points":
+                round(sqrt(reduced_sq)-sqrt(full_sq),5),
+            "positive_means_group_helped_this_holdout":True,
+            "causal_effect":False,
+        }
+    return out
