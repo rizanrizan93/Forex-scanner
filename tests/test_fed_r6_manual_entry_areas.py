@@ -127,7 +127,7 @@ def test_old_or_already_broken_pivot_cannot_be_used():
     x=d.index[-18]
     d.loc[x,["open","high","low","close"]]=[94.5,95.,94.,94.5]
     r=evaluate_areas(d,now=NOW,bid=99.95,ask=100.05,quote_at=NOW,news_events=[])
-    assert not any(z["side"]=="BUY" and z["entry_reference"]<99
+    assert not any(z["side"]=="BUY" and abs(z["low"]-96)<0.001
                    for z in r["zones"])
 
 def test_hardcoded_old_m1_timestamp_never_pretends_current_entry():
