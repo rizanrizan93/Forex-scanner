@@ -1,5 +1,6 @@
 """Persistent dashboard navigation with lazy, isolated page rendering."""
 from __future__ import annotations
+import logging
 import runpy
 import sys
 from pathlib import Path
@@ -148,6 +149,9 @@ def protected_dashboard(pair="XAUUSD", detail="Arah Entry"):
         with st.spinner("Memuat " + pair + " · " + detail + "…"):
             render_dashboard(pair, detail)
     except Exception:
+        logging.getLogger(__name__).exception(
+            "Dashboard render failed for pair=%s detail=%s", pair, detail
+        )
         st.error("Halaman belum dapat dimuat. Pilih tab lain atau coba muat ulang.")
         if st.button("Coba muat ulang", key="rizan_retry_page"):
             st.rerun()

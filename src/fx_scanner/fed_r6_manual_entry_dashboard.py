@@ -21,6 +21,66 @@ def _wib(value):
     return pd.Timestamp(value).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")
 
 
+def _audit_text(value):
+    """Normalize audit-table cells before Arrow infers column types."""
+    return "—" if value is None or value == "" else str(value)
+
+
+def _audit_change(value, unit=""):
+    """Human-readable numeric delta or explicit categorical futures proxy."""
+    from math import isfinite
+    from numbers import Real
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, Real) and not isinstance(value, bool):
+        if not isfinite(float(value)):
+            return "—"
+        precision = 4 if unit == "%" else 2
+        return f"{value:+.{precision}f} {unit}".strip()
+    return str(value)
+
+
+def _audit_fresh(value):
+    if value is True:
+        return "Ya"
+    if value is False:
+        return "Tidak"
+    return "—"
+
+
+def _macro_audit_rows(market_context):
+    """Ensure every cell is text; the delta column also holds proxy labels."""
+    rows = []
+    for name, component in market_context.get("daily_yields", {}).items():
+        rows.append({
+            "Indikator": str(name),
+            "Nilai": _audit_text(component.get("yield_pct")),
+            "Perubahan": _audit_change(component.get("daily_delta_bps"), "bps"),
+            "Sumber": _audit_text(component.get("provider")),
+            "Waktu WIB": _wib(component.get("observed_at")),
+            "Segar": _audit_fresh(component.get("valid_official_daily")),
+        })
+    dxy = market_context.get("dxy") or {}
+    rows.append({
+        "Indikator": "DXY (proksi)",
+        "Nilai": _audit_text(dxy.get("current")),
+        "Perubahan": _audit_change(dxy.get("change_pct"), "%"),
+        "Sumber": _audit_text(dxy.get("source")),
+        "Waktu WIB": _wib(dxy.get("observed_at")),
+        "Segar": _audit_fresh(dxy.get("fresh")),
+    })
+    intra = market_context.get("intraday_yield") or {}
+    rows.append({
+        "Indikator": "Treasury intraday",
+        "Nilai": _audit_text(intra.get("futures_price")),
+        "Perubahan": _audit_change(intra.get("pressure")),
+        "Sumber": _audit_text(intra.get("basis")),
+        "Waktu WIB": _wib(intra.get("observed_at")),
+        "Segar": _audit_fresh(intra.get("available_for_direction")),
+    })
+    return rows
+
+
 def render_view(source=None, macro_snapshot=None, *, now=None):
     import streamlit as st
     now = now or datetime.now(UTC)
@@ -171,29 +231,10 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
             ". Data dolar/yield mungkin tidak lengkap atau saling bertentangan."
         )
     with st.expander("Audit arah pasar · sumber, timestamp dan pembatasan",expanded=False):
-        cols=[]
-        for name,v in market_context.get("daily_yields",{}).items():
-            cols.append({"Indikator":name,
-                         "Nilai":v.get("yield_pct"),
-                         "Perubahan":v.get("daily_delta_bps"),
-                         "Sumber":v.get("provider"),
-                         "Waktu WIB":_wib(v.get("observed_at")),
-                         "Segar":v.get("valid_official_daily")})
-        dxy=market_context.get("dxy",{})
-        cols.append({"Indikator":"DXY (proksi)",
-                     "Nilai":dxy.get("current"),
-                     "Perubahan":dxy.get("change_pct"),
-                     "Sumber":dxy.get("source"),
-                     "Waktu WIB":_wib(dxy.get("observed_at")),
-                     "Segar":dxy.get("fresh")})
-        intra=market_context.get("intraday_yield",{})
-        cols.append({"Indikator":"Treasury intraday",
-                     "Nilai":intra.get("futures_price"),
-                     "Perubahan":intra.get("pressure"),
-                     "Sumber":intra.get("basis"),
-                     "Waktu WIB":_wib(intra.get("observed_at")),
-                     "Segar":intra.get("available_for_direction")})
-        st.dataframe(cols,hide_index=True,width="stretch")
+        # Do not mix numeric yield changes with strings such as
+        # YIELD_DOWN_PROXY: Arrow serializes columns with a single dtype.
+        st.dataframe(_macro_audit_rows(market_context),
+                     hide_index=True,width="stretch")
         st.caption(
             "Treasury resmi harian bukan intraday. ZN futures hanya proksi "
             "tekanan yield. DXY Yahoo bukan ICE resmi. Kualitas engine asal: "+
