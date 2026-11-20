@@ -7,6 +7,7 @@ from .manual_r3_feed import fetch_market
 from .fed_r61_operational_macro_direction import assess_market_direction
 from .fed_r62_tested_horizon_policy import audited_horizon_context
 from .fed_r63_macro_price_divergence import evaluate_divergence
+from .fed_r65_four_hour_search import evaluate_four_hour_search
 from .pre_news_transport import fetch_pre_news_snapshot
 
 
@@ -104,6 +105,7 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
             "macro_direction":"WAIT","macro_reason":"NO_VERIFIED_R4_REALTIME_FEED",
             "bias_m15":"UNKNOWN","bias_h1":"UNKNOWN","bias_h4":"UNKNOWN",
             "price":None,"atr_m5":None,"quote_at":None,
+            "liquidity_context":None,"liquidity_pools":None,
             "last_closed_m1":None,"zones":[],
             "entry_allowed":False,"authority_to_send_orders":False,
             "market_context":market_context,
@@ -120,6 +122,47 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
         )
     a,b,c,d = st.columns(4)
     price_action=evaluate_divergence(market_context,report)
+    forecast=evaluate_four_hour_search(
+        report,market_context,now=now,
+        news_events=source.get("news_events") if source is not None else None)
+    st.markdown("#### R6.5 · Arah pencarian XAU 4 jam ke depan")
+    fc1,fc2,fc3=st.columns(3)
+    fc1.metric("Fokus 4 jam",forecast["search_side"])
+    fc2.metric("Skor bukti (bukan win rate)",
+               str(forecast["evidence_score"])+"/"+str(forecast["max_score"]))
+    fc3.metric("Status engine",forecast["status"])
+    st.caption(
+        "Keputusan "+_wib(forecast["issued_at"])+
+        " · horizon hingga "+_wib(forecast["target_at"])+
+        " · tinjau ulang setiap 15 menit. "+
+        "Skor hanya konfluensi deterministik, BUKAN peluang keberhasilan."
+    )
+    if forecast["status"]=="RESEARCH_WATCH":
+        st.info(
+            "Arah penelitian 4 jam: **"+forecast["search_side"]+"**. "+
+            "Ini memprioritaskan mencari zona sesuai arah, bukan memprediksi "+
+            "kepastian harga atau membuka transaksi. Mode makro "+
+            forecast["macro_mode"]+", kalender "+forecast["calendar_state"]+
+            "; tetap wajib menunggu trigger harga terpisah."
+        )
+    else:
+        st.warning(
+            "4H WAIT — "+forecast["reason"].replace("_"," ")+
+            ". Arah teknikal yang teramati: "+forecast["watch_side"]+
+            ". Jangan memaksakan BUY/SELL saat gate belum terpenuhi."
+        )
+    if forecast.get("nearest_pool"):
+        near=forecast["nearest_pool"]
+        st.caption(
+            "Pool sesi selesai terdekat: "+str(near["name"])+
+            " @ "+_fmt(near["price"])+
+            ", jarak "+str(near["distance_atr_m5"])+" × range M5 median/ATR referensi."
+        )
+    st.caption(
+        "R6.5 masih **riset read-only**, belum ada replay akurasi D4h "+
+        "terkalibrasi 2019–2026. Tidak mengendalikan Frozen V1, cBot, "+
+        "order, leverage atau stop-loss."
+    )
     a.metric("Makro · yield + DXY",market_context["direction"])
     st.caption(
         "Kekuatan: "+market_context["strength"]+
@@ -141,6 +184,34 @@ def render_view(source=None, macro_snapshot=None, *, now=None):
                      report["bias_m15"]+" / "+report["bias_h1"]+" / "+report["bias_h4"])
     col_final.metric("Arah setelah konfirmasi harga",
                      price_action["display_direction"])
+    liq=report.get("liquidity_context") or {}
+    if liq.get("risk_veto") is True:
+        st.warning(
+            "R6.3 PENGAMAN LIKUIDITAS · "+str(liq.get("state"))+
+            ". Candle M5 tertutup menunjukkan kemungkinan sweep/displacement/volatilitas. "+
+            "TUNGGU konfirmasi ulang; jangan langsung BUY karena yield/DXY turun "+
+            "atau mengejar SELL saat harga terjun. Ini BUKAN bukti margin call/likuidasi paksa."
+        )
+    elif liq.get("state")=="UNKNOWN":
+        st.caption("Filter likuiditas belum dapat diverifikasi dari M5 selesai: "+
+                   str(liq.get("reason"))+". Tidak ada persetujuan entry.")
+    elif liq.get("state")=="NORMAL":
+        st.caption("Filter likuiditas M5: NORMAL (bukan jaminan bebas likuidasi).")
+    pools=report.get("liquidity_pools") or {}
+    with st.expander("Peta likuiditas · sesi selesai (bukan order book)",expanded=False):
+        st.caption(
+            "Peta HIGH/LOW sebelumnya mengikuti hari FX yang berakhir 17:00 NY "
+            "serta sesi Asia 08.00–13.00 WIB. Level hanya dipublikasi setelah "
+            "periode selesai; ini bukan bukti stop order, margin call atau bandar."
+        )
+        if pools.get("levels"):
+            st.dataframe(
+                [{"Pool":x["name"],"Level":x["price"],
+                  "Sesi":x["session_date"],"Terkonfirmasi":_wib(x["confirmed_at"])}
+                 for x in pools["levels"]],
+                hide_index=True,width="stretch")
+        else:
+            st.caption("Level belum dapat dipastikan: "+str(pools.get("reason","NO_SOURCE")))
     if price_action["divergence"]:
         st.warning(
             "**DIVERGENSI — hindari entry melawan struktur XAU.** "

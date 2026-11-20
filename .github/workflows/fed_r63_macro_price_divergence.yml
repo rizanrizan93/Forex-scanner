@@ -3,6 +3,16 @@ on:
   pull_request:
     paths:
       - 'src/fx_scanner/fed_r63_macro_price_divergence.py'
+      - 'src/fx_scanner/fed_r63_liquidity_stress.py'
+      - 'src/fx_scanner/fed_r64_liquidity_pools.py'
+      - 'tests/test_fed_r64_liquidity_pools.py'
+      - 'src/fx_scanner/fed_r64_liquidity_replay.py'
+      - 'tests/test_fed_r64_liquidity_replay.py'
+      - 'src/fx_scanner/fed_r65_four_hour_search.py'
+      - 'tests/test_fed_r65_four_hour_search.py'
+      - 'src/fx_scanner/fed_r65_four_hour_replay.py'
+      - 'tests/test_fed_r65_four_hour_replay.py'
+      - 'tests/test_fed_r63_liquidity_stress.py'
       - 'src/fx_scanner/fed_r6_manual_entry_areas.py'
       - 'src/fx_scanner/fed_r6_manual_entry_dashboard.py'
       - 'tests/test_fed_r63_macro_price_divergence.py'
@@ -24,7 +34,7 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Compile price divergence and existing zone displays
         run: |
-          python -m py_compile src/fx_scanner/fed_r63_macro_price_divergence.py src/fx_scanner/fed_r6_manual_entry_areas.py src/fx_scanner/fed_r6_manual_entry_dashboard.py
+          python -m py_compile src/fx_scanner/fed_r65_four_hour_replay.py src/fx_scanner/fed_r65_four_hour_search.py src/fx_scanner/fed_r64_liquidity_replay.py src/fx_scanner/fed_r64_liquidity_pools.py src/fx_scanner/fed_r63_liquidity_stress.py src/fx_scanner/fed_r63_macro_price_divergence.py src/fx_scanner/fed_r6_manual_entry_areas.py src/fx_scanner/fed_r6_manual_entry_dashboard.py
       - name: Reject bullish-yield BUY versus bearish XAU and preserve R6.1/2 safety
         run: |
-          python -m pytest -q tests/test_fed_r63_macro_price_divergence.py tests/test_fed_r62_tested_horizon_policy.py tests/test_fed_r61_operational_macro_direction.py tests/test_fed_r6_manual_entry_areas.py
+          python -m pytest -q tests/test_fed_r65_four_hour_replay.py tests/test_fed_r65_four_hour_search.py tests/test_fed_r64_liquidity_replay.py tests/test_fed_r64_liquidity_pools.py tests/test_fed_r63_liquidity_stress.py tests/test_fed_r63_macro_price_divergence.py tests/test_fed_r62_tested_horizon_policy.py tests/test_fed_r61_operational_macro_direction.py tests/test_fed_r6_manual_entry_areas.py

@@ -11,6 +11,8 @@ This module NEVER sends orders, reads portfolio secrets or claims 80%.
 from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from math import isfinite
+from .fed_r63_liquidity_stress import assess_liquidity_stress
+from .fed_r64_liquidity_pools import map_xau_liquidity_pools
 from urllib.parse import urlsplit
 import pandas as pd
 
@@ -45,7 +47,7 @@ def _out(now, reason):
         "status": "WAIT", "reason": reason, "macro_direction": "WAIT",
         "macro_reason": "NO_VERIFIED_R4_REALTIME_FEED",
         "price": None, "quote_at": None, "last_closed_m1": None,
-        "atr_m5": None, "bias_m15":"UNKNOWN", "bias_h1": "UNKNOWN", "bias_h4": "UNKNOWN",
+        "atr_m5": None, "liquidity_context": None, "liquidity_pools": None, "bias_m15":"UNKNOWN", "bias_h1": "UNKNOWN", "bias_h4": "UNKNOWN",
         "zones": [], "entry_allowed": False,
         "authority_to_send_orders": False, "authority_to_modify_cbots": False,
         "score_is_accuracy": False, "backtested_80pct_both_sides": False,
@@ -221,6 +223,9 @@ def evaluate_areas(frame, *, now, bid=None, ask=None, quote_at=None,
     ref=(b+a)/2 if quote_valid else float(d.close.iloc[-1])
     out["price"]=round(ref,3)
     out["quote_at"]=qt.isoformat() if quote_valid else None
+    out["liquidity_context"]=assess_liquidity_stress(
+        m5, now=now, spread=(a-b) if quote_valid else None)
+    out["liquidity_pools"]=map_xau_liquidity_pools(m5, now=now)
     news_ok,news_reason=_news_ok(news_events,now)
     pts=confirmed_pivots(m5,now)
     zones=[]
