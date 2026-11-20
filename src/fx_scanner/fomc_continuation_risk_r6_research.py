@@ -31,6 +31,10 @@ def continuation_h1_risk(m1,signal_i,*,side,atr_m5,
         raise ValueError("SIGNAL_INDEX_INVALID")
     if m1.index.has_duplicates or not m1.index.is_monotonic_increasing:
         raise ValueError("BAD_M1_ORDER")
+    prior_with_signal=m1.iloc[signal_i-3:signal_i+1]
+    if not (prior_with_signal.index.to_series().diff().iloc[1:]==
+            pd.Timedelta(minutes=1)).all():
+        raise ValueError("PRE_SIGNAL_M1_GAP")
     path=m1.iloc[signal_i+1:signal_i+1+horizon]
     if (len(path)!=horizon or
         path.index[0]!=m1.index[signal_i]+pd.Timedelta(minutes=1) or
