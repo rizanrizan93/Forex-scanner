@@ -1,0 +1,128 @@
+name: R7.3 Actual Fed CFTC VIX Nested Gold 2018-24 Calibration Research
+on:
+  push:
+    branches: ['research/r73-fed-fomc-liquidity-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r73_research_runner.py'
+      - 'src/fx_scanner/fed_r73_nested_matched_ablation.py'
+      - '.github/workflows/r73_empirical_gold_fed_cot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  paired_nested_study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      R73_XAU_ORIGINAL_2018_24: '/tmp/r73-xau-original'
+      R73_XAU_2023_DUKA: '/tmp/r73-xau-fixed'
+      R73_TREASURY_ROOT: '/tmp/r73-treasury'
+      R73_DOLLAR_ROOT: '/tmp/r73-dollar-index'
+      R73_FRED_POLICY_ROOT: '/tmp/r73-policy-probe'
+      R73_CFTC_ROOT: '/tmp/r73-cftc'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install numeric package versions used in source tests
+        run: python -m pip install numpy pandas==2.2.3
+      - name: Reuse audited source XAU daily 2018
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2018
+          path: /tmp/r73-xau-original/2018
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Reuse audited source XAU daily 2019
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2019
+          path: /tmp/r73-xau-original/2019
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Reuse audited source XAU daily 2020
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2020
+          path: /tmp/r73-xau-original/2020
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Reuse audited source XAU daily 2021
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2021
+          path: /tmp/r73-xau-original/2021
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Reuse audited source XAU daily 2022
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2022
+          path: /tmp/r73-xau-original/2022
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Reuse audited source XAU daily 2023
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2023
+          path: /tmp/r73-xau-original/2023
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Reuse audited source XAU daily 2024
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2024
+          path: /tmp/r73-xau-original/2024
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Verify repaired 2023 gold M1 price source with independent audit
+        uses: actions/download-artifact@v4
+        with:
+          name: r71-repaired-independent-dukas-2023
+          path: /tmp/r73-xau-fixed
+          run-id: 44831450440
+          github-token: ${{ github.token }}
+      - name: Reuse official U.S. Treasury nominal/real observations 2018-24
+        uses: actions/download-artifact@v4
+        with:
+          name: r71-treasury-nominal-real-2018-2024-original
+          path: /tmp/r73-treasury
+          run-id: 44831912361
+          github-token: ${{ github.token }}
+      - name: Retrieve timestamped vendor USD index quote history 2018-24 (NOT official ICE DXY)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r71-duka-dollar-idx-h1-*
+          path: /tmp/r73-dollar-index
+          merge-multiple: false
+          run-id: 44831876236
+          github-token: ${{ github.token }}
+      - name: Reuse audited FRED Fed Funds target upper/lower, VIX and Board rate source
+        uses: actions/download-artifact@v4
+        with:
+          name: r73-official-fed-cftc-source-probe
+          path: /tmp/r73-policy-probe
+          run-id: 44843731861
+          github-token: ${{ github.token }}
+      - name: Download 2018-2024 CFTC Gold Managed Money and Open Interest source zips
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r73-cftc-gold-*
+          path: /tmp/r73-cftc
+          merge-multiple: false
+          run-id: 44843868893
+          github-token: ${{ github.token }}
+      - name: Execute pre-2025 purged nested same-date Fed Policy/FOMC change/COT/VIX ablations
+        run: python -m fx_scanner.fed_r73_research_runner
+      - name: Store full model folds, source SHA256 and pre-declared limitations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r73-pre2025-actual-fed-fomc-cot-vix-nested
+          path: artifacts/r73-macro-fed-cot-nested-matched.json
+          if-no-files-found: warn
+          retention-days: 30

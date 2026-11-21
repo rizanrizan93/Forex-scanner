@@ -1,0 +1,62 @@
+name: R7.3 Official Fed Policy and CFTC Gold Position Source Probe
+on:
+  push:
+    branches: ['research/r73-fed-fomc-liquidity-20261121']
+    paths: ['.github/workflows/r73_source_probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe_sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Inspect official source schemas without making macro PIT claims
+        run: |
+          python - <<'PY'
+          from urllib.request import urlopen,Request
+          from urllib.error import HTTPError,URLError
+          from io import BytesIO
+          from pathlib import Path
+          import zipfile, hashlib, json
+          links={
+            "FRED_TARGET_UPPER":"https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFEDTARU",
+            "FRED_TARGET_LOWER":"https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFEDTARL",
+            "FRED_VIX":"https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS",
+            "FED_BOARD_PRATES":"https://www.federalreserve.gov/datadownload/Output.aspx?rel=PRATES&series=c27939ee810cb2e929a920a6bd77d9f6&lastobs=&from=&to=&filetype=csv&label=include&layout=seriescolumn&type=package",
+            "CFTC_GOLD_DISAGG_2023":"https://www.cftc.gov/files/dea/history/fut_disagg_txt_2023.zip",
+            "CFTC_GOLD_DISAGG_ALT":"https://www.cftc.gov/dea/newcot/fut_disagg_txt_2023.zip",
+          }
+          p=Path("artifacts/r73-source-probe");p.mkdir(parents=True,exist_ok=True)
+          report={}
+          for name,url in links.items():
+            try:
+              with urlopen(Request(url,headers={"User-Agent":"RIZAN-Fed-Liquidity-Research/1.0","Accept":"text/csv,application/zip,*/*"}),timeout=18) as r:
+                data=r.read(6_000_001);status=r.status
+              if len(data)>6_000_000 or len(data)<100:raise ValueError("BAD_SIZE")
+              suffix=".zip" if name.startswith("CFTC") else ".csv"
+              (p/(name+suffix)).write_bytes(data)
+              result={"status":"OK","http":status,"bytes":len(data),"sha256":hashlib.sha256(data).hexdigest(),"first_120":repr(data[:120])}
+              if zipfile.is_zipfile(BytesIO(data)):
+                with zipfile.ZipFile(BytesIO(data)) as z:
+                  result["inner_names"]=z.namelist()[:8]
+                  result["first_line"]=repr(z.read(z.namelist()[0])[:400])
+              print("R73_SOURCE_PROBE",name,json.dumps(result),flush=True)
+              report[name]=result
+            except Exception as ex:
+              print("R73_SOURCE_PROBE",name,json.dumps({"status":"UNAVAILABLE","error_type":type(ex).__name__,"message":str(ex)[:150]}),flush=True)
+              report[name]={"status":"UNAVAILABLE","error_type":type(ex).__name__}
+          (p/"manifest.json").write_text(json.dumps(report,indent=2))
+          if not (report["FED_BOARD_PRATES"]["status"]=="OK" or report["FRED_TARGET_UPPER"]["status"]=="OK"):
+            raise SystemExit("OFFICIAL_FED_TARGET_SOURCE_UNAVAILABLE")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r73-official-fed-cftc-source-probe
+          path: artifacts/r73-source-probe/*
+          if-no-files-found: warn
+          retention-days: 30
