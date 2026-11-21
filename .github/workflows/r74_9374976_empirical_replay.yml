@@ -1,0 +1,144 @@
+name: R7.4 Audited Finite 9,374,976 Macro Grids Nested XAU Replay (No Orders)
+on:
+  push:
+    branches: ['research/r74-finite-million-macro-grid-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r74_million_runner.py'
+      - '.github/workflows/r74_9374976_empirical_replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r74-finitemillion-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  finite_grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        horizon: [D1,W1,M1]
+        price_cohort: [REPAIRED_2023_DUKA,ORIGINAL_2023_HISTDATA_GAPS]
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      R74_HORIZON: ${{ matrix.horizon }}
+      R74_2023_COHORT: ${{ matrix.price_cohort }}
+      R74_XAU_ORIGINAL_2018_24: '/tmp/r74-xau-original'
+      R74_XAU_2023_DUKA: '/tmp/r74-xau-fixed'
+      R74_TREASURY_ROOT: '/tmp/r74-treasury'
+      R74_DOLLAR_ROOT: '/tmp/r74-dollar'
+      R74_FRED_POLICY_ROOT: '/tmp/r74-fed-policy'
+      R74_CFTC_ROOT: '/tmp/r74-cftc'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Pin numerical dependencies and test full finite search count
+        run: |
+          python -m pip install numpy pandas==2.2.3
+          python - <<'PY'
+          from fx_scanner.fed_r74_finite_million_grid import configured_count
+          assert configured_count()==9_374_976
+          print("R74_PREDECLARED_CONFIGS",configured_count())
+          PY
+      - name: Source-audited 2018-24 XAU daily 2018
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2018
+          path: /tmp/r74-xau-original/2018
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Source-audited 2018-24 XAU daily 2019
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2019
+          path: /tmp/r74-xau-original/2019
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Source-audited 2018-24 XAU daily 2020
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2020
+          path: /tmp/r74-xau-original/2020
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Source-audited 2018-24 XAU daily 2021
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2021
+          path: /tmp/r74-xau-original/2021
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Source-audited 2018-24 XAU daily 2022
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2022
+          path: /tmp/r74-xau-original/2022
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Source-audited 2018-24 XAU daily 2023
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2023
+          path: /tmp/r74-xau-original/2023
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Source-audited 2018-24 XAU daily 2024
+        uses: actions/download-artifact@v4
+        with:
+          name: r7-xau-price-2024
+          path: /tmp/r74-xau-original/2024
+          run-id: 44759599059
+          github-token: ${{ github.token }}
+      - name: Archive repaired 2023 Dukascopy M1 daily independent evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: r71-repaired-independent-dukas-2023
+          path: /tmp/r74-xau-fixed
+          run-id: 44831450440
+          github-token: ${{ github.token }}
+      - name: Treasury 2Y/10Y/real 10Y original official archives
+        uses: actions/download-artifact@v4
+        with:
+          name: r71-treasury-nominal-real-2018-2024-original
+          path: /tmp/r74-treasury
+          run-id: 44831912361
+          github-token: ${{ github.token }}
+      - name: Independent public dollar index broker price H1 (NOT ICE DXY)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r71-duka-dollar-idx-h1-*
+          path: /tmp/r74-dollar
+          merge-multiple: false
+          run-id: 44831876236
+          github-token: ${{ github.token }}
+      - name: Official rate/FRED VIX original downloaded CSV snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: r73-official-fed-cftc-source-probe
+          path: /tmp/r74-fed-policy
+          run-id: 44843731861
+          github-token: ${{ github.token }}
+      - name: Original CFTC gold managed-money positioning/Open Interest 2018–24
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r73-cftc-gold-*
+          path: /tmp/r74-cftc
+          merge-multiple: false
+          run-id: 44843868893
+          github-token: ${{ github.token }}
+      - name: Execute full finite search with nested prior-only selection
+        run: python -m fx_scanner.fed_r74_million_runner
+      - name: Preserve actual per-fold out-of-development paired results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r74-million-grid-${{ matrix.price_cohort }}-${{ matrix.horizon }}
+          path: artifacts/r74-million-grid-${{ matrix.price_cohort }}-${{ matrix.horizon }}.json
+          if-no-files-found: warn
+          retention-days: 30
