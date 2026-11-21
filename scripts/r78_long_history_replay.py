@@ -27,6 +27,12 @@ def read_prices(root):
         frames.append(d);sources.append(m)
     d=pd.concat(frames).set_index("time").sort_index()
     assert not d.index.duplicated().any()
+    # Dukascopy H1 CSV contains carried-forward flat quotes on closed-market
+    # hours/weekends. Exclude every zero-range bar, with gap rejection
+    # later in features() to avoid crossing hours with no traded quotes.
+    raw_n=len(d)
+    d=d.loc[(d.high>d.low)&(d.index.dayofweek!=5)].copy()
+    print("R78_ACTIVE_BARS",json.dumps({"raw":raw_n,"active":len(d),"removed":raw_n-len(d)}),flush=True)
     return d,sources
 
 def features(d,h):
