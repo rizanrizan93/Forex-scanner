@@ -1,0 +1,59 @@
+name: R9.8 calibrated D1 replay 2012-2026
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/r98_calibrated.py','.github/workflows/r98_calibrated.yml']
+permissions:
+  contents: read
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      PYTHONPATH: 'src:.'
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/r98.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/r98.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          pip install numpy==2.3.5 pandas==2.2.3 scikit-learn==1.7.2 scipy
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - run: python -m fx_scanner.research_xau_histdata_download_v193
+      - run: python scripts/r98_calibrated.py shard
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r98-daily-${{ matrix.year }}
+          path: artifacts/
+          if-no-files-found: error
+  aggregate:
+    if: ${{ always() && !cancelled() }}
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scikit-learn==1.7.2 scipy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - run: python scripts/r98_calibrated.py aggregate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r98-calibrated-results
+          path: artifacts/
+          if-no-files-found: error
