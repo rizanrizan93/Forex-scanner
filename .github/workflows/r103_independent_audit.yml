@@ -1,0 +1,43 @@
+name: R10.3 independent H1 H4 leakage and execution audit
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r103_independent_audit.py'
+      - '.github/workflows/r103_independent_audit.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h','4h']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Reproduce frozen model and independently check decision-time prefix invariance
+        run: python scripts/r103_independent_audit.py --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r103-audit-${{ matrix.tf }}
+          path: artifacts/r103-audit-*.json
+          if-no-files-found: warn
+          retention-days: 90
