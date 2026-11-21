@@ -96,7 +96,7 @@ def report(tf):
     result={'version':'R10.3','tf':tf,'fixed_setup':{'model':'HistGradientBoostingClassifier max_depth=5 leaves=31 l2=1 max_iter=120 learning_rate=.05','cut':cut,'calibration':'Platt calibrated on 2023H1'},
       'data_sources':'GitHub R10 archived historical bars run 44901264975',
       'counts':{'train':int(tr.sum()),'cal':int(cal.sum()),'val':int(va.sum()),'evaluation':int(te.sum()),'total_bars':len(d)},
-      'reproduction_exact':unchanged,
+      'old_leaked_R102_metrics_reproduced_after_fix':unchanged,
       'validation':valuation,'evaluation':current,'entry_next_bar_open_exit_next_bar_close_cost_scenario':execution,
       'baseline':baseline,'prefix_causality_test':{'pass':prefix_pass,'samples':samples},
       'source_quality':{'first':str(d.index.min()),'last':str(d.index.max()),'same_session_missing_bars_or_shortgaps':shortgaps,'long_gaps':longgaps,'open_gap':gap},
@@ -110,11 +110,11 @@ def report(tf):
         'No macro point-in-time fields currently used',
         'Accuracy close-to-close not equal execution under spread, latency, swaps']}
     OUT.joinpath(f'r103-audit-{tf}.json').write_text(json.dumps(result,indent=2))
-    print(json.dumps({'stage':'audit_finished','tf':tf,'reproduction':unchanged,'prefix_pass':prefix_pass,
+    print(json.dumps({'stage':'audit_finished','tf':tf,'old_leaked_metrics_still_present':unchanged,'prefix_pass':prefix_pass,
         'evaluation':current,'entry_next_open':execution,'baseline':baseline,
         'gaps':result['source_quality']}),flush=True)
     if not prefix_pass:raise AssertionError('LOOKAHEAD PREFIX INVARIANCE FAILED')
-    if not unchanged:raise AssertionError('REPLAY REPRODUCTION MISMATCH')
+    if unchanged:raise AssertionError('OLD LEAKED PERFORMANCE UNCHANGED: investigate fix efficacy')
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--tf',choices=['1h','4h'],required=True)
     report(p.parse_args().tf)
