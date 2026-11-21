@@ -1,0 +1,101 @@
+name: R15 18,432 directional strategy tournament
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r15_direction_tournament.py'
+      - '.github/workflows/r15_direction_tournament.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r15-direction-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h','4h','1D','1W']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - if: ${{ matrix.tf == '1h' || matrix.tf == '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - if: ${{ matrix.tf == '1D' || matrix.tf == '1W' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Screen 4608 causal price-direction rules on training and validation; then sealed evaluation
+        run: python scripts/r15_direction_tournament.py --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r15-direction-${{ matrix.tf }}
+          path: artifacts/r15-direction-*.json
+          if-no-files-found: warn
+          retention-days: 90
+  audit:
+    needs: evaluate
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r15-direction-*
+          path: /tmp/r15
+          merge-multiple: true
+      - name: Fail if any timeframe or configuration sweep is incomplete
+        run: |
+          mkdir -p artifacts
+          python - <<'PY'
+          import glob,json
+          from pathlib import Path
+          paths=glob.glob("/tmp/r15/r15-direction-*.json")
+          entries=[json.loads(Path(p).read_text()) for p in paths]
+          names={r["timeframe"] for r in entries}
+          assert len(entries)==4 and names=={"1h","4h","1D","1W"},(len(entries),names)
+          assert all(r["candidates_evaluated"]==4608 for r in entries)
+          assert all(r["selected_prefix_audit"] is None or r["selected_prefix_audit"]["pass"] for r in entries)
+          s={"version":"R15","parameter_vectors_tested":sum(r["candidates_evaluated"] for r in entries),
+            "eligible_candidates":sum(r["eligible_development_candidates"] for r in entries),
+            "per_timeframe":{r["timeframe"]:{
+              "best":r["candidates_selected_only_on_training_and_validation"][0] if r["candidates_selected_only_on_training_and_validation"] else None,
+              "evaluation":r["evaluation"],
+              "annual_evaluation":r["annual_evaluation"],
+              "base_rates":r.get("base_rates"),
+              "meets_both_60_with_Wilson_lower_bound":r["meets_60pct_both_sides_observed"]} for r in entries},
+            "limitations":["2023-26 previously inspected, not pristine holdout","No M5 zones or live trading","Multiple testing requires forward shadow"]}
+          Path("artifacts/r15-direction-tournament-summary.json").write_text(json.dumps(s,indent=2))
+          print(json.dumps(s),flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r15-direction-tournament-summary
+          path: artifacts/r15-direction-tournament-summary.json
+          if-no-files-found: warn
+          retention-days: 90
