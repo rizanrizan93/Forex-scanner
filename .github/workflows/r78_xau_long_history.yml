@@ -1,0 +1,67 @@
+name: R7.8 Independent XAU H1 2012-2024 Source Archive
+on:
+  push:
+    branches: ['research/r78-long-history-intraday-20261121']
+    paths: ['.github/workflows/r78_xau_long_history.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024]
+    env:
+      YEAR: ${{ matrix.year }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts dukascopy-node@1.51.1
+      - name: Download real hourly bid bars
+        run: |
+          mkdir -p /tmp/r78-xau
+          NEXT=$(( YEAR + 1 ))
+          ./node_modules/.bin/dukascopy-node -i xauusd -from "${YEAR}-01-01" -to "${NEXT}-01-01" -t h1 -p bid -f csv -dir /tmp/r78-xau --retries 2 --batch-pause 1000
+          wc -l /tmp/r78-xau/*.csv
+          head -n 2 /tmp/r78-xau/*.csv
+      - name: Validate source rows and checksum
+        run: |
+          python - <<'PY'
+          import csv,datetime,os,hashlib,json,math
+          from pathlib import Path
+          year=int(os.environ["YEAR"])
+          files=list(Path("/tmp/r78-xau").glob("*.csv"))
+          assert len(files)==1
+          p=files[0]
+          raw=p.read_bytes()
+          rows=list(csv.DictReader(raw.decode().splitlines()))
+          seen=[]
+          for r in rows:
+              t=int(r["timestamp"])
+              dt=datetime.datetime.fromtimestamp(t/1000,datetime.timezone.utc)
+              if dt.year!=year:continue
+              vals=[float(r[k]) for k in ["open","high","low","close"]]
+              assert all(math.isfinite(v) and v>0 for v in vals)
+              o,h,l,c=vals
+              assert l<=min(o,c)<=max(o,c)<=h
+              assert t%3600000==0
+              seen.append(t)
+          assert len(seen)>=4500 and seen==sorted(set(seen))
+          # Reject a history with missing full calendar months.
+          months=sorted({datetime.datetime.fromtimestamp(t/1000,datetime.timezone.utc).month for t in seen})
+          assert months==list(range(1,13)),months
+          m={"year":year,"source":"Dukascopy XAUUSD H1 BID","rows":len(seen),"months":months,"sha256":hashlib.sha256(raw).hexdigest(),"file":p.name,"retrieved_at":datetime.datetime.now(datetime.timezone.utc).isoformat(),"historical_receipt_verified":False}
+          (p.parent/"source.json").write_text(json.dumps(m))
+          print("R78_SOURCE",json.dumps(m),flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r78-xau-h1-${{ matrix.year }}
+          path: /tmp/r78-xau/*
+          if-no-files-found: error
+          retention-days: 60
