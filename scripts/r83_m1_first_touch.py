@@ -114,7 +114,7 @@ def year_run():
         row=summary(np.flatnonzero(active),side,records,idx)
         all_results.append(row)
     dest=Path(f"artifacts/r83-year-{year}.json");dest.parent.mkdir(exist_ok=True)
-    doc={"year":year,"source":prov,"actual_year_m1_rows":int((d.index.year==year).sum()),"months":sorted(set(d.index[d.index.year==year].month.astype(int))),"eligible_decisions":len(idx),"config_count":len(CONFIGS),"config_stats":all_results}
+    doc={"year":year,"source":prov,"actual_year_m1_rows":int((d.index.year==year).sum()),"months":sorted({int(v) for v in d.index[d.index.year==year].month}),"eligible_decisions":len(idx),"config_count":len(CONFIGS),"config_stats":all_results}
     dest.write_text(json.dumps(doc,allow_nan=False))
     print("R83_YEAR",year,doc["actual_year_m1_rows"],doc["months"],len(idx),len(CONFIGS),flush=True)
 def combine(rows):
