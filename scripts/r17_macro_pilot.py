@@ -5,6 +5,8 @@ plus a conservative weekday lag; no pre-release prediction claimed.
 No production integration, trade execution, or forward-validation claim.
 """
 import io,json,hashlib,itertools
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import numpy as np,pandas as pd,requests
 from sklearn.pipeline import make_pipeline
@@ -18,7 +20,7 @@ O=Path("artifacts");O.mkdir(exist_ok=True)
 SERIES=["DGS2","DGS10","DFII10","DTWEXBGS"]
 FOMC="https://www.frbsf.org/wp-content/uploads/USMPD.xlsx"
 def get(url):
-    r=requests.get(url,timeout=40,headers={"User-Agent":"Mozilla/5.0 research data retrieval"})
+    r=requests.get(url,timeout=(8,20),headers={"User-Agent":"Mozilla/5.0 research data retrieval"})
     r.raise_for_status();return r.content
 def daily_macro():
     parts=[];meta={}
@@ -34,7 +36,48 @@ def daily_macro():
         f.index=f.index+pd.offsets.BDay(2)
         parts.append(f);meta[s]={"n":len(v),"first":str(v.index.min()),"last":str(v.index.max()),"sha256":hashlib.sha256(raw).hexdigest(),"url":url}
       except Exception as e:meta[s]={"error":repr(e),"url":url}
-    assert len(parts)>=2,meta
+    if len(parts)<2:
+        print(json.dumps({"fred_failed":meta,"fallback":"US Treasury XML"}),flush=True)
+        parts,treasury=treasury_fallback();meta["treasury_fallback"]=treasury
+    O.joinpath("r17-source-manifest.json").write_text(json.dumps({"macro":meta},indent=2))
+    assert len(parts)>=2, "Insufficient verified macro series; inspect source manifest"
+    return parts,meta
+def treasury_fallback():
+    # Official Treasury document feed, no keys. Independent alternate to FRED.
+    base="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
+    def fetch(task):
+        typ,year=task
+        url=f"{base}?data={typ}&field_tdr_date_value={year}"
+        try:
+            raw=get(url);root=ET.fromstring(raw);rows=[]
+            for e in root.iter():
+                if e.tag.split("}")[-1]!="properties":continue
+                rec={k.tag.split("}")[-1]:k.text for k in e}
+                date=rec.get("NEW_DATE")
+                if not date:continue
+                if typ=="daily_treasury_yield_curve":
+                    rows.append({"date":date,"DGS2":rec.get("BC_2YEAR"),"DGS10":rec.get("BC_10YEAR")})
+                else:
+                    rows.append({"date":date,"DFII10":rec.get("TC_10YEAR",rec.get("BC_10YEAR"))})
+            if not rows:raise ValueError("No parsed observations")
+            return typ,year,rows,{"url":url,"n":len(rows),"sha256":hashlib.sha256(raw).hexdigest()}
+        except Exception as e:return typ,year,[],{"url":url,"error":repr(e)}
+    tasks=list(itertools.product(["daily_treasury_yield_curve","daily_treasury_real_yield_curve"],range(2010,2027)))
+    with ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(fetch,tasks))
+    meta={"requests":[{"type":typ,"year":yr,**m} for typ,yr,_,m in results]}
+    parts=[]
+    for s in ["DGS2","DGS10","DFII10"]:
+        rows=[{"date":r["date"],"value":r.get(s)} for _,_,arr,_ in results for r in arr if s in r]
+        if not rows:continue
+        z=pd.DataFrame(rows);z.index=pd.to_datetime(z.date,utc=True,errors="coerce").dt.normalize()
+        v=pd.to_numeric(z.value,errors="coerce").dropna();v=v[v.index.notna()].sort_index();v=v[~v.index.duplicated(keep="last")]
+        if len(v)<1000 or v.index.max().year<2025:continue
+        # Prevent silently treating missing years as valid prolonged forward fill.
+        if set(range(2012,2027))-set(v.index.year):continue
+        feat=pd.DataFrame({f"{s}_{k}":v.diff(k) for k in [1,3,5,10,20]})
+        feat.index=feat.index+pd.offsets.BDay(2)
+        parts.append(feat)
+        meta[s]={"n":len(v),"first":str(v.index.min()),"last":str(v.index.max()),"kind":"Treasury par yield, not FRED feed"}
     return parts,meta
 def date_column(a):
     for c in a.columns:
