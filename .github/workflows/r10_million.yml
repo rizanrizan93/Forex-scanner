@@ -1,0 +1,76 @@
+name: R10 XAUUSD million-configuration H1 H4 research
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r10_million.py'
+      - '.github/workflows/r10_million.yml'
+permissions:
+  contents: read
+concurrency:
+  group: rizan-r10-research-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  shards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    env:
+      PYTHONPATH: 'src:.'
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/r10-m1.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/r10-m1-provenance.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install data dependencies
+        run: |
+          pip install numpy==2.3.5 pandas==2.2.3
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Download market minutes and source provenance
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Build candle shards from verified source
+        run: python scripts/r10_million.py shard
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r10-shard-${{ matrix.year }}
+          path: artifacts/r10-*
+          if-no-files-found: error
+          retention-days: 30
+  sweep:
+    needs: shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        tf: ['1h','4h']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      R10_MAX_CONFIGS: '2097152'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Screen 2,097,152 configurations per direction on training only
+        run: python scripts/r10_million.py sweep --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r10-results-${{ matrix.tf }}
+          path: artifacts/r10-results-*.json
+          if-no-files-found: warn
+          retention-days: 90
