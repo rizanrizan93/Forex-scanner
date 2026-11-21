@@ -14,6 +14,7 @@ used in any feature/parameter selection.
 from __future__ import annotations
 import numpy as np
 import pandas as pd
+from math import comb,sqrt
 from .fed_r71_regime_map import map_regimes
 from .fed_r71_nested_regime import (
     _ridge,_predict_fit,_fit_regime,_predict,
@@ -111,6 +112,30 @@ def _stats(pred,y,move,regimes):
         "rmse_log_return":float(np.sqrt(np.mean((pred-y)**2))),
         "by_regime":by_regime,
     }
+
+
+def _exact_discordance_pval(gain,loss):
+    # Exact two-sided McNemar/binomial with no normal approximation.
+    n=gain+loss
+    if not n:return 1.0
+    tail=sum(comb(n,j) for j in range(min(gain,loss)+1))/(2**n)
+    return float(min(1.0,2*tail))
+
+
+def _wilson_interval(correct,n):
+    if n<=0:return None
+    z=1.96
+    p=correct/n
+    den=1+z*z/n
+    center=(p+z*z/(2*n))/den
+    radius=z*sqrt(p*(1-p)/n+z*z/(4*n*n))/den
+    return [round(100*(center-radius),2),
+            round(100*(center+radius),2)]
+
+
+def _direction_wins(pred,moves):
+    side=np.where(pred>0,1,np.where(pred<0,-1,0))
+    return (side*moves-SPREAD_USD_OZ)>0
 
 
 def _inner_select(d,all_x,y,regimes,admitted,features,name,year,h):
@@ -230,11 +255,23 @@ def run_nested_matched_ablation(panel,*,horizon,
                 "beta_signed_std":[round(float(z),8) for z in beta],
                 "no_trade_order":True,
             })
-            fitted.append((name,measured))
+            fitted.append((name,measured,pred))
         if len(fitted)!=len(MODELS):
             result["per_year"].append(year_rec)
             continue
-        for name,measured in fitted:
+        base_pred=next(q[2] for q in fitted
+                       if q[0]=="R72_METHOD_PRICE_ONLY")
+        base_wins=_direction_wins(base_pred,move[eval_idx])
+        for name,measured,pred in fitted:
+            model_wins=_direction_wins(pred,move[eval_idx])
+            measured["paired_candidate_right_baseline_wrong"]=int(
+                (model_wins&~base_wins).sum())
+            measured["paired_candidate_wrong_baseline_right"]=int(
+                (~model_wins&base_wins).sum())
+            measured["paired_exact_mcnemar_p_uncorrected"]=round(
+                _exact_discordance_pval(
+                    measured["paired_candidate_right_baseline_wrong"],
+                    measured["paired_candidate_wrong_baseline_right"]),6)
             year_rec["family"][name]=measured
             model_accum[name].append(measured)
         base=year_rec["family"]["R72_METHOD_PRICE_ONLY"]
@@ -253,16 +290,34 @@ def run_nested_matched_ablation(panel,*,horizon,
         sell=sum(f["sell_n"] for f in folds)
         weighted_mse=sum(f["n"]*f["rmse_log_return"]**2 for f in folds)
         total=sum(f["n"] for f in folds)
+        gain=sum(f["paired_candidate_right_baseline_wrong"] for f in folds)
+        loss=sum(f["paired_candidate_wrong_baseline_right"] for f in folds)
+        byregime={
+            state:{
+                "n":sum(f["by_regime"][state]["n"] for f in folds),
+                "correct":sum(f["by_regime"][state]["correct"] for f in folds),
+            } for state in STATES}
+        for state in STATES:
+            entry=byregime[state]
+            entry["accuracy_pct"]=(round(100*entry["correct"]/entry["n"],3)
+                                    if entry["n"] else None)
+            entry["sufficient_20_independent_events"]=entry["n"]>=20
         summary[name]={
             "matched_outer_fold_count":len(folds),
             "matched_evaluation_n":total,
             "directional_n":n,
             "buy_n":buy,"sell_n":sell,"correct_n":correct,
             "direction_accuracy_pct":round(100*correct/n,3) if n else None,
+            "accuracy_wilson_95pct":_wilson_interval(correct,n),
             "pooled_oos_development_rmse_log_return":
                 float(np.sqrt(weighted_mse/total)) if total else None,
             "min_bidirectional_samples_satisfied":
                 buy>=20 and sell>=20,
+            "paired_gain_count":gain,"paired_loss_count":loss,
+            "paired_exact_mcnemar_p_uncorrected":round(
+                _exact_discordance_pval(gain,loss),6),
+            "p_value_corrected_for_5_challenger_selection":False,
+            "by_price_regime":byregime,
             "fully_untouched_external_future":False,
         }
     base=summary["R72_METHOD_PRICE_ONLY"]
