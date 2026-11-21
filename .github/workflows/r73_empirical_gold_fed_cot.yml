@@ -4,6 +4,7 @@ on:
     branches: ['research/r73-fed-fomc-liquidity-20261121']
     paths:
       - 'src/fx_scanner/fed_r73_research_runner.py'
+      - 'src/fx_scanner/fed_r73_nested_matched_ablation.py'
       - '.github/workflows/r73_empirical_gold_fed_cot.yml'
   workflow_dispatch:
 permissions:
