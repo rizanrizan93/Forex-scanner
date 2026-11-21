@@ -1,0 +1,44 @@
+name: R11 pilot causal guard and small sweep
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r11_hundred_million.py'
+      - '.github/workflows/r11_pilot.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h', '4h']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Fatal fail on any lookahead mismatch using historical prefixes
+        run: python scripts/r11_hundred_million.py pilot --tf ${{ matrix.tf }}
+      - name: Smoke test enumeration, labelling, bitpacked selection, reporting
+        run: python scripts/r11_hundred_million.py sweep --tf ${{ matrix.tf }} --side BUY --family 0 --cap 8192
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r11-pilot-${{ matrix.tf }}
+          path: artifacts/r11-*.json
+          if-no-files-found: warn
+          retention-days: 60
