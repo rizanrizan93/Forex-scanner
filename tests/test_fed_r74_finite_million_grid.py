@@ -111,4 +111,5 @@ def test_macro_raw_2025_does_not_get_fit_even_as_regime():
         if "model_results" in fold:
             assert fold["model_results"]["R74_SELECTED"]["matched_n"]==(
                 fold["model_results"]["R72_PRICE_ONLY_FIXED_RIDGE_500"]["matched_n"])
-            assert fold["comparisons"]["R73_FULL_MACRO_FIXED_RIDGE_500"]["paired_dates_n"]==fold["outer_evaluation_n"]
+            assert fold["comparisons"]["R73_FULL_MACRO_FIXED_RIDGE_500"]["all_market_decision_dates"]==fold["outer_evaluation_n"]
+            assert fold["comparisons"]["R73_FULL_MACRO_FIXED_RIDGE_500"]["r74_active_paired_dates_n"]==fold["model_results"]["R74_SELECTED"]["active_n"]
