@@ -1,0 +1,35 @@
+name: R7.4 Finite Million-Grid Strict Nested Regression
+on:
+  push:
+    branches: ['research/r74-finite-million-macro-grid-20261121']
+    paths:
+      - 'src/fx_scanner/fed_r74_finite_million_grid.py'
+      - 'src/fx_scanner/fed_r74_million_runner.py'
+      - 'tests/test_fed_r74_finite_million_grid.py'
+      - '.github/workflows/r74_million_grid_regression.yml'
+  pull_request:
+    paths:
+      - 'src/fx_scanner/fed_r74_finite_million_grid.py'
+      - 'src/fx_scanner/fed_r74_million_runner.py'
+      - 'tests/test_fed_r74_finite_million_grid.py'
+      - '.github/workflows/r74_million_grid_regression.yml'
+permissions:
+  contents: read
+jobs:
+  finite_grid_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install numerical runtime
+        run: python -m pip install numpy pandas==2.2.3 pytest==9.0.2
+      - name: Verify no-lookahead, finite count, nested paired and no Y1
+        run: |
+          python -m py_compile src/fx_scanner/fed_r74_finite_million_grid.py src/fx_scanner/fed_r74_million_runner.py
+          python -m pytest -q tests/test_fed_r74_finite_million_grid.py
