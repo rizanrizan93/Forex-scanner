@@ -106,7 +106,7 @@ def test_macro_raw_2025_does_not_get_fit_even_as_regime():
         outer_years=(2023,),weight_values=(-1,0,1),
         thresholds=(0.0,),policies=("GLOBAL",),batch_size=1024)
     for fold in a["outer_development_folds"]:
-        assert fold["year"]<=2024
+        assert fold.get("outer_year",fold.get("year"))<=2024
         assert fold["searched_unique_configs"] in (0,(3**8-1))
         if "model_results" in fold:
             assert fold["model_results"]["R74_SELECTED"]["matched_n"]==(
