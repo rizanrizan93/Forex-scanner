@@ -20,11 +20,11 @@ def context(z,h1,hours):
     h=h1.copy()
     d=h.resample('1D',label='left',closed='left').agg(c=('c','last'),o=('o','first'),bars=('c','count'))
     d=d[d.bars>=16]
-    day=pd.DataFrame({'d1_mom':d.c.pct_change(3),'d1_trend':d.c/d.c.ewm(span=10,adjust=False).mean()-1,'d1_body':(d.c-d.o)/d.o},index=d.index+pd.Timedelta(days=1))
+    day=pd.DataFrame({'d1_mom':d.c.pct_change(3).to_numpy(),'d1_trend':(d.c/d.c.ewm(span=10,adjust=False).mean()-1).to_numpy(),'d1_body':((d.c-d.o)/d.o).to_numpy()},index=d.index+pd.Timedelta(days=1))
     start=h.index.floor('D')-pd.to_timedelta(h.index.dayofweek,unit='D')
     w=h.groupby(start).agg(c=('c','last'),o=('o','first'),bars=('c','count'))
     w=w[w.bars>=55]
-    weekly=pd.DataFrame({'w1_mom':w.c.pct_change(),'w1_trend':w.c/w.c.ewm(span=5,adjust=False).mean()-1,'w1_body':(w.c-w.o)/w.o},index=w.index+pd.Timedelta(days=7))
+    weekly=pd.DataFrame({'w1_mom':w.c.pct_change().to_numpy(),'w1_trend':(w.c/w.c.ewm(span=5,adjust=False).mean()-1).to_numpy(),'w1_body':((w.c-w.o)/w.o).to_numpy()},index=w.index+pd.Timedelta(days=7))
     signal_time=z.index+pd.Timedelta(hours=hours)
     for a in [day,weekly]:
         a=a.loc[~a.index.duplicated()].sort_index()
