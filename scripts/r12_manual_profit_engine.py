@@ -116,15 +116,16 @@ def audit_prefix(h,z,valid):
     idx=check[np.linspace(0,len(check)-1,min(12,len(check)),dtype=int)]
     from r10_million import ohlc_indicators
     from r102_calibrated import context
+    historical_four=load("4h")
     errors=[]
     for i in idx:
         end=h.index[i]+pd.Timedelta(hours=1)
         subset=h.loc[h.index<=h.index[i]]
         px=ohlc_indicators(subset)
         context(px,subset,1)
-        # H4 features check using only current and prior H1 bars (no future).
-        h4=subset.resample("4h",label="left",closed="left").agg(o=("o","first"),h=("h","max"),l=("l","min"),c=("c","last"),n=("c","count"))
-        h4=h4[h4.n>=4]
+        # H4 checks use the same independent raw-derived H4 bars; strictly
+        # exclude bars that are not finished by decision time.
+        h4=historical_four.loc[historical_four.index+pd.Timedelta(hours=4)<=end]
         if len(h4)>50:
             h4z=ohlc_indicators(h4)
             h4z.index=h4z.index+pd.Timedelta(hours=4)
