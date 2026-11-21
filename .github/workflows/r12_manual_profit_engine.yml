@@ -1,0 +1,46 @@
+name: R12 Manual Profit Engine causal replay
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r12_manual_profit_engine.py'
+      - '.github/workflows/r12_manual_profit_engine.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r12-manual-profit-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned research dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Research-only manual BUY and SELL zone, trend and risk replay
+        run: python scripts/r12_manual_profit_engine.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r12-manual-profit-replay
+          path: |
+            artifacts/r12-manual-profit-engine.json
+            artifacts/r12-manual-causality.json
+          if-no-files-found: warn
+          retention-days: 90
