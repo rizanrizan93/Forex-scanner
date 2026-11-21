@@ -64,7 +64,7 @@ def qualifies(z,side,family,adx,context_gate,session):
     if session=="NY":m &= (hr>=13)&(hr<22)
     if session=="OVERLAP":m &= (hr>=13)&(hr<17)
     return m
-def simulate(h,z,valid,mask,side,stop_atr,rr,period,cost=0.7):
+def simulate(h,z,valid,mask,side,stop_atr,rr,period,cost=0.7,nonoverlap=False):
     s=1 if side=="BUY" else -1
     eligible=np.flatnonzero(mask & valid & period)
     if not len(eligible):
@@ -94,12 +94,22 @@ def simulate(h,z,valid,mask,side,stop_atr,rr,period,cost=0.7):
         exit_hour[close_tp]=k
         active[close_tp]=False
     pnl[active]=s*(cl[eligible[active]+4]-entry[active])
+    if nonoverlap:
+        # Chronological trade scheduling. A new signal can be used only after
+        # the previous position has exited, including early SL/TP exits.
+        keep=np.zeros(len(eligible),bool)
+        next_allowed=-1
+        for row,signal_idx in enumerate(eligible):
+            if signal_idx < next_allowed:continue
+            keep[row]=True
+            next_allowed=int(signal_idx)+int(exit_hour[row])
+        pnl=pnl[keep];risk=risk[keep];mfe=mfe[keep];exit_hour=exit_hour[keep]
     net_R=(pnl-cost)/risk;raw_R=pnl/risk
     gross_pos=pnl[pnl>0].sum();gross_neg=pnl[pnl<0].sum()
     # Scenario compares all opportunities even if signals overlap. To protect actual
     # portfolio reporting, NON-OVERLAPPING sub-selection is also reported below.
     curve=np.cumsum(net_R);dd=np.maximum.accumulate(np.r_[0,curve])[1:]-curve
-    return {"n":len(eligible),"win_rate":round(float((net_R>0).mean()),5),
+    return {"n":len(pnl),"non_overlapping":nonoverlap,"win_rate":round(float((net_R>0).mean()),5),
         "gross_win_rate":round(float((raw_R>0).mean()),5),
         "profit_factor":round(float(gross_pos/max(1e-10,-gross_neg)),5),
         "mean_R":round(float(raw_R.mean()),6),
@@ -179,7 +189,9 @@ def run():
         obj=selected[side];c=obj["cfg"]
         mask=qualifies(z,side,c["family"],c["min_h4_adx"],c["context_gate"],c["session"])
         obj["evaluation"]={str(cost):simulate(h,z,valid,mask,side,c["stop_atr"],c["reward_to_risk"],ev,cost=cost) for cost in COSTS}
+        obj["evaluation_nonoverlapping"]={str(cost):simulate(h,z,valid,mask,side,c["stop_atr"],c["reward_to_risk"],ev,cost=cost,nonoverlap=True) for cost in COSTS}
         obj["evaluation_annual"]={str(year):simulate(h,z,valid,mask,side,c["stop_atr"],c["reward_to_risk"],valid&(yr==year)) for year in [2024,2025,2026]}
+        obj["evaluation_annual_nonoverlapping"]={str(year):simulate(h,z,valid,mask,side,c["stop_atr"],c["reward_to_risk"],valid&(yr==year),nonoverlap=True) for year in [2024,2025,2026]}
         obj["evaluation_baseline"]=simulate(h,z,valid,np.ones(len(h),bool),side,c["stop_atr"],c["reward_to_risk"],ev)
         by_side[side]=obj
     summary={"version":"R12","strategy":"manual decision engine candidate only",
@@ -194,6 +206,8 @@ def run():
       "configurations_evaluated":total,
       "selected_by_side":by_side,
       "research_only":True,
+      "live_trading_authorized":False,
+      "deploy_gate":"BLOCKED: 2026 negative expectancy in both directional candidates, broker costs not verified, M5 confirmation untested",
       "limitations":["2024-26 previously inspected; not untouched holdout",
                      "No actual FP Markets bid/ask/slippage/spread; scenarios only",
                      "4H horizon independent signals can overlap; not realized portfolio backtest",
@@ -204,5 +218,5 @@ def run():
     O.joinpath("r12-manual-profit-engine.json").write_text(json.dumps(summary,indent=2))
     print(json.dumps({"stage":"done","configs":total,"causal":audit["pass"],
        "selected":{s:{"cfg":x["cfg"],"dev":x["development"],
-            "eval_0_7":x["evaluation"]["0.7"],"annual":x["evaluation_annual"]} for s,x in by_side.items()}}),flush=True)
+            "eval_0_7":x["evaluation"]["0.7"],"eval_nonoverlap":x["evaluation_nonoverlapping"]["0.7"],"annual":x["evaluation_annual"]} for s,x in by_side.items()}}),flush=True)
 if __name__=="__main__":run()
