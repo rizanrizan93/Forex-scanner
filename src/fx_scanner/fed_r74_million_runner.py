@@ -81,7 +81,7 @@ def run():
         "per_horizon_unique":actual["unique_configs_each_horizon"],
         "fold_configuration_scores":actual["total_fold_config_scoring_evaluations"],
         "outer_fold_results":[{
-            "outer_year":f["year"],
+            "outer_year":f.get("outer_year",f.get("year")),
             "status":f["status"],
             "n_eval":f.get("outer_evaluation_n"),
             "candidate":f.get("model_results",{}).get("R74_SELECTED",{}),
