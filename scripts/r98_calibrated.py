@@ -56,10 +56,10 @@ pr=pd.DataFrame(preds);pr.to_csv(P/'r98-predictions.csv',index=False)
 out=[]
 for k,g in pr.groupby(['family','window','C','calibration']):
  for t in [.5,.52,.55,.57,.6,.65,.7]:
-  rec=dict(config=list(k),threshold=t)
+  rec=dict(config=[v.item() if isinstance(v,np.generic) else v for v in k],threshold=t)
   for name,mask in [('development',g.date.str[:4].astype(int)<=2020),('evaluation',g.date.str[:4].astype(int)>=2021)]:
    a=g[mask];rec[name]=met(a.y.to_numpy(),a.p.to_numpy(),t)
   out.append(rec)
 out.sort(key=lambda a:min(a['development']['buy_acc'] or 0,a['development']['sell_acc'] or 0) if min(a['development']['buy_n'],a['development']['sell_n'])>=100 else -1,reverse=True)
-(P/'r98-results.json').write_text(json.dumps(dict(years=sorted(set(map(int,yr))),configurations=len(out),candidates=out[:20],all_results=out),indent=2))
+(P/'r98-results.json').write_text(json.dumps(dict(years=sorted(set(map(int,yr))),configurations=len(out),candidates=out[:20],all_results=out),indent=2,default=lambda v:v.item() if isinstance(v,np.generic) else str(v)))
 print(json.dumps(out[:3]))
