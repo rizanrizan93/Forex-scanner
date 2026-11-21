@@ -1,0 +1,62 @@
+name: R9.3 PLZ session volatility capacity and approach
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r93_plz_capacity.py'
+      - '.github/workflows/r93_plz_capacity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  year:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024]
+    env:
+      PYTHONPATH: 'src:.'
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/r91-price.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/r91-source.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3
+          python -m pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - run: python -m fx_scanner.research_xau_histdata_download_v193
+      - run: python scripts/r93_plz_capacity.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r93-year-${{ matrix.year }}
+          path: artifacts/r93-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 60
+  aggregate:
+    needs: year
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      R91_ROOT: /tmp/r91-years
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r93-year-*
+          path: /tmp/r91-years
+          merge-multiple: true
+      - run: python scripts/r93_plz_capacity.py aggregate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r93-projected-zone-results
+          path: artifacts/r93-results.json
+          if-no-files-found: error
+          retention-days: 60
