@@ -184,6 +184,10 @@ def run_nested_matched_ablation(panel,*,horizon,
                 "year":year,"status":"WAIT_FEW_ADMITTED_MATCHED_DATES",
                 "matched_n":len(eval_idx)})
             continue
+        momentum_side=np.where(
+            d.xau_mom5_pct.to_numpy()[eval_idx]>=0,1,-1)
+        momentum_same_date_accuracy=100*(
+            (momentum_side*move[eval_idx]-SPREAD_USD_OZ)>0).mean()
         year_rec={
             "year":year,
             "status":"NESTED_PRE_2025_DEVELOPMENT_FOLD",
@@ -192,9 +196,8 @@ def run_nested_matched_ablation(panel,*,horizon,
             "last_eval_date":d.index[eval_idx[-1]].isoformat(),
             "benchmark_always_buy_same_dates_pct":round(float(
                 100*(move[eval_idx]>SPREAD_USD_OZ).mean()),3),
-            "benchmark_momentum5_same_dates_pct":round(float(
-                100*(((np.where(d.xau_mom5_pct.to_numpy()[eval_idx]>=0,1,-1)
-                        *move[eval_idx]-SPREAD_USD_OZ)>0).mean()),3),
+            "benchmark_momentum5_same_dates_pct":round(
+                float(momentum_same_date_accuracy),3),
             "regime_counts":{
                 z:int((regimes[eval_idx]==z).sum()) for z in STATES},
             "family":{},
