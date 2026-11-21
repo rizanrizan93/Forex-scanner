@@ -1,0 +1,101 @@
+name: R14 Direction first H1 H4 D1 W1 replay
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r14_multitimeframe_direction.py'
+      - '.github/workflows/r14_direction_first.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r14-direction-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  direction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h','4h','1D','1W']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - if: ${{ matrix.tf == '1h' || matrix.tf == '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - if: ${{ matrix.tf == '1D' || matrix.tf == '1W' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Four independent closed-candle direction models without zone execution
+        run: python scripts/r14_multitimeframe_direction.py --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r14-direction-${{ matrix.tf }}
+          path: artifacts/r14-direction-*.json
+          if-no-files-found: warn
+          retention-days: 90
+  compare:
+    needs: direction
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r14-direction-*
+          path: /tmp/r14
+          merge-multiple: true
+      - name: Summarize directional evidence without optimizing zone entries
+        run: |
+          mkdir -p artifacts
+          python - <<'PY'
+          import json,glob
+          from pathlib import Path
+          names={"1h":"H1","4h":"H4","1D":"D1","1W":"W1"}
+          results={}
+          for path in glob.glob("/tmp/r14/r14-direction-*.json"):
+              r=json.loads(Path(path).read_text())
+              results[r["tf"]]={"evaluation":r["evaluation"],"evaluation_annual":r["evaluation_annual"],
+                 "selected_model":r["selection"]["model"],"threshold":r["selection"]["cut"],
+                 "periods":r["periods"],"source_run":r["source_run"],
+                 "base_rates":r["baseline"],"pass":r["target_60_both_directions_observed"]}
+          missing=sorted(set(names.values())-set(results))
+          assert not missing,{"missing":missing,"found":list(results)}
+          overall={"stage":"R14 direction only","timeframes":results,
+              "all_four_pass":all(x["pass"] for x in results.values()),
+              "no_zone_research":True,"no_live_order_authority":True,
+              "summary":"Directional model validity is separate from future zone/trade-entry research; 2024-26 not pristine"}
+          Path("artifacts/r14-direction-summary.json").write_text(json.dumps(overall,indent=2))
+          print(json.dumps(overall),flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r14-direction-summary
+          path: artifacts/r14-direction-summary.json
+          if-no-files-found: warn
+          retention-days: 90
