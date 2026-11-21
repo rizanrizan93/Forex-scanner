@@ -1,0 +1,29 @@
+name: R12 manual profit lab research UI syntax contract
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'pages/9_RIZAN_Manual_Profit_Lab.py'
+      - '.github/workflows/r12_manual_profit_ui_contract.yml'
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify valid Python and explicit fail-closed research warnings
+        run: |
+          python -m py_compile pages/9_RIZAN_Manual_Profit_Lab.py scripts/r12_manual_profit_engine.py
+          python - <<'PY'
+          from pathlib import Path
+          text=Path('pages/9_RIZAN_Manual_Profit_Lab.py').read_text()
+          assert "BELUM LULUS VALIDASI" in text
+          assert "PREPARE" in text and "WAIT" in text
+          assert "live_order" not in text.lower() and "execute_market_order" not in text
+          print("syntax and research-only guard PASS")
+          PY
