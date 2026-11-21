@@ -1,0 +1,92 @@
+name: R16 Simple versus complex directional walk-forward
+on:
+  workflow_dispatch:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r16_direction_complexity.py'
+      - '.github/workflows/r16_direction_complexity.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r16-direction-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h','4h','1D','1W']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - if: ${{ matrix.tf == '1h' || matrix.tf == '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - if: ${{ matrix.tf == '1D' || matrix.tf == '1W' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Causal feature-prefix audit then nested annual complexity tournament
+        run: python scripts/r16_direction_complexity.py --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r16-direction-${{ matrix.tf }}
+          path: artifacts/r16-direction-*.json
+          if-no-files-found: warn
+          retention-days: 90
+  compare:
+    needs: evaluate
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r16-direction-*
+          path: /tmp/r16
+          merge-multiple: true
+      - run: |
+          mkdir -p artifacts
+          python - <<'PY'
+          import glob,json
+          from pathlib import Path
+          a=[json.loads(Path(p).read_text()) for p in glob.glob("/tmp/r16/r16-direction-*.json")]
+          assert len(a)==4 and {r["timeframe"] for r in a}=={"H1","H4","D1","W1"}
+          assert all(r["audit"]["passed"] for r in a)
+          report={"version":"R16","timeframes":{r["timeframe"]:{
+                "counts":r["counts"],"fold_count":len(r["folds"]),
+                "aggregate":r["aggregate"],"folds":r["folds"]} for r in a},
+             "total_candidate_evaluations_across_folds":sum(sum(r["counts"][k] for k in ["simple","complex","ensemble"]) for r in a),
+             "total_model_fits":sum(r["counts"]["model_fits"] for r in a),
+             "note":"No pristine holdout or trading authority. No entry zones. Comparisons descriptive only."}
+          Path("artifacts/r16-complexity-summary.json").write_text(json.dumps(report,indent=2))
+          print(json.dumps({"total_candidate_evaluations_across_folds":report["total_candidate_evaluations_across_folds"],
+                "total_model_fits":report["total_model_fits"],"aggregate":{r["timeframe"]:r["aggregate"] for r in a}}),flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r16-complexity-summary
+          path: artifacts/r16-complexity-summary.json
+          if-no-files-found: warn
+          retention-days: 90
