@@ -1,0 +1,17 @@
+{
+  "cBot_trade_permission": false,
+  "calibrated_probability": null,
+  "contract": "RIZAN_R72_FUTURE_ONE_SESSION_OUTCOME_RESEARCH_V1",
+  "correct_count": 0,
+  "evaluated_buy": 0,
+  "evaluated_sell": 0,
+  "events": [],
+  "new_outcome_source_received_at": "2026-11-21T07:26:21+00:00",
+  "observed_post_freeze_complete_outcomes": 0,
+  "production_approval": false,
+  "proof_of_profitable_execution": false,
+  "rejected": [],
+  "reused_2025_2026_historical_labels_as_untouched": false,
+  "source_sha256": "11354b49e37b38a401c9893dbf0964708d3ba9ae7cae61b882f42e7b212c4a41",
+  "status": "WAIT_GENUINELY_FUTURE_COMPLETED_SESSIONS"
+}
