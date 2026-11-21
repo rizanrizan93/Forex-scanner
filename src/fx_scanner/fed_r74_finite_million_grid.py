@@ -318,17 +318,32 @@ def _evaluate_outer(fold,candidate,feature_matrix,y,moves,regimes):
         truth[name]=np.where(
             side==0,False,
             side*fold["move"]-COST_USD_OZ>0)
+    selected=pred!=0
     for name in ("R72_PRICE_ONLY_FIXED_RIDGE_500",
                  "R73_FULL_MACRO_FIXED_RIDGE_500"):
-        # Compare on IDENTICAL decision dates. Candidate abstention
-        # counts as no win; also show signed selection coverage.
-        gain=int((truth["R74_SELECTED"]&~truth[name]).sum())
-        loss=int((~truth["R74_SELECTED"]&truth[name]).sum())
+        # PRIMARY PAIRED CHECK: evaluate BOTH directional engines on
+        # IDENTICAL R74-ACTIVE dates; do not misinterpret R74 WAIT
+        # dates as losing trades against baseline FULL-coverage calls.
+        both=selected
+        candidate_correct=truth["R74_SELECTED"][both]
+        baseline_correct=truth[name][both]
+        gain=int((candidate_correct&~baseline_correct).sum())
+        loss=int((~candidate_correct&baseline_correct).sum())
+        baseline_conditional=_stats(
+            candidates[name][both],fold["move"][both],
+            fold["regimes"][both])
+        missed_baseline_correct=int((truth[name]&~selected).sum())
         out["comparisons"][name]={
-            "r74_right_baseline_wrong":gain,
-            "r74_wrong_baseline_right":loss,
+            "r74_active_paired_dates_n":int(selected.sum()),
+            "both_models_evaluated_only_on_r74_active_dates":True,
+            "r74_right_baseline_wrong_on_same_selected_dates":gain,
+            "r74_wrong_baseline_right_on_same_selected_dates":loss,
+            "baseline_on_identical_r74_active_dates":baseline_conditional,
             "exact_discordant_p_unadjusted":round(_exact_p(gain,loss),8),
-            "paired_dates_n":len(truth[name]),
+            "r74_wait_opportunities":int((~selected).sum()),
+            "baseline_correct_on_r74_wait_dates":missed_baseline_correct,
+            "all_market_decision_dates":len(truth[name]),
+            "full_coverage_baseline_accuracy_is_not_conditional":True,
             "p_value_corrected_for_prior_research_or_many_searches":False,
         }
     return out
