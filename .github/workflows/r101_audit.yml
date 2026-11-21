@@ -1,0 +1,32 @@
+name: R10.1 Frozen Setup Audit Year Session Costs
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/r101_audit.py','.github/workflows/r101_audit.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - run: python scripts/r101_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r101-frozen-audit
+          path: artifacts/r101-frozen-audit.json
+          if-no-files-found: warn
+          retention-days: 90
