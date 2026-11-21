@@ -72,7 +72,7 @@ def test_assumed_release_lag_does_not_expose_unpublished_source():
         index=pd.DatetimeIndex(["2023-01-03","2023-01-10"],tz="UTC"))
     decisions=pd.DatetimeIndex([
         "2023-01-03T23:00Z","2023-01-04T01:00Z",
-        "2023-01-06T12:00Z","2023-01-23T01:00Z"])
+        "2023-01-06T12:00Z","2023-01-19T01:00Z"])
     aligned=_align_asof(decisions,source,lag_days=3,max_age_days=10)
     assert np.isnan(aligned[0])
     assert np.isnan(aligned[1])
