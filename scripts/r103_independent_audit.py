@@ -34,7 +34,7 @@ def report(tf):
     unchanged=all(abs(current[direction]['accuracy']-EXPECTED[tf][direction])<.000002 for direction in ['buy','sell'])
     # Independent, executable proxy: trade at NEXT bar open, exit at that bar close.
     nex=(d.c.shift(-1)-d.o.shift(-1)).to_numpy()
-    execution=metrics(y[te],ptest,cut,nex[te],cost=.7)
+    execution=metrics((nex[te]>0).astype('int8'),ptest,cut,nex[te],cost=.7)
     baseline={'mean_buy_direction':float(y[te].mean()),
         'persistence_accuracy':float(np.mean((d.c.to_numpy()[te]-d.o.to_numpy()[te]>0)==y[te])),
         'always_buy_accuracy':float(y[te].mean()),
