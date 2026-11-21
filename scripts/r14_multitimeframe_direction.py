@@ -1,4 +1,4 @@
-"""RIZAN R14: FOUR INDEPENDENT DIRECTIONAL engines; research-only.
+"""RIZAN R14.1: FOUR INDEPENDENT SELECTIVE DIRECTIONAL engines; research-only.
 H1/H4 2019-26 R10 immutable source; D1/W1 2012-26 R9.8 daily source.
 At a completed candle, forecast NEXT completed candle CLOSE-to-CLOSE direction.
 No zone estimation, entries, take-profits, live pricing or broker order actions.
@@ -142,7 +142,7 @@ def run(tf):
         for calibration in ("raw","platt"):
             v=vp if calibration=="raw" else platt(cp,y[cal],vp)
             t=tp if calibration=="raw" else platt(cp,y[cal],tp)
-            for cut in [.50,.52,.55,.58,.60,.65]:
+            for cut in [.55,.58,.60,.62,.65,.68]:
                 r=met(y[val],v,cut)
                 eligible=min(r["BUY"]["n"],r["SELL"]["n"])>=min_n
                 # Selected SOLELY on 2022 (D1/W1) or 2023H2 (H1/H4).
@@ -173,7 +173,7 @@ def run(tf):
       "always_sell_accuracy":round(float(1-y[test].mean()),6),
       "previous_candle_persistence":round(float(((d.c>d.o).to_numpy()[test]==y[test]).mean()),6)}
     # For direction-only engine, never render false entry/zone/SL/TP recommendations.
-    summary={"version":"R14","model_type":"CLOSED-CANDLE DIRECTION ONLY","tf":TF[tf],
+    summary={"version":"R14.1","model_type":"CLOSED-CANDLE DIRECTION ONLY","tf":TF[tf],
        "target":"next closed candle CLOSE-to-CLOSE BUY/SELL/WAIT",
        "data_source":"R10 M1->H1/H4 2019-2026" if tf in ("1h","4h") else "R9.8 M1->D1 2012-2026",
        "source_run":44901264975 if tf in ("1h","4h") else 44886465487,
@@ -181,6 +181,9 @@ def run(tf):
        "periods":bounds,"counts":{"train":int(train.sum()),"calibration":int(cal.sum()),
           "selection":int(val.sum()),"evaluation":int(test.sum())},
        "audit":causal,"models_trained":len(fitted),"candidate_rules":len(rules),
+       "mandatory_wait_cutoff":0.55,
+       "decision_policy":"BUY if P(up)>=cut; SELL if P(up)<=1-cut; otherwise WAIT, only if validation eligibility met", 
+       "validation_gate_pass":bool(chosen["eligible"]),
        "selection":{k:chosen[k] for k in ("model","calibration","cut","quality","validation")},
        "evaluation":e,"evaluation_annual":annual,"baseline":baseline,
        "target_60_both_directions_observed":success,
