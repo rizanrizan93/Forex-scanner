@@ -1,0 +1,45 @@
+name: R10.2 calibrated H1 H4 direction from completed candle
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/r102_calibrated.py'
+      - '.github/workflows/r102_calibrated.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h', '4h']
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install reproducible scientific packages
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - name: Reuse original independently archived R10 historical bars
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Train calibrate validate and report
+        run: python scripts/r102_calibrated.py --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r102-calibration-${{ matrix.tf }}
+          path: artifacts/r102-*.json
+          if-no-files-found: warn
+          retention-days: 90
