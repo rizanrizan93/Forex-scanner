@@ -31,7 +31,7 @@ def report(tf):
     ret=(d.c.shift(-1)-d.c).to_numpy()
     current=metrics(y[te],ptest,cut,ret[te],cost=.7)
     valuation=metrics(y[va],pval,cut,ret[va],cost=.7)
-    unchanged=all(abs(current[direction]['accuracy']-EXPECTED[tf][direction])<.000002 for direction in ['buy','sell'])
+    unchanged=all(current[direction]['accuracy'] is not None and abs(current[direction]['accuracy']-EXPECTED[tf][direction])<.000002 for direction in ['buy','sell'])
     # Independent, executable proxy: trade at NEXT bar open, exit at that bar close.
     nex=(d.c.shift(-1)-d.o.shift(-1)).to_numpy()
     execution=metrics((nex[te]>0).astype('int8'),ptest,cut,nex[te],cost=.7)
