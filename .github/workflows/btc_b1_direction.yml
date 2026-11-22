@@ -1,0 +1,33 @@
+name: BTC B1 Eight independent direction heads
+on:
+  push:
+    branches: ['research/btc-direction-b1-20261122']
+    paths: ['scripts/btc_b1_direction.py','.github/workflows/btc_b1_direction.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: [H1,H4,D1,W1]
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - run: python scripts/btc_b1_direction.py --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc-b1-${{ matrix.tf }}
+          path: artifacts/btc-b1-*.json
+          if-no-files-found: warn
+          retention-days: 90
