@@ -23,7 +23,7 @@ TARGETS=(1.5,2.5)
 STOPS=1.5
 LEVELS=(100,125,250,1000)
 N=len(FAMILIES)*len(SIDES)*len(LOOKBACKS)*len(MACRO)*len(RETURN_LOOKBACK)*len(VOLATILITY)*len(SESSIONS)*len(H4GATES)*len(HOLDS)*len(TARGETS)
-assert N==1920
+assert N==3840
 
 def macro_data(m_xau,m_eur):
     # All bars are labelled with END timestamp. No asof future bar joins.
