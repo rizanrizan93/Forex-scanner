@@ -1,0 +1,78 @@
+name: R28.1 Official ECB daily USD context replay
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/r281_ecb_usd_context.py','.github/workflows/r281_ecb_usd_context.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  ecb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - run: python scripts/r281_ecb_usd_context.py --acquire
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r281-ecb
+          path: artifacts/r281-*
+          if-no-files-found: warn
+          retention-days: 90
+  replay:
+    needs: ecb
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: ['1h','4h','1D','1W','1D-macro','1W-macro']
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - uses: actions/download-artifact@v4
+        with:
+          name: r281-ecb
+          path: /tmp/r281
+      - if: ${{ matrix.lane == '1h' || matrix.lane == '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - if: ${{ matrix.lane != '1h' && matrix.lane != '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          if [[ "$LANE" == *-macro ]]; then
+            python scripts/r281_ecb_usd_context.py --tf "${LANE%-macro}" --macro
+          else
+            python scripts/r281_ecb_usd_context.py --tf "$LANE"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r281-replay-${{ matrix.lane }}
+          path: artifacts/r281-*.json
+          if-no-files-found: warn
+          retention-days: 90
