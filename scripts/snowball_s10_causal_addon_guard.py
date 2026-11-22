@@ -17,7 +17,7 @@ OUTPUT.mkdir(parents=True,exist_ok=True)
 
 def historical():
     src=json.loads(SOURCE.read_text())
-    assert src["source_all_cases_sha256"]=="73001ce51805ce22200419e90020c78fabd824939572" or src["source_all_cases_sha256"]=="73001ce51805ce22200419e90020c78fabd8242d61d90e3c39c98ac2bd939572"
+    assert src["source_all_cases_sha256"]=="73001ce51805ce22200419e90020c78fabd8242d61d90e3c39c98ac2bd939572"
     assert src["baseline_reset_years"]==[2020,2021,2025,2026]
     rows=src["policies"]
     assert len(rows)==20 and len({x["name"] for x in rows})==20
@@ -179,7 +179,7 @@ def selftest():
     # Future core entry after an addon is a conflict; never use future info to
     # retrospectively cancel the profitable addon.
     addon=t("LARGE","ADDON","2025-01-04T07:00:00Z",
-          "2025-01-04T08:30:00Z",4,45,100)
+          "2025-01-04T08:30:00Z",4,70,100)
     z=run_online_guard(core,[addon],
       reserve_unallocated_margin_pct=Decimal("0.0"))
     assert z["core_conflicts"]==1
