@@ -1,0 +1,155 @@
+{
+  "study": "ARCHIVE ONLY: prior 114 completed native replay records re-audited against original reset controls; no new seed simulation",
+  "research_only": true,
+  "execution_authority": false,
+  "archive_filename": "RIZAN_MILLION_GROWTH_RESEARCH_20261114.zip",
+  "archive_sha256": "1e7de884d7fcf839a3f4ab45f1affba64831bf8cb0e0ef6440dda69c6c684c00",
+  "frozen_v1_continuous_model_usd": 1662133293.08,
+  "goal_scenario_only_usd": 10000000000,
+  "annual": [
+    {
+      "year": 2019,
+      "v1": 2884.6186960671803,
+      "addon": 2930.3161557959434,
+      "v1_baskets": 126,
+      "addon_baskets": 132,
+      "v1_dd": 53.22138071820699,
+      "addon_dd": 53.2467556332559,
+      "days_to_125": 2.2
+    },
+    {
+      "year": 2020,
+      "v1": 2863.7152708454446,
+      "addon": 2587.3579625468487,
+      "v1_baskets": 144,
+      "addon_baskets": 150,
+      "v1_dd": 53.73030840424416,
+      "addon_dd": 55.71390577867446,
+      "days_to_125": 5.5
+    },
+    {
+      "year": 2021,
+      "v1": 244.33970779295984,
+      "addon": 311.14872913953576,
+      "v1_baskets": 116,
+      "addon_baskets": 134,
+      "v1_dd": 47.411601590505114,
+      "addon_dd": 49.162293135196734,
+      "days_to_125": 5.3
+    },
+    {
+      "year": 2022,
+      "v1": 1698.4806657544455,
+      "addon": 1934.6306276730386,
+      "v1_baskets": 121,
+      "addon_baskets": 136,
+      "v1_dd": 45.025351600130215,
+      "addon_dd": 41.432577017143316,
+      "days_to_125": 12.3
+    },
+    {
+      "year": 2023,
+      "v1": 2198.007826941184,
+      "addon": 2093.2750914179237,
+      "v1_baskets": 106,
+      "addon_baskets": 115,
+      "v1_dd": 59.43719380149338,
+      "addon_dd": 59.89590221950946,
+      "days_to_125": 8.6
+    },
+    {
+      "year": 2024,
+      "v1": 1650.2751907944867,
+      "addon": 1348.2702923869786,
+      "v1_baskets": 133,
+      "addon_baskets": 150,
+      "v1_dd": 48.000438361094695,
+      "addon_dd": 48.507897864962366,
+      "days_to_125": 98.6
+    },
+    {
+      "year": 2025,
+      "v1": 162.13337839652576,
+      "addon": 190.44143373610223,
+      "v1_baskets": 63,
+      "addon_baskets": 72,
+      "v1_dd": 51.767231608362906,
+      "addon_dd": 52.33583810361032,
+      "days_to_125": 21.4
+    },
+    {
+      "year": 2026,
+      "v1": 110.98666812619737,
+      "addon": 264.5884032727291,
+      "v1_baskets": 36,
+      "addon_baskets": 63,
+      "v1_dd": 48.07195516783232,
+      "addon_dd": 52.160441001440915,
+      "days_to_125": 22.7
+    }
+  ],
+  "growth_challenger_policies": [
+    {
+      "name": "M0_consistent",
+      "min_ratio": 0.9373600186603094,
+      "improved_years": 2,
+      "max_dd": 59.227
+    },
+    {
+      "name": "M1_consistent",
+      "min_ratio": 0.727508589672859,
+      "improved_years": 3,
+      "max_dd": 59.344
+    },
+    {
+      "name": "M2_consistent",
+      "min_ratio": 0.9479483549198431,
+      "improved_years": 6,
+      "max_dd": 59.201
+    },
+    {
+      "name": "M3_consistent",
+      "min_ratio": 0.9338321154561953,
+      "improved_years": 6,
+      "max_dd": 59.374
+    },
+    {
+      "name": "M4_consistent",
+      "min_ratio": 0.7546011160377732,
+      "improved_years": 2,
+      "max_dd": 59.437
+    },
+    {
+      "name": "M5_consistent",
+      "min_ratio": 0.9671848649101155,
+      "improved_years": 6,
+      "max_dd": 60.223
+    },
+    {
+      "name": "M6_growth2026",
+      "min_ratio": 0.2147031531256353,
+      "improved_years": 6,
+      "max_dd": 56.656
+    },
+    {
+      "name": "M7_growth2026",
+      "min_ratio": 0.2750419411922952,
+      "improved_years": 5,
+      "max_dd": 59.219
+    },
+    {
+      "name": "M8_growth2026",
+      "min_ratio": 0.059101609015307824,
+      "improved_years": 4,
+      "max_dd": 59.437
+    }
+  ],
+  "limitations": [
+    "annual reset controls not a continuous wallet",
+    "growth-addon policies preserve original EUR seed; cannot speed 100->125",
+    "M5_G19.5 changes growth risk 20.75% to 19.5%; not isolated addon effect",
+    "2026 data only through 2026-11-13",
+    "base costs only for the compared table; cost 2x baseline 2024 fails",
+    "not a broker tick replay; no pristine holdout; no price impact or capacity certification"
+  ]
+}
