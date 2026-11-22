@@ -1,0 +1,27 @@
+name: RIZAN Snowball USD10B four-stage research guard
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths:
+      - 'research/bootstrap125_10b_four_phase_objective_r4.json'
+      - 'scripts/bootstrap125_10b_r4_protocol_gate.py'
+      - '.github/workflows/bootstrap125_10b_r4_protocol_gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate_four_stages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Validate research target and reject absent native parity
+        run: python scripts/bootstrap125_10b_r4_protocol_gate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rizan-snowball-10b-stage-research-protocol
+          path: artifacts/bootstrap125_10b_r4_protocol_gate.json
+          if-no-files-found: error
+          retention-days: 90
