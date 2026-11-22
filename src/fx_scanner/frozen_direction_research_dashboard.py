@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import json
 import pandas as pd
-from .frozen_direction_context import TFS, context, dominant, read_context_packet, session_closed
+from .frozen_direction_context import TFS, context, horizon_plan, read_context_packet, session_closed
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, URL
 
@@ -70,15 +70,15 @@ def render_frozen_direction_research():
     @st.fragment(run_every="60s")
     def panel():
         frames,reports,now=read_sources(int(datetime.now(UTC).timestamp()//30))
-        side=dominant(reports)
-        st.metric("Bias dominan · data segar",side)
-        st.metric("Status pemantauan", "PASAR TUTUP" if session_closed(now) else "MENUNGGU DATA / KONFIRMASI" if side.startswith("WAIT") else "PANTAU "+side)
+        st.metric("Status pasar", "PASAR TUTUP" if session_closed(now) else "SESI PERDAGANGAN")
+        st.caption("H1, H4, D1, W1 independen. Arah berbeda adalah konteks pullback/rebound potensial, bukan veto.")
         st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · update 60 detik")
         if session_closed(now):st.warning("Pasar XAU umumnya tutup akhir pekan. WAIT; arah terakhir tidak berlaku sebagai sinyal live.")
-        elif side.startswith("WAIT"):st.info("Menunggu data segar atau keselarasan H1/H4/D1. W1 tidak boleh berlawanan jika segar.")
+        elif not any(r["fresh"] for r in reports.values()):st.info("Belum ada timeframe dengan data segar.")
         st.caption("Skor 0–5 = jumlah bukti teknikal, bukan probabilitas. Prediksi frozen R28.1 asli belum terhubung; hipotesis teknikal ini belum diuji replay.")
         for tf in TFS:
             r=reports[tf]
+            plan=horizon_plan(reports,tf)
             with st.container(border=True):
                 st.markdown("**"+tf+" · prediksi close berikutnya**")
                 a,b,c=st.columns(3)
@@ -90,11 +90,18 @@ def render_frozen_direction_research():
                     st.caption("Candle tertutup "+pd.Timestamp(r["closed_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")+" · "+r.get("source",""))
                 if not r["fresh"] and r["last_bias"]:st.caption("Skor dan bias di atas hanya berdasarkan candle terakhir yang tersedia; bukan prediksi aktif.")
                 st.caption(r["reason"])
+                if plan["side"]!="WAIT":
+                    st.write("**"+plan["setup"]+" · "+tf+"**")
+                    if plan["phase"]=="POTENTIAL_REBOUND":st.caption(plan["timing_tf"]+" BUY: potensi rebound menuju zona SELL "+tf+". Tunggu rejection.")
+                    elif plan["phase"]=="POTENTIAL_PULLBACK":st.caption(plan["timing_tf"]+" SELL: potensi pullback menuju zona BUY "+tf+". Tunggu reclaim.")
+                    elif plan["phase"]=="ALIGNED_CONTINUATION":st.caption(plan["timing_tf"]+" searah: potensi continuation; jangan mengejar harga.")
+                    else:st.caption("Timing belum terkonfirmasi. Pantau struktur lokal; bukan sinyal entry.")
                 if r["checks"]:
                     with st.expander("Bukti teknikal "+tf):st.dataframe(r["checks"],hide_index=True)
         st.markdown("### Chart dan zona tunggu")
         tf=st.radio("Timeframe chart",list(TFS),horizontal=True,key="frozen_r281_chart_tf")
-        bars=frames.get(tf);r=reports[tf]
+        bars=frames.get(tf);r=reports[tf];plan=horizon_plan(reports,tf)
+        st.caption("Horizon acuan "+tf+" · "+plan["setup"]+" · timing "+str(plan["timing_tf"] or "lokal")+" "+str(plan["timing_side"] or "belum dievaluasi"))
         if bars is None or len(bars)<20:
             st.info("WAIT DATA · Data chart/level belum cukup.")
             return
@@ -108,11 +115,11 @@ def render_frozen_direction_research():
         selected=[]
         if not r["fresh"]:
             st.warning("Snapshot lama · chart historis; zona aktif disembunyikan.")
-        elif r["forecast"]=="BUY" and lo<value and side=="BUY":
+        elif plan["side"]=="BUY" and lo<value:
             st.metric("Buy the dip · area pantau",f"{lo:,.2f}–{q1:,.2f}")
             st.caption("Skenario bullish; tunggu konfirmasi reclaim. Batal jika close "+tf+" di bawah low rentang.")
             selected=[{"lo":lo,"hi":q1,"zone":"Buy the dip"}]
-        elif r["forecast"]=="SELL" and hi>value and side=="SELL":
+        elif plan["side"]=="SELL" and hi>value:
             st.metric("Sell on rebound · area pantau",f"{q3:,.2f}–{hi:,.2f}")
             st.caption("Skenario bearish; tunggu rejection. Batal jika close "+tf+" di atas high rentang.")
             selected=[{"lo":q3,"hi":hi,"zone":"Sell on rebound"}]
@@ -125,7 +132,7 @@ def render_frozen_direction_research():
             rect=alt.Chart(shades).mark_rect(opacity=.12).encode(x="start:T",x2="end:T",y=alt.Y("lo:Q",scale=alt.Scale(zero=False)),y2="hi:Q",color=alt.Color("zone:N",scale=alt.Scale(domain=["Buy the dip","Sell on rebound"],range=["#149c78","#d65c5c"]),legend=None))
             pic=rect+pic
         st.altair_chart(pic.properties(height=340),width="stretch")
-        st.caption("Tidak ada izin entry/order; arah dominan bukan model probabilitas.")
+        st.caption("Tidak ada izin entry/order; arah setiap timeframe adalah hipotesis teknikal, bukan model probabilitas.")
     panel()
     lock=json.loads(LOCK.read_text())
     with st.expander("8 benchmark historis frozen R28.1",expanded=True):

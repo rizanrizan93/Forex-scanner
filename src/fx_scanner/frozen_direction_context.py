@@ -75,13 +75,27 @@ def context(bars,tf,*,now,observed_at,market_fresh):
     if not fresh:reason="Pasar tutup atau data kedaluwarsa; arah terakhir hanya referensi historis."
     return {**base,"bias":last if fresh else "WAIT DATA","forecast":last if fresh and last!="NETRAL" else "WAIT","last_bias":last,"buy":buy,"sell":sell,"closed_at":f.index[-1].isoformat(),"fresh":fresh,"reason":reason,"checks":[{"Faktor":k,"Arah":"BUY" if v==1 else "SELL" if v==-1 else "NETRAL"} for k,v in votes.items()],"last_close":float(c.iloc[-1]),"atr":a}
 
-def dominant(reports):
-    # Require at least H1, H4 and D1; do not simply count stale or W1 bias.
-    keys=("H1","H4","D1")
-    if not all(reports.get(k,{}).get("fresh") for k in keys):return "WAIT DATA"
-    sides=[reports[k]["forecast"] for k in keys]
-    if len(set(sides))==1 and sides[0] in ("BUY","SELL"):
-        w=reports.get("W1",{})
-        if w.get("fresh") and w["forecast"] in ("BUY","SELL") and w["forecast"]!=sides[0]:return "WAIT · KONFLIK W1"
-        return sides[0]
-    return "WAIT · KONFLIK / NETRAL"
+def horizon_side(reports, tf):
+    """Independent directional hypothesis for selected horizon only."""
+    report=reports.get(tf,{})
+    side=report.get("forecast")
+    return side if report.get("fresh") and side in ("BUY","SELL") else "WAIT"
+
+def horizon_plan(reports, tf):
+    """Adjacent lower timeframe contextualizes, never vetoes the anchor."""
+    lower={"W1":"D1","D1":"H4","H4":"H1","H1":None}[tf]
+    anchor=horizon_side(reports,tf)
+    timing=horizon_side(reports,lower) if lower else None
+    result={"anchor":tf,"side":anchor,"timing_tf":lower,"timing_side":timing,
+            "setup":"WAIT","phase":"WAIT_DATA_OR_NEUTRAL","execution_authority":False}
+    if anchor=="WAIT":return result
+    result["setup"]="BUY THE DIP" if anchor=="BUY" else "SELL ON REBOUND"
+    if lower is None:
+        result["phase"]="WAIT_LOCAL_CONFIRMATION"
+    elif timing=="WAIT":
+        result["phase"]="TIMING_UNAVAILABLE_OR_NEUTRAL"
+    elif timing!=anchor:
+        result["phase"]="POTENTIAL_PULLBACK" if anchor=="BUY" else "POTENTIAL_REBOUND"
+    else:
+        result["phase"]="ALIGNED_CONTINUATION"
+    return result

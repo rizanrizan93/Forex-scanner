@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 import pandas as pd
-from fx_scanner.frozen_direction_context import context,dominant,build_context_packet,read_context_packet
+from fx_scanner.frozen_direction_context import context,horizon_plan,horizon_side,build_context_packet,read_context_packet
 
 def sample(now,side=1):
     i=pd.date_range(end=now,periods=40,freq="h")
@@ -20,11 +20,26 @@ def test_stale_and_weekend_never_signal():
     for later,ok in [(now,False),(now+timedelta(days=4),True)]:
         r=context(b,"H1",now=later,observed_at=now,market_fresh=ok)
         assert r["forecast"]=="WAIT" and not r["fresh"] and r["last_bias"]=="BUY"
-def test_dominant_requires_three_fresh_and_no_weekly_conflict():
-    r={"forecast":"BUY","fresh":True};d={x:r for x in ("H1","H4","D1")}
-    assert dominant(d)=="BUY"
-    assert dominant({**d,"W1":{"forecast":"SELL","fresh":True}}).startswith("WAIT")
-    assert dominant({"H1":r,"H4":r})=="WAIT DATA"
+def test_independent_h4_sell_h1_buy_rebound():
+    buy={"forecast":"BUY","fresh":True};sell={"forecast":"SELL","fresh":True}
+    r={"H1":buy,"H4":sell,"D1":buy,"W1":sell}
+    assert horizon_side(r,"H1")=="BUY"
+    assert horizon_side(r,"H4")=="SELL"
+    assert horizon_plan(r,"H4")["setup"]=="SELL ON REBOUND"
+    assert horizon_plan(r,"H4")["phase"]=="POTENTIAL_REBOUND"
+    assert horizon_plan(r,"D1")["phase"]=="POTENTIAL_PULLBACK"
+    assert horizon_plan(r,"W1")["phase"]=="POTENTIAL_REBOUND"
+def test_missing_lower_horizon_never_vetoes_valid_anchor():
+    buy={"forecast":"BUY","fresh":True}
+    r={"D1":buy,"H4":{"forecast":"SELL","fresh":False}}
+    assert horizon_plan(r,"D1")["setup"]=="BUY THE DIP"
+    assert horizon_plan(r,"D1")["phase"]=="TIMING_UNAVAILABLE_OR_NEUTRAL"
+    assert horizon_plan(r,"H4")["side"]=="WAIT"
+def test_same_direction_is_continuation():
+    r={"H4":{"forecast":"SELL","fresh":True},"H1":{"forecast":"SELL","fresh":True}}
+    assert horizon_plan(r,"H4")["phase"]=="ALIGNED_CONTINUATION"
+    assert horizon_plan(r,"H1")["phase"]=="WAIT_LOCAL_CONFIRMATION"
+    assert horizon_plan(r,"H4")["execution_authority"] is False
 def test_native_packet_excludes_future():
     now=datetime(2026,11,18,12,tzinfo=UTC);b=sample(now)
     rows=[{"timestamp":t.isoformat(),**v.to_dict()} for t,v in b.iterrows()]
