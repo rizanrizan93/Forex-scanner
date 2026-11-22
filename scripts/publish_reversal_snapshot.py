@@ -115,6 +115,12 @@ def main(output):
                     native[tf]=[]
                     print("MANUAL_OPTIONAL_"+tf+"_UNAVAILABLE",flush=True)
             manual=evaluate_manual(native,now=now)
+            # Optional market-only context, reuse native candles already collected.
+            try:
+                from fx_scanner.frozen_direction_context import build_context_packet
+                manual['direction_context']=build_context_packet(native, now=now)
+            except (ValueError, TypeError, KeyError, OverflowError):
+                print('DIRECTION_CONTEXT_UNAVAILABLE',flush=True)
         except Exception:
             # Fail closed for the optional manual panel; keep the existing read-only
             # legacy snapshot usable. No source exception or credential is published.

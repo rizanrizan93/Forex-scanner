@@ -1,0 +1,23 @@
+name: Frozen Direction context read-only tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/fx_scanner/frozen_direction*.py'
+      - 'src/fx_scanner/ui_terminal.py'
+      - 'tests/test_frozen_direction_context.py'
+      - '.github/workflows/frozen-direction-context.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pandas==2.2.3 streamlit==1.62.0 pytest==9.0.2
+      - run: PYTHONPATH=src pytest -q tests/test_frozen_direction_context.py tests/test_professional_terminal_ui.py
+      - run: python -m py_compile src/fx_scanner/frozen_direction_research_dashboard.py scripts/publish_reversal_snapshot.py
