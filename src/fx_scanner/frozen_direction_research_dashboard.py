@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import json
 import pandas as pd
-from .frozen_direction_context import TFS, context, horizon_plan, read_context_packet, session_closed
+from .frozen_direction_context import TFS, context, horizon_plan, read_context_packet, session_closed, watch_zone
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, URL
 
@@ -34,11 +34,12 @@ def reference_bars(frame, tf, cutoff):
     return bars
 
 def load_context_sources():
-    now=datetime.now(UTC)
     source,historical=load_market()
+    now=datetime.now(UTC)
     native={};native_at=None;market_fresh=False
     try:
         p=fetch_manual_map()
+        now=datetime.now(UTC)
         native,native_at=read_context_packet(p.get("direction_context"),now)
         market_fresh=bool(p.get("fresh"))
     except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
@@ -76,8 +77,10 @@ def render_frozen_direction_research():
         if session_closed(now):st.warning("Pasar XAU umumnya tutup akhir pekan. WAIT; arah terakhir tidak berlaku sebagai sinyal live.")
         elif not any(r["fresh"] for r in reports.values()):st.info("Belum ada timeframe dengan data segar.")
         st.caption("Skor 0–5 = jumlah bukti teknikal, bukan probabilitas. Prediksi frozen R28.1 asli belum terhubung; hipotesis teknikal ini belum diuji replay.")
+        zones={tf:watch_zone(frames.get(tf),reports[tf]) for tf in TFS}
         for tf in TFS:
             r=reports[tf]
+            zone=zones[tf]
             plan=horizon_plan(reports,tf)
             with st.container(border=True):
                 st.markdown("**"+tf+" · prediksi close berikutnya**")
@@ -96,6 +99,14 @@ def render_frozen_direction_research():
                     elif plan["phase"]=="POTENTIAL_PULLBACK":st.caption(plan["timing_tf"]+" SELL: potensi pullback menuju zona BUY "+tf+". Tunggu reclaim.")
                     elif plan["phase"]=="ALIGNED_CONTINUATION":st.caption(plan["timing_tf"]+" searah: potensi continuation; jangan mengejar harga.")
                     else:st.caption("Timing belum terkonfirmasi. Pantau struktur lokal; bukan sinyal entry.")
+                if zone is not None:
+                    zc,dc=st.columns(2)
+                    zc.metric(zone["label"]+" · "+zone["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
+                    dc.metric("Jarak dari close "+tf,f"${zone['distance']:,.2f}")
+                    st.caption(zone["position"]+" · close referensi "+f"{zone['reference_close']:,.2f}"+" · batas invalidasi "+f"{zone['invalidation']:,.2f}"+" (close "+tf+")")
+                    st.caption("Zona kuartil rentang 20 candle; belum tervalidasi. "+("Tunggu konfirmasi lokal." if zone["active"] else "Historis saja; bukan area aktif."))
+                else:
+                    st.info("Zona "+tf+" belum tersedia: data kurang atau bias netral.")
                 if r["checks"]:
                     with st.expander("Bukti teknikal "+tf):st.dataframe(r["checks"],hide_index=True)
         st.markdown("### Chart dan zona tunggu")
@@ -105,31 +116,28 @@ def render_frozen_direction_research():
         if bars is None or len(bars)<20:
             st.info("WAIT DATA · Data chart/level belum cukup.")
             return
-        recent=bars.tail(20);lo=float(recent.low.min());hi=float(recent.high.max())
-        if not hi>lo:return
-        q1=lo+(hi-lo)*.25;q3=lo+(hi-lo)*.75
+        zone=zones[tf]
+        # Chart and summary must show the same sample and price levels.
+        if r.get("closed_at"):
+            bars=bars.loc[bars.index<=pd.Timestamp(r["closed_at"])]
         chart=bars.tail(60).copy();chart["time"]=chart.index;chart["WIB"]=chart.index.tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M")
+        if chart.empty:return
         value=float(chart.close.iloc[-1])
         st.metric("Close terakhir "+tf,f"{value:,.2f}")
         st.caption("Rentang 20 candle · kuartil bawah/atas, zona deskriptif, bukan zona yang sudah diuji.")
         selected=[]
-        if not r["fresh"]:
-            st.warning("Snapshot lama · chart historis; zona aktif disembunyikan.")
-        elif plan["side"]=="BUY" and lo<value:
-            st.metric("Buy the dip · area pantau",f"{lo:,.2f}–{q1:,.2f}")
-            st.caption("Skenario bullish; tunggu konfirmasi reclaim. Batal jika close "+tf+" di bawah low rentang.")
-            selected=[{"lo":lo,"hi":q1,"zone":"Buy the dip"}]
-        elif plan["side"]=="SELL" and hi>value:
-            st.metric("Sell on rebound · area pantau",f"{q3:,.2f}–{hi:,.2f}")
-            st.caption("Skenario bearish; tunggu rejection. Batal jika close "+tf+" di atas high rentang.")
-            selected=[{"lo":q3,"hi":hi,"zone":"Sell on rebound"}]
-        else:st.info("WAIT · Belum ada arah atau level searah yang valid.")
+        if zone is not None:
+            st.metric(zone["label"]+" · "+zone["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
+            st.caption("Batal jika close "+tf+(" di bawah " if zone["side"]=="BUY" else " di atas ")+f"{zone['invalidation']:,.2f}")
+            if not zone["active"]:st.warning("Zona historis saja · tidak berlaku sebagai zona aktif.")
+            selected=[{"lo":zone["low"],"hi":zone["high"],"zone":zone["label"]}]
+        else:st.info("WAIT · Belum ada arah atau level yang dapat dihitung.")
         base=alt.Chart(chart).encode(x=alt.X("time:T",title="Candle close UTC"),tooltip=["WIB","open:Q","high:Q","low:Q","close:Q"])
         color=alt.condition("datum.close >= datum.open",alt.value("#149c78"),alt.value("#d65c5c"))
         pic=base.mark_rule().encode(y=alt.Y("low:Q",scale=alt.Scale(zero=False),title="XAUUSD"),y2="high:Q",color=color)+base.mark_bar(size=4).encode(y="open:Q",y2="close:Q",color=color)
         if selected:
             shades=pd.DataFrame([{**z,"start":chart.index.min(),"end":chart.index.max()} for z in selected])
-            rect=alt.Chart(shades).mark_rect(opacity=.12).encode(x="start:T",x2="end:T",y=alt.Y("lo:Q",scale=alt.Scale(zero=False)),y2="hi:Q",color=alt.Color("zone:N",scale=alt.Scale(domain=["Buy the dip","Sell on rebound"],range=["#149c78","#d65c5c"]),legend=None))
+            rect=alt.Chart(shades).mark_rect(opacity=.12 if zone["active"] else .06).encode(x="start:T",x2="end:T",y=alt.Y("lo:Q",scale=alt.Scale(zero=False)),y2="hi:Q",color=alt.Color("zone:N",scale=alt.Scale(domain=["Buy the dip","Sell on rebound"],range=["#149c78","#d65c5c"]),legend=None))
             pic=rect+pic
         st.altair_chart(pic.properties(height=340),width="stretch")
         st.caption("Tidak ada izin entry/order; arah setiap timeframe adalah hipotesis teknikal, bukan model probabilitas.")

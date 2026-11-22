@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 import pandas as pd
-from fx_scanner.frozen_direction_context import context,horizon_plan,horizon_side,build_context_packet,read_context_packet
+from fx_scanner.frozen_direction_context import context,horizon_plan,horizon_side,build_context_packet,read_context_packet,watch_zone
 
 def sample(now,side=1):
     i=pd.date_range(end=now,periods=40,freq="h")
@@ -46,3 +46,32 @@ def test_native_packet_excludes_future():
     p=build_context_packet({"H1":rows},now=now)
     frames,at=read_context_packet(p,now)
     assert len(frames["H1"])==39 and frames["H1"].index[-1]==pd.Timestamp(now)
+
+
+def test_each_horizon_zone_independent_and_shared_geometry():
+    now=datetime(2026,11,18,12,tzinfo=UTC)
+    result={}
+    for tf,side in [("H1",1),("H4",-1),("D1",1),("W1",-1)]:
+        f=sample(now,side)
+        r=context(f,tf,now=now,observed_at=now,market_fresh=True)
+        z=watch_zone(f,r)
+        assert z and z["tf"]==tf and z["side"]==("BUY" if side==1 else "SELL")
+        assert z["low"]<z["high"] and z["distance"]>=0
+        assert z["active"] and z["execution_authority"] is False and z["probability"] is None
+        recent=f.tail(20)
+        assert z["high"]-z["low"]==.25*(recent.high.max()-recent.low.min())
+        result[tf]=z
+    assert result["H1"]["side"]!=result["H4"]["side"]
+
+def test_historical_zone_preserved_but_not_active_and_no_future():
+    now=datetime(2026,11,18,12,tzinfo=UTC)
+    f=sample(now,-1)
+    r=context(f,"H4",now=now,observed_at=now,market_fresh=False)
+    z=watch_zone(f,r)
+    extra=f.iloc[-1:].copy();extra.index=extra.index+pd.Timedelta(hours=1)
+    extra["high"]=10000.
+    assert z==watch_zone(pd.concat([f,extra]),r)
+    assert z["state"]=="HISTORIS" and not z["active"]
+    assert watch_zone(None,r) is None
+    assert watch_zone(f,{**r,"last_bias":"NETRAL"}) is None
+    assert watch_zone(f.tail(19),r) is None

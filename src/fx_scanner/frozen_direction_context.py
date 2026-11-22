@@ -99,3 +99,38 @@ def horizon_plan(reports, tf):
     else:
         result["phase"]="ALIGNED_CONTINUATION"
     return result
+
+
+def watch_zone(bars, report):
+    """Independent per-timeframe range geometry, not a validated rebound model.
+    Historical zones are display-only and cannot be promoted to active zones.
+    All values use the exact closed candle used by the directional context.
+    """
+    if bars is None or not report.get("closed_at"):
+        return None
+    side=report.get("last_bias")
+    if side not in ("BUY","SELL"):
+        return None
+    try:
+        at=pd.Timestamp(report["closed_at"])
+        f=bars.loc[bars.index<=at].tail(20)
+        if len(f)!=20 or f.index[-1]!=at or f.index.has_duplicates or not f.index.is_monotonic_increasing:
+            return None
+        if not f[["open","high","low","close"]].map(lambda v:math.isfinite(float(v))).all().all():
+            return None
+        if not ((f.low>0)&(f.low<=f.open)&(f.low<=f.close)&(f.high>=f.open)&(f.high>=f.close)).all():
+            return None
+        lo=float(f.low.min());hi=float(f.high.max());price=float(f.close.iloc[-1])
+        if not hi>lo:return None
+        width=hi-lo
+        zl,zh=(lo,lo+width*.25) if side=="BUY" else (hi-width*.25,hi)
+        active=bool(report.get("fresh") and report.get("forecast")==side)
+        return {"side":side,"tf":report.get("tf"),"label":"Buy the dip" if side=="BUY" else "Sell on rebound",
+                "low":zl,"high":zh,"invalidation":lo if side=="BUY" else hi,
+                "reference_close":price,"closed_at":at.isoformat(),
+                "distance":max(zl-price,price-zh,0.),
+                "position":"DI ZONA" if zl<=price<=zh else "DI ATAS ZONA" if price>zh else "DI BAWAH ZONA",
+                "active":active,"state":"PANTAU" if active else "HISTORIS",
+                "probability":None,"execution_authority":False}
+    except (ValueError,TypeError,KeyError,OverflowError):
+        return None
