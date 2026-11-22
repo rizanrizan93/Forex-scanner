@@ -1,0 +1,99 @@
+{
+  "study": {
+    "asset": "EURUSD",
+    "periods": [
+      "train 2012-2018",
+      "validation 2019-2022",
+      "retrospective 2023-2026-11-13"
+    ],
+    "patterns": [
+      "breakout64",
+      "sweep16",
+      "ema20_reclaim",
+      "sweep_then_MSS3",
+      "fvg_retest",
+      "inside_break"
+    ],
+    "sides": [
+      "BUY",
+      "SELL"
+    ],
+    "tp_R": [
+      1.5,
+      2,
+      3
+    ],
+    "configs": 36,
+    "positive_stress_train": 0,
+    "positive_stress_validation": 0,
+    "positive_stress_retro": 0,
+    "best_by_period": [
+      {
+        "period": "train",
+        "name": "breakout64_SELL",
+        "tp_R": 1.5,
+        "n": 1599,
+        "net_R": -0.252678,
+        "pf": 0.639665
+      },
+      {
+        "period": "validation",
+        "name": "sweep16_BUY",
+        "tp_R": 1.5,
+        "n": 1156,
+        "net_R": -0.313895,
+        "pf": 0.58967
+      },
+      {
+        "period": "retro",
+        "name": "sweep_then_MSS3_SELL",
+        "tp_R": 2,
+        "n": 594,
+        "net_R": -0.308569,
+        "pf": 0.621035
+      }
+    ],
+    "limits": "Normalized return per independent signal, fixed stop-first M1, 120m, hypothetical 2× costs; no account PnL/DD and not pristine holdout."
+  },
+  "status": "INPUTS_MATCHED_SETUP_SCREEN_REJECTED",
+  "execution_authority": false,
+  "live_changes": false,
+  "sources": [
+    {
+      "asset": "EURUSD",
+      "rows": 5534545,
+      "bytes": 318406782,
+      "sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "date_range": "2011-11-01 to 2026-11-13"
+    },
+    {
+      "asset": "XAUUSD",
+      "rows": 5271503,
+      "bytes": 407682982,
+      "sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "date_range": "2011-11-01 to 2026-11-13"
+    },
+    {
+      "asset": "BTCUSD",
+      "rows": 4137300,
+      "bytes": 245702202,
+      "sha256": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "date_range": "2019-01-01 to 2026-11-13"
+    }
+  ],
+  "notes": [
+    "Exact hashes reproduced by offline correction of original archived timezone and point-in-time XAU flags, broker October/November extension and Bitstamp BTC extension.",
+    "Prices matched. The original C# Frozen Bootstrap125 execution/portfolio ledger is NOT yet reproduced by Python, and local .NET runtime absent.",
+    "Exact M1 data alone must not be described as native broker tick fills or certified profitability.",
+    "BTC dataset does not cover 2012-2018; historical early-cycle stress is FX-only."
+  ],
+  "frozen": {
+    "balance_usd": 1662133293.08,
+    "max_equity_dd_pct": 56.67,
+    "baskets": 1047,
+    "year_reset_1x": "8/8",
+    "source_hash_parity": true,
+    "native_replay_parity": false
+  },
+  "decision": "Do NOT promote any of these 36 setups; continue exact native ledger parity and profit-generating tier tests $100->125->250->1k->10B with controlled DD."
+}
