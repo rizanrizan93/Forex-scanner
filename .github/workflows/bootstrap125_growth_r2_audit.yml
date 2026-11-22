@@ -5,6 +5,8 @@ on:
     paths:
       - 'research/bootstrap125_growth_r2_existing_replay_evidence.json'
       - 'scripts/bootstrap125_growth_r2_audit.py'
+      - 'scripts/bootstrap125_seed_r2_parity_gate.py'
+      - 'research/bootstrap125_seed_r2_proxy_rejected_parity.json'
       - '.github/workflows/bootstrap125_growth_r2_audit.yml'
   workflow_dispatch:
 permissions:
@@ -20,6 +22,8 @@ jobs:
           python-version: '3.12'
       - name: Run historical evidence integrity and robust-candidate screen
         run: python scripts/bootstrap125_growth_r2_audit.py
+      - name: Fail-closed native baseline parity gate for proposed seed changes
+        run: python scripts/bootstrap125_seed_r2_parity_gate.py
       - name: Upload independent audit results
         uses: actions/upload-artifact@v4
         with:
