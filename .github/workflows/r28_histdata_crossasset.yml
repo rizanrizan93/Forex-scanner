@@ -1,0 +1,86 @@
+name: R28 HistData FX proxy directional ablation
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/r28_histdata_crossasset.py','.github/workflows/r28_histdata_crossasset.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        symbol: [EURUSD, USDJPY]
+        year: [2019,2020,2021,2022,2023,2024,2025]
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - run: python scripts/r28_histdata_crossasset.py --acquire ${{ matrix.symbol }} ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r28-fx-${{ matrix.symbol }}-${{ matrix.year }}
+          path: artifacts/r28-fx-*
+          if-no-files-found: error
+          retention-days: 90
+  replay:
+    needs: fx
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: ['1h','4h','1D','1W','1D-macro','1W-macro']
+    env:
+      PYTHONPATH: 'src:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r28-fx-*
+          path: /tmp/r28fx
+          merge-multiple: true
+      - if: ${{ matrix.lane == '1h' || matrix.lane == '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - if: ${{ matrix.lane != '1h' && matrix.lane != '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          if [[ "$LANE" == *-macro ]]; then
+            python scripts/r28_histdata_crossasset.py --tf "${LANE%-macro}" --macro
+          else
+            python scripts/r28_histdata_crossasset.py --tf "$LANE"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r28-replay-${{ matrix.lane }}
+          path: artifacts/r28-*.json
+          if-no-files-found: warn
+          retention-days: 90
