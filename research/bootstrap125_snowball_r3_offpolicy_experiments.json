@@ -1,0 +1,113 @@
+{
+  "id": "RIZAN_BOOTSTRAP_SNOWBALL_R3_OFFPOLICY_20261122",
+  "status": "RESEARCH_ONLY_REJECTED_NATIVE_PARITY",
+  "archive_bytes_sha256": "ded7c11f85010a7dec1fc01c3221262d941777870eb51cd591413919c28b34af",
+  "baseline": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114",
+  "file_source": "RIZAN_REPLAY_SETTLEMENT_2016_2026_20261017.zip/inputs/eur_2012_2026.csv",
+  "source_sha256": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec",
+  "required_frozen_corrected_eur_m1_sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+  "period": "2019-01-01 to 2026-10-09",
+  "input_execution": "EURUSD bid-only OHLC M1 with hypothetical spread, slippage, commission, 1:200 margin, 8% seed planned risk, min 1000 EUR, closed-trade 60% entry halt",
+  "study_design": "7 independent EUR seed policies and 6 priority-B0 hybrids; 8 yearly resets, base and cost-2x stress, 13*8*2=208 simulations; V1 cBot baseline not reproduced",
+  "native_frozen_parity": false,
+  "broker_tick_parity": false,
+  "portfolio_growth_simulated": false,
+  "results": [
+    {
+      "name": "B0_BUY64",
+      "base_graduation_years": 7,
+      "stress_graduation_years": 7,
+      "base_seed_fills": 118,
+      "max_closed_dd_pct": 60.583
+    },
+    {
+      "name": "S1_SELL64",
+      "base_graduation_years": 1,
+      "stress_graduation_years": 0,
+      "base_seed_fills": 451,
+      "max_closed_dd_pct": 62.182
+    },
+    {
+      "name": "S2_SELL32",
+      "base_graduation_years": 1,
+      "stress_graduation_years": 0,
+      "base_seed_fills": 562,
+      "max_closed_dd_pct": 61.737
+    },
+    {
+      "name": "S3_BUY_SWEEP16",
+      "base_graduation_years": 2,
+      "stress_graduation_years": 1,
+      "base_seed_fills": 303,
+      "max_closed_dd_pct": 62.181
+    },
+    {
+      "name": "S4_SELL_SWEEP16",
+      "base_graduation_years": 1,
+      "stress_graduation_years": 1,
+      "base_seed_fills": 514,
+      "max_closed_dd_pct": 61.19
+    },
+    {
+      "name": "S5_BUY32",
+      "base_graduation_years": 5,
+      "stress_graduation_years": 3,
+      "base_seed_fills": 212,
+      "max_closed_dd_pct": 61.167
+    },
+    {
+      "name": "S6_SELL_DISP64",
+      "base_graduation_years": 2,
+      "stress_graduation_years": 1,
+      "base_seed_fills": 343,
+      "max_closed_dd_pct": 62.456
+    },
+    {
+      "name": "B0_PLUS_SELL64",
+      "base_graduation_years": 5,
+      "stress_graduation_years": 3,
+      "base_seed_fills": 246,
+      "max_closed_dd_pct": 61.36
+    },
+    {
+      "name": "B0_PLUS_SELL32",
+      "base_graduation_years": 4,
+      "stress_graduation_years": 3,
+      "base_seed_fills": 414,
+      "max_closed_dd_pct": 62.204
+    },
+    {
+      "name": "B0_PLUS_BUY_SWEEP16",
+      "base_graduation_years": 4,
+      "stress_graduation_years": 3,
+      "base_seed_fills": 410,
+      "max_closed_dd_pct": 61.844
+    },
+    {
+      "name": "B0_PLUS_SELL_SWEEP16",
+      "base_graduation_years": 6,
+      "stress_graduation_years": 5,
+      "base_seed_fills": 245,
+      "max_closed_dd_pct": 61.483
+    },
+    {
+      "name": "B0_PLUS_BUY32",
+      "base_graduation_years": 5,
+      "stress_graduation_years": 3,
+      "base_seed_fills": 212,
+      "max_closed_dd_pct": 61.167
+    },
+    {
+      "name": "B0_PLUS_SELL_DISP64",
+      "base_graduation_years": 5,
+      "stress_graduation_years": 4,
+      "base_seed_fills": 257,
+      "max_closed_dd_pct": 61.46
+    }
+  ],
+  "finding": "none of 12 challengers beat independent same-source B0 graduation across all years or pass native baseline parity; do not deploy",
+  "batch_theorem": "Splitting identical total notional across child orders at same entry/exit provides no gross-PnL alpha; risk/margin and per-order costs matter; actual staged batches untested",
+  "next": "Restore exact corrected M1 source and native 2019-2026 engine, verify parity first. Then matched $100→125 EUR BUY/SELL, followed by matched growth-stage add-on/ladder at fixed combined 20.75% planned risk, margin cap 50%, minlot, A/B paths, 1×/2× cost, mandatory positive portfolio OOS.",
+  "read_only": true,
+  "executed_on_live": false
+}
