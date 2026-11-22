@@ -1,0 +1,212 @@
+{
+  "study": "RIZAN_ADDON_ALPHA_S9_NATIVE_ARCHIVE_AUDIT_20261122",
+  "status": "HISTORICAL_NATIVE_REPLAY_SUMMARY_ONLY",
+  "source_archive": "RIZAN_XAU_SMALL_GROWTH_RESEARCH_20261114.zip",
+  "source_archive_sha256": "eef9a831b50776d362e4ba4e2dda28fac20a84b20b5785b58a27fa17d7745318",
+  "all_cases_json_sha256": "73001ce51805ce22200419e90020c78fabd8242d61d90e3c39c98ac2bd939572",
+  "sampled_years": [
+    2020,
+    2021,
+    2025,
+    2026
+  ],
+  "sampled_path": "B",
+  "cost_multiplier": 1,
+  "original_native_cases_in_archive": 87,
+  "unique_configurations_with_all_four_screen_years": 20,
+  "baseline_years": {
+    "2020": {
+      "balance": 2863.715270845,
+      "baskets": 144,
+      "equity_dd": 53.7303
+    },
+    "2021": {
+      "balance": 244.339707793,
+      "baskets": 116,
+      "equity_dd": 47.4116
+    },
+    "2025": {
+      "balance": 162.1333783965,
+      "baskets": 63,
+      "equity_dd": 51.7672
+    },
+    "2026": {
+      "balance": 110.986668126,
+      "baskets": 36,
+      "equity_dd": 48.07196
+    }
+  },
+  "policies": [
+    {
+      "name": "base1_r1",
+      "years_balance_improved": 0,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 62.219
+    },
+    {
+      "name": "base1_r4",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 1,
+      "max_dd_pct": 61.041
+    },
+    {
+      "name": "base3_r1",
+      "years_balance_improved": 0,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 62.408
+    },
+    {
+      "name": "base3_r4",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 1,
+      "max_dd_pct": 61.367
+    },
+    {
+      "name": "base5_r1",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 63.203
+    },
+    {
+      "name": "base5_r4",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 61.805
+    },
+    {
+      "name": "base7_r1",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 61.219
+    },
+    {
+      "name": "base7_r4",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 64.511
+    },
+    {
+      "name": "base13_r1",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 60.457
+    },
+    {
+      "name": "base13_r4",
+      "years_balance_improved": 3,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 62.273
+    },
+    {
+      "name": "base19_r1",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 55.853
+    },
+    {
+      "name": "base19_r4",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 62.711
+    },
+    {
+      "name": "late1",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 63.523
+    },
+    {
+      "name": "late5",
+      "years_balance_improved": 0,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 65.904
+    },
+    {
+      "name": "late9",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 62.319
+    },
+    {
+      "name": "late13",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 56.164
+    },
+    {
+      "name": "late17",
+      "years_balance_improved": 0,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 56.701
+    },
+    {
+      "name": "late21",
+      "years_balance_improved": 2,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 54.409
+    },
+    {
+      "name": "h4r2",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 4,
+      "max_dd_pct": 56.937
+    },
+    {
+      "name": "h4r4",
+      "years_balance_improved": 1,
+      "years_baskets_increased": 3,
+      "max_dd_pct": 60.594
+    }
+  ],
+  "diagnostic_examples": [
+    {
+      "name": "late13",
+      "balance_ratio_to_baseline": {
+        "2020": 0.6937,
+        "2021": 0.6284,
+        "2025": 0.556,
+        "2026": 14.2681
+      },
+      "additional_baskets": {
+        "2020": 31,
+        "2021": 45,
+        "2025": 9,
+        "2026": 62
+      }
+    },
+    {
+      "name": "late21",
+      "balance_ratio_to_baseline": {
+        "2020": 1.2369,
+        "2021": 0.5401,
+        "2025": 2.6724,
+        "2026": 0.9239
+      },
+      "additional_baskets": {
+        "2020": 12,
+        "2021": 52,
+        "2025": 68,
+        "2026": 15
+      }
+    },
+    {
+      "name": "base13_r4",
+      "balance_ratio_to_baseline": {
+        "2020": 1.5553,
+        "2021": 0.3018,
+        "2025": 1.0458,
+        "2026": 1.385
+      },
+      "additional_baskets": {
+        "2020": 47,
+        "2021": -6,
+        "2025": 123,
+        "2026": 62
+      }
+    }
+  ],
+  "limit": "No single candidate improved four annual reset balances; this is not a continuous $100→$10B matched replay. Native historical test still uses synthetic OHLC, not FP Markets tick. No LIVE changes.",
+  "outcome": "REJECT_ALL_FOR_PROMOTION_PENDING_NATIVE_FULL_SHARED_ACCOUNT_REPLAY",
+  "research_only": true,
+  "execution_authority": false
+}
