@@ -30,7 +30,7 @@ SOURCES = {
         "stop_buffer": 0.0025, "max_stop_pct": 0.045, "split_year": 2016,
     },
 }
-MODELS = ["SWEEP", "MSS", "HL_SWEEP_STOP", "HL_LOCAL_STOP", "HL_BOS_LOCAL_STOP"]
+MODELS = ["SWEEP", "MSS", "MSS_PULLBACK33", "HL_SWEEP_STOP", "HL_LOCAL_STOP", "HL_BOS_LOCAL_STOP"]
 HORIZON_DAYS = 30
 WATCH_COOLDOWN_DAYS = 45
 MAX_MSS_BARS = 48
@@ -192,7 +192,19 @@ def find_formations(a,watch_idx,cfg):
         if b.c>highest(a,k-6,k-1) and b.c>sma(a,k,20) and b.c>b.o:
             mss=k
             break
-    if mss is None: return {"MSS":None,"HL":None,"BOS":None,"PIVOT":None}
+    if mss is None: return {"MSS":None,"PULLBACK":None,"HL":None,"BOS":None,"PIVOT":None}
+    # Predeclared exploratory pullback test: completed H4 bullish reaction
+    # after a >=33% retracement of the post-sweep displacement. Entry on next open.
+    pullback = None
+    level = a[mss].c - 0.33*(a[mss].c-w.l)
+    for k in range(mss+1,min(len(a)-200,mss+25)):
+        if a[k].l < w.l:
+            break
+        b=a[k]
+        location=(b.c-b.l)/(b.h-b.l) if b.h>b.l else 0
+        if b.l<=level and b.c>b.o and b.c>w.l and location>=0.55:
+            pullback=k
+            break
     pivot=None
     confirm=None
     initial_atr=atr(a,mss)
@@ -207,7 +219,7 @@ def find_formations(a,watch_idx,cfg):
                 and a[c].c>z.l):
             pivot,confirm=p,c
             break
-    if confirm is None: return {"MSS":mss,"HL":None,"BOS":None,"PIVOT":None}
+    if confirm is None: return {"MSS":mss,"PULLBACK":pullback,"HL":None,"BOS":None,"PIVOT":None}
     neckline=highest(a,mss,confirm)
     bos=None
     for k in range(confirm+1,min(len(a)-200,confirm+MAX_BOS_BARS+1)):
@@ -215,12 +227,13 @@ def find_formations(a,watch_idx,cfg):
         if a[k].c>neckline and a[k].c>sma(a,k,20):
             bos=k
             break
-    return {"MSS":mss,"HL":confirm,"BOS":bos,"PIVOT":pivot}
+    return {"MSS":mss,"PULLBACK":pullback,"HL":confirm,"BOS":bos,"PIVOT":pivot}
 
 
 def entry_spec(a,w,f,model):
     if model=="SWEEP":return (w,a[w].l)
     if model=="MSS":return (f["MSS"],a[w].l)
+    if model=="MSS_PULLBACK33":return (f["PULLBACK"],a[w].l)
     if model=="HL_SWEEP_STOP":return (f["HL"],a[w].l)
     if model=="HL_LOCAL_STOP":return (f["HL"],a[f["PIVOT"]].l if f["PIVOT"] is not None else None)
     if model=="HL_BOS_LOCAL_STOP":return (f["BOS"],a[f["PIVOT"]].l if f["PIVOT"] is not None else None)
@@ -360,7 +373,7 @@ def render_report(payload):
        "",
        f"Scan: trailing {SOURCES['BTC']['lookback_h4']} H4 bars BTC or {SOURCES['XAU']['lookback_h4']} H4 bars gold; minimum drawdown 35% BTC or 15% gold. A watch is a sell-side sweep of the prior 30 H4 bars, close back above that low, close-location >=60%. Candidate watch cooldown: {WATCH_COOLDOWN_DAYS} calendar days.",
        "",
-       "MSS: within 48 H4 bars without violating the sweep low, bullish close above the previous six H4 highs and H4 SMA20. Higher low: swing pivot with 2 left/2 right candles, above sweep low by a buffer and following >=0.5 ATR(14) pullback; actionable only after the second right candle closes. BOS: reclaim neckline after HL confirmation.",
+       "MSS: within 48 H4 bars without violating the sweep low, bullish close above the previous six H4 highs and H4 SMA20. MSS_PULLBACK33: within 24 H4 bars after MSS, wait for >=33% displacement retracement then a completed bullish reaction H4 candle before entering on next open. Higher low: swing pivot with 2 left/2 right candles, above sweep low by a buffer and following >=0.5 ATR(14) pullback; actionable only after the second right candle closes. BOS: reclaim neckline after HL confirmation.",
        "",
        "Stop options: below initial sweep low (SWEEP/MSS/HL_SWEEP_STOP) or confirmed higher-low pivot (HL_LOCAL_STOP/HL_BOS_LOCAL_STOP). Buffers: 0.75% BTC; 0.25% gold. Reject entries with risk >12% BTC or >4.5% gold. Targets 2R; 30-calendar-day horizon. Gap-through stop fills at worse open; same-bar SL precedence. Fees assumed 0.20% BTC / 0.10% gold round trip. No funding, slippage, swaps, capital/risk sizing, or leverage modeled.",
        "",
