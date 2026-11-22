@@ -1,0 +1,36 @@
+name: BZ3 BTC M1 replay aggregate only
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['.github/workflows/bz3_btc_m1_aggregate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 45002732475
+          github-token: ${{ github.token }}
+          pattern: zq4-BTC-*
+          path: /tmp/zq4
+          merge-multiple: true
+      - name: Independent BTC BUY SELL annual selection on 2022-2025 only
+        run: python scripts/zq4_bz3_micro_replay.py --asset BTC --aggregate --root /tmp/zq4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bz3-btc-annual-walkforward
+          path: artifacts/zq4-BTC-aggregate.json
+          if-no-files-found: error
+          retention-days: 90
