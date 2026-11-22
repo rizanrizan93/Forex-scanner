@@ -1,0 +1,75 @@
+name: Archive XAU frozen research evidence
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['.github/workflows/archive_xau_frozen_r281.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  archive:
+    if: github.ref == 'refs/heads/research/r91-early-warning-m1-20261121'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install requests
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import hashlib, io, json, os, pathlib, zipfile
+          import requests
+          base='https://api.github.com/repos/rizanrizan93/Forex-scanner/actions'
+          root=pathlib.Path('research/archive/xau_r281')
+          root.mkdir(parents=True,exist_ok=True)
+          s=requests.Session()
+          s.headers.update({'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          runs=[44886465487,44907879558,44916167164,44916307381,44919966084,44920158146,44920728465,44921819655,44956365901,44956908725,44957921767,44958127493,44958824668,44961643293,44962326125,44962495112,44962650523,44964431677,44964862206,44965849048,44967642428,44970328847]
+          required={14709146843,14712979950,14727659960,14731141368,14730673399,14731403073,14730481343,14733406717,14733471436,14733147288}
+          saved=set()
+          manifest=[]
+          for run in runs:
+              try:
+                  r=s.get(f'{base}/runs/{run}/artifacts',params={'per_page':100},timeout=30);r.raise_for_status()
+                  for a in r.json()['artifacts']:
+                      aid=a['id'];name=a['name']
+                      if a['expired'] or a['size_in_bytes']>40_000_000 or 'shard' in name.lower() or name.startswith('r98-daily-'):continue
+                      response=s.get(f'{base}/artifacts/{aid}/zip',timeout=90);response.raise_for_status()
+                      archive=zipfile.ZipFile(io.BytesIO(response.content))
+                      files=[]
+                      for f in archive.infolist():
+                          n=pathlib.PurePosixPath(f.filename).name
+                          if not n.endswith('.json') or f.file_size>20_000_000:continue
+                          raw=archive.read(f);obj=json.loads(raw)
+                          if not isinstance(obj,(dict,list)):continue
+                          # Only research JSON, never dump runtime credentials or raw feeds.
+                          if any(x in n.lower() for x in ('secret','credential','token','packet','snapshot','raw_ticks')):continue
+                          out=root/str(run)/str(aid)/n;out.parent.mkdir(parents=True,exist_ok=True);out.write_bytes(raw)
+                          files.append({'path':str(out),'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw)})
+                      if files:saved.add(aid)
+                      manifest.append({'run':run,'artifact':aid,'name':name,'files':files,'zip_sha256':hashlib.sha256(response.content).hexdigest()})
+              except Exception as e:
+                  manifest.append({'run':run,'error':repr(e)})
+          (root/'manifest.json').write_text(json.dumps({'records':manifest,'missing_required':sorted(required-saved),'research_only':True},indent=2))
+          print('Saved artifacts:',len(saved),'missing required:',sorted(required-saved))
+          PY
+      - name: Commit archived report JSON only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/archive/xau_r281
+          if ! git diff --cached --quiet; then
+            git commit -m "Archive XAU frozen research reports and provenance"
+            git push origin HEAD:refs/heads/research/r91-early-warning-m1-20261121
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-r281-archive-receipt
+          path: research/archive/xau_r281/manifest.json
+      - name: Require frozen source evidence
+        run: python -c "import json; d=json.load(open('research/archive/xau_r281/manifest.json')); assert not d['missing_required'],d['missing_required']"
