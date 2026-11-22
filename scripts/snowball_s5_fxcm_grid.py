@@ -85,7 +85,9 @@ def get_data(year:int):
           "week_count":len(rows),"missing_weeks":missing,
           "sha256_gzip_per_week":sha,"invalid_quote_rows":invalid,
           "bars":len(d),"first":str(d.index[0]),"last":str(d.index[-1]),
-          "not_FP_Markets":True}
+          "not_FP_Markets":True,
+          "full_calendar_year":bool(len(rows)>=49 and d.index[0]<=pd.Timestamp(f"{year}-01-10",tz="UTC") and d.index[-1]>=pd.Timestamp(f"{year}-12-24",tz="UTC")),
+          "expected_weeks_reference":52}
     return d,data
 
 def features(d):
@@ -299,7 +301,8 @@ def run(year):
        "Nonoverlap cooldown by maximum intended horizon per configuration",
        "Annual data downloaded independently, first weeks H4 EMA warmup excluded",
        "No leakage of next-year price path; no native C# parity; no live authority",
-       "2026 FXCM weekly archive unavailable at discovery time and not included",
+       "Full calendar-year quality is computed from actual first/last quotes and week counts, not inferred",
+      "2026 FXCM weekly archive unavailable at discovery time and not included",
        "No trade/OHLC datasets are uploaded, source weekly SHA256 saved"]}
     file=OUT/f"s5_eurusd_{year}.json"
     file.write_text(json.dumps(scope,allow_nan=False))
@@ -358,6 +361,9 @@ def aggregate(root):
       "parameter_grid":"12 entry families × 2 sides × 2 lookbacks × 3 H4 regimes × 3 sessions × 2 horizons × 2 stop multiples × 2 TP multiples = 3456",
       "train":"2012-2018","validate":"2019-2022","retrospective":"2023-2025",
       "qualified_train":len(passed_train),"qualified_validation":len(passed_valid),
+      "source_full_year_by_year":{str(y):v["full_calendar_year"] for y,v in sources.items()},
+      "panel_full_calendar_years":all(v["full_calendar_year"] for v in sources.values()),
+      "promotion_allowed":False,
       "qualified_retrospective":sum(x["retrospective_qualified"] for x in results),
       "train_selected_details":sorted(results,key=lambda z:(
           z["train"]["avg_R"] or -999),reverse=True)[:100],
