@@ -1,0 +1,63 @@
+name: ZQ4 XAU alternate secure archived M1 replay
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/zq4_xau_duka_secondary.py'
+      - '.github/workflows/zq4_xau_duka_secondary.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  archive_xau:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2022,2023,2024,2025,2026]
+    env:
+      PYTHONPATH: 'src:scripts:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - name: Verify pinned public archive bid/ask and exclude padded closures
+        run: python scripts/zq4_xau_duka_secondary.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zq4-duka-XAU-${{ matrix.year }}
+          path: artifacts/zq4-XAU-${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: archive_xau
+    if: needs.archive_xau.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:scripts:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zq4-duka-XAU-*
+          path: /tmp/zq4
+          merge-multiple: true
+      - name: Purged prior-years-only selection
+        run: python scripts/zq4_bz3_micro_replay.py --asset XAU --aggregate --root /tmp/zq4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zq4-duka-XAU-aggregate
+          path: artifacts/zq4-XAU-aggregate.json
+          if-no-files-found: error
+          retention-days: 90
