@@ -153,6 +153,9 @@ def measured(d,m,atr,decision,valid,side,horizon,asset):
     if not keep:return []
     ix=np.asarray(keep);times=decision[ix];p,ok=complete_paths(d,times,horizon)
     # Incomplete future outcomes are censored, never counted as failures or wins.
+    # Purge boundary: a validation-year decision may not consume next year's prices.
+    boundary=pd.Timestamp(f"{int(times.year[0])+1}-01-01",tz="UTC")
+    ok &= (times+pd.Timedelta(minutes=horizon)<=boundary)
     q=np.flatnonzero(ok);records=[]
     for chunk in np.array_split(q,max(1,(len(q)+255)//256)):
         if not len(chunk):continue
