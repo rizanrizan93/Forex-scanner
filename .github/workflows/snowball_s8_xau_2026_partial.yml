@@ -1,0 +1,30 @@
+name: Snowball S8 XAU 2026 Jan-Aug Censored Retrospective
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths: ['.github/workflows/snowball_s8_xau_2026_partial.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  retrospective:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - run: python scripts/snowball_s8_structural_xau.py --selftest
+      - name: Run 7776 policies on Jan-Aug 2026 only, without training on 2026
+        run: python scripts/snowball_s8_xau_2026_partial.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snowball-s8-xau-2026-partial-retrospective
+          path: artifacts/snowball_s8/s8_xau_2026.json
+          if-no-files-found: error
+          retention-days: 90
