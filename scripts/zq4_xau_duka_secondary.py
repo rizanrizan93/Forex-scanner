@@ -46,7 +46,11 @@ def acquire(year):
             hashes[name]=hashlib.sha256(content).hexdigest()
         out[side]=pd.concat(frames).sort_index()
     bid=out["bid"];ask=out["ask"]
-    assert bid.index.equals(ask.index)
+    shared=bid.index.intersection(ask.index)
+    mismatch=max(len(bid),len(ask))-len(shared)
+    assert len(shared)>=.95*max(len(bid),len(ask)),("MISALIGNED_BID_ASK",len(bid),len(ask),len(shared))
+    # Unlike forwardfill, strict intersection cannot manufacture an executable quote.
+    bid=bid.loc[shared];ask=ask.loc[shared]
     assert np.isfinite(bid).all().all() and np.isfinite(ask).all().all()
     assert ((bid.l>0)&(bid.l<=bid[["o","c"]].min(axis=1))&(bid.h>=bid[["o","c"]].max(axis=1))).all()
     assert ((ask.l>0)&(ask.l<=ask[["o","c"]].min(axis=1))&(ask.h>=ask[["o","c"]].max(axis=1))).all()
@@ -70,6 +74,7 @@ def acquire(year):
     provenance={"source":"THIRD_PARTY_GITHUB_DUKASCOPY_DERIVED_XAUUSD_M1_BID_ASK",
         "repository":REPO,"commit":PIN,"source_SHA256_monthly":hashes,
         "data_through":"2026-08-20" if year==2026 else f"{year}-12-31",
+        "nonmatching_bid_ask_minutes_censored":int(mismatch),
         "ask_bid_spread_mean":float(observed.mean()),
         "ask_bid_spread_p95":float(observed.quantile(.95)),
         "flat_minutes_censored":int(flat3.sum()),
