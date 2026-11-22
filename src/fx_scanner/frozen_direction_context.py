@@ -55,7 +55,7 @@ def context(bars,tf,*,now,observed_at,market_fresh):
     if not f[["open","high","low","close"]].map(lambda v: math.isfinite(float(v))).all().all():return base
     c,o,h,l=[f[k] for k in ("close","open","high","low")]
     if not ((l>0)&(l<=o)&(l<=c)&(h>=o)&(h>=c)).all():return base
-    atr=pd.concat([h-l,(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).rolling(14).mean().iloc[-1]
+    atr=pd.concat([h-l,(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1).rolling(14).mean().iloc[-1]
     if not math.isfinite(atr) or atr<=0:return base
     def sign(x,band=0):return 1 if x>band else -1 if x<-band else 0
     e5=c.ewm(span=5,adjust=False).mean();e13=c.ewm(span=13,adjust=False).mean()
