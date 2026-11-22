@@ -1,0 +1,53 @@
+name: ZQ3 XAU and BZ2 BTC direction-first replay
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/zq3_bz2_direction_first.py','.github/workflows/zq3_bz2_direction.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  zones:
+    if: github.ref == 'refs/heads/research/r91-early-warning-m1-20261121'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {asset: XAU, tf: H1}
+          - {asset: XAU, tf: H4}
+          - {asset: XAU, tf: D1}
+          - {asset: BTC, tf: H1}
+          - {asset: BTC, tf: H4}
+    env:
+      PYTHONPATH: 'frozen-btc/src:src:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 360bb2213a4f81f8675ad446cce8d0040cd332a9
+          path: frozen-btc
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        if: matrix.asset == 'XAU'
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - run: python scripts/zq3_bz2_direction_first.py --asset ${{ matrix.asset }} --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zq3-${{ matrix.asset }}-${{ matrix.tf }}
+          path: artifacts/zq3-*.json
+          if-no-files-found: warn
+          retention-days: 90
