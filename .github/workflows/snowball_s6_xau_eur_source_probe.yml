@@ -1,0 +1,20 @@
+name: Snowball S6 XAU EUR comparative source probe
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths: ['.github/workflows/snowball_s6_xau_eur_source_probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas==2.2.3 requests==2.32.5
+      - name: Verify FXCM XAU EUR bid ask data availability and provenance
+        run: python scripts/snowball_s6_xau_eur_source_probe.py
