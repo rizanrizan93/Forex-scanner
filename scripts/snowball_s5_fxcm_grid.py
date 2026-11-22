@@ -37,7 +37,7 @@ def get_data(year:int):
     if year<2012 or year>2025:
         raise ValueError("FXCM crossfeed scope 2012-2025 only; no invented 2026 data.")
     sess=requests.Session()
-    rows=[];sha={};missing=[]
+    rows=[];sha={};missing=[];empty_source_weeks=[]
     for week in range(1,54):
         url=f"https://candledata.fxcorporate.com/m1/EURUSD/{year}/{week}.csv.gz"
         response=None
@@ -54,7 +54,20 @@ def get_data(year:int):
             missing.append(week);continue
         data=response.content
         assert data[:2]==b"\x1f\x8b",(year,week,"NON_GZIP")
-        assert 1024<len(data)<6_000_000,(year,week,len(data))
+        assert len(data)<6_000_000,(year,week,len(data))
+        if len(data)<1024:
+            # Allow only a genuine empty gzip CSV with the expected quote schema.
+            # Never fabricate the missing market week or quietly trust HTML/error payloads.
+            try:
+                small=pd.read_csv(io.BytesIO(gzip.decompress(data)))
+            except (OSError,EOFError,ValueError,pd.errors.ParserError) as exc:
+                raise ValueError(f"Invalid tiny source gzip {year}/{week}") from exc
+            expected={"DateTime","BidOpen","BidHigh","BidLow","BidClose",
+                      "AskOpen","AskHigh","AskLow","AskClose"}
+            if len(small)==0 and expected.issubset(small.columns):
+                missing.append(week);empty_source_weeks.append(week)
+                continue
+            raise ValueError(f"Unexpected nonempty tiny CSV {year}/{week} len={len(small)}")
         digest=hashlib.sha256(data).hexdigest()
         t=pd.read_csv(io.BytesIO(gzip.decompress(data)))
         required=("DateTime","BidOpen","BidHigh","BidLow","BidClose",
@@ -82,7 +95,7 @@ def get_data(year:int):
     assert len(d)>130000,(year,len(d))
     assert (d.index.asi8 % 60_000_000_000==0).all()
     data={"provider":"FXCM_public_M1_BID_ASK_NOT_FROZEN_V1","year":year,
-          "week_count":len(rows),"missing_weeks":missing,
+          "week_count":len(rows),"missing_weeks":missing,"empty_csv_weeks":empty_source_weeks,
           "sha256_gzip_per_week":sha,"invalid_quote_rows":invalid,
           "bars":len(d),"first":str(d.index[0]),"last":str(d.index[-1]),
           "not_FP_Markets":True,
