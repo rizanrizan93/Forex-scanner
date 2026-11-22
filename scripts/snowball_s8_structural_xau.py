@@ -101,7 +101,10 @@ def signals(m,x,side,look,pattern):
         if side==1:result=prev_break.rolling(3,min_periods=1).max().gt(0)&(l<=x.prev_hi+.25*a)&reenter&good
         else:result=prev_break.rolling(3,min_periods=1).max().gt(0)&(h>=x.prev_lo-.25*a)&reenter&good
     elif pattern=="DAILY_OPEN_REVERSION":
-        result=(opening>.75*a)&((c-x.op)*side>0)&good
+        # First move against the proposed side, THEN close back across daily open.
+        # Current opening-price level was known from first bar of the same day.
+        previous_dislocation=(x.op-c.shift(1))*side
+        result=(previous_dislocation>.75*a.shift(1))&(((c-x.op)*side)>0)&good
     elif pattern=="ADR_EXTENSION_FADE":
         result=(ext>1.1*adr)&((c-o)*side>.3*a)&(candle_move>0)
     elif pattern=="LONDON_OPEN_RANGE":
