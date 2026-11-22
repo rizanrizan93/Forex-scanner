@@ -1,0 +1,41 @@
+name: Snowball S6 XAU vs EUR Four Tier Decision Audit
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths: ['.github/workflows/snowball_s6_xau_eur_comparison.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve 14 XAU annual frozen replay shards
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45026252308
+          github-token: ${{ github.token }}
+          pattern: snowball-s6-xau-*
+          merge-multiple: true
+          path: /tmp/snowball_s6
+      - name: Retrieve EUR benchmark 2012-2025 historical-selection aggregate
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45024843870
+          github-token: ${{ github.token }}
+          name: snowball-s5-eur-2012-2025-aggregate-repair2023
+          path: /tmp/eur
+      - name: Explain why $100 XAU/EUR cross-venue signals cannot be added into a matched portfolio
+        run: python scripts/snowball_s6_xau_eur_decision_audit.py --xau-root /tmp/snowball_s6 --eur-aggregate /tmp/eur/s5_eurusd_aggregate.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snowball-s6-xau-vs-eur-cash-tiers-forensics
+          path: artifacts/snowball_s6/s6_compare_xau_eur_cash_tiers.json
+          if-no-files-found: error
+          retention-days: 90
