@@ -1,0 +1,43 @@
+name: Snowball S5 3456 Model Audit and Coverage Report
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths:
+      - '.github/workflows/snowball_s5_forensic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read 13 successful frozen shards from annual run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45024655030
+          github-token: ${{ github.token }}
+          pattern: snowball-s5-eur-*
+          path: /tmp/snowball_s5
+          merge-multiple: true
+      - name: Read repaired 2023 shard
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45024843870
+          github-token: ${{ github.token }}
+          pattern: snowball-s5-eur-2023-repaired
+          path: /tmp/snowball_s5
+          merge-multiple: true
+      - name: Audit all 3456 configurations and source gaps without re-fitting
+        run: python scripts/snowball_s5_forensic_audit.py --root /tmp/snowball_s5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snowball-s5-3456-forensic-source-quality-and-training
+          path: artifacts/snowball_s5/s5_forensics.json
+          if-no-files-found: error
+          retention-days: 90
