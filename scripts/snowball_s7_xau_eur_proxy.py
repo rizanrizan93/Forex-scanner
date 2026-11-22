@@ -200,7 +200,7 @@ if __name__=="__main__":
     args=p.parse_args()
     if args.selftest:
         eur.selftest()
-        assert N==1920
+        assert N==3840
         print("S7_SELFTEST",json.dumps({"configs":N,"crossfeed_causal":True}))
     elif args.aggregate:aggregate(args.root)
     elif args.year:run(args.year)
