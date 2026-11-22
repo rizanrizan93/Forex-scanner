@@ -1,0 +1,100 @@
+{
+  "version": "RIZAN_BOOTSTRAP125_SEED_PROXY_REJECTED_R2_20261122",
+  "research_only": true,
+  "execution_authority": false,
+  "status": "REJECTED_BASELINE_NATIVE_PARITY_FAILED",
+  "source": "RIZAN_REPLAY_SETTLEMENT_2016_2026_20261017.zip",
+  "eur_m1_sha256": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec",
+  "actual_frozen_v1_required_eur_sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+  "source_is_older_and_incompatible": true,
+  "method": "Python seed-only proxy with hypothetical 1000-unit minlot, 1:200 leverage, M1 stop-first, next M1 open, ATR14/M5 and closed H4 EMA20/80. NOT native 2-second C# cTrader replay.",
+  "annual_checks": [
+    {
+      "year": 2019,
+      "frozen_days_to_125": 2.2,
+      "proxy_days_to_125": null
+    },
+    {
+      "year": 2020,
+      "frozen_days_to_125": 5.5,
+      "proxy_days_to_125": 5.407
+    },
+    {
+      "year": 2021,
+      "frozen_days_to_125": 5.3,
+      "proxy_days_to_125": 5.321
+    },
+    {
+      "year": 2022,
+      "frozen_days_to_125": 12.3,
+      "proxy_days_to_125": 12.344
+    },
+    {
+      "year": 2023,
+      "frozen_days_to_125": 8.6,
+      "proxy_days_to_125": null
+    },
+    {
+      "year": 2024,
+      "frozen_days_to_125": 98.6,
+      "proxy_days_to_125": 129.649
+    },
+    {
+      "year": 2025,
+      "frozen_days_to_125": 21.4,
+      "proxy_days_to_125": 23.392
+    },
+    {
+      "year": 2026,
+      "frozen_days_to_125": 22.7,
+      "proxy_days_to_125": 4.712
+    }
+  ],
+  "prototype_candidate_count": 10,
+  "prototype_cost_scenarios": 2,
+  "prototype_annual_reset_trials": 160,
+  "proxy_only_graduations_out_of_8": {
+    "B0": {
+      "base_cost": 6,
+      "stress_cost": 5
+    },
+    "S1_LB48": {
+      "base_cost": 5,
+      "stress_cost": 2
+    },
+    "S2_LB32": {
+      "base_cost": 1,
+      "stress_cost": 1
+    },
+    "S3_BUY_SELL_64": {
+      "base_cost": 5,
+      "stress_cost": 3
+    },
+    "S4_BUY_SELL_32": {
+      "base_cost": 1,
+      "stress_cost": 1
+    },
+    "S5_BUY_SWEEP": {
+      "base_cost": 2,
+      "stress_cost": 2
+    },
+    "S6_SELL_SWEEP": {
+      "base_cost": 5,
+      "stress_cost": 2
+    },
+    "S7_BUY_RETEST": {
+      "base_cost": 5,
+      "stress_cost": 2
+    },
+    "S8_DISPLACE32": {
+      "base_cost": 1,
+      "stress_cost": 1
+    },
+    "S9_SELL_BREAK": {
+      "base_cost": 2,
+      "stress_cost": 0
+    }
+  },
+  "claim": "No new EUR seed candidate validated for Frozen V1; even proxy original B0 fails to reproduce 2019,2023 baseline and has shifted 2024,2026 handoff.",
+  "required_next": "Restore exact Nov13 corrected EUR/XAU/BTC M1 and hashes; run native C# original freeze with ledger parity; only then compare new seed candidates paired. No cBot or live changes."
+}
