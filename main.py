@@ -89,7 +89,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Arah Entry", "Fed R6 · Area Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Frozen Direction", "Arah Entry", "Fed R6 · Area Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -98,13 +98,16 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
                     horizontal=True, label_visibility="collapsed",
                     on_change=navigate_detail,
                 )
-            paths = ["pages/8_XAU_Entry_Direction_R2.py", None, None, None, None, "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, "pages/8_XAU_Entry_Direction_R2.py", None, None, None, None, "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
                     with st.container(key="rizan_xau_detail_content"):
                         if path is None:
-                            if label == "Manual R3":
+                            if label == "Frozen Direction":
+                                from fx_scanner.frozen_direction_research_dashboard import render_frozen_direction_research
+                                render_frozen_direction_research()
+                            elif label == "Manual R3":
                                 from fx_scanner.manual_r3_dashboard import render_manual_r3
                                 render_manual_r3()
                             elif label == "Fed R6 · Area Entry":
@@ -166,6 +169,7 @@ ROUTE_SPECS = [
     ("Konsensus_V1", "XAUUSD", "Arah Entry"),
     ("XAU_Zona_Reversal", "XAUUSD", "Zona reversal"),
     ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"),
+    ("XAU_Frozen_Direction", "XAUUSD", "Frozen Direction"),
     ("XAU_Arah_Entry_R2", "XAUUSD", "Arah Entry"),
     ("XAU_Manual_R3", "XAUUSD", "Manual R3"),
     ("XAU_Fed_R6_Area_Entry", "XAUUSD", "Fed R6 · Area Entry"),
