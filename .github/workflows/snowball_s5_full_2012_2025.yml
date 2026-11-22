@@ -1,0 +1,67 @@
+name: Snowball S5 EUR 3456 Models Annual 2012-2025
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths:
+      - '.github/workflows/snowball_s5_full_2012_2025.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: snowball-s5-eur-annual-2012-2025
+  cancel-in-progress: false
+jobs:
+  annual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025]
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - name: Verify model-generation and no future candle inputs
+        run: python scripts/snowball_s5_fxcm_grid.py --selftest
+      - name: Run 3456 causal EUR bid-ask parameter configurations per year
+        run: python scripts/snowball_s5_fxcm_grid.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snowball-s5-eur-${{ matrix.year }}
+          path: artifacts/snowball_s5/s5_eurusd_${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: annual
+    if: always() && needs.annual.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: snowball-s5-eur-*
+          path: /tmp/snowball_s5
+          merge-multiple: true
+      - name: Train 2012-2018, validate 2019-2022, evaluate 2023-2025 with source coverage caveat
+        run: python scripts/snowball_s5_fxcm_grid.py --aggregate --root /tmp/snowball_s5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snowball-s5-fxcm-eur-2012-2025-aggregate
+          path: artifacts/snowball_s5/s5_eurusd_aggregate.json
+          if-no-files-found: warn
+          retention-days: 90
