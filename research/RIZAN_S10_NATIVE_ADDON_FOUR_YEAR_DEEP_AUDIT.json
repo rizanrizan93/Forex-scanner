@@ -1,0 +1,377 @@
+{
+  "study": "S10_NATIVE_XAU_ADDON_FOUR_YEAR_DEEP_AUDIT",
+  "date_wib": "2026-11-22",
+  "source_archive": "RIZAN_XAU_SMALL_GROWTH_RESEARCH_20261114.zip",
+  "source_sha256": "eef9a831b50776d362e4ba4e2dda28fac20a84b20b5785b58a27fa17d7745318",
+  "source_all_cases_sha256": "73001ce51805ce22200419e90020c78fabd8242d61d90e3c39c98ac2bd939572",
+  "baseline_reset_years": [
+    2020,
+    2021,
+    2025,
+    2026
+  ],
+  "baseline_balance_usd": [
+    2863.715270845,
+    244.339707793,
+    162.1333783965,
+    110.986668126
+  ],
+  "baseline_baskets": [
+    144,
+    116,
+    63,
+    36
+  ],
+  "rounded_precision": "ratios 5 decimals, DD/PF 5 decimals from source native 87 cases; additional baskets exact integer",
+  "policies": [
+    {
+      "name": "base13_r1",
+      "terminal_ratio_by_reset": [
+        1.2868,
+        0.28416,
+        0.5557,
+        1
+      ],
+      "additional_baskets_by_reset": [
+        49,
+        153,
+        7,
+        0
+      ],
+      "max_equity_dd_pct": 60.45698,
+      "min_annual_pf": 0.94361
+    },
+    {
+      "name": "base13_r4",
+      "terminal_ratio_by_reset": [
+        1.55534,
+        0.30179,
+        1.04578,
+        1.385
+      ],
+      "additional_baskets_by_reset": [
+        47,
+        -6,
+        123,
+        62
+      ],
+      "max_equity_dd_pct": 62.27285,
+      "min_annual_pf": 0.92676
+    },
+    {
+      "name": "base19_r1",
+      "terminal_ratio_by_reset": [
+        1.02944,
+        0.60316,
+        0.94498,
+        1
+      ],
+      "additional_baskets_by_reset": [
+        11,
+        89,
+        30,
+        0
+      ],
+      "max_equity_dd_pct": 55.85282,
+      "min_annual_pf": 1.06324
+    },
+    {
+      "name": "base19_r4",
+      "terminal_ratio_by_reset": [
+        1.06136,
+        0.41517,
+        0.85432,
+        0.96422
+      ],
+      "additional_baskets_by_reset": [
+        15,
+        36,
+        54,
+        1
+      ],
+      "max_equity_dd_pct": 62.71064,
+      "min_annual_pf": 1.00221
+    },
+    {
+      "name": "base1_r1",
+      "terminal_ratio_by_reset": [
+        0.29266,
+        0.3,
+        0.38477,
+        0.92262
+      ],
+      "additional_baskets_by_reset": [
+        78,
+        58,
+        58,
+        14
+      ],
+      "max_equity_dd_pct": 62.21949,
+      "min_annual_pf": 0.85944
+    },
+    {
+      "name": "base1_r4",
+      "terminal_ratio_by_reset": [
+        0.03365,
+        0.35797,
+        0.38993,
+        16.71701
+      ],
+      "additional_baskets_by_reset": [
+        -85,
+        -8,
+        -36,
+        125
+      ],
+      "max_equity_dd_pct": 61.04149,
+      "min_annual_pf": 0.64852
+    },
+    {
+      "name": "base3_r1",
+      "terminal_ratio_by_reset": [
+        0.59646,
+        0.43549,
+        0.42501,
+        0.98185
+      ],
+      "additional_baskets_by_reset": [
+        88,
+        198,
+        49,
+        6
+      ],
+      "max_equity_dd_pct": 62.40764,
+      "min_annual_pf": 0.90349
+    },
+    {
+      "name": "base3_r4",
+      "terminal_ratio_by_reset": [
+        0.04627,
+        0.43316,
+        0.42679,
+        9.43336
+      ],
+      "additional_baskets_by_reset": [
+        -58,
+        -4,
+        -33,
+        127
+      ],
+      "max_equity_dd_pct": 61.36735,
+      "min_annual_pf": 0.70626
+    },
+    {
+      "name": "base5_r1",
+      "terminal_ratio_by_reset": [
+        0.15695,
+        0.27271,
+        2.51533,
+        0.95662
+      ],
+      "additional_baskets_by_reset": [
+        76,
+        -54,
+        246,
+        4
+      ],
+      "max_equity_dd_pct": 63.2028,
+      "min_annual_pf": 0.79029
+    },
+    {
+      "name": "base5_r4",
+      "terminal_ratio_by_reset": [
+        0.23802,
+        0.28435,
+        0.7264,
+        1.22953
+      ],
+      "additional_baskets_by_reset": [
+        52,
+        -90,
+        43,
+        61
+      ],
+      "max_equity_dd_pct": 61.80495,
+      "min_annual_pf": 0.76141
+    },
+    {
+      "name": "base7_r1",
+      "terminal_ratio_by_reset": [
+        0.68418,
+        0.32058,
+        9.93309,
+        0.91585
+      ],
+      "additional_baskets_by_reset": [
+        88,
+        19,
+        155,
+        1
+      ],
+      "max_equity_dd_pct": 61.21866,
+      "min_annual_pf": 0.9414
+    },
+    {
+      "name": "base7_r4",
+      "terminal_ratio_by_reset": [
+        0.61063,
+        0.32525,
+        0.88597,
+        3.0824
+      ],
+      "additional_baskets_by_reset": [
+        62,
+        -26,
+        66,
+        87
+      ],
+      "max_equity_dd_pct": 64.51121,
+      "min_annual_pf": 0.94662
+    },
+    {
+      "name": "h4r2",
+      "terminal_ratio_by_reset": [
+        0.86476,
+        0.48509,
+        0.95468,
+        1.00126
+      ],
+      "additional_baskets_by_reset": [
+        28,
+        34,
+        41,
+        1
+      ],
+      "max_equity_dd_pct": 56.93663,
+      "min_annual_pf": 1.03605
+    },
+    {
+      "name": "h4r4",
+      "terminal_ratio_by_reset": [
+        0.65237,
+        0.41693,
+        0.42654,
+        2.2166
+      ],
+      "additional_baskets_by_reset": [
+        28,
+        30,
+        -21,
+        55
+      ],
+      "max_equity_dd_pct": 60.59374,
+      "min_annual_pf": 0.79927
+    },
+    {
+      "name": "late1",
+      "terminal_ratio_by_reset": [
+        0.06702,
+        0.26405,
+        0.35244,
+        2.90749
+      ],
+      "additional_baskets_by_reset": [
+        62,
+        -81,
+        1,
+        120
+      ],
+      "max_equity_dd_pct": 63.52324,
+      "min_annual_pf": 0.69103
+    },
+    {
+      "name": "late13",
+      "terminal_ratio_by_reset": [
+        0.69374,
+        0.62843,
+        0.55603,
+        14.26811
+      ],
+      "additional_baskets_by_reset": [
+        31,
+        45,
+        9,
+        62
+      ],
+      "max_equity_dd_pct": 56.16356,
+      "min_annual_pf": 0.94657
+    },
+    {
+      "name": "late17",
+      "terminal_ratio_by_reset": [
+        0.9992,
+        0.81488,
+        0.94995,
+        0.86658
+      ],
+      "additional_baskets_by_reset": [
+        7,
+        22,
+        25,
+        5
+      ],
+      "max_equity_dd_pct": 56.70139,
+      "min_annual_pf": 0.97915
+    },
+    {
+      "name": "late21",
+      "terminal_ratio_by_reset": [
+        1.23692,
+        0.54012,
+        2.67241,
+        0.92394
+      ],
+      "additional_baskets_by_reset": [
+        12,
+        52,
+        68,
+        15
+      ],
+      "max_equity_dd_pct": 54.40875,
+      "min_annual_pf": 1.01283
+    },
+    {
+      "name": "late5",
+      "terminal_ratio_by_reset": [
+        0.16472,
+        0.26667,
+        0.50612,
+        0.82187
+      ],
+      "additional_baskets_by_reset": [
+        31,
+        -46,
+        69,
+        37
+      ],
+      "max_equity_dd_pct": 65.9045,
+      "min_annual_pf": 0.82965
+    },
+    {
+      "name": "late9",
+      "terminal_ratio_by_reset": [
+        0.6104,
+        0.27315,
+        0.3538,
+        1.90444
+      ],
+      "additional_baskets_by_reset": [
+        44,
+        -48,
+        24,
+        69
+      ],
+      "max_equity_dd_pct": 62.31865,
+      "min_annual_pf": 0.81005
+    }
+  ],
+  "limitations": [
+    "All annual resets independent, path B, costs 1x; NOT continuous account replay",
+    "2026 partial through 2026-11-13",
+    "No trade-level PnL or accepted timestamp archive in GitHub yet; cooldown model cannot be backtested from these totals",
+    "No FP Markets native tick or market capacity verification",
+    "All tested model configurations are in-sample, not a pristine holdout"
+  ],
+  "research_only": true,
+  "live_authority": false
+}
