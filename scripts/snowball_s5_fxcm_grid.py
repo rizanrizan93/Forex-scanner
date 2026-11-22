@@ -93,7 +93,7 @@ def features(d):
         o=("bo","first"),h=("bh","max"),l=("bl","min"),c=("bc","last"),n=("bc","count"))
     m.loc[m.n!=5,["o","h","l","c"]]=np.nan
     m["atr"]=pd.concat([m.h-m.l,(m.h-m.c.shift()).abs(),
-         (m.l-m.c.shift()).abs()],axis=1).max(axis=1,min_count=1).ewm(
+         (m.l-m.c.shift()).abs()],axis=1).max(axis=1).ewm(
              alpha=1/14,adjust=False,min_periods=14).mean()
     m["ema20"]=m.c.ewm(span=20,adjust=False,min_periods=20).mean()
     m["ema50"]=m.c.ewm(span=50,adjust=False,min_periods=50).mean()
