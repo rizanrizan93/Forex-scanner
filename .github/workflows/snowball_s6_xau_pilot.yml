@@ -1,0 +1,38 @@
+name: Snowball S6 XAU Bid Ask 3456 Models Pilot
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths: ['.github/workflows/snowball_s6_xau_pilot.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2019,2024]
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - name: Static consistency check and model count
+        run: python scripts/snowball_s6_xau_grid.py --selftest
+      - name: Research-only XAU bid ask replay with four nominal cash tiers
+        run: python scripts/snowball_s6_xau_grid.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: s6-xau-pilot-${{ matrix.year }}
+          path: artifacts/snowball_s6/s6_xau_${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 90
