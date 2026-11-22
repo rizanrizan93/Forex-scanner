@@ -1,0 +1,143 @@
+{
+  "study_id": "RIZAN_BOOTSTRAP125_SNOWBALL_USD10B_R4_20261122",
+  "research_only": true,
+  "live_permissions": false,
+  "currency": "USD",
+  "starting_cash": 100,
+  "external_contributions": 0,
+  "goal_terminal_cash": 10000000000,
+  "goal_status": "NOT_ACHIEVED_OR_VALIDATED",
+  "baseline": {
+    "name": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114",
+    "start": "2019-01-01",
+    "end_exclusive": "2026-11-13T03:00:01Z",
+    "continuous_account": true,
+    "starting_cash": 100,
+    "terminal_balance": 1662133293.08,
+    "max_floating_dd_pct": 56.67,
+    "basket_count": 1047,
+    "model_leverage_reference": 200,
+    "baseline_status": "RESEARCH_ONLY_SIMULATED_M1_NOT_BROKER_TICKS",
+    "source_hashes": {
+      "XAUUSD": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "EURUSD": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "BTCUSD": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51"
+    }
+  },
+  "phases": [
+    {
+      "index": 1,
+      "id": "SEED_100_TO_125",
+      "from_usd": 100,
+      "to_usd": 125,
+      "capital_growth_multiple": 1.25,
+      "objective": "Decrease first-passage time while preserving EUR seed risk and broker minlot. BUY/SELL candidate lanes independently.",
+      "allowed_delta": [
+        "EURUSD BUY/SELL causal signal research only",
+        "independent M5 retest or sweep only when flat"
+      ],
+      "risk_reference": {
+        "planned_max_risk_per_trade_pct": 8,
+        "account_max_seed_positions": 1,
+        "margin_cap_pct": 50
+      }
+    },
+    {
+      "index": 2,
+      "id": "EARLY_GROWTH_125_TO_250",
+      "from_usd": 125,
+      "to_usd": 250,
+      "capital_growth_multiple": 2,
+      "objective": "Increase NET profitable baskets while preserving core Guard47 precedence and without double counting displaced V1 fills.",
+      "allowed_delta": [
+        "flat-only after-$125 addon entries",
+        "non-overlapping H1/M5 side-specific setups"
+      ],
+      "risk_reference": {
+        "planned_combined_portfolio_risk_pct": 20.75,
+        "margin_cap_pct": 50
+      }
+    },
+    {
+      "index": 3,
+      "id": "ACCELERATION_250_TO_1000",
+      "from_usd": 250,
+      "to_usd": 1000,
+      "capital_growth_multiple": 4,
+      "objective": "Increase net expectancy using staged entries and fixed total notional/risk across all child batches.",
+      "allowed_delta": [
+        "staged execution and conditional adds",
+        "adaptive exits only with matched PnL proof"
+      ],
+      "risk_reference": {
+        "planned_combined_portfolio_risk_pct": 20.75,
+        "margin_cap_pct": 50
+      }
+    },
+    {
+      "index": 4,
+      "id": "COMPOUND_1000_TO_10B",
+      "from_usd": 1000,
+      "to_usd": 10000000000,
+      "capital_growth_multiple": 10000000,
+      "objective": "Grow risk-adjusted cash curve with realistic cost, variable leverage, market depth and capacity stress.",
+      "allowed_delta": [
+        "net-expectancy improvements",
+        "portable liquidity-aware risk scaling",
+        "capacity envelope model"
+      ],
+      "risk_reference": {
+        "planned_combined_portfolio_risk_pct": 20.75,
+        "margin_cap_pct": 50
+      }
+    }
+  ],
+  "required_data_for_valid_upgrade": {
+    "same_corrected_prices_and_sha256": true,
+    "same_native_engine_and_full_ledger_parity": true,
+    "same_price_and_macro_point_in_time_eligibility": true,
+    "annual_resets_2019_through_2026": true,
+    "one_continuous_account_2019_through_cutoff": true,
+    "intraminute_paths": [
+      "A",
+      "B"
+    ],
+    "cost_scenarios": [
+      1,
+      2
+    ],
+    "no_lookahead": true,
+    "broker_min_lot_and_margin": true,
+    "stress_2024_seed_failure_must_be_addressed": true
+  },
+  "evaluation_metrics_each_phase": [
+    "first_passage_utc",
+    "time_to_tier_hours",
+    "reached_fraction",
+    "basket_fills",
+    "profitable_baskets",
+    "net_profit_usd",
+    "net_expectancy_usd",
+    "profit_factor",
+    "max_floating_drawdown_pct",
+    "max_margin_usage_pct",
+    "lost_frozen_core_opportunities",
+    "average_realized_cost_usd",
+    "cost_2x_survival"
+  ],
+  "risk_acceptance_research_target": {
+    "base_max_floating_dd_pct_lte": 56.67,
+    "stress_max_floating_dd_pct_lt": 60,
+    "growth_budget_remains_unchanged": true,
+    "seed_planned_risk_remains_unchanged": true,
+    "no_margin_rule_relaxation": true,
+    "do_not_promote_from_same_history_overfit": true
+  },
+  "evidence_status": {
+    "corrected_frozen_2019_2026_source_mounted": false,
+    "full_native_replay_parity_completed": false,
+    "matched_new_challenger_replay_completed": false,
+    "terminal_usd10b_scenario_completed": false,
+    "note": "Past R3 208 off-policy prototypes failed parity and are explicitly rejected. No 10B equity replay run currently exists."
+  }
+}
