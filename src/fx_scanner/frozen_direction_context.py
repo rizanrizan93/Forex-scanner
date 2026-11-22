@@ -70,10 +70,37 @@ def context(bars,tf,*,now,observed_at,market_fresh):
     buy=sum(v==1 for v in votes.values());sell=sum(v==-1 for v in votes.values())
     last="BUY" if buy>=4 and sell<=1 else "SELL" if sell>=4 and buy<=1 else "NETRAL"
     age=(now-f.index[-1]).total_seconds();pub=(now-at).total_seconds()
-    fresh=bool(market_fresh and not session_closed(now.to_pydatetime()) and 0<=age<=MAX_AGE[tf] and 0<=pub<=600)
+    # A decision for the NEXT completed candle must expire at that candle\u0027s close.
+    # Without this guard, a missing H1 update could keep an old SELL/BUY active
+    # for up to 70 minutes after the predicted candle already closed.
+    target_close=f.index[-1]+pd.Timedelta(minutes=TFS[tf])
+    fresh=bool(market_fresh and not session_closed(now.to_pydatetime()) and 0<=age<=MAX_AGE[tf] and 0<=pub<=600 and now<target_close)
     reason=("Konteks searah; hipotesis close berikutnya, bukan output model frozen." if last!="NETRAL" else "Bukti struktur/momentum belum selaras.")
-    if not fresh:reason="Pasar tutup atau data kedaluwarsa; arah terakhir hanya referensi historis."
+    if not fresh:reason="Pasar tutup, candle target telah berakhir, atau data kedaluwarsa; arah terakhir hanya referensi historis."
     return {**base,"bias":last if fresh else "WAIT DATA","forecast":last if fresh and last!="NETRAL" else "WAIT","last_bias":last,"buy":buy,"sell":sell,"closed_at":f.index[-1].isoformat(),"fresh":fresh,"reason":reason,"checks":[{"Faktor":k,"Arah":"BUY" if v==1 else "SELL" if v==-1 else "NETRAL"} for k,v in votes.items()],"last_close":float(c.iloc[-1]),"atr":a}
+
+
+def next_candle_prediction(report, tf, *, now):
+    """Read-only UI contract: only a current, unexpired technical hypothesis.
+
+    Benchmark accuracy locks are not live prediction models. The target is
+    the next completed candle CLOSE compared with the latest closed CLOSE.
+    """
+    base={"headline":"WAIT DATA","target_at":None,"kind":"UNAVAILABLE"}
+    if tf not in TFS or not report.get("fresh"):
+        return base
+    if report.get("forecast") not in ("BUY","SELL"):
+        return {**base,"headline":"WAIT · NETRAL","kind":"TECHNICAL_RESEARCH"}
+    try:
+        closed=pd.Timestamp(report["closed_at"]);current=pd.Timestamp(now)
+        if closed.tzinfo is None or current.tzinfo is None:
+            return base
+        target=closed+pd.Timedelta(minutes=TFS[tf])
+        if not closed<=current<target:
+            return base
+    except (TypeError,ValueError,KeyError,OverflowError):
+        return base
+    return {"headline":report["forecast"],"target_at":target.isoformat(),"kind":"TECHNICAL_RESEARCH"}
 
 def horizon_side(reports, tf):
     """Independent directional hypothesis for selected horizon only."""
