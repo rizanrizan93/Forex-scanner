@@ -1,0 +1,63 @@
+name: Snowball S5 EUR 2023 Repair and 2012-2025 Aggregate
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths: ['.github/workflows/snowball_s5_repair_2023_aggregate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  repair_2023:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - run: python scripts/snowball_s5_fxcm_grid.py --selftest
+      - name: Re-evaluate 2023 with empty-source-week censoring
+        run: python scripts/snowball_s5_fxcm_grid.py --year 2023
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snowball-s5-eur-2023-repaired
+          path: artifacts/snowball_s5/s5_eurusd_2023.json
+          if-no-files-found: error
+          retention-days: 90
+  aggregate:
+    needs: repair_2023
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - name: Download 13 successful frozen original year shards (not re-fit)
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45024655030
+          github-token: ${{ github.token }}
+          pattern: snowball-s5-eur-*
+          path: /tmp/snowball_s5
+          merge-multiple: true
+      - name: Download repaired 2023 shard
+        uses: actions/download-artifact@v4
+        with:
+          pattern: snowball-s5-eur-2023-repaired
+          path: /tmp/snowball_s5
+          merge-multiple: true
+      - name: Aggregate predeclared train/validation/retrospective folds
+        run: python scripts/snowball_s5_fxcm_grid.py --aggregate --root /tmp/snowball_s5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snowball-s5-eur-2012-2025-aggregate-repair2023
+          path: artifacts/snowball_s5/s5_eurusd_aggregate.json
+          if-no-files-found: error
+          retention-days: 90
