@@ -1,0 +1,49 @@
+name: R27 Coverage extension precision floors
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/r27_coverage_extension.py','.github/workflows/r27_coverage_extension.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    strategy:
+      fail-fast: false
+      matrix:
+        tf: ['1h','4h','macro']
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - if: ${{ matrix.tf == '1h' || matrix.tf == '4h' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - if: ${{ matrix.tf == 'macro' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - run: python scripts/r27_coverage_extension.py --lane ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r27-coverage-${{ matrix.tf }}
+          path: artifacts/r27-*.json
+          if-no-files-found: warn
+          retention-days: 90
