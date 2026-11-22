@@ -1,0 +1,35 @@
+name: Research BTC XAU Bottom R4 H4 (read only)
+
+on:
+  push:
+    branches:
+      - research/btc-xau-bottom-r4-h4-20261123
+    paths:
+      - scripts/research_btc_xau_bottom_r4.py
+      - .github/workflows/research-btc-xau-bottom-r4-h4.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile study (syntax)
+        run: python -m py_compile scripts/research_btc_xau_bottom_r4.py
+      - name: Run historical H4 bottom-formation study
+        run: python scripts/research_btc_xau_bottom_r4.py
+      - name: Archive research evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-xau-bottom-r4-h4
+          path: research_outputs/bottom_r4/
+          if-no-files-found: warn
+          retention-days: 30
