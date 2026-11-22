@@ -1,0 +1,31 @@
+name: RIZAN S9 Incremental Profitable Basket Audit (Read Only)
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths:
+      - 'research/RIZAN_ADDON_ALPHA_S9_NATIVE_ARCHIVE_EVIDENCE.json'
+      - 'scripts/snowball_s9_addon_alpha_gate.py'
+      - '.github/workflows/snowball_s9_addon_alpha_audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive_and_scheduler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate core-priority shared-risk scheduler and rejection of future conflicts
+        run: python scripts/snowball_s9_addon_alpha_gate.py --selftest
+      - name: Audit original 87 native replay cases, 20 addon policies across four reset years
+        run: python scripts/snowball_s9_addon_alpha_gate.py --archive-audit
+      - name: Preserve result as a research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rizan-s9-addon-growth-20-native-archive-audit
+          path: artifacts/snowball_s9/s9_archive_audit.json
+          if-no-files-found: error
+          retention-days: 90
