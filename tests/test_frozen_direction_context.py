@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 import pandas as pd
-from fx_scanner.frozen_direction_context import context,horizon_plan,horizon_side,build_context_packet,read_context_packet,watch_zone
+from fx_scanner.frozen_direction_context import TFS,context,horizon_plan,horizon_side,build_context_packet,read_context_packet,watch_zone,next_candle_prediction
 
 def sample(now,side=1):
     i=pd.date_range(end=now,periods=40,freq="h")
@@ -75,3 +75,55 @@ def test_historical_zone_preserved_but_not_active_and_no_future():
     assert watch_zone(None,r) is None
     assert watch_zone(f,{**r,"last_bias":"NETRAL"}) is None
     assert watch_zone(f.tail(19),r) is None
+
+
+def test_each_timeframe_expires_exactly_at_target_candle_close():
+    base=datetime(2026,11,18,12,tzinfo=UTC)
+    for tf,minutes in TFS.items():
+        i=pd.date_range(end=base,periods=40,freq=f"{minutes}min")
+        closes=[3000+2*k for k in range(40)]
+        f=pd.DataFrame({"open":[x-1 for x in closes],"close":closes,
+                        "high":[x+2 for x in closes],"low":[x-2 for x in closes]},index=i)
+        before=base+timedelta(minutes=minutes,seconds=-1)
+        active=context(f,tf,now=before,observed_at=before,market_fresh=True)
+        p=next_candle_prediction(active,tf,now=before)
+        assert active["forecast"]=="BUY" and active["fresh"]
+        assert p["headline"]=="BUY" and p["kind"]=="TECHNICAL_RESEARCH"
+        assert pd.Timestamp(p["target_at"])==pd.Timestamp(base+timedelta(minutes=minutes))
+        expired=context(f,tf,now=base+timedelta(minutes=minutes),
+                        observed_at=base+timedelta(minutes=minutes),market_fresh=True)
+        assert expired["forecast"]=="WAIT" and not expired["fresh"]
+        assert next_candle_prediction(expired,tf,now=before)["headline"]=="WAIT DATA"
+        # Even a mislabelled fresh payload cannot revive an expired forecast.
+        assert next_candle_prediction(active,tf,now=base+timedelta(minutes=minutes))["headline"]=="WAIT DATA"
+
+
+def test_historical_sell_score_never_claims_live_sell():
+    last=datetime(2026,11,20,22,tzinfo=UTC)
+    f=sample(last,side=-1)
+    now=datetime(2026,11,23,0,tzinfo=UTC)
+    r=context(f,"H1",now=now,observed_at=now,market_fresh=True)
+    assert r["sell"]>=4 and r["last_bias"]=="SELL"
+    assert r["forecast"]=="WAIT" and not r["fresh"]
+    assert next_candle_prediction(r,"H1",now=now)=={
+        "headline":"WAIT DATA","target_at":None,"kind":"UNAVAILABLE"
+    }
+
+
+def test_display_wait_for_neutral_or_missing_data():
+    now=datetime(2026,11,18,12,tzinfo=UTC)
+    assert next_candle_prediction({"fresh":True,"forecast":"WAIT"},"H1",now=now)["headline"]=="WAIT · NETRAL"
+    assert next_candle_prediction({"fresh":True,"forecast":"SELL","closed_at":"bad"},"H1",now=now)["headline"]=="WAIT DATA"
+    assert next_candle_prediction({"fresh":True,"forecast":"SELL","closed_at":now.isoformat()},"M1",now=now)["headline"]=="WAIT DATA"
+
+
+def test_aggregated_h1_requires_all_60_closed_m1_bars():
+    from fx_scanner.frozen_direction_research_dashboard import reference_bars
+    index=pd.date_range("2026-11-18 12:00",periods=60,freq="min",tz="UTC")
+    f=pd.DataFrame({"open":3000.,"high":3001.,"low":2999.,"close":3000.},index=index)
+    cutoff=pd.Timestamp("2026-11-18 13:00",tz="UTC")
+    assert reference_bars(f.iloc[:-1],"H1",cutoff).empty
+    complete=reference_bars(f,"H1",cutoff)
+    assert len(complete)==1 and complete.index[0]==cutoff
+    assert reference_bars(f.drop(index[23]),"H1",cutoff).empty
+    assert reference_bars(f,"H1",cutoff-pd.Timedelta(seconds=1)).empty
