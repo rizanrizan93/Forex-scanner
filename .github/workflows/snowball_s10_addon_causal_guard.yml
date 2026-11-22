@@ -1,0 +1,30 @@
+name: RIZAN S10 Profitable Addon Causal Cooldown Guard Read Only
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths:
+      - '.github/workflows/snowball_s10_addon_causal_guard.yml'
+      - 'scripts/snowball_s10_causal_addon_guard.py'
+      - 'research/RIZAN_S10_NATIVE_ADDON_FOUR_YEAR_DEEP_AUDIT.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify_s10:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify causal 30-day loss-streak add-on gate and future core conflicts
+        run: python scripts/snowball_s10_causal_addon_guard.py --selftest
+      - name: Reaudit 20 native add-on configurations over 2020 2021 2025 2026 annual resets
+        run: python scripts/snowball_s10_causal_addon_guard.py --audit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rizan-s10-addon-causal-guard-frozen-native-archive
+          path: artifacts/snowball_s10/s10_old_native_four_year_audit.json
+          if-no-files-found: error
+          retention-days: 90
