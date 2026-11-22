@@ -1,0 +1,65 @@
+name: Snowball S6 XAU 3456 Models Annual 2012-2025
+on:
+  push:
+    branches: ['research/bootstrap125-snowball-r2-20261122']
+    paths: ['.github/workflows/snowball_s6_xau_full.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: snowball-s6-xau-2012-2025
+  cancel-in-progress: false
+jobs:
+  annual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025]
+    env:
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - run: python scripts/snowball_s6_xau_grid.py --selftest
+      - name: 3456 XAU bid ask causal strategies, four theoretical cash tiers
+        run: python scripts/snowball_s6_xau_grid.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snowball-s6-xau-${{ matrix.year }}
+          path: artifacts/snowball_s6/s6_xau_${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: annual
+    if: always() && needs.annual.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: snowball-s6-xau-*
+          path: /tmp/snowball_s6
+          merge-multiple: true
+      - name: Frozen training gates 2012-18, validation 2019-22, retrospective 2023-25
+        run: python scripts/snowball_s6_xau_grid.py --aggregate --root /tmp/snowball_s6
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snowball-s6-xau-2012-2025-aggregate
+          path: artifacts/snowball_s6/s6_xau_aggregate.json
+          if-no-files-found: warn
+          retention-days: 90
