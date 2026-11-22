@@ -1,0 +1,93 @@
+name: ZQ2 XAU and BZ1 BTC zone tournament plus BTC B2 D1
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths: ['scripts/zq2_bz1_reaction_tournament.py','scripts/btc_b2_d1_crossasset_path.py','.github/workflows/zq2_bz1_b2.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  zones:
+    if: github.ref == 'refs/heads/research/r91-early-warning-m1-20261121'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {asset: XAU, tf: H1}
+          - {asset: XAU, tf: H4}
+          - {asset: XAU, tf: D1}
+          - {asset: XAU, tf: W1}
+          - {asset: BTC, tf: H1}
+          - {asset: BTC, tf: H4}
+    env:
+      PYTHONPATH: 'frozen-btc/src:src:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 360bb2213a4f81f8675ad446cce8d0040cd332a9
+          path: frozen-btc
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        if: matrix.asset == 'XAU'
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - run: python scripts/zq2_bz1_reaction_tournament.py --asset ${{ matrix.asset }} --tf ${{ matrix.tf }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zq2-${{ matrix.asset }}-${{ matrix.tf }}
+          path: artifacts/zq2-*.json
+          if-no-files-found: warn
+          retention-days: 90
+  btc_d1:
+    if: github.ref == 'refs/heads/research/r91-early-warning-m1-20261121'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'frozen-btc/src:src:.'
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 360bb2213a4f81f8675ad446cce8d0040cd332a9
+          path: frozen-btc
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44970328847
+          github-token: ${{ github.token }}
+          name: r281-ecb
+          path: /tmp/r281
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - run: python scripts/btc_b2_d1_crossasset_path.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc-b2-d1
+          path: artifacts/btc-b2-d1.json
+          if-no-files-found: warn
+          retention-days: 90
