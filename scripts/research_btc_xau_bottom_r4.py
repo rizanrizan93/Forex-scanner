@@ -325,6 +325,29 @@ def run_asset(asset,cfg):
         "watch_count":len(candidate_idx),"studies":study}
 
 
+def paired_watch_audit(payload):
+    # Descriptive comparisons on identical watch events. Models can have
+    # distinct entry/exit times, and selecting only confirmed events biases
+    # the paired sample; this is NOT an unbiased causal effect estimate.
+    out=[]
+    for asset in payload["assets"]:
+        studies=asset["studies"]
+        for split in ("development","validation"):
+            baseline={e["watch_datetime"]:e for e in studies["SWEEP"][split]["trades"]
+                      if e.get("rejected") is None}
+            for model in MODELS[1:]:
+                confirmed=[e for e in studies[model][split]["trades"]
+                           if e.get("rejected") is None and e["watch_datetime"] in baseline]
+                delta=[e["net_R"]-baseline[e["watch_datetime"]]["net_R"] for e in confirmed]
+                out.append({
+                    "asset":asset["asset"],"split":split,"model":model,"matched":len(delta),
+                    "avg_delta_R":round(statistics.fmean(delta),3) if delta else None,
+                    "fraction_better_pct":round(100*sum(z>0 for z in delta)/len(delta),1) if delta else None,
+                    "years":sorted(set(int(e["watch_datetime"][:4]) for e in confirmed))
+                })
+    return out
+
+
 def render_report(payload):
     head=[
        "# RIZAN — Bottom Formation Detection R4 (H4)",
@@ -355,6 +378,17 @@ def render_report(payload):
                   s.get("tp","-"),s.get("sl","-"),s.get("mean_net_R","-"),
                   s.get("new_low_30d_pct","-"),s.get("avg_stop_risk_pct","-"),
                   s.get("avg_confirmation_lag_days","-")])+" |")
+    head += ["", "## Paired watch-event audit (descriptive, selected matches)",
+             "Difference in realized net R between confirmed entry and immediate SWEEP entry for identical watch-date events. Not a causal test; non-confirming watch events do not contribute.",
+             "",
+             "| Asset | Split | Model | Matched watches | Mean ΔR versus SWEEP | Improved fraction | Years represented |",
+             "|---|---|---|---:|---:|---:|---|"]
+    for row in payload["paired_audit"]:
+        head.append("| "+" | ".join(str(z) for z in [
+             row["asset"],row["split"],row["model"],row["matched"],
+             row["avg_delta_R"] if row["avg_delta_R"] is not None else "-",
+             row["fraction_better_pct"] if row["fraction_better_pct"] is not None else "-",
+             ",".join(map(str,row["years"])) if row["years"] else "-"])+" |")
     head += ["", "## Data quality"]
     for a in payload["assets"]:
         q=a["quality"]
@@ -382,6 +416,7 @@ def main():
         "assets":[],"models":MODELS}
     for asset,cfg in SOURCES.items():
         output["assets"].append(run_asset(asset,cfg))
+    output["paired_audit"]=paired_watch_audit(output)
     os.makedirs("research_outputs/bottom_r4",exist_ok=True)
     with open("research_outputs/bottom_r4/results.json","w") as f:
         json.dump(output,f,indent=2)
