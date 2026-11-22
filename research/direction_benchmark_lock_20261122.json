@@ -1,0 +1,142 @@
+{
+  "version": "RIZAN directional experimental benchmark lock 2026-11-22",
+  "research_only": true,
+  "live_permission": false,
+  "zone_permission": false,
+  "policy": "Retain highest reviewed historical side accuracy among available direction-close candidates as read-only reference; not necessarily statistically strongest or globally exhaustive. No claim frozen independent single-head precision when numbers depend on conflict resolution. Keep original policy, other head, annual config and data/filter definitions. New challenger must use matched samples and preselected criteria, with new forward evidence before real deployment. Historical folds reused; no live action. Do not overwrite this snapshot; create versioned successor if new result verified.",
+  "entries": [
+    {
+      "tf": "H1",
+      "side": "BUY",
+      "version": "R25",
+      "lane": "regime_specialist",
+      "accuracy": 0.530638852672751,
+      "correct": 407,
+      "n": 767,
+      "run": 44964431677,
+      "artifact": 14731141368,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44964431677",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44964431677/artifacts/14731141368",
+      "notes": "2023–2026; coverage combined 7.656%; no forward pass"
+    },
+    {
+      "tf": "H1",
+      "side": "SELL",
+      "version": "R11",
+      "lane": "selected sell rule",
+      "accuracy": 0.5540540540540541,
+      "correct": 164,
+      "n": 296,
+      "run": 44907879558,
+      "artifact": 14709146843,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44907879558",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44907879558/artifacts/14709146843",
+      "notes": "2024–2026; exploratory; negative estimated net P&L"
+    },
+    {
+      "tf": "H4",
+      "side": "BUY",
+      "version": "R25",
+      "lane": "regime_specialist",
+      "accuracy": 0.592057761732852,
+      "correct": 164,
+      "n": 277,
+      "run": 44964431677,
+      "artifact": 14730673399,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44964431677",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44964431677/artifacts/14730673399",
+      "notes": "2023–2026; 2026 12/28; unstable"
+    },
+    {
+      "tf": "H4",
+      "side": "SELL",
+      "version": "R11",
+      "lane": "selected sell rule",
+      "accuracy": 0.5563380281690141,
+      "correct": 79,
+      "n": 142,
+      "run": 44907879558,
+      "artifact": 14709146843,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44907879558",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44907879558/artifacts/14709146843",
+      "notes": "2024–2026; exploratory; negative estimated net P&L"
+    },
+    {
+      "tf": "D1",
+      "side": "BUY",
+      "version": "R16",
+      "lane": "complex",
+      "accuracy": 0.548891,
+      "correct": null,
+      "n": 1217,
+      "run": 44921819655,
+      "artifact": 14712979950,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44921819655",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44921819655/artifacts/14712979950",
+      "notes": "2019–2026; 54.8891%; see original selected annual model; not a fixed production rule"
+    },
+    {
+      "tf": "D1",
+      "side": "SELL",
+      "version": "R18",
+      "lane": "independent",
+      "accuracy": 0.5183098591549296,
+      "correct": 184,
+      "n": 355,
+      "run": 44957921767,
+      "artifact": 14727659960,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44957921767",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44957921767/artifacts/14727659960",
+      "notes": "2018–2026; R9.8 higher retrospective test-selected candidate excluded"
+    },
+    {
+      "tf": "W1",
+      "side": "BUY",
+      "version": "R24",
+      "lane": "crossover_cot_buy_news_sell resolved",
+      "accuracy": 0.6585365853658537,
+      "correct": 54,
+      "n": 82,
+      "run": 44962650523,
+      "artifact": 14730481343,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44962650523",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44962650523/artifacts/14730481343",
+      "notes": "common sample through April 2026; dependent on opposite head and conflict WAIT"
+    },
+    {
+      "tf": "W1",
+      "side": "SELL",
+      "version": "R24",
+      "lane": "crossover_news_buy_cot_sell resolved",
+      "accuracy": 0.625,
+      "correct": 25,
+      "n": 40,
+      "run": 44962650523,
+      "artifact": 14730481343,
+      "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44962650523",
+      "artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/44962650523/artifacts/14730481343",
+      "notes": "common sample through April 2026; dependent on opposite head and conflict WAIT"
+    }
+  ],
+  "preserved_benchmarks": {
+    "W1_R20": {
+      "run": 44958824668,
+      "artifact": 14728158324,
+      "buy": 0.6037735849056604,
+      "sell": 0.5428571428571428,
+      "coverage": 0.612529
+    },
+    "W1_R23_news": {
+      "run": 44962495112,
+      "artifact": 14730555692,
+      "buy": 0.631578947368421,
+      "sell": 0.4539877300613497
+    },
+    "H4_R26": {
+      "run": 44964862206,
+      "artifact": 14731496029,
+      "path_sell": 0.5265822784810127,
+      "hybrid_buy": 0.5851648351648352
+    }
+  }
+}
