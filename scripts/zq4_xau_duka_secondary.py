@@ -28,11 +28,19 @@ def acquire(year):
             assert list(a.columns)==["timestamp","open","high","low","close"],name
             times=pd.to_datetime(pd.to_numeric(a.pop("timestamp"),errors="raise"),unit="ms",utc=True)
             assert times.is_monotonic_increasing and times.is_unique
-            assert times[0]==pd.Timestamp(f"{y}-{m:02d}-01",tz="UTC")
-            if not (y==2026 and m==8):
+            start=pd.Timestamp(f"{y}-{m:02d}-01",tz="UTC")
+            finish=start+pd.offsets.MonthBegin(1)
+            assert start<=times.iloc[0]<finish and start<times.iloc[-1]<finish
+            # Up to May 2026 vendor padded whole calendar months; from Jun 2026
+            # it switched to trading-session rows. Both are valid when explicit.
+            if y<2026 or (y==2026 and m<6):
                 days=pd.Period(f"{y}-{m:02d}").days_in_month
-                assert len(a)==days*1440,(name,len(a),days*1440)
-                assert times.iloc[-1]==pd.Timestamp(f"{y}-{m:02d}-01",tz="UTC")+pd.Timedelta(days=days)-pd.Timedelta(minutes=1)
+                assert times.iloc[0]==start and len(a)==days*1440,(name,len(a),days*1440)
+                assert times.iloc[-1]==finish-pd.Timedelta(minutes=1)
+            elif m in (6,7):
+                assert len(a)>=30000 and len(a)<45000,(name,len(a))
+            else:
+                assert m==8 and len(a)>=20000,(name,len(a))
             a.index=times
             frames.append(a.rename(columns={"open":"o","high":"h","low":"l","close":"c"}))
             hashes[name]=hashlib.sha256(content).hexdigest()
