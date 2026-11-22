@@ -71,7 +71,8 @@ def render_frozen_direction_research():
     def panel():
         frames,reports,now=read_sources(int(datetime.now(UTC).timestamp()//30))
         side=dominant(reports)
-        st.metric("Bias dominan · konteks aktual",side)
+        st.metric("Bias dominan · data segar",side)
+        st.metric("Status pemantauan", "PASAR TUTUP" if session_closed(now) else "MENUNGGU DATA / KONFIRMASI" if side.startswith("WAIT") else "PANTAU "+side)
         st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · update 60 detik")
         if session_closed(now):st.warning("Pasar XAU umumnya tutup akhir pekan. WAIT; arah terakhir tidak berlaku sebagai sinyal live.")
         elif side.startswith("WAIT"):st.info("Menunggu data segar atau keselarasan H1/H4/D1. W1 tidak boleh berlawanan jika segar.")
@@ -81,12 +82,13 @@ def render_frozen_direction_research():
             with st.container(border=True):
                 st.markdown("**"+tf+" · prediksi close berikutnya**")
                 a,b,c=st.columns(3)
-                a.metric("Bias aktual",r["forecast"] if r["fresh"] else "WAIT")
-                b.metric("BUY",f"{r['buy']}/5" if r["fresh"] and r["buy"] is not None else "—")
-                c.metric("SELL",f"{r['sell']}/5" if r["fresh"] and r["sell"] is not None else "—")
+                a.metric("Bias candle terakhir",r["last_bias"] or "DATA KURANG")
+                b.metric("BUY · skor bukti",f"{r['buy']}/5" if r["buy"] is not None else "—")
+                c.metric("SELL · skor bukti",f"{r['sell']}/5" if r["sell"] is not None else "—")
+                st.caption("Prediksi aktif: "+r["forecast"]+" · "+("data segar" if r["fresh"] else "historis saja / belum tersedia"))
                 if r.get("closed_at"):
                     st.caption("Candle tertutup "+pd.Timestamp(r["closed_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")+" · "+r.get("source",""))
-                if not r["fresh"] and r["last_bias"]:st.caption("Bias historis terakhir (bukan prediksi sekarang): "+r["last_bias"])
+                if not r["fresh"] and r["last_bias"]:st.caption("Skor dan bias di atas hanya berdasarkan candle terakhir yang tersedia; bukan prediksi aktif.")
                 st.caption(r["reason"])
                 if r["checks"]:
                     with st.expander("Bukti teknikal "+tf):st.dataframe(r["checks"],hide_index=True)
