@@ -1,0 +1,113 @@
+name: RIZAN R11 Sequential Addon Alpha Research Only
+on:
+  push:
+    branches: ['research/r11-profitable-addon-alpha']
+    paths:
+      - '.github/workflows/r11_profitable_addon_alpha.yml'
+      - 'research/r11_profitable_addon_alpha/engine.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r11-profitable-addon-alpha
+  cancel-in-progress: false
+env:
+  OMP_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+jobs:
+  native-source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Audit immutable original source and missing exact inputs
+        run: python3 research/r11_profitable_addon_alpha/native_audit.py
+      - name: Compile recovered original C# replay unchanged
+        run: dotnet build research/r11_profitable_addon_alpha/native_original/native_replay/NovemberReplay.csproj -c Release -o artifacts/r11/native_build > artifacts/r11/native_build.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r11-native-source-audit
+          path: |
+            artifacts/r11/native_input_audit.json
+            artifacts/r11/native_build.log
+          retention-days: 90
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r11_profitable_addon_alpha/requirements.txt
+      - run: pip install -r research/r11_profitable_addon_alpha/requirements.txt
+      - name: Causality intrabar cost and guard integrity tests
+        run: |
+          python research/r11_profitable_addon_alpha/engine.py --selftest
+          python scripts/snowball_s10_causal_addon_guard.py --selftest
+          python scripts/snowball_s10_causal_addon_guard.py --audit
+      - name: Real 2021 bid ask pilot 256 policies four scenarios
+        run: python research/r11_profitable_addon_alpha/engine.py --year 2021 --pilot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r11-pilot-2021
+          path: artifacts/r11/*pilot*
+          retention-days: 90
+  annual:
+    needs: pilot
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r11_profitable_addon_alpha/requirements.txt
+      - run: pip install -r research/r11_profitable_addon_alpha/requirements.txt
+      - name: Annual screen and retain all failures and simulated fills
+        run: python research/r11_profitable_addon_alpha/engine.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r11-year-${{ matrix.year }}
+          path: artifacts/r11/
+          retention-days: 90
+  aggregate:
+    needs: annual
+    if: always() && needs.annual.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r11_profitable_addon_alpha/requirements.txt
+      - run: pip install -r research/r11_profitable_addon_alpha/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r11-year-*
+          path: /tmp/r11-annual
+          merge-multiple: true
+      - name: Fixed gates expanding walk forward and year consistency
+        run: python research/r11_profitable_addon_alpha/engine.py --aggregate /tmp/r11-annual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r11-final-selection
+          path: artifacts/r11/aggregate.json
+          retention-days: 90
