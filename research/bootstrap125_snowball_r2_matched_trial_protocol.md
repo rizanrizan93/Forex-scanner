@@ -4,7 +4,7 @@ Research only. No edits to frozen strategy, cBots, BUY050, broker, VPS, state, o
 
 ## Matched benchmark and no regressions
 
-Original immutable comparison: RIZAN_BOOTSTRAP125_V1_FROZEN_20261114, 14 Nov 2026, 2019–13 Nov 2026, $100 start, 1:200 simulated leverage, 20.75% growth budget, EUR M5 BUY seed risk <=8%, one position, two seed entries/day, growth handoff only when balance AND equity >=$125 and flat. Original archive SHA256 `6a92026bff80b81b41e7a2f76343fc31cc7aa0dcccde00b327dc663080904648`.
+Original immutable comparison: RIZAN_BOOTSTRAP125_V1_FROZEN_20261114, 14 Nov 2026, 2019–13 Nov 2026, $100 start, 1:200 simulated leverage, 20.75% growth budget, EUR M5 BUY seed risk <=8%, one position, two seed entries/day, growth handoff only when balance AND equity >=$125 and flat. Frozen report's *earlier frozen research packet* lists SHA256 `6a92026bff80b81b41e7a2f76343fc31cc7aa0dcccde00b327dc663080904648`; the separately distributed Library `RIZAN_BOOTSTRAP125_V1_FROZEN_20261114.zip` bytes verified SHA256 `0bd93f3f8ad3d64c3171a3fdd49d536b65fd9cfbf69d71e7740d685ac826488c`. Do not equate the two archive hashes.
 
 Historical re-audit in `research/bootstrap125_growth_r2_existing_replay_evidence.json`: **114 existing source-replay records**; only a derived matched archive audit, NOT a new candidate backtest. 8 annual resets; growth-only M5-G19.5 increases baskets in all 8 and balance in only 5; fails 2020/2023/2024. All 9 archived growth challengers fail no-worse-all-years. Since all share Frozen EUR seed, none accelerates $100→$125. The 2024 original seed handoff is 8 April, 98.63 days since Jan 1, so prioritize seed.
 
