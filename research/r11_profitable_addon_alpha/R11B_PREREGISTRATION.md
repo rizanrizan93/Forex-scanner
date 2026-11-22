@@ -1,0 +1,9 @@
+# R11B coverage diagnostic — registered after first R11 results
+
+First completed run: https://github.com/rizanrizan93/Forex-scanner/actions/runs/45082172928 , commit `66549e66fd0f0cab5003cc0e34fca0b9c13eacf0`. All256 configurations failed. Development stress samples were <=3 per policy in2012-2018, and none reached N100. Even a positive pooled expectancy cannot establish alpha at this coverage.
+
+R11B tests a disclosed, outcome-informed coverage sensitivity, **not a pristine experiment or new independent family**. The original engine is preserved. `engine_coverage.py` is its experiment snapshot: sole economic change is observed spread admission <=0.35 ATR, versus0.15ATR in R11. This admits more expensive opportunities but still pays all widened spreads, commissions, and slippage under cost2. It does not increase stop risk, leverage, position units, margin, or portfolio risk. Fixed1oz screening never represents a portfolio risk cap.
+
+Why0.35: at stop>=1.25ATR, this threshold bounds spread near28% of minimum gross stop distance, allowing a direct test of whether actual net signal returns can compensate. This is a sensitivity hypothesis, not an optimized parameter. Do not test additional thresholds after seeing R11B. All four sequential families, 256 configurations, both A/B paths, both cost1/2, chronology, guards and development/validation/evaluation acceptance thresholds are unchanged. The full R11+R11B search count is512 configurations in4 related families, with aliases disclosed. Pooled positive returns or a 2026 winner never justify promotion.
+
+Data provenance, period limits, hypothetical fees/specs, and native/shared-wallet blockers remain those in PROTOCOL.md. Original run and R11B must be reported separately including failures and insufficient sample. No LIVE authority.
