@@ -1,0 +1,81 @@
+name: ZQ4 XAU BZ3 BTC M1 direction and risk replay
+on:
+  push:
+    branches: ['research/r91-early-warning-m1-20261121']
+    paths:
+      - 'scripts/zq4_bz3_micro_replay.py'
+      - '.github/workflows/zq4_bz3_micro_replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: zq4-bz3-m1-research-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  micro:
+    if: github.ref == 'refs/heads/research/r91-early-warning-m1-20261121'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        asset: [XAU, BTC]
+        year: [2022,2023,2024,2025,2026]
+    env:
+      PYTHONPATH: 'src:.'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: '/tmp/zq4_m1.csv'
+      XAU_V193_PRICE_PROVENANCE: '/tmp/zq4_provenance.json'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Pinned research data tools
+        run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - name: Pinned HistData downloader (XAU only)
+        if: matrix.asset == 'XAU'
+        run: pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Normalize HistData M1 with immutable source checksum (XAU only)
+        if: matrix.asset == 'XAU'
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Causal microstructure replay without LIVE authority
+        run: python scripts/zq4_bz3_micro_replay.py --asset ${{ matrix.asset }} --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zq4-${{ matrix.asset }}-${{ matrix.year }}
+          path: artifacts/zq4-${{ matrix.asset }}-${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: micro
+    if: always() && needs.micro.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        asset: [XAU, BTC]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zq4-${{ matrix.asset }}-*
+          path: /tmp/zq4
+          merge-multiple: true
+      - name: Prior-years only model selection / evaluation
+        run: python scripts/zq4_bz3_micro_replay.py --asset ${{ matrix.asset }} --aggregate --root /tmp/zq4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zq4-aggregate-${{ matrix.asset }}
+          path: artifacts/zq4-${{ matrix.asset }}-aggregate.json
+          if-no-files-found: warn
+          retention-days: 90
