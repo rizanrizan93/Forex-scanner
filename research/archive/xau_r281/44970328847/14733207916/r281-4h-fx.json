@@ -1,0 +1,576 @@
+{
+  "tf": "4h",
+  "status": "EXPLORATORY_COMPLETE",
+  "fits": 36,
+  "rules": 288,
+  "aggregate": {
+    "price": {
+      "BUY": {
+        "n": 1667,
+        "correct": 871,
+        "accuracy": 0.52249550089982,
+        "lower95": 0.4984930105813528
+      },
+      "SELL": {
+        "n": 922,
+        "correct": 422,
+        "accuracy": 0.45770065075921906,
+        "lower95": 0.42578359145618044
+      },
+      "conflicts": 0,
+      "matched_coverage": 0.6670961092501932,
+      "market_coverage": 0.6670961092501932,
+      "raw_BUY": {
+        "n": 1667,
+        "correct": 871,
+        "accuracy": 0.52249550089982,
+        "lower95": 0.4984930105813528
+      },
+      "raw_SELL": {
+        "n": 922,
+        "correct": 422,
+        "accuracy": 0.45770065075921906,
+        "lower95": 0.42578359145618044
+      }
+    },
+    "fx": {
+      "BUY": {
+        "n": 2065,
+        "correct": 1118,
+        "accuracy": 0.5414043583535109,
+        "lower95": 0.5198555458410331
+      },
+      "SELL": {
+        "n": 962,
+        "correct": 429,
+        "accuracy": 0.44594594594594594,
+        "lower95": 0.4148114518374359
+      },
+      "conflicts": 0,
+      "matched_coverage": 0.7799536202009791,
+      "market_coverage": 0.7799536202009791,
+      "raw_BUY": {
+        "n": 2065,
+        "correct": 1118,
+        "accuracy": 0.5414043583535109,
+        "lower95": 0.5198555458410331
+      },
+      "raw_SELL": {
+        "n": 962,
+        "correct": 429,
+        "accuracy": 0.44594594594594594,
+        "lower95": 0.4148114518374359
+      }
+    },
+    "price_fx": {
+      "BUY": {
+        "n": 1691,
+        "correct": 885,
+        "accuracy": 0.5233589591957422,
+        "lower95": 0.49952731107418524
+      },
+      "SELL": {
+        "n": 1079,
+        "correct": 481,
+        "accuracy": 0.4457831325301205,
+        "lower95": 0.41636915597652663
+      },
+      "conflicts": 0,
+      "matched_coverage": 0.7137335738211801,
+      "market_coverage": 0.7137335738211801,
+      "raw_BUY": {
+        "n": 1691,
+        "correct": 885,
+        "accuracy": 0.5233589591957422,
+        "lower95": 0.49952731107418524
+      },
+      "raw_SELL": {
+        "n": 1079,
+        "correct": 481,
+        "accuracy": 0.4457831325301205,
+        "lower95": 0.41636915597652663
+      }
+    }
+  },
+  "annual": [
+    {
+      "year": 2023,
+      "status": "EVALUATED",
+      "matched": 1029,
+      "market": 1029,
+      "ratio": 1.0,
+      "base_buy": 0.5092322643343051,
+      "policies": {
+        "price": {
+          "BUY_config": {
+            "C": 0.3,
+            "threshold": 0.5,
+            "validation": {
+              "n": 1013,
+              "correct": 490,
+              "accuracy": 0.4837117472852912,
+              "lower95": 0.4530569252507431
+            }
+          },
+          "SELL_config": {
+            "C": 0.3,
+            "threshold": 0.56,
+            "validation": {
+              "n": 51,
+              "correct": 36,
+              "accuracy": 0.7058823529411765,
+              "lower95": 0.5700066466848335
+            }
+          },
+          "BUY": {
+            "n": 704,
+            "correct": 358,
+            "accuracy": 0.5085227272727273,
+            "lower95": 0.4716470190686802
+          },
+          "SELL": {
+            "n": 42,
+            "correct": 15,
+            "accuracy": 0.35714285714285715,
+            "lower95": 0.22988992501626865
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.7249757045675413,
+          "market_coverage": 0.7249757045675413,
+          "raw_BUY": {
+            "n": 704,
+            "correct": 358,
+            "accuracy": 0.5085227272727273,
+            "lower95": 0.4716470190686802
+          },
+          "raw_SELL": {
+            "n": 42,
+            "correct": 15,
+            "accuracy": 0.35714285714285715,
+            "lower95": 0.22988992501626865
+          }
+        },
+        "fx": {
+          "BUY_config": {
+            "C": 0.025,
+            "threshold": 0.56,
+            "validation": {
+              "n": 235,
+              "correct": 119,
+              "accuracy": 0.5063829787234042,
+              "lower95": 0.4428734499214472
+            }
+          },
+          "SELL_config": {
+            "C": 0.025,
+            "threshold": 0.53,
+            "validation": {
+              "n": 148,
+              "correct": 86,
+              "accuracy": 0.581081081081081,
+              "lower95": 0.5005256218129419
+            }
+          },
+          "BUY": {
+            "n": 97,
+            "correct": 55,
+            "accuracy": 0.5670103092783505,
+            "lower95": 0.46771404416848805
+          },
+          "SELL": {
+            "n": 78,
+            "correct": 37,
+            "accuracy": 0.47435897435897434,
+            "lower95": 0.367370816948011
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.17006802721088435,
+          "market_coverage": 0.17006802721088435,
+          "raw_BUY": {
+            "n": 97,
+            "correct": 55,
+            "accuracy": 0.5670103092783505,
+            "lower95": 0.46771404416848805
+          },
+          "raw_SELL": {
+            "n": 78,
+            "correct": 37,
+            "accuracy": 0.47435897435897434,
+            "lower95": 0.367370816948011
+          }
+        },
+        "price_fx": {
+          "BUY_config": {
+            "C": 0.025,
+            "threshold": 0.5,
+            "validation": {
+              "n": 967,
+              "correct": 472,
+              "accuracy": 0.48810754912099275,
+              "lower95": 0.45671120779043256
+            }
+          },
+          "SELL_config": {
+            "C": 0.3,
+            "threshold": 0.56,
+            "validation": {
+              "n": 142,
+              "correct": 87,
+              "accuracy": 0.6126760563380281,
+              "lower95": 0.530590342392244
+            }
+          },
+          "BUY": {
+            "n": 707,
+            "correct": 351,
+            "accuracy": 0.49646393210749645,
+            "lower95": 0.45972699021324875
+          },
+          "SELL": {
+            "n": 99,
+            "correct": 45,
+            "accuracy": 0.45454545454545453,
+            "lower95": 0.3599919588990025
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.783284742468416,
+          "market_coverage": 0.783284742468416,
+          "raw_BUY": {
+            "n": 707,
+            "correct": 351,
+            "accuracy": 0.49646393210749645,
+            "lower95": 0.45972699021324875
+          },
+          "raw_SELL": {
+            "n": 99,
+            "correct": 45,
+            "accuracy": 0.45454545454545453,
+            "lower95": 0.3599919588990025
+          }
+        }
+      }
+    },
+    {
+      "year": 2024,
+      "status": "EVALUATED",
+      "matched": 1430,
+      "market": 1430,
+      "ratio": 1.0,
+      "base_buy": 0.5461538461538461,
+      "policies": {
+        "price": {
+          "BUY_config": {
+            "C": 0.3,
+            "threshold": 0.56,
+            "validation": {
+              "n": 135,
+              "correct": 76,
+              "accuracy": 0.562962962962963,
+              "lower95": 0.47869459885929677
+            }
+          },
+          "SELL_config": {
+            "C": 0.3,
+            "threshold": 0.5,
+            "validation": {
+              "n": 412,
+              "correct": 206,
+              "accuracy": 0.5,
+              "lower95": 0.45194239659168267
+            }
+          },
+          "BUY": {
+            "n": 147,
+            "correct": 80,
+            "accuracy": 0.54421768707483,
+            "lower95": 0.46360308798347466
+          },
+          "SELL": {
+            "n": 635,
+            "correct": 292,
+            "accuracy": 0.45984251968503936,
+            "lower95": 0.4214354956427103
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.5468531468531469,
+          "market_coverage": 0.5468531468531469,
+          "raw_BUY": {
+            "n": 147,
+            "correct": 80,
+            "accuracy": 0.54421768707483,
+            "lower95": 0.46360308798347466
+          },
+          "raw_SELL": {
+            "n": 635,
+            "correct": 292,
+            "accuracy": 0.45984251968503936,
+            "lower95": 0.4214354956427103
+          }
+        },
+        "fx": {
+          "BUY_config": {
+            "C": 0.3,
+            "threshold": 0.5,
+            "validation": {
+              "n": 614,
+              "correct": 302,
+              "accuracy": 0.49185667752442996,
+              "lower95": 0.4524860733451239
+            }
+          },
+          "SELL_config": {
+            "C": 0.3,
+            "threshold": 0.5,
+            "validation": {
+              "n": 415,
+              "correct": 193,
+              "accuracy": 0.4650602409638554,
+              "lower95": 0.41761150536871444
+            }
+          },
+          "BUY": {
+            "n": 902,
+            "correct": 493,
+            "accuracy": 0.5465631929046563,
+            "lower95": 0.5139454562764829
+          },
+          "SELL": {
+            "n": 528,
+            "correct": 240,
+            "accuracy": 0.45454545454545453,
+            "lower95": 0.4125537553844752
+          },
+          "conflicts": 0,
+          "matched_coverage": 1.0,
+          "market_coverage": 1.0,
+          "raw_BUY": {
+            "n": 902,
+            "correct": 493,
+            "accuracy": 0.5465631929046563,
+            "lower95": 0.5139454562764829
+          },
+          "raw_SELL": {
+            "n": 528,
+            "correct": 240,
+            "accuracy": 0.45454545454545453,
+            "lower95": 0.4125537553844752
+          }
+        },
+        "price_fx": {
+          "BUY_config": {
+            "C": 0.025,
+            "threshold": 0.56,
+            "validation": {
+              "n": 162,
+              "correct": 93,
+              "accuracy": 0.5740740740740741,
+              "lower95": 0.49707931596992005
+            }
+          },
+          "SELL_config": {
+            "C": 0.025,
+            "threshold": 0.5,
+            "validation": {
+              "n": 421,
+              "correct": 214,
+              "accuracy": 0.5083135391923991,
+              "lower95": 0.46069903423659603
+            }
+          },
+          "BUY": {
+            "n": 195,
+            "correct": 109,
+            "accuracy": 0.558974358974359,
+            "lower95": 0.48881267027659064
+          },
+          "SELL": {
+            "n": 656,
+            "correct": 292,
+            "accuracy": 0.4451219512195122,
+            "lower95": 0.40751956630903663
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.5951048951048951,
+          "market_coverage": 0.5951048951048951,
+          "raw_BUY": {
+            "n": 195,
+            "correct": 109,
+            "accuracy": 0.558974358974359,
+            "lower95": 0.48881267027659064
+          },
+          "raw_SELL": {
+            "n": 656,
+            "correct": 292,
+            "accuracy": 0.4451219512195122,
+            "lower95": 0.40751956630903663
+          }
+        }
+      }
+    },
+    {
+      "year": 2025,
+      "status": "EVALUATED",
+      "matched": 1422,
+      "market": 1422,
+      "ratio": 1.0,
+      "base_buy": 0.5443037974683544,
+      "policies": {
+        "price": {
+          "BUY_config": {
+            "C": 0.025,
+            "threshold": 0.5,
+            "validation": {
+              "n": 805,
+              "correct": 446,
+              "accuracy": 0.5540372670807453,
+              "lower95": 0.5195231460757577
+            }
+          },
+          "SELL_config": {
+            "C": 0.3,
+            "threshold": 0.53,
+            "validation": {
+              "n": 235,
+              "correct": 115,
+              "accuracy": 0.48936170212765956,
+              "lower95": 0.4261349882446791
+            }
+          },
+          "BUY": {
+            "n": 816,
+            "correct": 433,
+            "accuracy": 0.5306372549019608,
+            "lower95": 0.49633131634426847
+          },
+          "SELL": {
+            "n": 245,
+            "correct": 115,
+            "accuracy": 0.46938775510204084,
+            "lower95": 0.4078503488572681
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.7461322081575246,
+          "market_coverage": 0.7461322081575246,
+          "raw_BUY": {
+            "n": 816,
+            "correct": 433,
+            "accuracy": 0.5306372549019608,
+            "lower95": 0.49633131634426847
+          },
+          "raw_SELL": {
+            "n": 245,
+            "correct": 115,
+            "accuracy": 0.46938775510204084,
+            "lower95": 0.4078503488572681
+          }
+        },
+        "fx": {
+          "BUY_config": {
+            "C": 0.025,
+            "threshold": 0.5,
+            "validation": {
+              "n": 1027,
+              "correct": 563,
+              "accuracy": 0.5481986368062317,
+              "lower95": 0.5176374309747704
+            }
+          },
+          "SELL_config": {
+            "C": 0.025,
+            "threshold": 0.5,
+            "validation": {
+              "n": 403,
+              "correct": 185,
+              "accuracy": 0.45905707196029777,
+              "lower95": 0.4110190465666344
+            }
+          },
+          "BUY": {
+            "n": 1066,
+            "correct": 570,
+            "accuracy": 0.5347091932457786,
+            "lower95": 0.5046948857814054
+          },
+          "SELL": {
+            "n": 356,
+            "correct": 152,
+            "accuracy": 0.42696629213483145,
+            "lower95": 0.37663222950294134
+          },
+          "conflicts": 0,
+          "matched_coverage": 1.0,
+          "market_coverage": 1.0,
+          "raw_BUY": {
+            "n": 1066,
+            "correct": 570,
+            "accuracy": 0.5347091932457786,
+            "lower95": 0.5046948857814054
+          },
+          "raw_SELL": {
+            "n": 356,
+            "correct": 152,
+            "accuracy": 0.42696629213483145,
+            "lower95": 0.37663222950294134
+          }
+        },
+        "price_fx": {
+          "BUY_config": {
+            "C": 0.3,
+            "threshold": 0.5,
+            "validation": {
+              "n": 802,
+              "correct": 441,
+              "accuracy": 0.5498753117206983,
+              "lower95": 0.5152864852369246
+            }
+          },
+          "SELL_config": {
+            "C": 0.3,
+            "threshold": 0.53,
+            "validation": {
+              "n": 332,
+              "correct": 160,
+              "accuracy": 0.4819277108433735,
+              "lower95": 0.4286929880761577
+            }
+          },
+          "BUY": {
+            "n": 789,
+            "correct": 425,
+            "accuracy": 0.5386565272496832,
+            "lower95": 0.50376859439901
+          },
+          "SELL": {
+            "n": 324,
+            "correct": 144,
+            "accuracy": 0.4444444444444444,
+            "lower95": 0.3913021182398789
+          },
+          "conflicts": 0,
+          "matched_coverage": 0.7827004219409283,
+          "market_coverage": 0.7827004219409283,
+          "raw_BUY": {
+            "n": 789,
+            "correct": 425,
+            "accuracy": 0.5386565272496832,
+            "lower95": 0.50376859439901
+          },
+          "raw_SELL": {
+            "n": 324,
+            "correct": 144,
+            "accuracy": 0.4444444444444444,
+            "lower95": 0.3913021182398789
+          }
+        }
+      }
+    }
+  ],
+  "market_scope": "2019-2025, evaluation 2023-2025",
+  "limits": [
+    "ECB daily reference basket, not DXY or intraday FX/yield",
+    "Availability next UTC day; bounded backward join, latest vintage not exact PIT",
+    "Annual 80% matched-data gate predeclared",
+    "Historical folds reused, no forward validation",
+    "No entry zone or LIVE permission"
+  ]
+}

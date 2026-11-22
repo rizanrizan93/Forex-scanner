@@ -1,0 +1,43 @@
+{
+  "url": "https://raw.githubusercontent.com/superpilot69/fred-us-macro-open-data/main/data/fred-us-macro-events.json",
+  "sha256": "b9d8a2256ecc61fda3f68efbc243b407db5b19b0f2288c44f827d03854861201",
+  "raw_rows": 11986,
+  "qualified_rows": 2444,
+  "series_counts": {
+    "CES0500000003": 179,
+    "CPIAUCNS": 167,
+    "CPILFENS": 167,
+    "GDPC1": 72,
+    "ICSA": 873,
+    "JTSJOL": 148,
+    "PAYEMS": 217,
+    "PCEPI": 40,
+    "PCEPILFE": 128,
+    "PPIACO": 167,
+    "RSAFS": 218,
+    "UNRATE": 212
+  },
+  "rejected": {
+    "PCEPI": 754,
+    "PCEPILFE": 664,
+    "PPIACO": 1180,
+    "PAYEMS": 829,
+    "CES0500000003": 61,
+    "JTSJOL": 155,
+    "ICSA": 2219,
+    "CPIAUCNS": 1179,
+    "CPILFENS": 651,
+    "RSAFS": 192,
+    "UNRATE": 726,
+    "GDPC1": 243
+  },
+  "first": "2009-02-12 13:30:00+00:00",
+  "last": "2026-04-23 12:30:00+00:00",
+  "available_through": "2026-04-26 00:00:00+00:00",
+  "limitations": [
+    "retrospective third-party archive, consensus snapshot/first-print not independently verified",
+    "release time standard assumed by archive, use later UTC date only",
+    "no missing forecasts imputed, missing release coverage still possible",
+    "data ends April 2026; no extrapolation"
+  ]
+}

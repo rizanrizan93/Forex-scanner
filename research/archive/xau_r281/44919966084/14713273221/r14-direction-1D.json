@@ -1,0 +1,161 @@
+{
+  "version": "R14",
+  "model_type": "CLOSED-CANDLE DIRECTION ONLY",
+  "tf": "D1",
+  "target": "next closed candle CLOSE-to-CLOSE BUY/SELL/WAIT",
+  "data_source": "R9.8 M1->D1 2012-2026",
+  "source_run": 44886465487,
+  "candle_boundary": "signal only after completion of its own H1/H4/D1/W1 candle",
+  "periods": {
+    "train": "2012-2020",
+    "cal": "2021",
+    "selection": "2022",
+    "evaluation": "2023-2026"
+  },
+  "counts": {
+    "train": 2185,
+    "calibration": 250,
+    "selection": 256,
+    "evaluation": 869
+  },
+  "audit": {
+    "type": "recompute frozen-candle prefixes",
+    "checked_bars": 16,
+    "status": "PASS",
+    "errors": []
+  },
+  "models_trained": 4,
+  "candidate_rules": 48,
+  "selection": {
+    "model": "logit_C1.0",
+    "calibration": "platt",
+    "cut": 0.5,
+    "quality": 0.442514,
+    "validation": {
+      "BUY": {
+        "n": 90,
+        "correct": 54,
+        "accuracy": 0.6,
+        "wilson_lower95": 0.496701
+      },
+      "SELL": {
+        "n": 166,
+        "correct": 86,
+        "accuracy": 0.518072,
+        "wilson_lower95": 0.442514
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249941
+    }
+  },
+  "evaluation": {
+    "BUY": {
+      "n": 356,
+      "correct": 190,
+      "accuracy": 0.533708,
+      "wilson_lower95": 0.481802
+    },
+    "SELL": {
+      "n": 513,
+      "correct": 234,
+      "accuracy": 0.45614,
+      "wilson_lower95": 0.413524
+    },
+    "WAIT": 0,
+    "coverage": 1.0,
+    "brier": 0.249957
+  },
+  "evaluation_annual": {
+    "2023": {
+      "BUY": {
+        "n": 59,
+        "correct": 24,
+        "accuracy": 0.40678,
+        "wilson_lower95": 0.290888
+      },
+      "SELL": {
+        "n": 79,
+        "correct": 39,
+        "accuracy": 0.493671,
+        "wilson_lower95": 0.386301
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249977
+    },
+    "2024": {
+      "BUY": {
+        "n": 106,
+        "correct": 59,
+        "accuracy": 0.556604,
+        "wilson_lower95": 0.461697
+      },
+      "SELL": {
+        "n": 149,
+        "correct": 66,
+        "accuracy": 0.442953,
+        "wilson_lower95": 0.365622
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249957
+    },
+    "2025": {
+      "BUY": {
+        "n": 78,
+        "correct": 50,
+        "accuracy": 0.641026,
+        "wilson_lower95": 0.530266
+      },
+      "SELL": {
+        "n": 176,
+        "correct": 77,
+        "accuracy": 0.4375,
+        "wilson_lower95": 0.366319
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249949
+    },
+    "2026": {
+      "BUY": {
+        "n": 113,
+        "correct": 57,
+        "accuracy": 0.504425,
+        "wilson_lower95": 0.41362
+      },
+      "SELL": {
+        "n": 109,
+        "correct": 52,
+        "accuracy": 0.477064,
+        "wilson_lower95": 0.385684
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249952
+    }
+  },
+  "baseline": {
+    "always_buy_accuracy": 0.539701,
+    "always_sell_accuracy": 0.460299,
+    "previous_candle_persistence": 0.47756
+  },
+  "target_60_both_directions_observed": false,
+  "latest_dataset_candle_open": "2026-11-13 00:00:00+00:00",
+  "latest_dataset_candle_closed": "2026-11-14 00:00:00+00:00",
+  "research_only": true,
+  "no_zone_engine": true,
+  "live_permission": false,
+  "limitations": [
+    "No actual price stream at current time and no brokerage signal",
+    "2023-2026 years previously inspected in earlier research, NOT pristine holdout",
+    "Directional accuracy is not realized P&L, MFE, stop/target or tradable profit",
+    "Sample selection across configs and multiple-testing bias still possible",
+    "Model probabilities calibrated on older period and may drift",
+    "No point-in-time DXY/yield/COT integration here",
+    "Source data has gaps and aggregation thresholds; reject incomplete candles",
+    "W1 calendar uses full Monday-Friday daily bars, not cTrader broker week",
+    "Cost/spread/slippage not measured in direction-only model"
+  ]
+}

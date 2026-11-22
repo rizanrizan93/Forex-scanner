@@ -1,0 +1,144 @@
+{
+  "version": "R14",
+  "model_type": "CLOSED-CANDLE DIRECTION ONLY",
+  "tf": "H1",
+  "target": "next closed candle CLOSE-to-CLOSE BUY/SELL/WAIT",
+  "data_source": "R10 M1->H1/H4 2019-2026",
+  "source_run": 44901264975,
+  "candle_boundary": "signal only after completion of its own H1/H4/D1/W1 candle",
+  "periods": {
+    "train": "2019-2022",
+    "cal": "2023H1",
+    "selection": "2023H2",
+    "evaluation": "2024-2026"
+  },
+  "counts": {
+    "train": 22362,
+    "calibration": 1752,
+    "selection": 2591,
+    "evaluation": 16216
+  },
+  "audit": {
+    "type": "R10.3 upstream independent prefix audit",
+    "status": "PASS",
+    "reference_run": 44907102788,
+    "warning": "R14 adds only contemporaneous derived features; no new incomplete D1/W1 source"
+  },
+  "models_trained": 4,
+  "candidate_rules": 48,
+  "selection": {
+    "model": "hgb_depth3",
+    "calibration": "platt",
+    "cut": 0.5,
+    "quality": 0.47763,
+    "validation": {
+      "BUY": {
+        "n": 623,
+        "correct": 322,
+        "accuracy": 0.516854,
+        "wilson_lower95": 0.47763
+      },
+      "SELL": {
+        "n": 1968,
+        "correct": 1030,
+        "accuracy": 0.523374,
+        "wilson_lower95": 0.501283
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249525
+    }
+  },
+  "evaluation": {
+    "BUY": {
+      "n": 4748,
+      "correct": 2492,
+      "accuracy": 0.524853,
+      "wilson_lower95": 0.510633
+    },
+    "SELL": {
+      "n": 11468,
+      "correct": 5648,
+      "accuracy": 0.492501,
+      "wilson_lower95": 0.483355
+    },
+    "WAIT": 0,
+    "coverage": 1.0,
+    "brier": 0.249998
+  },
+  "evaluation_annual": {
+    "2024": {
+      "BUY": {
+        "n": 1460,
+        "correct": 760,
+        "accuracy": 0.520548,
+        "wilson_lower95": 0.494902
+      },
+      "SELL": {
+        "n": 4200,
+        "correct": 2013,
+        "accuracy": 0.479286,
+        "wilson_lower95": 0.464203
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.250328
+    },
+    "2025": {
+      "BUY": {
+        "n": 1503,
+        "correct": 828,
+        "accuracy": 0.550898,
+        "wilson_lower95": 0.525653
+      },
+      "SELL": {
+        "n": 4130,
+        "correct": 2021,
+        "accuracy": 0.489346,
+        "wilson_lower95": 0.474117
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249844
+    },
+    "2026": {
+      "BUY": {
+        "n": 1785,
+        "correct": 904,
+        "accuracy": 0.506443,
+        "wilson_lower95": 0.48326
+      },
+      "SELL": {
+        "n": 3138,
+        "correct": 1614,
+        "accuracy": 0.51434,
+        "wilson_lower95": 0.496846
+      },
+      "WAIT": 0,
+      "coverage": 1.0,
+      "brier": 0.249793
+    }
+  },
+  "baseline": {
+    "always_buy_accuracy": 0.51258,
+    "always_sell_accuracy": 0.48742,
+    "previous_candle_persistence": 0.49593
+  },
+  "target_60_both_directions_observed": false,
+  "latest_dataset_candle_open": "2026-11-13 21:00:00+00:00",
+  "latest_dataset_candle_closed": "2026-11-13 22:00:00+00:00",
+  "research_only": true,
+  "no_zone_engine": true,
+  "live_permission": false,
+  "limitations": [
+    "No actual price stream at current time and no brokerage signal",
+    "2023-2026 years previously inspected in earlier research, NOT pristine holdout",
+    "Directional accuracy is not realized P&L, MFE, stop/target or tradable profit",
+    "Sample selection across configs and multiple-testing bias still possible",
+    "Model probabilities calibrated on older period and may drift",
+    "No point-in-time DXY/yield/COT integration here",
+    "Source data has gaps and aggregation thresholds; reject incomplete candles",
+    "W1 calendar uses full Monday-Friday daily bars, not cTrader broker week",
+    "Cost/spread/slippage not measured in direction-only model"
+  ]
+}

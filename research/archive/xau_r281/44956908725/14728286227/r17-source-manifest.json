@@ -1,0 +1,283 @@
+{
+  "macro": {
+    "DGS2": {
+      "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)\"))",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2&cosd=2010-01-01"
+    },
+    "DGS10": {
+      "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)\"))",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&cosd=2010-01-01"
+    },
+    "DFII10": {
+      "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)\"))",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFII10&cosd=2010-01-01"
+    },
+    "DTWEXBGS": {
+      "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)\"))",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS&cosd=2010-01-01"
+    },
+    "treasury_fallback": {
+      "requests": [
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2010,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2010",
+          "n": 252,
+          "sha256": "80ccecc96736361e4c7fa2046e8c153e223a1765b3a5126e629eb7bcc693a9b8"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2011,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2011",
+          "n": 250,
+          "sha256": "0e422852d04641358f1fce78b04a009e38ba2c5206ff8d367ee380a7e5822352"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2012,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2012",
+          "n": 250,
+          "sha256": "60e32b99b125de2ca4af07f1059f1925f2807c8954fa484d736e0f036694c4cd"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2013,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2013",
+          "n": 250,
+          "sha256": "1e63c8220fe6663ee6f01d895e05e27ad00bc472c99542ae8c685cb028a61d67"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2014,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2014",
+          "n": 250,
+          "sha256": "649158d9d127a1e7eabca8e0227dbc99a627f1e6052aeaf645c67a533badb6f2"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2015,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2015",
+          "n": 251,
+          "sha256": "86e8f5bddb12204394653abd7602060e25b2993adc1408facfa9d6863fb66ae4"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2016,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2016",
+          "n": 250,
+          "sha256": "835e974de914957b04f49898b6dbdd04766af6123f4b634dcb11dd29a50005ef"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2017,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2017",
+          "n": 250,
+          "sha256": "fdba88276b5f7a95ae3d33fa6ead175433ade015a606e03a531c78f3a67e6fb8"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2018,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2018",
+          "n": 249,
+          "sha256": "c5caa0622ae71a7f666818659a0efa1de5d67f86de2c1d018ce6081d0bccac5f"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2019,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2019",
+          "n": 250,
+          "sha256": "413899e612299476384fc842fb5f1e991f841f93c730d6fa21a3f1a26c344c7d"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2020,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2020",
+          "n": 251,
+          "sha256": "28c07fdddc1fe2c8e0daae1408c565e81cac182959729d05ae551ee9b038c216"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2021,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2021",
+          "n": 251,
+          "sha256": "14943dab09a5e254e2fad91a5e591be41d00370595b86ec5e564075df2fa8272"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2022,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2022",
+          "n": 249,
+          "sha256": "e2dae9677a3a21828a5a0cd39c0994b846da03d0f0d84660c9c0a59e2516f2c6"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2023,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2023",
+          "n": 250,
+          "sha256": "d599e80bca6b0260dfcb85b046379f1f43d09e30f2c06e461f3f176790e4956c"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2024,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2024",
+          "n": 250,
+          "sha256": "06d89dea30821939c574e2632df28825eb643eb1a9fad205f994cbed782d24e2"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2025,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2025",
+          "n": 249,
+          "sha256": "154e5b286ebc78ccd444d40df47aa1e25d9e9277dd0783848ce6c4345d902a0a"
+        },
+        {
+          "type": "daily_treasury_yield_curve",
+          "year": 2026,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2026",
+          "n": 223,
+          "sha256": "b2a1d41a65f83a318ae4d80acd47d6ad6cdfa3e86a219424c264864b1a94b326"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2010,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2010",
+          "n": 251,
+          "sha256": "30719c79c2defbdcadc227777eaa6966dfa1181bd69561280e6acb51f4a3cc35"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2011,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2011",
+          "n": 250,
+          "sha256": "74947451566e13f69618c1644af97119b24f41b5e7c09c7292a5312511977eca"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2012,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2012",
+          "n": 250,
+          "sha256": "144b1f952d097f8fd2d2f5f15fe46ebd909f94e0c935720a3298c962bcfd9d10"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2013,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2013",
+          "n": 250,
+          "sha256": "4f84a9c519bcfee4663e610a2351626ee0ca1c972a3c4714c420370e9f39c1cc"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2014,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2014",
+          "n": 250,
+          "sha256": "55339c7d2f19efb0ec93164a249280d3637f8e9b26f6207fce772104bf3042a9"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2015,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2015",
+          "n": 251,
+          "sha256": "a317f01e23ccabedb8b9314c223cfd0816e84b21e7fe782b4fce530398d0caeb"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2016,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2016",
+          "n": 250,
+          "sha256": "44c3dedef6bf72c6c3b9c3f8be47536790d44d6012bae1295fa5428cfdac7b73"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2017,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2017",
+          "n": 250,
+          "sha256": "515dbbfd0964922e87d41807bce3f107a215e0390fc9a7f58871dcee6ba1cd65"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2018,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2018",
+          "n": 249,
+          "sha256": "ea1986837d9b8c6a7e6a265b2cb9ed411e0f86a72d74ff5aee9fb5c9d9980500"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2019,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2019",
+          "n": 250,
+          "sha256": "8158aa9a19a2ec4704bb36fae47d2987f3c4177aa45117ddcc78cf23ce903643"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2020,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2020",
+          "n": 251,
+          "sha256": "970eb9629e77634013d600cc72c644f835f4a395eec6996bf51a3bf29f287240"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2021,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2021",
+          "n": 251,
+          "sha256": "71666e7b0d64e1c3ff6248ef5472f842ee3bbb89dadbcce7f8afcde6da075448"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2022,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2022",
+          "n": 249,
+          "sha256": "22a07898a891234bd162230636301fbc451d374a9dc8443346b3166444f61cad"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2023,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2023",
+          "n": 250,
+          "sha256": "19d8e1a9d9caadcf182bd3f8c98f3b99c69b7d295b4f1cf869f8b8cb4f7d26d6"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2024,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2024",
+          "n": 250,
+          "sha256": "810d7ef371f5d598d3091455f589d062edd97aa70fa69e12242a44be65666729"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2025,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2025",
+          "n": 249,
+          "sha256": "b05587d3dcbe7018be75da506df7a0e8789ec197fd72dda5d383d237ae101f9d"
+        },
+        {
+          "type": "daily_treasury_real_yield_curve",
+          "year": 2026,
+          "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2026",
+          "n": 223,
+          "sha256": "34ec840f845d8d2d62eb632ef3b9e21bd10605c5c792aa59aa74bfdac996e700"
+        }
+      ],
+      "DGS2": {
+        "n": 4224,
+        "first": "2010-01-04 00:00:00+00:00",
+        "last": "2026-11-20 00:00:00+00:00",
+        "kind": "Treasury par yield, not FRED feed"
+      },
+      "DGS10": {
+        "n": 4224,
+        "first": "2010-01-04 00:00:00+00:00",
+        "last": "2026-11-20 00:00:00+00:00",
+        "kind": "Treasury par yield, not FRED feed"
+      },
+      "DFII10": {
+        "n": 4224,
+        "first": "2010-01-04 00:00:00+00:00",
+        "last": "2026-11-20 00:00:00+00:00",
+        "kind": "Treasury par yield, not FRED feed"
+      }
+    }
+  },
+  "fomc": {
+    "error": "TypeError('Start and end cannot both be tz-aware with different timezones')"
+  }
+}

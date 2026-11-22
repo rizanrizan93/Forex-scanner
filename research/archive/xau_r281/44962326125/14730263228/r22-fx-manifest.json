@@ -1,0 +1,1207 @@
+[
+  {
+    "symbol": "EURUSD",
+    "month": "2019-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/00/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/01/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/02/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2019/02/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc42c0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/03/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/04/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/05/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/06/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2019/06/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc2870>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/07/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2019/07/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc6c30>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/08/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2019/08/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc6f30>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/09/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/10/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2019-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2019/11/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2019/11/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc6270>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/00/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/00/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc4dd0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/01/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc5550>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/02/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/03/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc1e50>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/04/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/05/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/06/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/06/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc02f0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/08/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "fb527441d37d0d74405fbe438b0403de9bdfa1df55a837cbf94f5f75828b3fa3"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/09/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/09/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc7fb0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/10/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/10/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc0e90>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2020-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/11/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2020/11/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc3e00>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/00/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/00/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f39e80>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/01/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc40e0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/02/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/03/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/03/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f87a40>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/04/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/04/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c4d610>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/05/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/05/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc5be0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/06/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/06/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x74927ad75e80>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/08/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2021/08/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c4d6a0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/09/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/10/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2021-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2021/11/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/00/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/01/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/EURUSD/2022/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c4deb0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/02/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/03/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/04/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/05/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/06/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/08/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "e096877f955e7ce3fffef58d41a6a4dcc16fcd99e4479a8fe8b5bb0b06ea1e72"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/09/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/10/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2022-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2022/11/BID_candles_hour_1.bi5",
+    "n": 526,
+    "sha256": "50f5101d5a8952a65916faccc69ad6d82a5f4cac551824bc49f50c757ef09950"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/00/BID_candles_hour_1.bi5",
+    "n": 530,
+    "sha256": "966f0a2c19262de3a5d3765420b90545c22e02e4964978981f537a704f40fafb"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/01/BID_candles_hour_1.bi5",
+    "n": 480,
+    "sha256": "29f82bd2bd14cc8b35e92b69725af3219f2189d165ceebd12908dc2a3bb9daa4"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/02/BID_candles_hour_1.bi5",
+    "n": 550,
+    "sha256": "f8e03410874af31a44047192edc7e3c1db777ba9dc15662470fb7da2e79d8e10"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/03/BID_candles_hour_1.bi5",
+    "n": 483,
+    "sha256": "167c9486983145af5f16a6a723cb8bd9eb9ff6a253e0651d089f5643b467b036"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/04/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "ed6f983526d7ec86557dcdf96d0afb94edf1774d56d374d8f70efa9ff9ad0b0c"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/05/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "9abdaf5220ca9447b4b0529728252f28b6b445cc51428efc1eae036f957c8c81"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/06/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "74fd6b9730911b086285b0369479b8549cc11b62b3cf8e590ebe1f7e1cf3190b"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/07/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "22bfa28dd7d28a793afec568241d7e517f953239221a5fa47f7dbdd26a38230a"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/08/BID_candles_hour_1.bi5",
+    "n": 501,
+    "sha256": "1fcfd7633fc1ded1f1be4b0604412c81088bce0f89f08dd346e2b2b486bd0fda"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/09/BID_candles_hour_1.bi5",
+    "n": 531,
+    "sha256": "16adc482985950aca0d7188acbac2340e584a12db3ebc0bd2eb9c85305af12c5"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/10/BID_candles_hour_1.bi5",
+    "n": 527,
+    "sha256": "3960ed36e2443ebaf25c2b699188f504ae73788575271f96ce61274fe6cdd4f4"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2023-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2023/11/BID_candles_hour_1.bi5",
+    "n": 487,
+    "sha256": "b5abcf54adb6e3d5c4fa0d527e763e91bcfe7e1f886470967080c4e97b0ab2f8"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/00/BID_candles_hour_1.bi5",
+    "n": 530,
+    "sha256": "ad3bbd94820808d18b1b979a15cfc861d0e8ca8d9097b04354ebbbcfb9f7aee0"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/01/BID_candles_hour_1.bi5",
+    "n": 504,
+    "sha256": "c2bf7e6859bd383731480904e354072061515a86c6dcc5c2048b6bc99a089142"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/02/BID_candles_hour_1.bi5",
+    "n": 505,
+    "sha256": "4c00dcfa8ece616ae8452de384bfcf6c37c365fef3279b23957e94926ce94554"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/03/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "2dc4c8740af1531397747efddddd87841591c9929435b3e3d91eb58079f9108c"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/04/BID_candles_hour_1.bi5",
+    "n": 549,
+    "sha256": "438cdb132b02a939d2c75104fcc02914f3e46bc51d0651adba19e52d34ddac98"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/05/BID_candles_hour_1.bi5",
+    "n": 483,
+    "sha256": "c750622f88bf28513e5b3b4b24e47a99cde7432bb335d77ff46f857b10426dfe"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/06/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "9b28f1acd10bbccd929ca5a53323f04a04f48e1f494ae29c9c0ccb25a0a1aeeb"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/07/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "d96eebc20e7be9558aa39c54f80b8452c0b65473416f38548136f3a2adf8b8be"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/08/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "ccb075c9a492f87c7e824a0ea659f36bbc0ffe891e40b26433b26dd8e82cf3e5"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/09/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "7a7c5f3c5f53d18fe474c5665f082be404ca17a856bcb268e37251b87ecbeb8a"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/10/BID_candles_hour_1.bi5",
+    "n": 501,
+    "sha256": "4526b9718efe7ef445bbf3860420d4d217a809fe59dffc454e9fef440fdfdc08"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2024-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2024/11/BID_candles_hour_1.bi5",
+    "n": 514,
+    "sha256": "dda800352bbbdda1758e65dde2c7df4a12ebcecff995f4c494d3d9c9cfc91032"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/00/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "f78ca8d08d5b54e950f22dbacfe02ab8929ff94851c6578ae51ae0df6873b135"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/01/BID_candles_hour_1.bi5",
+    "n": 480,
+    "sha256": "b6cd7cb3c22c69e5d32acce0efa2f2e29380d62c542db90da8e607b72a8f35f3"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/02/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "f6f7550912e9e5e771c87462ff593f50b9c9ba86b5bf92a67aeea72c1d8fd653"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/03/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "e732f8d651396d26732d93126fde0127116bb2b0226a7a38931a18eb730f715f"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/04/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "3b5f18e981ddf6c2b5f98f5f68d64218a9ce216f35995700b7ead56b9cb95ab4"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/05/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "139a08f46fb06f7c6a5f0fc51e95e31d7a2c08881c784cb1844ebfb11f6edc65"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/06/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "3d346dc86168de92098aa77d951e5a54c074b38336e2fedf8c402af0cb45b506"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/07/BID_candles_hour_1.bi5",
+    "n": 504,
+    "sha256": "51a368d94dfdad6398155cd878dcf2a319dd2ba529f532ee074fd50e92eee925"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/08/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "a92cc1e57a0851c777004cfcc457ed5b0d2c058ae24a75d4af77cfde47e3be82"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/09/BID_candles_hour_1.bi5",
+    "n": 549,
+    "sha256": "544156d24f4ffb33bcd53e7993fde6af7fe31d67cebd3583b23a033f679c1858"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/10/BID_candles_hour_1.bi5",
+    "n": 482,
+    "sha256": "9edeccea1b66b5745971e134578c01baa882949362bf3997d1f7d79a039148b5"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2025-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2025/11/BID_candles_hour_1.bi5",
+    "n": 536,
+    "sha256": "b9764fc4bb0c0a1926b5704cff4c0abc4a62ce1415dfcc442f9a543faccb3f48"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/00/BID_candles_hour_1.bi5",
+    "n": 504,
+    "sha256": "ad7ca9903f0d46adc540c42465d404d4344de6142689ee9477895bf4f7e561fd"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/01/BID_candles_hour_1.bi5",
+    "n": 480,
+    "sha256": "d0d9b3cbde324886e30f0fe65c84261dd8df9a0672884ed0a421dffa822c4c65"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/02/BID_candles_hour_1.bi5",
+    "n": 531,
+    "sha256": "a618f0227902e1e7644a7e4cdddea7ac2fb7aa97b2485cac020a8634112e83e1"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/03/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "1895d6f164b819fa2dd4400c666dab92daca8831b44a27d70a80e0ab9ba7a757"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/04/BID_candles_hour_1.bi5",
+    "n": 504,
+    "sha256": "caa605d4dd1094e9fe7456ff9875085edc809f7728de3a1b2f77afc3bed7ddbc"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/05/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "f36e890fc9941b334b180c41bf65b983ded48c8f7e88da48f41cc0064d342e07"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/06/BID_candles_hour_1.bi5",
+    "n": 549,
+    "sha256": "e8694a3e510a45d17c85705685452f35c87cc03121a744ac4aafe355d920d095"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/07/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "120e92a8d26ff7396a10629a6292c27c6ad15edf05c1097bc0fbc63cd54034fd"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/08/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "76c5b3c3ac7cfe35c84f03496666d53587f334e1a6c6b962257202d1aab3244a"
+  },
+  {
+    "symbol": "EURUSD",
+    "month": "2026-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2026/09/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "37b2de4d069f99634f7127920531225b171c7a7ad7568da0fedbec845e5a03e0"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/00/BID_candles_hour_1.bi5",
+    "n": 530,
+    "sha256": "313f8d47e6723ed8bd89679d2a57883c594226156e4375536867da45edf690bb"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/01/BID_candles_hour_1.bi5",
+    "n": 480,
+    "sha256": "f40beb629e483feb6c65b967c3debb66b97402da6c3abac59b6376614063d3d1"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/02/BID_candles_hour_1.bi5",
+    "n": 505,
+    "sha256": "f0c7338dea83ad6bd4dd2e2cad7f9a8505c264012ab2dbd18528f3369f822a5e"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/03/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "5c1d249854e578f3590b048b9309ae831fbb3cd9b02101f4b1aceaadefed1126"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/04/BID_candles_hour_1.bi5",
+    "n": 549,
+    "sha256": "0084fecf9cef2f917df8d8c3e5de79bb4917dc0348c965113a45d253706f6a63"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/05/BID_candles_hour_1.bi5",
+    "n": 483,
+    "sha256": "fb2f8f9cf345323662285c4656271b0a20a84ad1defe19e2e287d0672543fe54"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/06/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "9518104328e7ea5225805e1002783b05ad0c1639606cf83456862162eea1a018"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/07/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "c321594c7bc24ca2eea6b3d97f84b06844e3ba2ff268ac18dcea62aa328037e2"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/08/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "060b1df4d18720a35fbc797b2aff481413fdcfe49b2e1dea733d21ce245f4371"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/09/BID_candles_hour_1.bi5",
+    "n": 552,
+    "sha256": "a20af57aebffbba6063231464e0ffbf33d7768188f3d53389bb6c90f83e0c60e"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/10/BID_candles_hour_1.bi5",
+    "n": 501,
+    "sha256": "d7554b2f124cb2408576050d50f019ad54d9c5e108eca09ec54a2cf33d7165a2"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2019-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2019/11/BID_candles_hour_1.bi5",
+    "n": 513,
+    "sha256": "cfd4d34f31a40986daf95fb3e0d1e6fbc51d548e3d7be2422b47c75db8ad7de5"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/00/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "7972592fbee115e6d06e5051c056def42a780ae4bf7260d327681f18846fc0ed"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/01/BID_candles_hour_1.bi5",
+    "n": 480,
+    "sha256": "32d642ee26e9fc2c76b0142eab5ea8a2984d94bfc3a0becbad98cf909831f0d2"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/02/BID_candles_hour_1.bi5",
+    "n": 531,
+    "sha256": "89cc42f24d6a508fc0a062418c97bf03739bc42022b7b00da4728da30dffff6d"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/03/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "2bc2f13b82f68b7f6e99910bca77233c737f7c5a792ed1a17746f4b5bc7ea31b"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/04/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=25)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/05/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2020/05/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/06/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=25)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/07/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "0eca462b0df2e625c86d9c5fee28d5f76028425397973e63b858367e7dacdfa0"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/08/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=25)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/09/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2020/09/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/10/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2020/10/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2020-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2020/11/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2020/11/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/00/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/00/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/01/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=25)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/02/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/02/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/03/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/03/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/04/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/04/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/05/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/05/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/06/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=25)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/07/BID_candles_hour_1.bi5",
+    "n": 531,
+    "sha256": "e7a40d4d713a9cba1bd3c58928952f02b00df301f854e561f57ac7390be976f7"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/08/BID_candles_hour_1.bi5",
+    "n": 528,
+    "sha256": "dd84275e1720ce7957059c0cda29cab0b4ef68404609f022d21a5e3f0973be05"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/09/BID_candles_hour_1.bi5",
+    "n": 504,
+    "sha256": "97107996119da971684ec67298f2a750f6961ecef94d86a34cad4708c372b41f"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/10/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/10/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2021-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2021/11/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2021/11/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/00/BID_candles_hour_1.bi5",
+    "error": "HTTPError('503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/USDJPY/2022/00/BID_candles_hour_1.bi5')"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/01/BID_candles_hour_1.bi5",
+    "n": 480,
+    "sha256": "934ae8ef92928bd801ea433c8f820d0cd905387e63930a222d5b981baf66061f"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/02/BID_candles_hour_1.bi5",
+    "n": 553,
+    "sha256": "37bbb6d4213687266331cd9b131e3f139f76432bada3a86601ba9985c2eac9fa"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/03/BID_candles_hour_1.bi5",
+    "n": 501,
+    "sha256": "f625960310ca736fef74f3075f188bd0194033440172a8d005bdea35bad3010e"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/04/BID_candles_hour_1.bi5",
+    "n": 531,
+    "sha256": "7d3f5310079251c85d28cf692349699241009d951b51dbb575cea628d0b4ca40"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/05/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2022/05/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0ec90>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/06/BID_candles_hour_1.bi5",
+    "n": 504,
+    "sha256": "309728871b6ebfbbe195757bbc8614a904e7f4be2e755acc288cb28d8e0cd48f"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/07/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2022/07/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0a300>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/08/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "1faa71071fd000a3634efc349b4d2ebbe526fe5502f8733255c212fe4e3cf796"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/09/BID_candles_hour_1.bi5",
+    "n": 507,
+    "sha256": "add2d4c4fba530acd7039f8cb10fa6db1fbd19122335c8a1725df5f9de8df678"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/10/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2022/10/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cc51f0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2022-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2022/11/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/00/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2023/00/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f38ec0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/01/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/02/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2023/02/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0bf80>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/03/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/04/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2023/04/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f39d30>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/05/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/06/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2023/06/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f38200>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/08/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/09/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2023/09/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d09910>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/10/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2023-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2023/11/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/00/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/01/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2024/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0bb30>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/02/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/03/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/04/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/05/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2024/05/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f39220>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/06/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2024/06/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0e420>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/08/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2024/08/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cb8b30>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/09/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/10/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2024-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2024/11/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2024/11/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c4d820>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/00/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2025/00/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d088f0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/01/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2025/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c73380>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/02/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2025/02/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f67a10>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/03/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/04/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2025/04/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c77500>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/05/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/06/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/08/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2025/08/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0b0e0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/09/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-11",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/10/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2025-12",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2025/11/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2025/11/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f86fc0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-01",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/00/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-02",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/01/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2026/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278f858b0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-03",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/02/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2026/02/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278cba000>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-04",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/03/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-05",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/04/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2026/04/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278c777d0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-06",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/05/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-07",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/06/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-08",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/07/BID_candles_hour_1.bi5",
+    "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=8)\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-09",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/08/BID_candles_hour_1.bi5",
+    "error": "ConnectTimeout(MaxRetryError(\"HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/USDJPY/2026/08/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x749278d0ce60>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=8)'))\"))"
+  },
+  {
+    "symbol": "USDJPY",
+    "month": "2026-10",
+    "url": "https://datafeed.dukascopy.com/datafeed/USDJPY/2026/09/BID_candles_hour_1.bi5",
+    "n": 525,
+    "sha256": "09d7011ff95af4e08b481a33103659000e09f89c6704396d3af48fb49e2e1c55"
+  }
+]

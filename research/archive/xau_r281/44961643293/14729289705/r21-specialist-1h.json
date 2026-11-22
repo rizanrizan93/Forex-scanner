@@ -1,0 +1,356 @@
+{
+  "tf": "1h",
+  "model_fits": 135,
+  "rule_evaluations": 1890,
+  "eligible_n": 26206,
+  "baseline_buy": 0.5049606960238113,
+  "aggregate": {
+    "BUY": {
+      "n": 2914,
+      "correct": 1518,
+      "accuracy": 0.520933,
+      "wilson_lower95": 0.502779
+    },
+    "SELL": {
+      "n": 1298,
+      "correct": 682,
+      "accuracy": 0.525424,
+      "wilson_lower95": 0.498223
+    },
+    "WAIT": 21994,
+    "coverage": 0.160727
+  },
+  "annual": [
+    {
+      "year": 2022,
+      "buy": {
+        "group": "session_pressure",
+        "years": 2,
+        "model": "hgb",
+        "threshold": 0.55,
+        "validation": {
+          "n": 573,
+          "correct": 316,
+          "accuracy": 0.5514834205933682,
+          "lower95": 0.5105524519856005
+        }
+      },
+      "sell": {
+        "group": "session_interaction",
+        "years": 2,
+        "model": "logit_strong",
+        "threshold": 0.58,
+        "validation": {
+          "n": 158,
+          "correct": 105,
+          "accuracy": 0.6645569620253164,
+          "lower95": 0.5878039021402277
+        }
+      },
+      "conflicts": 0,
+      "evaluation": {
+        "BUY": {
+          "n": 662,
+          "correct": 329,
+          "accuracy": 0.496979,
+          "wilson_lower95": 0.459018
+        },
+        "SELL": {
+          "n": 163,
+          "correct": 95,
+          "accuracy": 0.582822,
+          "wilson_lower95": 0.506068
+        },
+        "WAIT": 4822,
+        "coverage": 0.146095
+      }
+    },
+    {
+      "year": 2023,
+      "buy": {
+        "group": "intraday_price",
+        "years": 4,
+        "model": "hgb",
+        "threshold": 0.58,
+        "validation": {
+          "n": 218,
+          "correct": 122,
+          "accuracy": 0.5596330275229358,
+          "lower95": 0.49326507391591295
+        }
+      },
+      "sell": {
+        "group": "session_interaction",
+        "years": 4,
+        "model": "hgb",
+        "threshold": 0.6,
+        "validation": {
+          "n": 80,
+          "correct": 52,
+          "accuracy": 0.65,
+          "lower95": 0.5407980232189243
+        }
+      },
+      "conflicts": 0,
+      "evaluation": {
+        "BUY": {
+          "n": 110,
+          "correct": 53,
+          "accuracy": 0.481818,
+          "wilson_lower95": 0.390641
+        },
+        "SELL": {
+          "n": 54,
+          "correct": 41,
+          "accuracy": 0.759259,
+          "wilson_lower95": 0.630522
+        },
+        "WAIT": 4179,
+        "coverage": 0.037762
+      }
+    },
+    {
+      "year": 2024,
+      "buy": {
+        "group": "intraday_price",
+        "years": 4,
+        "model": "hgb",
+        "threshold": 0.52,
+        "validation": {
+          "n": 1076,
+          "correct": 558,
+          "accuracy": 0.5185873605947955,
+          "lower95": 0.48871913814780144
+        }
+      },
+      "sell": {
+        "group": "session_interaction",
+        "years": 4,
+        "model": "logit",
+        "threshold": 0.55,
+        "validation": {
+          "n": 289,
+          "correct": 174,
+          "accuracy": 0.6020761245674741,
+          "lower95": 0.544659476739421
+        }
+      },
+      "conflicts": 6,
+      "evaluation": {
+        "BUY": {
+          "n": 1356,
+          "correct": 717,
+          "accuracy": 0.528761,
+          "wilson_lower95": 0.502148
+        },
+        "SELL": {
+          "n": 431,
+          "correct": 221,
+          "accuracy": 0.512761,
+          "wilson_lower95": 0.465667
+        },
+        "WAIT": 3873,
+        "coverage": 0.315724
+      }
+    },
+    {
+      "year": 2025,
+      "buy": {
+        "group": "session_interaction",
+        "years": 8,
+        "model": "logit_strong",
+        "threshold": 0.55,
+        "validation": {
+          "n": 281,
+          "correct": 164,
+          "accuracy": 0.5836298932384342,
+          "lower95": 0.5252425443280262
+        }
+      },
+      "sell": {
+        "group": "session_pressure",
+        "years": 2,
+        "model": "logit",
+        "threshold": 0.55,
+        "validation": {
+          "n": 218,
+          "correct": 119,
+          "accuracy": 0.5458715596330275,
+          "lower95": 0.4795531062909347
+        }
+      },
+      "conflicts": 2,
+      "evaluation": {
+        "BUY": {
+          "n": 302,
+          "correct": 175,
+          "accuracy": 0.57947,
+          "wilson_lower95": 0.523138
+        },
+        "SELL": {
+          "n": 389,
+          "correct": 184,
+          "accuracy": 0.473008,
+          "wilson_lower95": 0.423899
+        },
+        "WAIT": 4942,
+        "coverage": 0.12267
+      }
+    },
+    {
+      "year": 2026,
+      "buy": {
+        "group": "session_interaction",
+        "years": 4,
+        "model": "logit_strong",
+        "threshold": 0.55,
+        "validation": {
+          "n": 316,
+          "correct": 186,
+          "accuracy": 0.5886075949367089,
+          "lower95": 0.5336029279493076
+        }
+      },
+      "sell": {
+        "group": "intraday_price",
+        "years": 8,
+        "model": "hgb",
+        "threshold": 0.55,
+        "validation": {
+          "n": 270,
+          "correct": 155,
+          "accuracy": 0.5740740740740741,
+          "lower95": 0.5144581128956527
+        }
+      },
+      "conflicts": 0,
+      "evaluation": {
+        "BUY": {
+          "n": 484,
+          "correct": 244,
+          "accuracy": 0.504132,
+          "wilson_lower95": 0.459731
+        },
+        "SELL": {
+          "n": 261,
+          "correct": 141,
+          "accuracy": 0.54023,
+          "wilson_lower95": 0.47962
+        },
+        "WAIT": 4178,
+        "coverage": 0.15133
+      }
+    }
+  ],
+  "feature_groups": {
+    "intraday_price": [
+      "ret1",
+      "ret2",
+      "ret3",
+      "ret6",
+      "ret12",
+      "ret24",
+      "body_atr",
+      "clv",
+      "range_atr",
+      "atr_rank",
+      "ema_atr",
+      "hour_sin",
+      "hour_cos",
+      "eff3",
+      "range_rel3",
+      "eff6",
+      "range_rel6",
+      "eff12",
+      "range_rel12"
+    ],
+    "session_interaction": [
+      "ret1",
+      "ret2",
+      "ret3",
+      "ret6",
+      "ret12",
+      "ret24",
+      "body_atr",
+      "clv",
+      "range_atr",
+      "atr_rank",
+      "ema_atr",
+      "london_active",
+      "ny_active",
+      "asia_active",
+      "ny_open",
+      "london_open",
+      "hour_sin",
+      "hour_cos",
+      "eff3",
+      "range_rel3",
+      "eff6",
+      "range_rel6",
+      "eff12",
+      "range_rel12",
+      "london_active_body_atr",
+      "london_active_ema_atr",
+      "london_active_ret3",
+      "london_active_range_atr",
+      "ny_active_body_atr",
+      "ny_active_ema_atr",
+      "ny_active_ret3",
+      "ny_active_range_atr",
+      "asia_active_body_atr",
+      "asia_active_ema_atr",
+      "asia_active_ret3",
+      "asia_active_range_atr",
+      "ny_open_body_atr",
+      "ny_open_ema_atr",
+      "ny_open_ret3",
+      "ny_open_range_atr",
+      "london_open_body_atr",
+      "london_open_ema_atr",
+      "london_open_ret3",
+      "london_open_range_atr"
+    ],
+    "session_pressure": [
+      "ret1",
+      "ret3",
+      "range_atr",
+      "atr_rank",
+      "ema_atr",
+      "london_active",
+      "ny_active",
+      "asia_active",
+      "ny_open",
+      "london_open",
+      "london_active_body_atr",
+      "london_active_ema_atr",
+      "london_active_ret3",
+      "london_active_range_atr",
+      "ny_active_body_atr",
+      "ny_active_ema_atr",
+      "ny_active_ret3",
+      "ny_active_range_atr",
+      "asia_active_body_atr",
+      "asia_active_ema_atr",
+      "asia_active_ret3",
+      "asia_active_range_atr",
+      "ny_open_body_atr",
+      "ny_open_ema_atr",
+      "ny_open_ret3",
+      "ny_open_range_atr",
+      "london_open_body_atr",
+      "london_open_ema_atr",
+      "london_open_ret3",
+      "london_open_range_atr"
+    ]
+  },
+  "source": {
+    "sources": "completed OHLC only; no intraday DXY or yield"
+  },
+  "limits": [
+    "All historical evaluation reused, not pristine holdout",
+    "Specialist methods are hypotheses, not trading systems",
+    "No DXY or news consensus features in this pilot",
+    "No entry zones or orders",
+    "H1/H4 feature prefix checks use already-computed causal upstream features, not full independent source rebuild"
+  ]
+}

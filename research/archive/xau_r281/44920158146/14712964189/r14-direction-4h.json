@@ -1,0 +1,147 @@
+{
+  "version": "R14.1",
+  "model_type": "CLOSED-CANDLE DIRECTION ONLY",
+  "tf": "H4",
+  "target": "next closed candle CLOSE-to-CLOSE BUY/SELL/WAIT",
+  "data_source": "R10 M1->H1/H4 2019-2026",
+  "source_run": 44901264975,
+  "candle_boundary": "signal only after completion of its own H1/H4/D1/W1 candle",
+  "periods": {
+    "train": "2019-2022",
+    "cal": "2023H1",
+    "selection": "2023H2",
+    "evaluation": "2024-2026"
+  },
+  "counts": {
+    "train": 5648,
+    "calibration": 380,
+    "selection": 649,
+    "evaluation": 4098
+  },
+  "audit": {
+    "type": "R10.3 upstream independent prefix audit",
+    "status": "PASS",
+    "reference_run": 44907102788,
+    "warning": "R14 adds only contemporaneous derived features; no new incomplete D1/W1 source"
+  },
+  "models_trained": 4,
+  "candidate_rules": 48,
+  "mandatory_wait_cutoff": 0.55,
+  "decision_policy": "BUY if P(up)>=cut; SELL if P(up)<=1-cut; otherwise WAIT, only if validation eligibility met",
+  "validation_gate_pass": true,
+  "selection": {
+    "model": "hgb_depth5",
+    "calibration": "raw",
+    "cut": 0.55,
+    "quality": 0.409063,
+    "validation": {
+      "BUY": {
+        "n": 164,
+        "correct": 86,
+        "accuracy": 0.52439,
+        "wilson_lower95": 0.448276
+      },
+      "SELL": {
+        "n": 101,
+        "correct": 51,
+        "accuracy": 0.50495,
+        "wilson_lower95": 0.409063
+      },
+      "WAIT": 384,
+      "coverage": 0.40832,
+      "brier": 0.252227
+    }
+  },
+  "evaluation": {
+    "BUY": {
+      "n": 900,
+      "correct": 483,
+      "accuracy": 0.536667,
+      "wilson_lower95": 0.504001
+    },
+    "SELL": {
+      "n": 1065,
+      "correct": 504,
+      "accuracy": 0.473239,
+      "wilson_lower95": 0.443403
+    },
+    "WAIT": 2133,
+    "coverage": 0.479502,
+    "brier": 0.256056
+  },
+  "evaluation_annual": {
+    "2024": {
+      "BUY": {
+        "n": 286,
+        "correct": 161,
+        "accuracy": 0.562937,
+        "wilson_lower95": 0.504991
+      },
+      "SELL": {
+        "n": 289,
+        "correct": 139,
+        "accuracy": 0.480969,
+        "wilson_lower95": 0.423992
+      },
+      "WAIT": 855,
+      "coverage": 0.402098,
+      "brier": 0.252348
+    },
+    "2025": {
+      "BUY": {
+        "n": 267,
+        "correct": 150,
+        "accuracy": 0.561798,
+        "wilson_lower95": 0.501823
+      },
+      "SELL": {
+        "n": 443,
+        "correct": 203,
+        "accuracy": 0.458239,
+        "wilson_lower95": 0.412398
+      },
+      "WAIT": 712,
+      "coverage": 0.499297,
+      "brier": 0.257382
+    },
+    "2026": {
+      "BUY": {
+        "n": 347,
+        "correct": 172,
+        "accuracy": 0.495677,
+        "wilson_lower95": 0.443406
+      },
+      "SELL": {
+        "n": 333,
+        "correct": 162,
+        "accuracy": 0.486486,
+        "wilson_lower95": 0.433263
+      },
+      "WAIT": 566,
+      "coverage": 0.545746,
+      "brier": 0.258798
+    }
+  },
+  "baseline": {
+    "always_buy_accuracy": 0.524402,
+    "always_sell_accuracy": 0.475598,
+    "previous_candle_persistence": 0.500732
+  },
+  "target_60_both_directions_observed": false,
+  "latest_dataset_candle_open": "2026-11-13 16:00:00+00:00",
+  "latest_dataset_candle_closed": "2026-11-13 20:00:00+00:00",
+  "research_only": true,
+  "no_zone_engine": true,
+  "live_permission": false,
+  "limitations": [
+    "No actual price stream at current time and no brokerage signal",
+    "2023-2026 years previously inspected in earlier research, NOT pristine holdout",
+    "Directional accuracy is not realized P&L, MFE, stop/target or tradable profit",
+    "Sample selection across configs and multiple-testing bias still possible",
+    "Model probabilities calibrated on older period and may drift",
+    "No point-in-time DXY/yield/COT integration here",
+    "Source data has gaps and aggregation thresholds; reject incomplete candles",
+    "W1 calendar uses full Monday-Friday daily bars, not cTrader broker week",
+    "Cost/spread/slippage not measured in direction-only model"
+  ]
+}

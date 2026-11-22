@@ -1,0 +1,19 @@
+{
+  "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml",
+  "data": "ECB daily reference rates per EUR",
+  "raw_sha256": "908dace77f866f41336206f0d0ec67bbadad2716664a683d677145818d272edb",
+  "csv_sha256": "c09520fa5106ff1b5a51c5fb4ba08031ac10445e38f73f4d88a0dadcab966eba",
+  "annual_rows": {
+    "2018": 255,
+    "2019": 255,
+    "2020": 257,
+    "2021": 258,
+    "2022": 257,
+    "2023": 255,
+    "2024": 256,
+    "2025": 255
+  },
+  "availability": "next calendar day 00:00 UTC, conservative proxy",
+  "errors": [],
+  "pit": false
+}

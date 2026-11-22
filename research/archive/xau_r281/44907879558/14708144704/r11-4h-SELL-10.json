@@ -1,0 +1,1455 @@
+{
+  "version": "R11",
+  "tf": "4h",
+  "side": "SELL",
+  "family_id": 10,
+  "family": "displacement",
+  "parameter_configurations_evaluated": 2097152,
+  "search_space_per_job": 2097152,
+  "eligible_development": 96533,
+  "deduplicated_development_shortlist": 20,
+  "train_years": "2019-2022",
+  "validation_year": "2023",
+  "evaluation_years": "2024-2026 (previously inspected; NOT pristine)",
+  "source": "R10 histdata M1-derived archived candles, job 44901264975",
+  "causal_context": "r102_calibrated positional lagged daily and weekly features",
+  "strategy_family_anchor": "displacement",
+  "axes": [
+    "higher_timeframe",
+    "trend_strength",
+    "momentum",
+    "pressure",
+    "volatility",
+    "liquidity",
+    "session"
+  ],
+  "candidate_results": [
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 17893,
+      "group_choices": [
+        5,
+        4,
+        7,
+        2,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.493928,
+      "train": {
+        "n": 195,
+        "correct": 110,
+        "accuracy": 0.564103,
+        "wilson_lower95": 0.493928,
+        "coverage": 0.034581
+      },
+      "validation": {
+        "n": 38,
+        "correct": 26,
+        "accuracy": 0.684211,
+        "wilson_lower95": 0.525439,
+        "coverage": 0.036929
+      },
+      "training_signal_sha256": "13dfd034e91bad9c17b6f37f91b07bd36fb78ea7d4b6d74b38ca225c17ea7dd1",
+      "validation_signal_sha256": "4f010110a15eb90c1655e1d4130417c09f69099e8be5ddf42fff76afb93a9fa9",
+      "evaluation": {
+        "n": 144,
+        "correct": 88,
+        "accuracy": 0.611111,
+        "wilson_lower95": 0.529588,
+        "coverage": 0.035139,
+        "gross_mean_close_to_close_usd_oz": 5.456722,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.756722,
+        "mfe_gte_10_usd_fraction": 0.534722,
+        "avg_mfe_usd_oz": 21.241889,
+        "avg_mae_usd_oz": 15.824722
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 41,
+          "correct": 20,
+          "accuracy": 0.487805,
+          "wilson_lower95": 0.342542,
+          "coverage": 0.028671
+        },
+        {
+          "year": 2025,
+          "n": 13,
+          "correct": 8,
+          "accuracy": 0.615385,
+          "wilson_lower95": 0.355225,
+          "coverage": 0.009142
+        },
+        {
+          "year": 2026,
+          "n": 90,
+          "correct": 60,
+          "accuracy": 0.666667,
+          "wilson_lower95": 0.564221,
+          "coverage": 0.072231
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 18053,
+      "group_choices": [
+        5,
+        0,
+        2,
+        3,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.489312,
+      "train": {
+        "n": 212,
+        "correct": 118,
+        "accuracy": 0.556604,
+        "wilson_lower95": 0.489312,
+        "coverage": 0.037595
+      },
+      "validation": {
+        "n": 38,
+        "correct": 25,
+        "accuracy": 0.657895,
+        "wilson_lower95": 0.498918,
+        "coverage": 0.036929
+      },
+      "training_signal_sha256": "f2ead30494892eb5f029e832b83aeae3b1ab2c601694e17b3b70897a0d9352fd",
+      "validation_signal_sha256": "7d3598835a6df710e8a240e452dbc64f2d818c76196dbd3d8cd028a49d00271d",
+      "evaluation": {
+        "n": 140,
+        "correct": 87,
+        "accuracy": 0.621429,
+        "wilson_lower95": 0.538854,
+        "coverage": 0.034163,
+        "gross_mean_close_to_close_usd_oz": 5.055343,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.355343,
+        "mfe_gte_10_usd_fraction": 0.514286,
+        "avg_mfe_usd_oz": 20.946707,
+        "avg_mae_usd_oz": 15.98
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 38,
+          "correct": 20,
+          "accuracy": 0.526316,
+          "wilson_lower95": 0.372587,
+          "coverage": 0.026573
+        },
+        {
+          "year": 2025,
+          "n": 9,
+          "correct": 6,
+          "accuracy": 0.666667,
+          "wilson_lower95": 0.354197,
+          "coverage": 0.006329
+        },
+        {
+          "year": 2026,
+          "n": 93,
+          "correct": 61,
+          "accuracy": 0.655914,
+          "wilson_lower95": 0.554907,
+          "coverage": 0.074639
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 18085,
+      "group_choices": [
+        5,
+        4,
+        2,
+        3,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.487587,
+      "train": {
+        "n": 192,
+        "correct": 109,
+        "accuracy": 0.567708,
+        "wilson_lower95": 0.496984,
+        "coverage": 0.034049
+      },
+      "validation": {
+        "n": 37,
+        "correct": 24,
+        "accuracy": 0.648649,
+        "wilson_lower95": 0.487587,
+        "coverage": 0.035957
+      },
+      "training_signal_sha256": "4ee7b184aeaabc330080b74f8ccc83aa7210ed2a5bd1deada48a905527801736",
+      "validation_signal_sha256": "8d4db23b8422942230d7c216c5b16d08283adde4b50d38f815898a34aa2e4cad",
+      "evaluation": {
+        "n": 132,
+        "correct": 83,
+        "accuracy": 0.628788,
+        "wilson_lower95": 0.543818,
+        "coverage": 0.032211,
+        "gross_mean_close_to_close_usd_oz": 5.667455,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.967455,
+        "mfe_gte_10_usd_fraction": 0.522727,
+        "avg_mfe_usd_oz": 21.447045,
+        "avg_mae_usd_oz": 15.994462
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 37,
+          "correct": 20,
+          "accuracy": 0.540541,
+          "wilson_lower95": 0.383838,
+          "coverage": 0.025874
+        },
+        {
+          "year": 2025,
+          "n": 9,
+          "correct": 6,
+          "accuracy": 0.666667,
+          "wilson_lower95": 0.354197,
+          "coverage": 0.006329
+        },
+        {
+          "year": 2026,
+          "n": 86,
+          "correct": 57,
+          "accuracy": 0.662791,
+          "wilson_lower95": 0.557824,
+          "coverage": 0.069021
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 18277,
+      "group_choices": [
+        5,
+        4,
+        5,
+        3,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.485442,
+      "train": {
+        "n": 179,
+        "correct": 100,
+        "accuracy": 0.558659,
+        "wilson_lower95": 0.485442,
+        "coverage": 0.031743
+      },
+      "validation": {
+        "n": 38,
+        "correct": 26,
+        "accuracy": 0.684211,
+        "wilson_lower95": 0.525439,
+        "coverage": 0.036929
+      },
+      "training_signal_sha256": "99e54bbe1bccf70b04b6595b366cac6ff1be094039c7cf18d0d23bfd14717358",
+      "validation_signal_sha256": "8a3dd8952094c0ecf130d720ed35eebb6db8b8ed23b3c2515a12854ff0a84773",
+      "evaluation": {
+        "n": 121,
+        "correct": 79,
+        "accuracy": 0.652893,
+        "wilson_lower95": 0.564547,
+        "coverage": 0.029527,
+        "gross_mean_close_to_close_usd_oz": 6.311446,
+        "net_mean_cost_scenario_0_7_usd_oz": 5.611446,
+        "mfe_gte_10_usd_fraction": 0.570248,
+        "avg_mfe_usd_oz": 22.498793,
+        "avg_mae_usd_oz": 15.672306
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 34,
+          "correct": 19,
+          "accuracy": 0.558824,
+          "wilson_lower95": 0.394536,
+          "coverage": 0.023776
+        },
+        {
+          "year": 2025,
+          "n": 9,
+          "correct": 6,
+          "accuracy": 0.666667,
+          "wilson_lower95": 0.354197,
+          "coverage": 0.006329
+        },
+        {
+          "year": 2026,
+          "n": 78,
+          "correct": 54,
+          "accuracy": 0.692308,
+          "wilson_lower95": 0.58288,
+          "coverage": 0.0626
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 17861,
+      "group_choices": [
+        5,
+        0,
+        7,
+        2,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.484278,
+      "train": {
+        "n": 216,
+        "correct": 119,
+        "accuracy": 0.550926,
+        "wilson_lower95": 0.484278,
+        "coverage": 0.038305
+      },
+      "validation": {
+        "n": 40,
+        "correct": 27,
+        "accuracy": 0.675,
+        "wilson_lower95": 0.520175,
+        "coverage": 0.038873
+      },
+      "training_signal_sha256": "c5f6ff730e74346dd300c36aad2cf7bae2927f07298cefd1137499789073bc80",
+      "validation_signal_sha256": "d57bda16954eb5cb5235e5d50d0c15d5d8623d732757a057187a662f1a96822e",
+      "evaluation": {
+        "n": 146,
+        "correct": 89,
+        "accuracy": 0.609589,
+        "wilson_lower95": 0.528617,
+        "coverage": 0.035627,
+        "gross_mean_close_to_close_usd_oz": 5.368733,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.668733,
+        "mfe_gte_10_usd_fraction": 0.527397,
+        "avg_mfe_usd_oz": 21.052678,
+        "avg_mae_usd_oz": 15.65026
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 42,
+          "correct": 20,
+          "accuracy": 0.47619,
+          "wilson_lower95": 0.333594,
+          "coverage": 0.029371
+        },
+        {
+          "year": 2025,
+          "n": 13,
+          "correct": 8,
+          "accuracy": 0.615385,
+          "wilson_lower95": 0.355225,
+          "coverage": 0.009142
+        },
+        {
+          "year": 2026,
+          "n": 91,
+          "correct": 61,
+          "accuracy": 0.67033,
+          "wilson_lower95": 0.568568,
+          "coverage": 0.073034
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 18245,
+      "group_choices": [
+        5,
+        0,
+        5,
+        3,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.484099,
+      "train": {
+        "n": 191,
+        "correct": 106,
+        "accuracy": 0.554974,
+        "wilson_lower95": 0.484099,
+        "coverage": 0.033871
+      },
+      "validation": {
+        "n": 39,
+        "correct": 27,
+        "accuracy": 0.692308,
+        "wilson_lower95": 0.535785,
+        "coverage": 0.037901
+      },
+      "training_signal_sha256": "e17c4992c2d10808f0e89f02a54769f47a968482818e312c9aff3c691e436fb2",
+      "validation_signal_sha256": "a4641f7fae263829d7f80cef42445be4280d9036253a3e1e876e26c06faad3d4",
+      "evaluation": {
+        "n": 125,
+        "correct": 81,
+        "accuracy": 0.648,
+        "wilson_lower95": 0.561001,
+        "coverage": 0.030503,
+        "gross_mean_close_to_close_usd_oz": 6.01172,
+        "net_mean_cost_scenario_0_7_usd_oz": 5.31172,
+        "mfe_gte_10_usd_fraction": 0.576,
+        "avg_mfe_usd_oz": 22.343552,
+        "avg_mae_usd_oz": 15.594896
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 34,
+          "correct": 19,
+          "accuracy": 0.558824,
+          "wilson_lower95": 0.394536,
+          "coverage": 0.023776
+        },
+        {
+          "year": 2025,
+          "n": 9,
+          "correct": 6,
+          "accuracy": 0.666667,
+          "wilson_lower95": 0.354197,
+          "coverage": 0.006329
+        },
+        {
+          "year": 2026,
+          "n": 82,
+          "correct": 56,
+          "accuracy": 0.682927,
+          "wilson_lower95": 0.57596,
+          "coverage": 0.065811
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 17445,
+      "group_choices": [
+        5,
+        4,
+        0,
+        2,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.483811,
+      "train": {
+        "n": 222,
+        "correct": 122,
+        "accuracy": 0.54955,
+        "wilson_lower95": 0.483811,
+        "coverage": 0.039369
+      },
+      "validation": {
+        "n": 42,
+        "correct": 27,
+        "accuracy": 0.642857,
+        "wilson_lower95": 0.491661,
+        "coverage": 0.040816
+      },
+      "training_signal_sha256": "5d387198618781b594a46a8b1c98d5e685a386dbecf0d4ffea13849fed192d72",
+      "validation_signal_sha256": "5948a33d29c511b3930a23a2247309e36b8250b53769445a18f900355eb1f34c",
+      "evaluation": {
+        "n": 161,
+        "correct": 96,
+        "accuracy": 0.596273,
+        "wilson_lower95": 0.519095,
+        "coverage": 0.039287,
+        "gross_mean_close_to_close_usd_oz": 4.698683,
+        "net_mean_cost_scenario_0_7_usd_oz": 3.998683,
+        "mfe_gte_10_usd_fraction": 0.515528,
+        "avg_mfe_usd_oz": 20.083062,
+        "avg_mae_usd_oz": 15.567764
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 46,
+          "correct": 23,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.361187,
+          "coverage": 0.032168
+        },
+        {
+          "year": 2025,
+          "n": 15,
+          "correct": 8,
+          "accuracy": 0.533333,
+          "wilson_lower95": 0.301166,
+          "coverage": 0.010549
+        },
+        {
+          "year": 2026,
+          "n": 100,
+          "correct": 65,
+          "accuracy": 0.65,
+          "wilson_lower95": 0.552543,
+          "coverage": 0.080257
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 1313047,
+      "group_choices": [
+        7,
+        2,
+        4,
+        4,
+        0,
+        0,
+        5
+      ],
+      "rank_on_development_only": 0.482346,
+      "train": {
+        "n": 157,
+        "correct": 88,
+        "accuracy": 0.56051,
+        "wilson_lower95": 0.482346,
+        "coverage": 0.027842
+      },
+      "validation": {
+        "n": 35,
+        "correct": 26,
+        "accuracy": 0.742857,
+        "wilson_lower95": 0.579304,
+        "coverage": 0.034014
+      },
+      "training_signal_sha256": "fa1db987672e62d6f4157d7f4658ae9643c287df7da3996a94201d9b1d523651",
+      "validation_signal_sha256": "69e259999a143c6078d926426682b6f5743bb67a2775fd7466a9791055ff530e",
+      "evaluation": {
+        "n": 98,
+        "correct": 51,
+        "accuracy": 0.520408,
+        "wilson_lower95": 0.422606,
+        "coverage": 0.023914,
+        "gross_mean_close_to_close_usd_oz": 1.891888,
+        "net_mean_cost_scenario_0_7_usd_oz": 1.191888,
+        "mfe_gte_10_usd_fraction": 0.540816,
+        "avg_mfe_usd_oz": 20.591388,
+        "avg_mae_usd_oz": 19.841194
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 33,
+          "correct": 14,
+          "accuracy": 0.424242,
+          "wilson_lower95": 0.272354,
+          "coverage": 0.023077
+        },
+        {
+          "year": 2025,
+          "n": 26,
+          "correct": 13,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.320603,
+          "coverage": 0.018284
+        },
+        {
+          "year": 2026,
+          "n": 39,
+          "correct": 24,
+          "accuracy": 0.615385,
+          "wilson_lower95": 0.458988,
+          "coverage": 0.0313
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 16677,
+      "group_choices": [
+        5,
+        4,
+        4,
+        0,
+        4,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.480317,
+      "train": {
+        "n": 206,
+        "correct": 113,
+        "accuracy": 0.548544,
+        "wilson_lower95": 0.480317,
+        "coverage": 0.036531
+      },
+      "validation": {
+        "n": 41,
+        "correct": 27,
+        "accuracy": 0.658537,
+        "wilson_lower95": 0.505496,
+        "coverage": 0.039845
+      },
+      "training_signal_sha256": "c5bbfe640ea7f1406b258759a7772cae5255e28abc5597383b8b966c72a1f3a1",
+      "validation_signal_sha256": "ef611be285e620a13564f9f053fa393e0111445183510804f54abe13ce1dce7b",
+      "evaluation": {
+        "n": 144,
+        "correct": 89,
+        "accuracy": 0.618056,
+        "wilson_lower95": 0.536608,
+        "coverage": 0.035139,
+        "gross_mean_close_to_close_usd_oz": 5.140917,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.440917,
+        "mfe_gte_10_usd_fraction": 0.541667,
+        "avg_mfe_usd_oz": 20.782201,
+        "avg_mae_usd_oz": 15.351764
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 41,
+          "correct": 22,
+          "accuracy": 0.536585,
+          "wilson_lower95": 0.387462,
+          "coverage": 0.028671
+        },
+        {
+          "year": 2025,
+          "n": 11,
+          "correct": 6,
+          "accuracy": 0.545455,
+          "wilson_lower95": 0.280088,
+          "coverage": 0.007736
+        },
+        {
+          "year": 2026,
+          "n": 92,
+          "correct": 61,
+          "accuracy": 0.663043,
+          "wilson_lower95": 0.561651,
+          "coverage": 0.073836
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 30991,
+      "group_choices": [
+        7,
+        1,
+        4,
+        4,
+        7,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.479596,
+      "train": {
+        "n": 256,
+        "correct": 141,
+        "accuracy": 0.550781,
+        "wilson_lower95": 0.489545,
+        "coverage": 0.045398
+      },
+      "validation": {
+        "n": 52,
+        "correct": 32,
+        "accuracy": 0.615385,
+        "wilson_lower95": 0.479596,
+        "coverage": 0.050534
+      },
+      "training_signal_sha256": "bae9c4934d2ad6676d630426f1dbafa114903d070612ed7f471f59892d0b9914",
+      "validation_signal_sha256": "96524a978f87840e19b09dddf83a2405b9613f25ad314e0222cbc78e137fb558",
+      "evaluation": {
+        "n": 192,
+        "correct": 98,
+        "accuracy": 0.510417,
+        "wilson_lower95": 0.440199,
+        "coverage": 0.046852,
+        "gross_mean_close_to_close_usd_oz": 0.708781,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.008781,
+        "mfe_gte_10_usd_fraction": 0.494792,
+        "avg_mfe_usd_oz": 15.860547,
+        "avg_mae_usd_oz": 14.461745
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 53,
+          "correct": 22,
+          "accuracy": 0.415094,
+          "wilson_lower95": 0.292607,
+          "coverage": 0.037063
+        },
+        {
+          "year": 2025,
+          "n": 53,
+          "correct": 25,
+          "accuracy": 0.471698,
+          "wilson_lower95": 0.34382,
+          "coverage": 0.037271
+        },
+        {
+          "year": 2026,
+          "n": 86,
+          "correct": 51,
+          "accuracy": 0.593023,
+          "wilson_lower95": 0.487381,
+          "coverage": 0.069021
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 30986,
+      "group_choices": [
+        2,
+        1,
+        4,
+        4,
+        7,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.472837,
+      "train": {
+        "n": 187,
+        "correct": 107,
+        "accuracy": 0.572193,
+        "wilson_lower95": 0.500528,
+        "coverage": 0.033162
+      },
+      "validation": {
+        "n": 38,
+        "correct": 24,
+        "accuracy": 0.631579,
+        "wilson_lower95": 0.472837,
+        "coverage": 0.036929
+      },
+      "training_signal_sha256": "c8600ae6c29fb42a39aa25105dd3c3c3e37c548a0e5be8ae63376c43a7d45ce6",
+      "validation_signal_sha256": "61c84225901ba32d5006ba1dd4905866bf4c8ce363e17a8d3b6843695dbf8429",
+      "evaluation": {
+        "n": 131,
+        "correct": 70,
+        "accuracy": 0.534351,
+        "wilson_lower95": 0.449172,
+        "coverage": 0.031967,
+        "gross_mean_close_to_close_usd_oz": 1.389015,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.689015,
+        "mfe_gte_10_usd_fraction": 0.549618,
+        "avg_mfe_usd_oz": 17.850115,
+        "avg_mae_usd_oz": 14.89584
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 34,
+          "correct": 12,
+          "accuracy": 0.352941,
+          "wilson_lower95": 0.214877,
+          "coverage": 0.023776
+        },
+        {
+          "year": 2025,
+          "n": 28,
+          "correct": 16,
+          "accuracy": 0.571429,
+          "wilson_lower95": 0.390705,
+          "coverage": 0.019691
+        },
+        {
+          "year": 2026,
+          "n": 69,
+          "correct": 42,
+          "accuracy": 0.608696,
+          "wilson_lower95": 0.490738,
+          "coverage": 0.055377
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 247333,
+      "group_choices": [
+        5,
+        4,
+        0,
+        3,
+        4,
+        7,
+        0
+      ],
+      "rank_on_development_only": 0.472837,
+      "train": {
+        "n": 191,
+        "correct": 107,
+        "accuracy": 0.560209,
+        "wilson_lower95": 0.489315,
+        "coverage": 0.033871
+      },
+      "validation": {
+        "n": 38,
+        "correct": 24,
+        "accuracy": 0.631579,
+        "wilson_lower95": 0.472837,
+        "coverage": 0.036929
+      },
+      "training_signal_sha256": "ccfb84b6989523533e58f2f47da34c7e03b4238ff7e39082c53b6234059986c1",
+      "validation_signal_sha256": "7748d5fbe4f75010cbf5d7292a269eda046a68145144847186fd9a63483661c7",
+      "evaluation": {
+        "n": 136,
+        "correct": 86,
+        "accuracy": 0.632353,
+        "wilson_lower95": 0.548718,
+        "coverage": 0.033187,
+        "gross_mean_close_to_close_usd_oz": 5.601765,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.901765,
+        "mfe_gte_10_usd_fraction": 0.566176,
+        "avg_mfe_usd_oz": 21.202721,
+        "avg_mae_usd_oz": 15.632316
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 36,
+          "correct": 21,
+          "accuracy": 0.583333,
+          "wilson_lower95": 0.422,
+          "coverage": 0.025175
+        },
+        {
+          "year": 2025,
+          "n": 11,
+          "correct": 6,
+          "accuracy": 0.545455,
+          "wilson_lower95": 0.280088,
+          "coverage": 0.007736
+        },
+        {
+          "year": 2026,
+          "n": 89,
+          "correct": 59,
+          "accuracy": 0.662921,
+          "wilson_lower95": 0.559787,
+          "coverage": 0.071429
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 30988,
+      "group_choices": [
+        4,
+        1,
+        4,
+        4,
+        7,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.470322,
+      "train": {
+        "n": 204,
+        "correct": 115,
+        "accuracy": 0.563725,
+        "wilson_lower95": 0.495115,
+        "coverage": 0.036177
+      },
+      "validation": {
+        "n": 40,
+        "correct": 25,
+        "accuracy": 0.625,
+        "wilson_lower95": 0.470322,
+        "coverage": 0.038873
+      },
+      "training_signal_sha256": "ad72789dc4e258b6502d150eacfdc9fdd46a30b93c0333694b2e69bd3f939f85",
+      "validation_signal_sha256": "467e18fcea8ace847603bc1de284ff5f3e15ac81e5226e95e85971e50e34ebe5",
+      "evaluation": {
+        "n": 156,
+        "correct": 85,
+        "accuracy": 0.544872,
+        "wilson_lower95": 0.466584,
+        "coverage": 0.038067,
+        "gross_mean_close_to_close_usd_oz": 0.762974,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.062974,
+        "mfe_gte_10_usd_fraction": 0.544872,
+        "avg_mfe_usd_oz": 16.884494,
+        "avg_mae_usd_oz": 15.186147
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 36,
+          "correct": 15,
+          "accuracy": 0.416667,
+          "wilson_lower95": 0.271403,
+          "coverage": 0.025175
+        },
+        {
+          "year": 2025,
+          "n": 41,
+          "correct": 23,
+          "accuracy": 0.560976,
+          "wilson_lower95": 0.410403,
+          "coverage": 0.028833
+        },
+        {
+          "year": 2026,
+          "n": 79,
+          "correct": 47,
+          "accuracy": 0.594937,
+          "wilson_lower95": 0.48473,
+          "coverage": 0.063403
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 247349,
+      "group_choices": [
+        5,
+        6,
+        0,
+        3,
+        4,
+        7,
+        0
+      ],
+      "rank_on_development_only": 0.470322,
+      "train": {
+        "n": 211,
+        "correct": 116,
+        "accuracy": 0.549763,
+        "wilson_lower95": 0.482339,
+        "coverage": 0.037418
+      },
+      "validation": {
+        "n": 40,
+        "correct": 25,
+        "accuracy": 0.625,
+        "wilson_lower95": 0.470322,
+        "coverage": 0.038873
+      },
+      "training_signal_sha256": "1bac6cf5e4e98a611369597be61c1f6b6acbcf55ecba70e80b0badec011cc6ac",
+      "validation_signal_sha256": "3a9272cc4649220f43b415eda3a6d6faa88e8f1038f19e3e2faeb0ac51d3f113",
+      "evaluation": {
+        "n": 144,
+        "correct": 90,
+        "accuracy": 0.625,
+        "wilson_lower95": 0.543645,
+        "coverage": 0.035139,
+        "gross_mean_close_to_close_usd_oz": 5.088688,
+        "net_mean_cost_scenario_0_7_usd_oz": 4.388688,
+        "mfe_gte_10_usd_fraction": 0.555556,
+        "avg_mfe_usd_oz": 20.683118,
+        "avg_mae_usd_oz": 15.681153
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 37,
+          "correct": 21,
+          "accuracy": 0.567568,
+          "wilson_lower95": 0.409139,
+          "coverage": 0.025874
+        },
+        {
+          "year": 2025,
+          "n": 11,
+          "correct": 6,
+          "accuracy": 0.545455,
+          "wilson_lower95": 0.280088,
+          "coverage": 0.007736
+        },
+        {
+          "year": 2026,
+          "n": 96,
+          "correct": 63,
+          "accuracy": 0.65625,
+          "wilson_lower95": 0.556878,
+          "coverage": 0.077047
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 30732,
+      "group_choices": [
+        4,
+        1,
+        0,
+        4,
+        7,
+        0,
+        0
+      ],
+      "rank_on_development_only": 0.468138,
+      "train": {
+        "n": 224,
+        "correct": 123,
+        "accuracy": 0.549107,
+        "wilson_lower95": 0.483663,
+        "coverage": 0.039723
+      },
+      "validation": {
+        "n": 42,
+        "correct": 26,
+        "accuracy": 0.619048,
+        "wilson_lower95": 0.468138,
+        "coverage": 0.040816
+      },
+      "training_signal_sha256": "e7f77553d00c8fa1d25680b9ff46430089d6e652735a0a641af6cf44005a0e55",
+      "validation_signal_sha256": "c4130b407b014367b1614f032c072bb91a6c474b45f98d8225393d19b5995a69",
+      "evaluation": {
+        "n": 166,
+        "correct": 91,
+        "accuracy": 0.548193,
+        "wilson_lower95": 0.472247,
+        "coverage": 0.040508,
+        "gross_mean_close_to_close_usd_oz": 1.164705,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.464705,
+        "mfe_gte_10_usd_fraction": 0.554217,
+        "avg_mfe_usd_oz": 17.04509,
+        "avg_mae_usd_oz": 14.861958
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 38,
+          "correct": 15,
+          "accuracy": 0.394737,
+          "wilson_lower95": 0.255979,
+          "coverage": 0.026573
+        },
+        {
+          "year": 2025,
+          "n": 44,
+          "correct": 26,
+          "accuracy": 0.590909,
+          "wilson_lower95": 0.444095,
+          "coverage": 0.030942
+        },
+        {
+          "year": 2026,
+          "n": 84,
+          "correct": 50,
+          "accuracy": 0.595238,
+          "wilson_lower95": 0.48834,
+          "coverage": 0.067416
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 260367,
+      "group_choices": [
+        7,
+        1,
+        4,
+        4,
+        7,
+        7,
+        0
+      ],
+      "rank_on_development_only": 0.464566,
+      "train": {
+        "n": 223,
+        "correct": 124,
+        "accuracy": 0.556054,
+        "wilson_lower95": 0.49044,
+        "coverage": 0.039546
+      },
+      "validation": {
+        "n": 46,
+        "correct": 28,
+        "accuracy": 0.608696,
+        "wilson_lower95": 0.464566,
+        "coverage": 0.044704
+      },
+      "training_signal_sha256": "4bb0ea61e6c11184bf0f71475d2e86a8519ec71ae7dd4c582db15cd0053f9e9c",
+      "validation_signal_sha256": "97483c6e43cc99de694ad0a90df7b6ff77f5008113cdf202a04949490a8c1b86",
+      "evaluation": {
+        "n": 174,
+        "correct": 90,
+        "accuracy": 0.517241,
+        "wilson_lower95": 0.443425,
+        "coverage": 0.04246,
+        "gross_mean_close_to_close_usd_oz": 0.692517,
+        "net_mean_cost_scenario_0_7_usd_oz": -0.007483,
+        "mfe_gte_10_usd_fraction": 0.505747,
+        "avg_mfe_usd_oz": 16.164121,
+        "avg_mae_usd_oz": 15.153672
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 44,
+          "correct": 19,
+          "accuracy": 0.431818,
+          "wilson_lower95": 0.296825,
+          "coverage": 0.030769
+        },
+        {
+          "year": 2025,
+          "n": 50,
+          "correct": 24,
+          "accuracy": 0.48,
+          "wilson_lower95": 0.347969,
+          "coverage": 0.035162
+        },
+        {
+          "year": 2026,
+          "n": 80,
+          "correct": 47,
+          "accuracy": 0.5875,
+          "wilson_lower95": 0.478038,
+          "coverage": 0.064205
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 1312216,
+      "group_choices": [
+        0,
+        3,
+        7,
+        2,
+        0,
+        0,
+        5
+      ],
+      "rank_on_development_only": 0.463366,
+      "train": {
+        "n": 179,
+        "correct": 99,
+        "accuracy": 0.553073,
+        "wilson_lower95": 0.479883,
+        "coverage": 0.031743
+      },
+      "validation": {
+        "n": 35,
+        "correct": 22,
+        "accuracy": 0.628571,
+        "wilson_lower95": 0.463366,
+        "coverage": 0.034014
+      },
+      "training_signal_sha256": "65f4f7d4e3aa6dbcfafdc3948b64a7f9e86ed4407b23fdd0d64fd5a37525bbe1",
+      "validation_signal_sha256": "fff18a93ef81aa9be21a8b013522db87b5189d45d2fb5fc26c0b267bec40cecd",
+      "evaluation": {
+        "n": 151,
+        "correct": 77,
+        "accuracy": 0.509934,
+        "wilson_lower95": 0.430947,
+        "coverage": 0.036847,
+        "gross_mean_close_to_close_usd_oz": 2.117695,
+        "net_mean_cost_scenario_0_7_usd_oz": 1.417695,
+        "mfe_gte_10_usd_fraction": 0.509934,
+        "avg_mfe_usd_oz": 23.15096,
+        "avg_mae_usd_oz": 17.703954
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 50,
+          "correct": 22,
+          "accuracy": 0.44,
+          "wilson_lower95": 0.31162,
+          "coverage": 0.034965
+        },
+        {
+          "year": 2025,
+          "n": 60,
+          "correct": 30,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.377348,
+          "coverage": 0.042194
+        },
+        {
+          "year": 2026,
+          "n": 41,
+          "correct": 25,
+          "accuracy": 0.609756,
+          "wilson_lower95": 0.457266,
+          "coverage": 0.032905
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 1312280,
+      "group_choices": [
+        0,
+        3,
+        0,
+        3,
+        0,
+        0,
+        5
+      ],
+      "rank_on_development_only": 0.460673,
+      "train": {
+        "n": 276,
+        "correct": 150,
+        "accuracy": 0.543478,
+        "wilson_lower95": 0.484517,
+        "coverage": 0.048945
+      },
+      "validation": {
+        "n": 52,
+        "correct": 31,
+        "accuracy": 0.596154,
+        "wilson_lower95": 0.460673,
+        "coverage": 0.050534
+      },
+      "training_signal_sha256": "f399a4b45e9e948e3d7e53a9623a74d611938edc3a4ecb8960911985866f9599",
+      "validation_signal_sha256": "2879e4d66d64bc90fceda210e6b6f731d3451c320bdb90979b6c376caf86d754",
+      "evaluation": {
+        "n": 204,
+        "correct": 101,
+        "accuracy": 0.495098,
+        "wilson_lower95": 0.427215,
+        "coverage": 0.04978,
+        "gross_mean_close_to_close_usd_oz": 1.599873,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.899873,
+        "mfe_gte_10_usd_fraction": 0.514706,
+        "avg_mfe_usd_oz": 22.878735,
+        "avg_mae_usd_oz": 18.162069
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 62,
+          "correct": 26,
+          "accuracy": 0.419355,
+          "wilson_lower95": 0.304774,
+          "coverage": 0.043357
+        },
+        {
+          "year": 2025,
+          "n": 83,
+          "correct": 43,
+          "accuracy": 0.518072,
+          "wilson_lower95": 0.412176,
+          "coverage": 0.058368
+        },
+        {
+          "year": 2026,
+          "n": 59,
+          "correct": 32,
+          "accuracy": 0.542373,
+          "wilson_lower95": 0.416576,
+          "coverage": 0.047352
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 1312792,
+      "group_choices": [
+        0,
+        3,
+        0,
+        4,
+        0,
+        0,
+        5
+      ],
+      "rank_on_development_only": 0.457266,
+      "train": {
+        "n": 197,
+        "correct": 113,
+        "accuracy": 0.573604,
+        "wilson_lower95": 0.503784,
+        "coverage": 0.034935
+      },
+      "validation": {
+        "n": 41,
+        "correct": 25,
+        "accuracy": 0.609756,
+        "wilson_lower95": 0.457266,
+        "coverage": 0.039845
+      },
+      "training_signal_sha256": "0999932cc111dc7f9a7be7f1b0c47be0559f02af44379d0e90781ab1a180e057",
+      "validation_signal_sha256": "f293c5827fa3b9b4a99f80f1d820819639310d7601167d7fd704bbfad77ffd93",
+      "evaluation": {
+        "n": 142,
+        "correct": 70,
+        "accuracy": 0.492958,
+        "wilson_lower95": 0.412002,
+        "coverage": 0.034651,
+        "gross_mean_close_to_close_usd_oz": 0.971669,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.271669,
+        "mfe_gte_10_usd_fraction": 0.528169,
+        "avg_mfe_usd_oz": 21.121761,
+        "avg_mae_usd_oz": 18.08438
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 47,
+          "correct": 21,
+          "accuracy": 0.446809,
+          "wilson_lower95": 0.314107,
+          "coverage": 0.032867
+        },
+        {
+          "year": 2025,
+          "n": 57,
+          "correct": 28,
+          "accuracy": 0.491228,
+          "wilson_lower95": 0.366161,
+          "coverage": 0.040084
+        },
+        {
+          "year": 2026,
+          "n": 38,
+          "correct": 21,
+          "accuracy": 0.552632,
+          "wilson_lower95": 0.39706,
+          "coverage": 0.030498
+        }
+      ]
+    },
+    {
+      "family": "displacement",
+      "family_id": 10,
+      "tf": "4h",
+      "side": "SELL",
+      "config_index": 1311768,
+      "group_choices": [
+        0,
+        3,
+        0,
+        2,
+        0,
+        0,
+        5
+      ],
+      "rank_on_development_only": 0.457266,
+      "train": {
+        "n": 212,
+        "correct": 119,
+        "accuracy": 0.561321,
+        "wilson_lower95": 0.494019,
+        "coverage": 0.037595
+      },
+      "validation": {
+        "n": 41,
+        "correct": 25,
+        "accuracy": 0.609756,
+        "wilson_lower95": 0.457266,
+        "coverage": 0.039845
+      },
+      "training_signal_sha256": "54d35c92a5cdafb58e24eb18e68df6458c9b5f8912c24a1432212544baf73604",
+      "validation_signal_sha256": "093a2cd20dc2f6a04edfdd6e6c345eae0fa1542542447a17d82e44cff1aacc1e",
+      "evaluation": {
+        "n": 176,
+        "correct": 88,
+        "accuracy": 0.5,
+        "wilson_lower95": 0.426923,
+        "coverage": 0.042948,
+        "gross_mean_close_to_close_usd_oz": 1.571352,
+        "net_mean_cost_scenario_0_7_usd_oz": 0.871352,
+        "mfe_gte_10_usd_fraction": 0.5,
+        "avg_mfe_usd_oz": 22.738358,
+        "avg_mae_usd_oz": 17.875284
+      },
+      "evaluation_years": [
+        {
+          "year": 2024,
+          "n": 56,
+          "correct": 24,
+          "accuracy": 0.428571,
+          "wilson_lower95": 0.307688,
+          "coverage": 0.039161
+        },
+        {
+          "year": 2025,
+          "n": 72,
+          "correct": 37,
+          "accuracy": 0.513889,
+          "wilson_lower95": 0.400696,
+          "coverage": 0.050633
+        },
+        {
+          "year": 2026,
+          "n": 48,
+          "correct": 27,
+          "accuracy": 0.5625,
+          "wilson_lower95": 0.422748,
+          "coverage": 0.038523
+        }
+      ]
+    }
+  ],
+  "caveats": [
+    "Parameter vectors distinct; signal sequences may repeat",
+    "No model selected on evaluation metrics",
+    "Multiple-comparison bias across 100M rules; requires unseen forward test",
+    "Broker-specific spread/slippage is unknown; 0.7 USD/oz is only hypothetical",
+    "MFE>=10 is intrabar high/low reachability, not a realized TP outcome"
+  ]
+}

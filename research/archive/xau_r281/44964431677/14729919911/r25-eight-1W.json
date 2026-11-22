@@ -1,0 +1,807 @@
+{
+  "tf": "1W",
+  "n": 307,
+  "base_buy": 0.5765472312703583,
+  "fits": 864,
+  "rule_evaluations": 101088,
+  "aggregate": {
+    "ungated": {
+      "raw_BUY": {
+        "n": 104,
+        "correct": 61,
+        "accuracy": 0.5865384615384616,
+        "lower95": 0.49045905225562286
+      },
+      "raw_SELL": {
+        "n": 54,
+        "correct": 28,
+        "accuracy": 0.5185185185185185,
+        "lower95": 0.38851475048465434
+      },
+      "conflicts": 2,
+      "resolved": {
+        "BUY": {
+          "n": 102,
+          "correct": 60,
+          "accuracy": 0.588235,
+          "wilson_lower95": 0.491216
+        },
+        "SELL": {
+          "n": 52,
+          "correct": 27,
+          "accuracy": 0.519231,
+          "wilson_lower95": 0.386855
+        },
+        "WAIT": 153,
+        "coverage": 0.501629
+      }
+    },
+    "regime_specialist": {
+      "raw_BUY": {
+        "n": 72,
+        "correct": 41,
+        "accuracy": 0.5694444444444444,
+        "lower95": 0.4544309920240597
+      },
+      "raw_SELL": {
+        "n": 88,
+        "correct": 38,
+        "accuracy": 0.4318181818181818,
+        "lower95": 0.3333250852294768
+      },
+      "conflicts": 16,
+      "resolved": {
+        "BUY": {
+          "n": 56,
+          "correct": 33,
+          "accuracy": 0.589286,
+          "wilson_lower95": 0.458774
+        },
+        "SELL": {
+          "n": 72,
+          "correct": 30,
+          "accuracy": 0.416667,
+          "wilson_lower95": 0.30985
+        },
+        "WAIT": 179,
+        "coverage": 0.416938
+      }
+    }
+  },
+  "annual": [
+    {
+      "year": 2019,
+      "n": 51,
+      "baseline_buy": 0.6274509803921569,
+      "policies": {
+        "ungated": {
+          "BUY_config": {
+            "group": "news",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.58,
+            "gate": "all",
+            "validation": {
+              "n": 18,
+              "correct": 13,
+              "accuracy": 0.7222222222222222,
+              "lower95": 0.49126922453805477
+            }
+          },
+          "SELL_config": {
+            "group": "news",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.65,
+            "gate": "all",
+            "validation": {
+              "n": 17,
+              "correct": 13,
+              "accuracy": 0.7647058823529411,
+              "lower95": 0.5273775411082839
+            }
+          },
+          "raw_BUY": {
+            "n": 8,
+            "correct": 6,
+            "accuracy": 0.75,
+            "lower95": 0.40926987910258916
+          },
+          "raw_SELL": {
+            "n": 3,
+            "correct": 1,
+            "accuracy": 0.3333333333333333,
+            "lower95": 0.061490315276160515
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 8,
+              "correct": 6,
+              "accuracy": 0.75,
+              "wilson_lower95": 0.40927
+            },
+            "SELL": {
+              "n": 3,
+              "correct": 1,
+              "accuracy": 0.333333,
+              "wilson_lower95": 0.06149
+            },
+            "WAIT": 40,
+            "coverage": 0.215686
+          }
+        },
+        "regime_specialist": {
+          "BUY_config": {
+            "group": "macro",
+            "years": 8,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "trend_down",
+            "validation": {
+              "n": 19,
+              "correct": 14,
+              "accuracy": 0.7368421052631579,
+              "lower95": 0.5120803155892935
+            }
+          },
+          "SELL_config": {
+            "group": "news",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.58,
+            "gate": "trend_up",
+            "validation": {
+              "n": 26,
+              "correct": 21,
+              "accuracy": 0.8076923076923077,
+              "lower95": 0.6212336384535001
+            }
+          },
+          "raw_BUY": {
+            "n": 0,
+            "correct": 0,
+            "accuracy": null,
+            "lower95": null
+          },
+          "raw_SELL": {
+            "n": 5,
+            "correct": 2,
+            "accuracy": 0.4,
+            "lower95": 0.11761823115925325
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 0,
+              "correct": 0,
+              "accuracy": null,
+              "wilson_lower95": null
+            },
+            "SELL": {
+              "n": 5,
+              "correct": 2,
+              "accuracy": 0.4,
+              "wilson_lower95": 0.117618
+            },
+            "WAIT": 46,
+            "coverage": 0.098039
+          }
+        }
+      }
+    },
+    {
+      "year": 2020,
+      "n": 51,
+      "baseline_buy": 0.5882352941176471,
+      "policies": {
+        "ungated": {
+          "BUY_config": {
+            "group": "cot",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.6,
+            "gate": "all",
+            "validation": {
+              "n": 26,
+              "correct": 19,
+              "accuracy": 0.7307692307692307,
+              "lower95": 0.5391659658023868
+            }
+          },
+          "SELL_config": {
+            "group": "cot_hybrid",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.6,
+            "gate": "all",
+            "validation": {
+              "n": 19,
+              "correct": 13,
+              "accuracy": 0.6842105263157895,
+              "lower95": 0.4601001017506463
+            }
+          },
+          "raw_BUY": {
+            "n": 0,
+            "correct": 0,
+            "accuracy": null,
+            "lower95": null
+          },
+          "raw_SELL": {
+            "n": 6,
+            "correct": 4,
+            "accuracy": 0.6666666666666666,
+            "lower95": 0.2999883213415286
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 0,
+              "correct": 0,
+              "accuracy": null,
+              "wilson_lower95": null
+            },
+            "SELL": {
+              "n": 6,
+              "correct": 4,
+              "accuracy": 0.666667,
+              "wilson_lower95": 0.299988
+            },
+            "WAIT": 45,
+            "coverage": 0.117647
+          }
+        },
+        "regime_specialist": {
+          "BUY_config": {
+            "group": "news",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.58,
+            "gate": "news_dovish",
+            "validation": {
+              "n": 18,
+              "correct": 15,
+              "accuracy": 0.8333333333333334,
+              "lower95": 0.6077750036164077
+            }
+          },
+          "SELL_config": {
+            "group": "macro",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.55,
+            "gate": "news_hawkish",
+            "validation": {
+              "n": 22,
+              "correct": 15,
+              "accuracy": 0.6818181818181818,
+              "lower95": 0.4731822278283934
+            }
+          },
+          "raw_BUY": {
+            "n": 10,
+            "correct": 5,
+            "accuracy": 0.5,
+            "lower95": 0.2365895936154873
+          },
+          "raw_SELL": {
+            "n": 16,
+            "correct": 7,
+            "accuracy": 0.4375,
+            "lower95": 0.2309836333518552
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 10,
+              "correct": 5,
+              "accuracy": 0.5,
+              "wilson_lower95": 0.23659
+            },
+            "SELL": {
+              "n": 16,
+              "correct": 7,
+              "accuracy": 0.4375,
+              "wilson_lower95": 0.230984
+            },
+            "WAIT": 25,
+            "coverage": 0.509804
+          }
+        }
+      }
+    },
+    {
+      "year": 2021,
+      "n": 51,
+      "baseline_buy": 0.5294117647058824,
+      "policies": {
+        "ungated": {
+          "BUY_config": {
+            "group": "cot",
+            "years": 8,
+            "model": "hgb",
+            "threshold": 0.6,
+            "gate": "all",
+            "validation": {
+              "n": 21,
+              "correct": 18,
+              "accuracy": 0.8571428571428571,
+              "lower95": 0.6536350585077049
+            }
+          },
+          "SELL_config": {
+            "group": "cot_hybrid",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.65,
+            "gate": "all",
+            "validation": {
+              "n": 16,
+              "correct": 11,
+              "accuracy": 0.6875,
+              "lower95": 0.4440393186673406
+            }
+          },
+          "raw_BUY": {
+            "n": 2,
+            "correct": 2,
+            "accuracy": 1.0,
+            "lower95": 0.3423719528896193
+          },
+          "raw_SELL": {
+            "n": 15,
+            "correct": 11,
+            "accuracy": 0.7333333333333333,
+            "lower95": 0.48049110342313245
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 2,
+              "correct": 2,
+              "accuracy": 1.0,
+              "wilson_lower95": 0.342372
+            },
+            "SELL": {
+              "n": 15,
+              "correct": 11,
+              "accuracy": 0.733333,
+              "wilson_lower95": 0.480491
+            },
+            "WAIT": 34,
+            "coverage": 0.333333
+          }
+        },
+        "regime_specialist": {
+          "BUY_config": {
+            "group": "technical",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "net_pos_increasing",
+            "validation": {
+              "n": 20,
+              "correct": 18,
+              "accuracy": 0.9,
+              "lower95": 0.6989617935882066
+            }
+          },
+          "SELL_config": {
+            "group": "cot",
+            "years": 8,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "yields_up",
+            "validation": {
+              "n": 21,
+              "correct": 14,
+              "accuracy": 0.6666666666666666,
+              "lower95": 0.45373075657210293
+            }
+          },
+          "raw_BUY": {
+            "n": 8,
+            "correct": 6,
+            "accuracy": 0.75,
+            "lower95": 0.40926987910258916
+          },
+          "raw_SELL": {
+            "n": 15,
+            "correct": 8,
+            "accuracy": 0.5333333333333333,
+            "lower95": 0.3011663015105079
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 8,
+              "correct": 6,
+              "accuracy": 0.75,
+              "wilson_lower95": 0.40927
+            },
+            "SELL": {
+              "n": 15,
+              "correct": 8,
+              "accuracy": 0.533333,
+              "wilson_lower95": 0.301166
+            },
+            "WAIT": 28,
+            "coverage": 0.45098
+          }
+        }
+      }
+    },
+    {
+      "year": 2022,
+      "n": 51,
+      "baseline_buy": 0.5098039215686274,
+      "policies": {
+        "ungated": {
+          "BUY_config": {
+            "group": "cot",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "all",
+            "validation": {
+              "n": 42,
+              "correct": 32,
+              "accuracy": 0.7619047619047619,
+              "lower95": 0.6147216491768112
+            }
+          },
+          "SELL_config": {
+            "group": "cot",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.58,
+            "gate": "all",
+            "validation": {
+              "n": 34,
+              "correct": 24,
+              "accuracy": 0.7058823529411765,
+              "lower95": 0.5383077411853625
+            }
+          },
+          "raw_BUY": {
+            "n": 33,
+            "correct": 16,
+            "accuracy": 0.48484848484848486,
+            "lower95": 0.32503781646924224
+          },
+          "raw_SELL": {
+            "n": 10,
+            "correct": 5,
+            "accuracy": 0.5,
+            "lower95": 0.2365895936154873
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 33,
+              "correct": 16,
+              "accuracy": 0.484848,
+              "wilson_lower95": 0.325038
+            },
+            "SELL": {
+              "n": 10,
+              "correct": 5,
+              "accuracy": 0.5,
+              "wilson_lower95": 0.23659
+            },
+            "WAIT": 8,
+            "coverage": 0.843137
+          }
+        },
+        "regime_specialist": {
+          "BUY_config": {
+            "group": "cot",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "news_hawkish",
+            "validation": {
+              "n": 27,
+              "correct": 23,
+              "accuracy": 0.8518518518518519,
+              "lower95": 0.6752093665317053
+            }
+          },
+          "SELL_config": {
+            "group": "cot_hybrid",
+            "years": 8,
+            "model": "ridge_logit",
+            "threshold": 0.58,
+            "gate": "news_hawkish",
+            "validation": {
+              "n": 16,
+              "correct": 13,
+              "accuracy": 0.8125,
+              "lower95": 0.5699064013154177
+            }
+          },
+          "raw_BUY": {
+            "n": 20,
+            "correct": 11,
+            "accuracy": 0.55,
+            "lower95": 0.34208200830759966
+          },
+          "raw_SELL": {
+            "n": 18,
+            "correct": 7,
+            "accuracy": 0.3888888888888889,
+            "lower95": 0.2030499192693116
+          },
+          "conflicts": 10,
+          "resolved": {
+            "BUY": {
+              "n": 10,
+              "correct": 5,
+              "accuracy": 0.5,
+              "wilson_lower95": 0.23659
+            },
+            "SELL": {
+              "n": 8,
+              "correct": 3,
+              "accuracy": 0.375,
+              "wilson_lower95": 0.136842
+            },
+            "WAIT": 33,
+            "coverage": 0.352941
+          }
+        }
+      }
+    },
+    {
+      "year": 2024,
+      "n": 52,
+      "baseline_buy": 0.5,
+      "policies": {
+        "ungated": {
+          "BUY_config": {
+            "group": "full",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.55,
+            "gate": "all",
+            "validation": {
+              "n": 33,
+              "correct": 24,
+              "accuracy": 0.7272727272727273,
+              "lower95": 0.5578211674561319
+            }
+          },
+          "SELL_config": {
+            "group": "technical_macro",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.52,
+            "gate": "all",
+            "validation": {
+              "n": 17,
+              "correct": 11,
+              "accuracy": 0.6470588235294118,
+              "lower95": 0.41299966721211817
+            }
+          },
+          "raw_BUY": {
+            "n": 29,
+            "correct": 13,
+            "accuracy": 0.4482758620689655,
+            "lower95": 0.2841291114874579
+          },
+          "raw_SELL": {
+            "n": 5,
+            "correct": 2,
+            "accuracy": 0.4,
+            "lower95": 0.11761823115925325
+          },
+          "conflicts": 2,
+          "resolved": {
+            "BUY": {
+              "n": 27,
+              "correct": 12,
+              "accuracy": 0.444444,
+              "wilson_lower95": 0.275856
+            },
+            "SELL": {
+              "n": 3,
+              "correct": 1,
+              "accuracy": 0.333333,
+              "wilson_lower95": 0.06149
+            },
+            "WAIT": 22,
+            "coverage": 0.576923
+          }
+        },
+        "regime_specialist": {
+          "BUY_config": {
+            "group": "full",
+            "years": 4,
+            "model": "hgb",
+            "threshold": 0.55,
+            "gate": "news_hawkish",
+            "validation": {
+              "n": 20,
+              "correct": 17,
+              "accuracy": 0.85,
+              "lower95": 0.6395767041130426
+            }
+          },
+          "SELL_config": {
+            "group": "technical_macro",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "net_pos_increasing",
+            "validation": {
+              "n": 23,
+              "correct": 15,
+              "accuracy": 0.6521739130434783,
+              "lower95": 0.4488997690689163
+            }
+          },
+          "raw_BUY": {
+            "n": 19,
+            "correct": 9,
+            "accuracy": 0.47368421052631576,
+            "lower95": 0.2732950548744854
+          },
+          "raw_SELL": {
+            "n": 19,
+            "correct": 9,
+            "accuracy": 0.47368421052631576,
+            "lower95": 0.2732950548744854
+          },
+          "conflicts": 6,
+          "resolved": {
+            "BUY": {
+              "n": 13,
+              "correct": 7,
+              "accuracy": 0.538462,
+              "wilson_lower95": 0.291434
+            },
+            "SELL": {
+              "n": 13,
+              "correct": 5,
+              "accuracy": 0.384615,
+              "wilson_lower95": 0.177094
+            },
+            "WAIT": 26,
+            "coverage": 0.5
+          }
+        }
+      }
+    },
+    {
+      "year": 2025,
+      "n": 51,
+      "baseline_buy": 0.7058823529411765,
+      "policies": {
+        "ungated": {
+          "BUY_config": {
+            "group": "macro",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "all",
+            "validation": {
+              "n": 38,
+              "correct": 25,
+              "accuracy": 0.6578947368421053,
+              "lower95": 0.4989181162907454
+            }
+          },
+          "SELL_config": {
+            "group": "technical_macro",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.6,
+            "gate": "all",
+            "validation": {
+              "n": 31,
+              "correct": 21,
+              "accuracy": 0.6774193548387096,
+              "lower95": 0.501406855599508
+            }
+          },
+          "raw_BUY": {
+            "n": 32,
+            "correct": 24,
+            "accuracy": 0.75,
+            "lower95": 0.5789310822975338
+          },
+          "raw_SELL": {
+            "n": 15,
+            "correct": 5,
+            "accuracy": 0.3333333333333333,
+            "lower95": 0.15176100694691236
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 32,
+              "correct": 24,
+              "accuracy": 0.75,
+              "wilson_lower95": 0.578931
+            },
+            "SELL": {
+              "n": 15,
+              "correct": 5,
+              "accuracy": 0.333333,
+              "wilson_lower95": 0.151761
+            },
+            "WAIT": 4,
+            "coverage": 0.921569
+          }
+        },
+        "regime_specialist": {
+          "BUY_config": {
+            "group": "macro",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.5,
+            "gate": "net_pos_increasing",
+            "validation": {
+              "n": 22,
+              "correct": 18,
+              "accuracy": 0.8181818181818182,
+              "lower95": 0.6148297802336214
+            }
+          },
+          "SELL_config": {
+            "group": "technical_macro",
+            "years": 2,
+            "model": "hgb",
+            "threshold": 0.6,
+            "gate": "all",
+            "validation": {
+              "n": 31,
+              "correct": 21,
+              "accuracy": 0.6774193548387096,
+              "lower95": 0.501406855599508
+            }
+          },
+          "raw_BUY": {
+            "n": 15,
+            "correct": 10,
+            "accuracy": 0.6666666666666666,
+            "lower95": 0.4171312515121298
+          },
+          "raw_SELL": {
+            "n": 15,
+            "correct": 5,
+            "accuracy": 0.3333333333333333,
+            "lower95": 0.15176100694691236
+          },
+          "conflicts": 0,
+          "resolved": {
+            "BUY": {
+              "n": 15,
+              "correct": 10,
+              "accuracy": 0.666667,
+              "wilson_lower95": 0.417131
+            },
+            "SELL": {
+              "n": 15,
+              "correct": 5,
+              "accuracy": 0.333333,
+              "wilson_lower95": 0.151761
+            },
+            "WAIT": 21,
+            "coverage": 0.588235
+          }
+        }
+      }
+    }
+  ],
+  "limits": [
+    "All historical evaluation reused; not prospective validation",
+    "Per-side model selected independently but target events complementary",
+    "No new FX intraday data, no DXY; H1/H4 price only",
+    "D1/W1 retrospective news until April 2026 and macro/COT release lag proxies; not proven PIT",
+    "No claim 60/80 percent without observed results and adequate sample",
+    "No entry zones or P&L"
+  ]
+}
