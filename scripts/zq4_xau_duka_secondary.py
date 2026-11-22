@@ -32,7 +32,7 @@ def acquire(year):
             if not (y==2026 and m==8):
                 days=pd.Period(f"{y}-{m:02d}").days_in_month
                 assert len(a)==days*1440,(name,len(a),days*1440)
-                assert times[-1]==pd.Timestamp(f"{y}-{m:02d}-01",tz="UTC")+pd.Timedelta(days=days)-pd.Timedelta(minutes=1)
+                assert times.iloc[-1]==pd.Timestamp(f"{y}-{m:02d}-01",tz="UTC")+pd.Timedelta(days=days)-pd.Timedelta(minutes=1)
             a.index=times
             frames.append(a.rename(columns={"open":"o","high":"h","low":"l","close":"c"}))
             hashes[name]=hashlib.sha256(content).hexdigest()
