@@ -251,11 +251,20 @@ def _evaluate_zone(zone, side, frame, bars, market, now):
     return out
 
 
-def evaluate_entry(shadow, market, *, now=None):
-    """Deterministic research-stage manual watch. Never grants order authority."""
+def evaluate_entry(shadow, market, *, now=None, direction_resolver=None):
+    """Research-stage manual watch. Direction resolver is explicitly injectable.
+
+    Legacy R28 replay tests keep their original resolver. The best-side UI
+    supplies an independently checked candidate resolver; no R28 fallback.
+    Neither route grants order authority.
+    """
     now = utc(now or datetime.now(UTC))
-    side, reason, ctx = direction(shadow, now)
-    watch_only = reason == "R28_H4_ABSTAIN_WATCH_ONLY"
+    side, reason, ctx = (direction_resolver or direction)(shadow, now)
+    watch_only = reason in ("R28_H4_ABSTAIN_WATCH_ONLY",
+                            "BEST_DIRECTION_INCOMPLETE_WATCH_ONLY")
+    watch_block_reason = ("BEST_DIRECTION_INCOMPLETE_ENTRY_BLOCKED"
+                          if reason == "BEST_DIRECTION_INCOMPLETE_WATCH_ONLY"
+                          else "R28_H4_ABSTAIN_ENTRY_BLOCKED")
     result = empty(reason, at=now, side=side, context=ctx)
     result["watch_only"] = watch_only
     if side == "WAIT":
@@ -302,7 +311,9 @@ def evaluate_entry(shadow, market, *, now=None):
             if item is not None:
                 valid.append(item)
         if not valid:
-            result["reason"] = ("R28_H4_ABSTAIN_NO_VALID_ZONE"
+            result["reason"] = ("BEST_DIRECTION_INCOMPLETE_NO_VALID_ZONE"
+                                if reason == "BEST_DIRECTION_INCOMPLETE_WATCH_ONLY"
+                                else "R28_H4_ABSTAIN_NO_VALID_ZONE"
                                 if watch_only else "NO_VALID_CLOSED_H1_H4_BOS_ZONE")
             return result
         if watch_only:
@@ -314,7 +325,7 @@ def evaluate_entry(shadow, market, *, now=None):
                     z[key] = None
                 if z["status"] == "M5_BOS_CONFIRMED":
                     z["status"] = "WATCH_H4_ABSTAIN"
-                    z["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
+                    z["reason"] = watch_block_reason
         last=float(frame.close.iloc[-1])
         valid.sort(key=lambda z: (
             PRIORITY.get(z["status"],99),
@@ -330,7 +341,7 @@ def evaluate_entry(shadow, market, *, now=None):
             return result
         if watch_only:
             result["status"] = "WATCH_H4_ABSTAIN"
-            result["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
+            result["reason"] = watch_block_reason
             return result
         # H1 must confirm D1+H4 before an entry reference may be shown.
         if chosen["status"] == "M5_BOS_CONFIRMED" and ctx.get("h1_confirmed") is not True:
