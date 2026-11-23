@@ -1,0 +1,20 @@
+{
+  "RIZAN_R15_NATIVE_BASELINE_20261123.zip": {
+    "bytes": 12225483,
+    "sha256": "44eeb927a03d59b3667484213470df51d8e97e8639315ae974718bd2df0d2558",
+    "git_blob_sha1": "a6927436f358699e26ca583896932698aafd7d87",
+    "remote_blob_matches": true
+  },
+  "RIZAN_R15_NATIVE_GUARD_20261123.zip": {
+    "bytes": 11463614,
+    "sha256": "cc35e71b93ea7866769ec94e4d330f5bbe1fce348cda77eec5e831b39e9cbd0f",
+    "git_blob_sha1": "83dd45a9913555997a452ca2cce2c51c0e94ca0a",
+    "remote_blob_matches": true
+  },
+  "RIZAN_R15_NATIVE_ADDON_20261123.zip": {
+    "bytes": 8622155,
+    "sha256": "a632717b989942c0363458f4714280713e38dfbfa4f512f5901e6168dfa3af48",
+    "git_blob_sha1": "a23075ecd900771d21972d641cd53e586db2f669",
+    "remote_blob_matches": true
+  }
+}
