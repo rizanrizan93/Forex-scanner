@@ -1,0 +1,2049 @@
+{
+  "contract": "RIZAN_R33_W1_D1_SINGLE_OUNCE_RESEARCH_LOCK_20261124_V1",
+  "symbol": "XAUUSD",
+  "history": "2012-2026",
+  "evaluation": "2019-2026, partial last year",
+  "research_only": true,
+  "execution_authority": false,
+  "execution_influence": false,
+  "live_promotion": false,
+  "forward_validated": false,
+  "constant_exposure": "max 1 oz combined W1+D1",
+  "n_configs_tested": 15,
+  "baseline": {
+    "n": 75,
+    "net_cost2_usd_oz": 2825.987,
+    "net_cost5_usd_oz": 2600.987,
+    "original_unoptimized": "R31.1 W1 EMA BUY hold 4 weeks"
+  },
+  "highest_net": {
+    "mode": "profit_frequency",
+    "gate": "d1_breakout",
+    "n": 85,
+    "additional_trades": 10,
+    "net_cost2_usd_oz": 3144.804,
+    "net_cost5_usd_oz": 2889.804,
+    "incremental_net_cost2_usd_oz": 318.817,
+    "dd_realized_usd_oz": 570.1329999999998,
+    "positive_years": 7,
+    "profit_factor": 2.810025808144876,
+    "annual": {
+      "2019": {
+        "n": 13,
+        "net": 222.0540000000001
+      },
+      "2020": {
+        "n": 13,
+        "net": 301.01
+      },
+      "2021": {
+        "n": 9,
+        "net": -190.2280000000003
+      },
+      "2022": {
+        "n": 8,
+        "net": 120.74099999999976
+      },
+      "2023": {
+        "n": 7,
+        "net": 57.62599999999975
+      },
+      "2024": {
+        "n": 13,
+        "net": 637.2490000000003
+      },
+      "2025": {
+        "n": 13,
+        "net": 1938.125
+      },
+      "2026": {
+        "n": 9,
+        "net": 58.22700000000077
+      }
+    },
+    "source_receipt_sha256": "303c30dea52c0485e14e440eed6d21912c71715a28b8ec0d05c86438b8897634",
+    "increases_profit_and_frequency": true,
+    "passes_conservative_all": {
+      "more_trades": true,
+      "higher_net_cost2": true,
+      "higher_net_cost5": true,
+      "positive_years_at_least_six": true,
+      "dd_no_worse_than_25pct": true
+    },
+    "promote_to_live": false
+  },
+  "most_additional_trades": {
+    "mode": "max_signals",
+    "gate": "any",
+    "n": 277,
+    "additional_trades": 202,
+    "net_cost2_usd_oz": 2155.832155650315,
+    "net_cost5_usd_oz": 1324.8321556503151,
+    "incremental_net_cost2_usd_oz": -670.1548443496849,
+    "dd_realized_usd_oz": 1222.7391383903673,
+    "positive_years": 5,
+    "profit_factor": 1.368457484285644,
+    "annual": {
+      "2019": {
+        "n": 14,
+        "net": 223.09400000000005
+      },
+      "2020": {
+        "n": 13,
+        "net": 301.01
+      },
+      "2021": {
+        "n": 59,
+        "net": -186.99199999999973
+      },
+      "2022": {
+        "n": 38,
+        "net": -15.70670595931756
+      },
+      "2023": {
+        "n": 9,
+        "net": 114.07699999999954
+      },
+      "2024": {
+        "n": 13,
+        "net": 637.2490000000003
+      },
+      "2025": {
+        "n": 13,
+        "net": 1938.125
+      },
+      "2026": {
+        "n": 118,
+        "net": -855.0241383903676
+      }
+    },
+    "source_receipt_sha256": "4709f224c258ba2fe9ba00831c2f416070054ab851c879f3456457272bf200da",
+    "increases_profit_and_frequency": false,
+    "passes_conservative_all": {
+      "more_trades": true,
+      "higher_net_cost2": false,
+      "higher_net_cost5": false,
+      "positive_years_at_least_six": false,
+      "dd_no_worse_than_25pct": false
+    },
+    "promote_to_live": false
+  },
+  "profit_and_trade_improvement": [
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_breakout",
+      "n": 85,
+      "additional_trades": 10,
+      "net_cost2_usd_oz": 3144.804,
+      "net_cost5_usd_oz": 2889.804,
+      "incremental_net_cost2_usd_oz": 318.817,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 7,
+      "profit_factor": 2.810025808144876,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 9,
+          "net": -190.2280000000003
+        },
+        "2022": {
+          "n": 8,
+          "net": 120.74099999999976
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": 58.22700000000077
+        }
+      },
+      "source_receipt_sha256": "303c30dea52c0485e14e440eed6d21912c71715a28b8ec0d05c86438b8897634",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_adx",
+      "n": 93,
+      "additional_trades": 18,
+      "net_cost2_usd_oz": 3011.946229518972,
+      "net_cost5_usd_oz": 2732.946229518972,
+      "incremental_net_cost2_usd_oz": 185.95922951897182,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.3880122036280538,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -137.8040000000001
+        },
+        "2022": {
+          "n": 12,
+          "net": 73.58399999999983
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": -137.38877048102768
+        }
+      },
+      "source_receipt_sha256": "0c256fd7cc282c907fea9f3f3544e2c9db508d73d1777b8be4541fbc979710e5",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_ema",
+      "n": 101,
+      "additional_trades": 26,
+      "net_cost2_usd_oz": 3005.5062387559137,
+      "net_cost5_usd_oz": 2702.5062387559137,
+      "incremental_net_cost2_usd_oz": 179.51923875591365,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.3082884674342905,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 18,
+          "net": -144.24399076305826
+        },
+        "2022": {
+          "n": 12,
+          "net": 73.58399999999983
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": -137.38877048102768
+        }
+      },
+      "source_receipt_sha256": "d137d2f519fa38d3c4fd561f56d2b58a7809abbf9ec7c51c18c1159b2854f77a",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_ema",
+      "n": 112,
+      "additional_trades": 37,
+      "net_cost2_usd_oz": 2962.7265562436332,
+      "net_cost5_usd_oz": 2626.7265562436332,
+      "incremental_net_cost2_usd_oz": 136.73955624363316,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.224791279545584,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 17,
+          "net": -135.96399999999994
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 18,
+          "net": -174.3087142602717
+        }
+      },
+      "source_receipt_sha256": "95e27f95c6d5e10b35d0c5e19cb1710eaac861cffdef35b9f09743ec53cca8a6",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_adx",
+      "n": 105,
+      "additional_trades": 30,
+      "net_cost2_usd_oz": 2960.886556243633,
+      "net_cost5_usd_oz": 2645.886556243633,
+      "incremental_net_cost2_usd_oz": 134.89955624363301,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.2920301157578944,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -137.8040000000001
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 18,
+          "net": -174.3087142602717
+        }
+      },
+      "source_receipt_sha256": "a63da4b74170898a6923021b2e1a30b734048d8bbdf77e1683bd1e95d4745059",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_breakout",
+      "n": 82,
+      "additional_trades": 7,
+      "net_cost2_usd_oz": 2919.317,
+      "net_cost5_usd_oz": 2673.317,
+      "incremental_net_cost2_usd_oz": 93.32999999999993,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7214506969083883,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -175.22400000000016
+        },
+        "2022": {
+          "n": 7,
+          "net": 141.65999999999985
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 5,
+          "net": -204.22299999999996
+        }
+      },
+      "source_receipt_sha256": "5cae3f534d3cb23069d927acf1612c4e3534a2ce36c5df1d19e745113c534337",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_adx",
+      "n": 125,
+      "additional_trades": 50,
+      "net_cost2_usd_oz": 2896.435246284211,
+      "net_cost5_usd_oz": 2521.435246284211,
+      "incremental_net_cost2_usd_oz": 70.44824628421111,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.1152837985725275,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 19,
+          "net": -157.37000000000035
+        },
+        "2022": {
+          "n": 13,
+          "net": 36.57753197941338
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 31,
+          "net": -196.32728569520168
+        }
+      },
+      "source_receipt_sha256": "8c594b52aa4e2f33c63fa5236a3904e3661e040772b71ad64cc7e62879e3ca90",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_breakout",
+      "n": 90,
+      "additional_trades": 15,
+      "net_cost2_usd_oz": 2893.566,
+      "net_cost5_usd_oz": 2623.566,
+      "incremental_net_cost2_usd_oz": 67.57899999999972,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.628320366905361,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 13,
+          "net": -234.0150000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 11,
+          "net": -124.55299999999988
+        }
+      },
+      "source_receipt_sha256": "5bc1345f0941cf3301268ebe7b830a025a1e0bb11633f0bee46f7cb11b02be56",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_ema",
+      "n": 139,
+      "additional_trades": 64,
+      "net_cost2_usd_oz": 2845.1472462842116,
+      "net_cost5_usd_oz": 2428.1472462842116,
+      "incremental_net_cost2_usd_oz": 19.160246284211553,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.032886752713559,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 33,
+          "net": -208.6579999999999
+        },
+        "2022": {
+          "n": 13,
+          "net": 36.57753197941338
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 31,
+          "net": -196.32728569520168
+        }
+      },
+      "source_receipt_sha256": "c531af68f39845baac38412e0725fc7bb81f7599ea8ab4d8e0b9def470b784a4",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "prior_week_ema",
+      "n": 77,
+      "additional_trades": 2,
+      "net_cost2_usd_oz": 2843.197,
+      "net_cost5_usd_oz": 2612.197,
+      "incremental_net_cost2_usd_oz": 17.210000000000036,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7090187017286764,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 5,
+          "net": -220.88400000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 6,
+          "net": -188.05299999999988
+        }
+      },
+      "source_receipt_sha256": "296319a961926a9dc10d0883ce941d128e9dc6a7329df1eefb939283f86760dd",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "prior_week_ema",
+      "n": 78,
+      "additional_trades": 3,
+      "net_cost2_usd_oz": 2833.4299999999994,
+      "net_cost5_usd_oz": 2599.4299999999994,
+      "incremental_net_cost2_usd_oz": 7.4429999999993015,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7006229469429743,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 5,
+          "net": -220.88400000000001
+        },
+        "2022": {
+          "n": 7,
+          "net": 92.55999999999972
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 6,
+          "net": -195.35000000000036
+        }
+      },
+      "source_receipt_sha256": "045797ad5424c3f61680db368407ee2322a59a713d84d49afdb9b50fce5c1a06",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    }
+  ],
+  "strict_improvement": [
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_breakout",
+      "n": 85,
+      "additional_trades": 10,
+      "net_cost2_usd_oz": 3144.804,
+      "net_cost5_usd_oz": 2889.804,
+      "incremental_net_cost2_usd_oz": 318.817,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 7,
+      "profit_factor": 2.810025808144876,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 9,
+          "net": -190.2280000000003
+        },
+        "2022": {
+          "n": 8,
+          "net": 120.74099999999976
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": 58.22700000000077
+        }
+      },
+      "source_receipt_sha256": "303c30dea52c0485e14e440eed6d21912c71715a28b8ec0d05c86438b8897634",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_adx",
+      "n": 93,
+      "additional_trades": 18,
+      "net_cost2_usd_oz": 3011.946229518972,
+      "net_cost5_usd_oz": 2732.946229518972,
+      "incremental_net_cost2_usd_oz": 185.95922951897182,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.3880122036280538,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -137.8040000000001
+        },
+        "2022": {
+          "n": 12,
+          "net": 73.58399999999983
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": -137.38877048102768
+        }
+      },
+      "source_receipt_sha256": "0c256fd7cc282c907fea9f3f3544e2c9db508d73d1777b8be4541fbc979710e5",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_ema",
+      "n": 101,
+      "additional_trades": 26,
+      "net_cost2_usd_oz": 3005.5062387559137,
+      "net_cost5_usd_oz": 2702.5062387559137,
+      "incremental_net_cost2_usd_oz": 179.51923875591365,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.3082884674342905,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 18,
+          "net": -144.24399076305826
+        },
+        "2022": {
+          "n": 12,
+          "net": 73.58399999999983
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": -137.38877048102768
+        }
+      },
+      "source_receipt_sha256": "d137d2f519fa38d3c4fd561f56d2b58a7809abbf9ec7c51c18c1159b2854f77a",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_ema",
+      "n": 112,
+      "additional_trades": 37,
+      "net_cost2_usd_oz": 2962.7265562436332,
+      "net_cost5_usd_oz": 2626.7265562436332,
+      "incremental_net_cost2_usd_oz": 136.73955624363316,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.224791279545584,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 17,
+          "net": -135.96399999999994
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 18,
+          "net": -174.3087142602717
+        }
+      },
+      "source_receipt_sha256": "95e27f95c6d5e10b35d0c5e19cb1710eaac861cffdef35b9f09743ec53cca8a6",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_adx",
+      "n": 105,
+      "additional_trades": 30,
+      "net_cost2_usd_oz": 2960.886556243633,
+      "net_cost5_usd_oz": 2645.886556243633,
+      "incremental_net_cost2_usd_oz": 134.89955624363301,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.2920301157578944,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -137.8040000000001
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 18,
+          "net": -174.3087142602717
+        }
+      },
+      "source_receipt_sha256": "a63da4b74170898a6923021b2e1a30b734048d8bbdf77e1683bd1e95d4745059",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_breakout",
+      "n": 82,
+      "additional_trades": 7,
+      "net_cost2_usd_oz": 2919.317,
+      "net_cost5_usd_oz": 2673.317,
+      "incremental_net_cost2_usd_oz": 93.32999999999993,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7214506969083883,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -175.22400000000016
+        },
+        "2022": {
+          "n": 7,
+          "net": 141.65999999999985
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 5,
+          "net": -204.22299999999996
+        }
+      },
+      "source_receipt_sha256": "5cae3f534d3cb23069d927acf1612c4e3534a2ce36c5df1d19e745113c534337",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_breakout",
+      "n": 90,
+      "additional_trades": 15,
+      "net_cost2_usd_oz": 2893.566,
+      "net_cost5_usd_oz": 2623.566,
+      "incremental_net_cost2_usd_oz": 67.57899999999972,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.628320366905361,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 13,
+          "net": -234.0150000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 11,
+          "net": -124.55299999999988
+        }
+      },
+      "source_receipt_sha256": "5bc1345f0941cf3301268ebe7b830a025a1e0bb11633f0bee46f7cb11b02be56",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "prior_week_ema",
+      "n": 77,
+      "additional_trades": 2,
+      "net_cost2_usd_oz": 2843.197,
+      "net_cost5_usd_oz": 2612.197,
+      "incremental_net_cost2_usd_oz": 17.210000000000036,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7090187017286764,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 5,
+          "net": -220.88400000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 6,
+          "net": -188.05299999999988
+        }
+      },
+      "source_receipt_sha256": "296319a961926a9dc10d0883ce941d128e9dc6a7329df1eefb939283f86760dd",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    }
+  ],
+  "all_configs": [
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_breakout",
+      "n": 85,
+      "additional_trades": 10,
+      "net_cost2_usd_oz": 3144.804,
+      "net_cost5_usd_oz": 2889.804,
+      "incremental_net_cost2_usd_oz": 318.817,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 7,
+      "profit_factor": 2.810025808144876,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 9,
+          "net": -190.2280000000003
+        },
+        "2022": {
+          "n": 8,
+          "net": 120.74099999999976
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": 58.22700000000077
+        }
+      },
+      "source_receipt_sha256": "303c30dea52c0485e14e440eed6d21912c71715a28b8ec0d05c86438b8897634",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_adx",
+      "n": 93,
+      "additional_trades": 18,
+      "net_cost2_usd_oz": 3011.946229518972,
+      "net_cost5_usd_oz": 2732.946229518972,
+      "incremental_net_cost2_usd_oz": 185.95922951897182,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.3880122036280538,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -137.8040000000001
+        },
+        "2022": {
+          "n": 12,
+          "net": 73.58399999999983
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": -137.38877048102768
+        }
+      },
+      "source_receipt_sha256": "0c256fd7cc282c907fea9f3f3544e2c9db508d73d1777b8be4541fbc979710e5",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_ema",
+      "n": 101,
+      "additional_trades": 26,
+      "net_cost2_usd_oz": 3005.5062387559137,
+      "net_cost5_usd_oz": 2702.5062387559137,
+      "incremental_net_cost2_usd_oz": 179.51923875591365,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.3082884674342905,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 18,
+          "net": -144.24399076305826
+        },
+        "2022": {
+          "n": 12,
+          "net": 73.58399999999983
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 9,
+          "net": -137.38877048102768
+        }
+      },
+      "source_receipt_sha256": "d137d2f519fa38d3c4fd561f56d2b58a7809abbf9ec7c51c18c1159b2854f77a",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_ema",
+      "n": 112,
+      "additional_trades": 37,
+      "net_cost2_usd_oz": 2962.7265562436332,
+      "net_cost5_usd_oz": 2626.7265562436332,
+      "incremental_net_cost2_usd_oz": 136.73955624363316,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.224791279545584,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 17,
+          "net": -135.96399999999994
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 18,
+          "net": -174.3087142602717
+        }
+      },
+      "source_receipt_sha256": "95e27f95c6d5e10b35d0c5e19cb1710eaac861cffdef35b9f09743ec53cca8a6",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "d1_adx",
+      "n": 105,
+      "additional_trades": 30,
+      "net_cost2_usd_oz": 2960.886556243633,
+      "net_cost5_usd_oz": 2645.886556243633,
+      "incremental_net_cost2_usd_oz": 134.89955624363301,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.2920301157578944,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -137.8040000000001
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 18,
+          "net": -174.3087142602717
+        }
+      },
+      "source_receipt_sha256": "a63da4b74170898a6923021b2e1a30b734048d8bbdf77e1683bd1e95d4745059",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "d1_breakout",
+      "n": 82,
+      "additional_trades": 7,
+      "net_cost2_usd_oz": 2919.317,
+      "net_cost5_usd_oz": 2673.317,
+      "incremental_net_cost2_usd_oz": 93.32999999999993,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7214506969083883,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 10,
+          "net": -175.22400000000016
+        },
+        "2022": {
+          "n": 7,
+          "net": 141.65999999999985
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 5,
+          "net": -204.22299999999996
+        }
+      },
+      "source_receipt_sha256": "5cae3f534d3cb23069d927acf1612c4e3534a2ce36c5df1d19e745113c534337",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_adx",
+      "n": 125,
+      "additional_trades": 50,
+      "net_cost2_usd_oz": 2896.435246284211,
+      "net_cost5_usd_oz": 2521.435246284211,
+      "incremental_net_cost2_usd_oz": 70.44824628421111,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.1152837985725275,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 19,
+          "net": -157.37000000000035
+        },
+        "2022": {
+          "n": 13,
+          "net": 36.57753197941338
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 31,
+          "net": -196.32728569520168
+        }
+      },
+      "source_receipt_sha256": "8c594b52aa4e2f33c63fa5236a3904e3661e040772b71ad64cc7e62879e3ca90",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_breakout",
+      "n": 90,
+      "additional_trades": 15,
+      "net_cost2_usd_oz": 2893.566,
+      "net_cost5_usd_oz": 2623.566,
+      "incremental_net_cost2_usd_oz": 67.57899999999972,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.628320366905361,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 13,
+          "net": -234.0150000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 11,
+          "net": -124.55299999999988
+        }
+      },
+      "source_receipt_sha256": "5bc1345f0941cf3301268ebe7b830a025a1e0bb11633f0bee46f7cb11b02be56",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "d1_ema",
+      "n": 139,
+      "additional_trades": 64,
+      "net_cost2_usd_oz": 2845.1472462842116,
+      "net_cost5_usd_oz": 2428.1472462842116,
+      "incremental_net_cost2_usd_oz": 19.160246284211553,
+      "dd_realized_usd_oz": 581.0129999999999,
+      "positive_years": 6,
+      "profit_factor": 2.032886752713559,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 33,
+          "net": -208.6579999999999
+        },
+        "2022": {
+          "n": 13,
+          "net": 36.57753197941338
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 31,
+          "net": -196.32728569520168
+        }
+      },
+      "source_receipt_sha256": "c531af68f39845baac38412e0725fc7bb81f7599ea8ab4d8e0b9def470b784a4",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "prior_week_ema",
+      "n": 77,
+      "additional_trades": 2,
+      "net_cost2_usd_oz": 2843.197,
+      "net_cost5_usd_oz": 2612.197,
+      "incremental_net_cost2_usd_oz": 17.210000000000036,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7090187017286764,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 5,
+          "net": -220.88400000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 6,
+          "net": -188.05299999999988
+        }
+      },
+      "source_receipt_sha256": "296319a961926a9dc10d0883ce941d128e9dc6a7329df1eefb939283f86760dd",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": true,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "prior_week_ema",
+      "n": 78,
+      "additional_trades": 3,
+      "net_cost2_usd_oz": 2833.4299999999994,
+      "net_cost5_usd_oz": 2599.4299999999994,
+      "incremental_net_cost2_usd_oz": 7.4429999999993015,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.7006229469429743,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 5,
+          "net": -220.88400000000001
+        },
+        "2022": {
+          "n": 7,
+          "net": 92.55999999999972
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 6,
+          "net": -195.35000000000036
+        }
+      },
+      "source_receipt_sha256": "045797ad5424c3f61680db368407ee2322a59a713d84d49afdb9b50fce5c1a06",
+      "increases_profit_and_frequency": true,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": true,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "prior_week_ema",
+      "n": 75,
+      "additional_trades": 0,
+      "net_cost2_usd_oz": 2825.987,
+      "net_cost5_usd_oz": 2600.987,
+      "incremental_net_cost2_usd_oz": 0.0,
+      "dd_realized_usd_oz": 570.1329999999998,
+      "positive_years": 6,
+      "profit_factor": 2.698673934251519,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 5,
+          "net": -220.88400000000001
+        },
+        "2022": {
+          "n": 6,
+          "net": 95.02999999999975
+        },
+        "2023": {
+          "n": 7,
+          "net": 57.62599999999975
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 5,
+          "net": -204.22299999999996
+        }
+      },
+      "source_receipt_sha256": "8c9c189b22db402a45ca6bf9590d0f403e0bc64c1d0f6f6c154be46bbfdc86d1",
+      "increases_profit_and_frequency": false,
+      "passes_conservative_all": {
+        "more_trades": false,
+        "higher_net_cost2": false,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": true
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_net",
+      "gate": "any",
+      "n": 138,
+      "additional_trades": 63,
+      "net_cost2_usd_oz": 2606.7051421477154,
+      "net_cost5_usd_oz": 2192.7051421477154,
+      "incremental_net_cost2_usd_oz": -219.2818578522847,
+      "dd_realized_usd_oz": 866.5488670892255,
+      "positive_years": 5,
+      "profit_factor": 1.7758344265237744,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 29,
+          "net": -131.02399076305846
+        },
+        "2022": {
+          "n": 26,
+          "net": -3.831000000000131
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 21,
+          "net": -471.99486708922586
+        }
+      },
+      "source_receipt_sha256": "c2c4a6adeb55519e509f196f4fcd8b5ff17a0f39bb2ac3e921beac14f6c14d49",
+      "increases_profit_and_frequency": false,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": false,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": false,
+        "dd_no_worse_than_25pct": false
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "profit_frequency",
+      "gate": "any",
+      "n": 166,
+      "additional_trades": 91,
+      "net_cost2_usd_oz": 2494.9068930304593,
+      "net_cost5_usd_oz": 1996.9068930304593,
+      "incremental_net_cost2_usd_oz": -331.0801069695408,
+      "dd_realized_usd_oz": 1021.2583774734453,
+      "positive_years": 6,
+      "profit_factor": 1.5683450364164109,
+      "annual": {
+        "2019": {
+          "n": 13,
+          "net": 222.0540000000001
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 28,
+          "net": -122.74400000000014
+        },
+        "2022": {
+          "n": 16,
+          "net": 60.48427050390501
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 61,
+          "net": -655.3483774734455
+        }
+      },
+      "source_receipt_sha256": "5a4d4b2e6fb6009cdd274e6bf99f0a081e3f2e70134c014fef6bd4caef089b6d",
+      "increases_profit_and_frequency": false,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": false,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": true,
+        "dd_no_worse_than_25pct": false
+      },
+      "promote_to_live": false
+    },
+    {
+      "mode": "max_signals",
+      "gate": "any",
+      "n": 277,
+      "additional_trades": 202,
+      "net_cost2_usd_oz": 2155.832155650315,
+      "net_cost5_usd_oz": 1324.8321556503151,
+      "incremental_net_cost2_usd_oz": -670.1548443496849,
+      "dd_realized_usd_oz": 1222.7391383903673,
+      "positive_years": 5,
+      "profit_factor": 1.368457484285644,
+      "annual": {
+        "2019": {
+          "n": 14,
+          "net": 223.09400000000005
+        },
+        "2020": {
+          "n": 13,
+          "net": 301.01
+        },
+        "2021": {
+          "n": 59,
+          "net": -186.99199999999973
+        },
+        "2022": {
+          "n": 38,
+          "net": -15.70670595931756
+        },
+        "2023": {
+          "n": 9,
+          "net": 114.07699999999954
+        },
+        "2024": {
+          "n": 13,
+          "net": 637.2490000000003
+        },
+        "2025": {
+          "n": 13,
+          "net": 1938.125
+        },
+        "2026": {
+          "n": 118,
+          "net": -855.0241383903676
+        }
+      },
+      "source_receipt_sha256": "4709f224c258ba2fe9ba00831c2f416070054ab851c879f3456457272bf200da",
+      "increases_profit_and_frequency": false,
+      "passes_conservative_all": {
+        "more_trades": true,
+        "higher_net_cost2": false,
+        "higher_net_cost5": false,
+        "positive_years_at_least_six": false,
+        "dd_no_worse_than_25pct": false
+      },
+      "promote_to_live": false
+    }
+  ],
+  "limitations": [
+    "D1 source annual strategies selected in previous two calendar years, BUT multiple replay researches 2019\u20132026 are not blind holdouts",
+    "Five post-hoc D1 extra-entry gates tested after seeing R32.1; selection bias possible",
+    "W1 primary trades never overlap D1 overlays, position cap one troy ounce",
+    "Assumed $2/$5 per oz costs; FP Markets spread, swap, real slippage, margin not measured",
+    "Conservative next-Monday W1 reavailability; intrabar stop/MAE and margin risk not modelled",
+    "No ForexScanner, Frozen V1 or cTrader LIVE changes and no deployment authority"
+  ]
+}
