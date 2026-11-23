@@ -1,0 +1,168 @@
+name: R30 XAU Independent TF Zone Direction Mega Replay 2012-2026
+
+on:
+  push:
+    branches: [research/independent-tf-zone-replay-2012-2026]
+    paths:
+      - '.github/workflows/r30_independent_tf_zones_mega_2012_2026.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: r30-independent-tf-zone-replay-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit-synthetic-contract:
+    name: Causal no-orders contract (no synthetic market claims)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - run: PYTHONPATH=src:. python -m pytest -q tests/test_r30_tf_zone_replay.py
+      - run: python -m py_compile scripts/research_tf_zone_direction_mega.py scripts/research_tf_zone_mega_aggregate.py
+
+  m1-historical-shards-2012-2018:
+    name: Reconstruct historical H1/H4 from verified HistData M1 ${{ matrix.year }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/r30-source-m1.csv
+      XAU_V193_PRICE_PROVENANCE: /tmp/r30-source-provenance.json
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout original, immutable V193 and R10 candle builder
+        uses: actions/checkout@v4
+        with:
+          ref: research/r281-direction-inference-parity-20261123
+          path: research_reference
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install pinned public historic source downloader
+        run: |
+          pip install numpy==2.3.5 pandas==2.2.3
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - name: Download and hash immutable public M1 year shard
+        run: |
+          PYTHONPATH=research_reference/src python -m fx_scanner.research_xau_histdata_download_v193
+          test -s "${XAU_V193_PRICE_CSV}"
+          test -s "${XAU_V193_PRICE_PROVENANCE}"
+      - name: Derive H1 and H4 without unfinished candles
+        run: |
+          cd research_reference
+          python scripts/r10_million.py shard
+          python - <<'PY'
+          import glob,json,os
+          year=int(os.environ["XAU_V193_YEAR"])
+          prov=json.load(open(f"artifacts/r10-provenance-{year}.json"))
+          assert prov["year"]==year and prov["source"]=="HISTDATA_XAUUSD_M1"
+          assert prov["execution_authority"] is False
+          assert all(glob.glob(f"artifacts/r10-{tf}-{year}.csv") for tf in ["1h","4h"])
+          print("R30_YEAR_SHARD_VALIDATED",year,prov["normalized_csv_sha256"])
+          PY
+      - name: Upload source SHA and OHLC, never secrets or orders
+        uses: actions/upload-artifact@v4
+        with:
+          name: r30-early-shard-${{ matrix.year }}
+          path: research_reference/artifacts/r10-*
+          if-no-files-found: error
+          retention-days: 45
+
+  replay:
+    name: ${{ matrix.tf }} direction models ${{ matrix.model_start }} to ${{ matrix.model_start + 15 }}
+    needs: [audit-synthetic-contract,m1-historical-shards-2012-2018]
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        tf: [H1,H4,D1,W1]
+        model_start: [0,16,32,48,64,80,96,112]
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - name: Download audited 2012-2018 M1-derived H1/H4 shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r30-early-shard-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Download immutable 2019-2026 H1 H4 shards from R10 (no future-data fetch)
+        if: ${{ matrix.tf == 'H1' || matrix.tf == 'H4' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Download immutable 2012-2026 D1 daily shards from R98
+        if: ${{ matrix.tf == 'D1' || matrix.tf == 'W1' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Screen 262144 parameter combinations for this model block
+        run: |
+          python scripts/research_tf_zone_direction_mega.py \
+            --tf ${{ matrix.tf }} \
+            --direction-models 16 \
+            --model-start ${{ matrix.model_start }} \
+            --zone-configs 16384
+      - name: Persist audited model-shard results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r30-result-${{ matrix.tf }}-${{ matrix.model_start }}
+          path: artifacts/r30/r30-*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  aggregate:
+    name: Strict completeness gate, 8.39 million combos, no auto-promotion
+    needs: replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download all 32 result shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r30-result-*
+          path: /tmp/r30-results
+          merge-multiple: true
+      - name: Fail closed if not 8,388,608 actual evaluations with 2012-2026 sources
+        run: python scripts/research_tf_zone_mega_aggregate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r30-verified-combined-zone-direction-2012-2026
+          path: artifacts/r30/r30-combined-2012-2026.json
+          if-no-files-found: warn
+          retention-days: 90
