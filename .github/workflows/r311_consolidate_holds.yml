@@ -12,7 +12,7 @@ permissions:
 jobs:
   seal:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,7 +27,44 @@ jobs:
           pattern: r311-*
           path: artifacts/r311
           merge-multiple: true
-      - name: Check all original 27 receipts, independently sum trade PnL and compare controls
+      - name: Install checked historical price-only quant dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 openpyxl requests
+      - name: Restore 2012-2018 SHA-audited price context for H4 baseline
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45183311130
+          github-token: ${{ github.token }}
+          pattern: r30-hf-yr-*
+          path: /tmp/r30_early
+          merge-multiple: true
+      - name: Restore original R10 2019-2026 intraday context for H4 baseline
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Restore R9.8 original daily XAU context for D1/W1 baseline
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Correct independently re-run the extended-hold fixed EMA/always BUY SELL baselines
+        env:
+          PYTHONPATH: 'scripts:src:.'
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/r311_recompute_baselines.py
+          for tf in 1W 1D 4h; do
+            python scripts/r311_recompute_baselines.py --tf "$tf"
+          done
+      - name: Check all original 24 model plus 3 corrected baseline receipts and independently audit profit
         run: |
           set -euo pipefail
           python -m py_compile scripts/r311_consolidate_holds.py
