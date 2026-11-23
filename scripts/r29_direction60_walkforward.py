@@ -133,24 +133,6 @@ def stats(y,mask,side,base=None):
     return out
 
 
-def choose_side(y_val,prob_val,gate_val,min_val):
-    """Best validation-only candidate, penalizing small subsets with Wilson LB.
-
-    60% target is evaluated OOS; no 2024-26 test labels are used here.
-    """
-    best=None
-    for threshold,gn in itertools.product(CUTS,gate_val):
-        active=(prob_val>=threshold)&gate_val[gn]
-        m=stats(y_val,active,side=choose_side._side)
-        if m["n"]<min_val:continue
-        rank=(m["accuracy"]>=.60, m["wilson_lower95"],
-              m["coverage"],-threshold)
-        if best is None or rank>best[0]:
-            best=(rank,{"threshold":threshold,"gate":gn,
-                        "validation":m},active)
-    return best
-
-
 def select_side(y_val,prob_val,gate_val,min_val,side):
     best=None
     for threshold,gn in itertools.product(CUTS,gate_val):
