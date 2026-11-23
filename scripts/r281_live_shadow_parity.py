@@ -153,6 +153,25 @@ def enforce_replay_parity(tf, family, d, y, valid, times, x, policy, annual):
 
 
 
+def next_target_close(tf, closed):
+    """Next eligible UTC close for XAU daily bars; skip weekend-only closes.
+
+    Retains the original fitted model and its closed-candle features.
+    Broker/source freshness and the eventual target timestamp still gate
+    visibility. This is only the next observation deadline, not an entry.
+    """
+    closed = pd.Timestamp(closed)
+    if closed.tzinfo is None:
+        raise ValueError("NEXT_TARGET_REQUIRES_TZ")
+    target = closed + pd.Timedelta(SIZES[tf])
+    if tf == "1D":
+        # XAU D1 candle close at 00:00 UTC: Tue-Sat; Sun/Mon are
+        # weekend/first-session gaps, not next completed trading days.
+        while target.dayofweek in (6, 0):
+            target += pd.Timedelta(days=1)
+    return target
+
+
 def contemporary_signal(tf, d, fx, fitted, saved, now, expected_columns):
     """Infer using latest cTrader CLOSED candles; fail closed on any gap.
 
@@ -198,7 +217,7 @@ def contemporary_signal(tf, d, fx, fitted, saved, now, expected_columns):
             return signal, source
         k = int(eligible[-1])
         closed = pd.Timestamp(times[k])
-        target = closed + pd.Timedelta(SIZES[tf])
+        target = next_target_close(tf, closed)
         if not (closed <= now < target):
             signal["reason"] = "TARGET_CANDLE_EXPIRED"
             return signal, source
