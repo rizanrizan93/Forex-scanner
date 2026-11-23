@@ -1,0 +1,81 @@
+name: R30 XAU 2012-2026 Verified Historic Bridge H1 H4 Pareto (Read Only)
+on:
+  push:
+    branches: ['research/r30-pareto-direction-2012-2026-20261123']
+    paths:
+      - 'scripts/r30_vendor_overlap_audit.py'
+      - '.github/workflows/r30_verified_spliced_full.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r30-2012-2026-spliced-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  study:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        tf: ['1h','4h']
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/r30-pareto-direction-2012-2026-20261123
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install isolated backtesting libraries, no broker order SDK
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl pytest==9.0.2
+      - name: Reuse 2012-2018 HTTPS-verified year shards and compare 2019 overlap
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45183311130
+          github-token: ${{ github.token }}
+          pattern: r30-hf-yr-*
+          path: /tmp/r30_early
+          merge-multiple: true
+      - name: Restore original XAU 2019-2026 H1/H4 HistData shards
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Require every original 2012-2018 vendor hash and all 2019-2026 R10 year shards
+        run: |
+          set -euo pipefail
+          for yr in $(seq 2012 2018); do
+            test -s "/tmp/r30_early/r30-hf-provenance-$yr.json"
+            test -s "/tmp/r30_early/r10-${{ matrix.tf }}-$yr.csv"
+          done
+          for yr in $(seq 2019 2026); do
+            test -s "/tmp/r10/r10-${{ matrix.tf }}-$yr.csv"
+          done
+      - name: Audit 2019 external to R10 overlap, do not hide vendor boundary
+        run: |
+          python scripts/r30_vendor_overlap_audit.py \
+            --tf "${{ matrix.tf }}" \
+            --early "/tmp/r30_early/r10-${{ matrix.tf }}-2019.csv" \
+            --original "/tmp/r10/r10-${{ matrix.tf }}-2019.csv" \
+            --out "artifacts/r30_pareto/r30-2019-vendor-overlap-${{ matrix.tf }}.json"
+      - name: Select precision balanced and high-frequency rules on prior-year validation only
+        run: python scripts/r30_pareto_direction_search.py --tf "${{ matrix.tf }}" --scope spliced
+      - name: Archive exact 15-year source provenance plus full-era annual Pareto evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r30-spliced-full-${{ matrix.tf }}-2012-2026
+          path: |
+            artifacts/r30_pareto/r30-pareto-${{ matrix.tf }}-spliced.json
+            artifacts/r30_pareto/r30-2019-vendor-overlap-${{ matrix.tf }}.json
+          retention-days: 90
+          if-no-files-found: warn
