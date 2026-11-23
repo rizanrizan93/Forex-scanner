@@ -1,0 +1,33 @@
+name: R32L Postselection Source TF Stability Audit 2012-2026
+on:
+  push:
+    branches: [research/r32-liquidity-sweep-m5-2012-2026]
+    paths: [".github/workflows/r32l_stability_audit.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 45257172812
+          github-token: ${{ github.token }}
+          pattern: r32l-result-*
+          path: /tmp/r32l-results
+          merge-multiple: true
+      - name: Audit retrospective robustness without retrospective selection
+        run: python scripts/r32l_postselection_stability.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r32l-verified-stability-audit
+          path: artifacts/r32l/r32l-postselection-stability-audit-2012-2026.json
+          if-no-files-found: warn
+          retention-days: 90
