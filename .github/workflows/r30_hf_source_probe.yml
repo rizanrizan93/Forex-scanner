@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        year: [2012,2016,2019]
+        year: [2012,2016,2019,2026]
     steps:
       - uses: actions/checkout@v4
         with:
