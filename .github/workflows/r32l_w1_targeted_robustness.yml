@@ -1,0 +1,36 @@
+name: R32L W1 Targeted Historical Robustness 2012-2026
+on:
+  push:
+    branches: [research/r32-liquidity-sweep-m5-2012-2026]
+    paths: [".github/workflows/r32l_w1_targeted_robustness.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.:scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Evaluate frozen research-side W1 model ids 138 and 142 without reselection
+        run: python scripts/r32l_w1_targeted_robustness.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r32l-w1-subperiod-diagnostics
+          path: artifacts/r32l/r32l-w1-targeted-2012-2026.json
+          if-no-files-found: warn
+          retention-days: 90
