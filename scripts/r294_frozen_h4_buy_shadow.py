@@ -55,7 +55,15 @@ def verify_lock():
             or lock.get("execution_influence") is not False):
         raise ValueError("R294_FROZEN_LOCK_PROVENANCE_MISMATCH")
     row=next((a for a in lock["folds"] if a["evaluation_year"]==2026),None)
-    if (row is None or {key:row.get(key) for key in POLICY}!=POLICY
+    # The historical lock calls this field feature_group; the runtime
+    # sklearn matrix argument is named group. Compare values, not labels.
+    locked_policy = ({
+        "model":row.get("model"),
+        "group":row.get("feature_group"),
+        "threshold":row.get("threshold"),
+        "gate":row.get("gate"),
+    } if row is not None else {})
+    if (row is None or locked_policy!=POLICY
             or row.get("validation_year")!=2025
             or any(int(row["validation"][key])!=VAL2025[label]
                    for key,label in (("n","n"),("correct","correct")))
