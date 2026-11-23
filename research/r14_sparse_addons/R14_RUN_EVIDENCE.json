@@ -1,0 +1,97 @@
+{
+  "study": "R14_FIXED_SPARSE_ADDONS",
+  "date_WIB": "2026-11-24",
+  "run_id": 45285929607,
+  "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45285929607",
+  "source_commit": "4e4e5519befd189b601397001b6c3cabd8692ca2",
+  "registered_slots": 16,
+  "user_selected_anchor": 27615,
+  "additional_slots": 15,
+  "completed_annual_inputs": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "partial_year": 2026,
+  "scenarios": [
+    "A1",
+    "B1",
+    "A2",
+    "B2"
+  ],
+  "status": "completed",
+  "conclusion": "success",
+  "native_parity": false,
+  "V1_balance_change": null,
+  "production_changes": false,
+  "artifacts": [
+    {
+      "id": 14873135050,
+      "name": "r14-year-2025",
+      "bytes": 1051064,
+      "digest": "sha256:173edab3c09420d87e6b84051a7ac787a2e3de35f83a927f4d4647cf70947636",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14873020018,
+      "name": "r14-year-2026",
+      "bytes": 1386628,
+      "digest": "sha256:18b06143b886e243538fd0c1620c4b96b7228514901de603f75f11db87f85b99",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14872995268,
+      "name": "r14-year-2024",
+      "bytes": 749654,
+      "digest": "sha256:28a121a8e41ad48e8c1358b838ed56fc8d95cefca5bbec111111f0a21be54bdf",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14872920257,
+      "name": "r14-year-2023",
+      "bytes": 475241,
+      "digest": "sha256:6337f966661ae2a0bd7b6cb09277c4e27435dc486feda8665a33d6cf61dca960",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14872430566,
+      "name": "r14-year-2021",
+      "bytes": 502353,
+      "digest": "sha256:ca706be34db05c785746ed8e1e3463e4c07e003dcb69099f7cce7f7b140880b5",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14871946372,
+      "name": "r14-year-2019",
+      "bytes": 205145,
+      "digest": "sha256:ce2b7c75f88e594c8fcf8b53fb5d59229c79dd736f78552b7c3a091ef9470231",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14871557472,
+      "name": "r14-year-2022",
+      "bytes": 534856,
+      "digest": "sha256:e3329b8201a6d90e6ce088f3947a852d3ded816949bdf2b3530c62adee34c670",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14871018520,
+      "name": "r14-year-2020",
+      "bytes": 637747,
+      "digest": "sha256:b15b679b4cbdd44c9b289fe6682bffb667db2312810d5a85dd539ac1326fbb71",
+      "expires_at": "2027-02-21T23:07:00Z"
+    },
+    {
+      "id": 14870958737,
+      "name": "r14-final",
+      "bytes": 25985,
+      "digest": "sha256:615cb0f5c0ba870a61b26165187ab8b2376ad166aee841c9cc89b9eb41bee3aa",
+      "expires_at": "2027-02-21T23:07:00Z"
+    }
+  ]
+}

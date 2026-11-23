@@ -1,0 +1,5210 @@
+{
+  "study": "R14_FIXED_SPARSE_ADDONS",
+  "source_commit": "4e4e5519befd189b601397001b6c3cabd8692ca2",
+  "registry": {
+    "study": "R14_FIXED_SPARSE_REGISTRY",
+    "source_r13_selection_zip_sha256": "48fd5a297365cfa14f0c55e53ab8c97333e843afdca1816d42f1d2d78d042ef3",
+    "source_r13_commit": "3bcc84ab54669553217394794aafcb33c7cacaa6",
+    "original_search_tuples": 2359296,
+    "development_years": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "exploratory_gate_tuples": 1283,
+    "slots": 16,
+    "candidates": [
+      {
+        "id": 27615,
+        "priority": 0,
+        "role": "ANCHOR",
+        "parameters": {
+          "tf": 5,
+          "family": "BREAKOUT",
+          "look": 32,
+          "side": -1,
+          "hold": 240,
+          "stop": 3.0,
+          "target": 2.5,
+          "regime": "WITH",
+          "session": "LONDON",
+          "spread": 0.35,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 40.0,
+          "wins": 26.0,
+          "net_R": 23.064824838269445,
+          "gain_R": 36.67788150721863,
+          "loss_R": 13.61305666894918,
+          "net_USD_flat_1oz": 125.34219837082415,
+          "sum_R2": 90.84231450563934
+        },
+        "development_mean_R": 0.5766206209567362,
+        "development_PF_R": 2.6943163757541213,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 451239,
+        "priority": 1,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 5,
+          "family": "DONCHIAN_MID_RECLAIM",
+          "look": 8,
+          "side": -1,
+          "hold": 240,
+          "stop": 2.0,
+          "target": 2.5,
+          "regime": "ANY",
+          "session": "LONDON",
+          "spread": 0.35,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 103.0,
+          "wins": 42.0,
+          "net_R": 16.95105996962164,
+          "gain_R": 76.65121860939924,
+          "loss_R": 59.700158639777584,
+          "net_USD_flat_1oz": 78.63680837804687,
+          "sum_R2": 228.74936509626949
+        },
+        "development_mean_R": 0.1645733977633169,
+        "development_PF_R": 1.2839365984251732,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 41112,
+        "priority": 2,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 5,
+          "family": "RETEST_BREAK",
+          "look": 8,
+          "side": 1,
+          "hold": 240,
+          "stop": 2.0,
+          "target": 2.5,
+          "regime": "ANY",
+          "session": "ALL",
+          "spread": 0.15,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 35.0,
+          "wins": 17.0,
+          "net_R": 15.810843589931105,
+          "gain_R": 31.885795379614493,
+          "loss_R": 16.074951789683386,
+          "net_USD_flat_1oz": 173.9320334624636,
+          "sum_R2": 86.22720293711609
+        },
+        "development_mean_R": 0.45173838828374585,
+        "development_PF_R": 1.9835702026850384,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1708650,
+        "priority": 3,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 30,
+          "family": "ASIAN_RANGE_BREAK",
+          "look": 16,
+          "side": 1,
+          "hold": 240,
+          "stop": 1.0,
+          "target": 2.5,
+          "regime": "ANY",
+          "session": "US",
+          "spread": 0.15,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 40.0,
+          "wins": 23.0,
+          "net_R": 15.104805841415612,
+          "gain_R": 24.375941624644923,
+          "loss_R": 9.27113578322931,
+          "net_USD_flat_1oz": 94.61705969083455,
+          "sum_R2": 55.065690977848206
+        },
+        "development_mean_R": 0.3776201460353903,
+        "development_PF_R": 2.629229276173359,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 409689,
+        "priority": 4,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 5,
+          "family": "TWAP_RECLAIM",
+          "look": 8,
+          "side": 1,
+          "hold": 240,
+          "stop": 2.0,
+          "target": 1.5,
+          "regime": "ANY",
+          "session": "ASIA",
+          "spread": 0.35,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 45.0,
+          "wins": 26.0,
+          "net_R": 15.090979479493523,
+          "gain_R": 31.80815700572793,
+          "loss_R": 16.71717752623441,
+          "net_USD_flat_1oz": 73.40066073638043,
+          "sum_R2": 60.5366010628359
+        },
+        "development_mean_R": 0.33535509954430054,
+        "development_PF_R": 1.902722930100558,
+        "development_positive_years": 6,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 340959,
+        "priority": 5,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 5,
+          "family": "FAILED_BREAK",
+          "look": 8,
+          "side": -1,
+          "hold": 240,
+          "stop": 3.0,
+          "target": 2.5,
+          "regime": "WITH",
+          "session": "LONDON",
+          "spread": 0.35,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 37.0,
+          "wins": 21.0,
+          "net_R": 14.413065095460837,
+          "gain_R": 27.6343298660375,
+          "loss_R": 13.221264770576663,
+          "net_USD_flat_1oz": 78.16139277757847,
+          "sum_R2": 72.53817685222539
+        },
+        "development_mean_R": 0.3895422998773199,
+        "development_PF_R": 2.0901426864649495,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 22680,
+        "priority": 6,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 5,
+          "family": "BREAKOUT",
+          "look": 32,
+          "side": 1,
+          "hold": 240,
+          "stop": 2.0,
+          "target": 2.5,
+          "regime": "ANY",
+          "session": "ALL",
+          "spread": 0.15,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 33.0,
+          "wins": 16.0,
+          "net_R": 13.874746088107091,
+          "gain_R": 26.846189461078506,
+          "loss_R": 12.971443372971418,
+          "net_USD_flat_1oz": 124.3877901373867,
+          "sum_R2": 68.25406921808667
+        },
+        "development_mean_R": 0.4204468511547603,
+        "development_PF_R": 2.069637795052005,
+        "development_positive_years": 6,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1142441,
+        "priority": 7,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 15,
+          "family": "ASIAN_RANGE_BREAK",
+          "look": 64,
+          "side": -1,
+          "hold": 240,
+          "stop": 2.0,
+          "target": 2.5,
+          "regime": "ANY",
+          "session": "LONDON",
+          "spread": 0.35,
+          "vol": "HIGH"
+        },
+        "development": {
+          "n": 60.0,
+          "wins": 31.0,
+          "net_R": 12.988791432679564,
+          "gain_R": 37.38271807824398,
+          "loss_R": 24.39392664556442,
+          "net_USD_flat_1oz": 75.96423831763445,
+          "sum_R2": 96.29603978734478
+        },
+        "development_mean_R": 0.21647985721132607,
+        "development_PF_R": 1.5324600512825324,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1957798,
+        "priority": 8,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 60,
+          "family": "INSIDE_BREAK",
+          "look": 8,
+          "side": 1,
+          "hold": 240,
+          "stop": 1.5,
+          "target": 2.5,
+          "regime": "WITH",
+          "session": "US",
+          "spread": 0.35,
+          "vol": "LOW"
+        },
+        "development": {
+          "n": 58.0,
+          "wins": 31.0,
+          "net_R": 12.525818093330335,
+          "gain_R": 33.231771199705044,
+          "loss_R": 20.705953106374707,
+          "net_USD_flat_1oz": 72.19052424517012,
+          "sum_R2": 72.96610279140755
+        },
+        "development_mean_R": 0.21596238091948852,
+        "development_PF_R": 1.6049380112560012,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 2303422,
+        "priority": 9,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 60,
+          "family": "ASIAN_RANGE_BREAK",
+          "look": 16,
+          "side": -1,
+          "hold": 240,
+          "stop": 1.5,
+          "target": 2.5,
+          "regime": "AGAINST",
+          "session": "US",
+          "spread": 0.35,
+          "vol": "LOW"
+        },
+        "development": {
+          "n": 70.0,
+          "wins": 30.0,
+          "net_R": 11.266163887755612,
+          "gain_R": 43.531980980146706,
+          "loss_R": 32.26581709239109,
+          "net_USD_flat_1oz": 49.61823109215573,
+          "sum_R2": 118.82417215910753
+        },
+        "development_mean_R": 0.16094519839650875,
+        "development_PF_R": 1.3491671652230497,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 412060,
+        "priority": 10,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 5,
+          "family": "TWAP_RECLAIM",
+          "look": 8,
+          "side": -1,
+          "hold": 60,
+          "stop": 2.0,
+          "target": 2.5,
+          "regime": "ANY",
+          "session": "ALL",
+          "spread": 0.35,
+          "vol": "LOW"
+        },
+        "development": {
+          "n": 54.0,
+          "wins": 25.0,
+          "net_R": 10.83944547734615,
+          "gain_R": 32.46709882787443,
+          "loss_R": 21.627653350528284,
+          "net_USD_flat_1oz": 51.956275961877544,
+          "sum_R2": 86.73233270006222
+        },
+        "development_mean_R": 0.20073047180270648,
+        "development_PF_R": 1.5011845391484129,
+        "development_positive_years": 6,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1192580,
+        "priority": 11,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 30,
+          "family": "BREAKOUT",
+          "look": 16,
+          "side": 1,
+          "hold": 240,
+          "stop": 1.0,
+          "target": 2.5,
+          "regime": "WITH",
+          "session": "US",
+          "spread": 0.15,
+          "vol": "HIGH"
+        },
+        "development": {
+          "n": 31.0,
+          "wins": 18.0,
+          "net_R": 10.789532772822152,
+          "gain_R": 21.39531991279807,
+          "loss_R": 10.60578713997592,
+          "net_USD_flat_1oz": 32.690570286918984,
+          "sum_R2": 47.25734133968912
+        },
+        "development_mean_R": 0.34804944428458556,
+        "development_PF_R": 2.017325034947538,
+        "development_positive_years": 6,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1814545,
+        "priority": 12,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 60,
+          "family": "RETEST_BREAK",
+          "look": 8,
+          "side": -1,
+          "hold": 240,
+          "stop": 1.0,
+          "target": 1.5,
+          "regime": "ANY",
+          "session": "ALL",
+          "spread": 0.15,
+          "vol": "LOW"
+        },
+        "development": {
+          "n": 38.0,
+          "wins": 21.0,
+          "net_R": 10.27675615575234,
+          "gain_R": 24.13108330823642,
+          "loss_R": 13.854327152484084,
+          "net_USD_flat_1oz": 64.76378671218362,
+          "sum_R2": 45.662519586597824
+        },
+        "development_mean_R": 0.27044095146716685,
+        "development_PF_R": 1.7417723028079146,
+        "development_positive_years": 6,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1736543,
+        "priority": 13,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 30,
+          "family": "PRIOR_DAY_SWEEP",
+          "look": 8,
+          "side": 1,
+          "hold": 240,
+          "stop": 1.5,
+          "target": 1.5,
+          "regime": "WITH",
+          "session": "US",
+          "spread": 0.35,
+          "vol": "HIGH"
+        },
+        "development": {
+          "n": 39.0,
+          "wins": 21.0,
+          "net_R": 9.453538848348288,
+          "gain_R": 19.98336839407791,
+          "loss_R": 10.529829545729621,
+          "net_USD_flat_1oz": 46.97971595492692,
+          "sum_R2": 33.577371228659594
+        },
+        "development_mean_R": 0.24239843200893046,
+        "development_PF_R": 1.8977865033135488,
+        "development_positive_years": 6,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 1667472,
+        "priority": 14,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 30,
+          "family": "RSI_EXTREME_RECLAIM",
+          "look": 8,
+          "side": -1,
+          "hold": 240,
+          "stop": 1.5,
+          "target": 2.5,
+          "regime": "WITH",
+          "session": "ALL",
+          "spread": 0.15,
+          "vol": "ALL"
+        },
+        "development": {
+          "n": 30.0,
+          "wins": 17.0,
+          "net_R": 9.42247892447394,
+          "gain_R": 20.835399870050445,
+          "loss_R": 11.412920945576499,
+          "net_USD_flat_1oz": 30.719705559527178,
+          "sum_R2": 51.18802937393799
+        },
+        "development_mean_R": 0.314082630815798,
+        "development_PF_R": 1.8255974933503747,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      },
+      {
+        "id": 2031260,
+        "priority": 15,
+        "role": "ADDITIONAL",
+        "parameters": {
+          "tf": 60,
+          "family": "EMA50_DIP",
+          "look": 8,
+          "side": 1,
+          "hold": 240,
+          "stop": 1.0,
+          "target": 2.5,
+          "regime": "AGAINST",
+          "session": "US",
+          "spread": 0.15,
+          "vol": "HIGH"
+        },
+        "development": {
+          "n": 44.0,
+          "wins": 24.0,
+          "net_R": 9.381597436368166,
+          "gain_R": 18.754204490207197,
+          "loss_R": 9.37260705383903,
+          "net_USD_flat_1oz": 81.79351918975132,
+          "sum_R2": 36.839781793598604
+        },
+        "development_mean_R": 0.21321812355382194,
+        "development_PF_R": 2.0009592189747734,
+        "development_positive_years": 5,
+        "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+        "production_enabled": false
+      }
+    ],
+    "user_selected_anchor": 27615,
+    "selection_uses_only_development": true,
+    "retrospective_R13_promotion": false,
+    "production_enabled": false,
+    "native_parity": false
+  },
+  "registered_slots": 16,
+  "candidate_results": [
+    {
+      "id": 27615,
+      "priority": 0,
+      "role": "ANCHOR",
+      "parameters": {
+        "tf": 5,
+        "family": "BREAKOUT",
+        "look": 32,
+        "side": -1,
+        "hold": 240,
+        "stop": 3.0,
+        "target": 2.5,
+        "regime": "WITH",
+        "session": "LONDON",
+        "spread": 0.35,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 40.0,
+        "wins": 26.0,
+        "net_R": 23.064824838269445,
+        "gain_R": 36.67788150721863,
+        "loss_R": 13.61305666894918,
+        "net_USD_flat_1oz": 125.34219837082415,
+        "sum_R2": 90.84231450563934
+      },
+      "development_mean_R": 0.5766206209567362,
+      "development_PF_R": 2.6943163757541213,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 225,
+            "wins": 82,
+            "net_R": -15.730256986678484,
+            "gain_R": 123.94595798600679,
+            "loss_R": 139.67621497268527,
+            "net_USD_flat_1oz": -69.35473758930195,
+            "sum_R2": 397.31783199544276,
+            "mean_R": -0.06991225327412659,
+            "PF_R": 0.88738056089396,
+            "positive_years": 1,
+            "yearly_n": [
+              24,
+              42,
+              73,
+              86
+            ]
+          },
+          "B1": {
+            "n": 225,
+            "wins": 82,
+            "net_R": -15.730256986678484,
+            "gain_R": 123.94595798600679,
+            "loss_R": 139.67621497268527,
+            "net_USD_flat_1oz": -69.35473758930195,
+            "sum_R2": 397.31783199544276,
+            "mean_R": -0.06991225327412659,
+            "PF_R": 0.88738056089396,
+            "positive_years": 1,
+            "yearly_n": [
+              24,
+              42,
+              73,
+              86
+            ]
+          },
+          "A2": {
+            "n": 33,
+            "wins": 11,
+            "net_R": -0.9135237501609689,
+            "gain_R": 19.51120844335423,
+            "loss_R": 20.424732193515197,
+            "net_USD_flat_1oz": -6.509138291597722,
+            "sum_R2": 62.554414678947495,
+            "mean_R": -0.027682537883665724,
+            "PF_R": 0.95527364855971,
+            "positive_years": 1,
+            "yearly_n": [
+              0,
+              12,
+              12,
+              9
+            ]
+          },
+          "B2": {
+            "n": 33,
+            "wins": 11,
+            "net_R": -0.9135237501609689,
+            "gain_R": 19.51120844335423,
+            "loss_R": 20.424732193515197,
+            "net_USD_flat_1oz": -6.509138291597722,
+            "sum_R2": 62.554414678947495,
+            "mean_R": -0.027682537883665724,
+            "PF_R": 0.95527364855971,
+            "positive_years": 1,
+            "yearly_n": [
+              0,
+              12,
+              12,
+              9
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 118,
+            "wins": 35,
+            "net_R": -25.90947921502152,
+            "gain_R": 47.48249018630588,
+            "loss_R": 73.39196940132742,
+            "net_USD_flat_1oz": -91.8145263746738,
+            "sum_R2": 169.8834934679463,
+            "mean_R": -0.21957185775441965,
+            "PF_R": 0.6469711955358304,
+            "positive_years": 1,
+            "yearly_n": [
+              50,
+              43,
+              25
+            ]
+          },
+          "B1": {
+            "n": 118,
+            "wins": 35,
+            "net_R": -25.90947921502152,
+            "gain_R": 47.48249018630588,
+            "loss_R": 73.39196940132742,
+            "net_USD_flat_1oz": -91.8145263746738,
+            "sum_R2": 169.8834934679463,
+            "mean_R": -0.21957185775441965,
+            "PF_R": 0.6469711955358304,
+            "positive_years": 1,
+            "yearly_n": [
+              50,
+              43,
+              25
+            ]
+          },
+          "A2": {
+            "n": 15,
+            "wins": 3,
+            "net_R": -4.712009149472824,
+            "gain_R": 5.355652252049426,
+            "loss_R": 10.06766140152225,
+            "net_USD_flat_1oz": -39.83662719969452,
+            "sum_R2": 22.31347137010401,
+            "mean_R": -0.3141339432981882,
+            "PF_R": 0.5319658695751965,
+            "positive_years": 0,
+            "yearly_n": [
+              2,
+              6,
+              7
+            ]
+          },
+          "B2": {
+            "n": 15,
+            "wins": 3,
+            "net_R": -4.712009149472824,
+            "gain_R": 5.355652252049426,
+            "loss_R": 10.06766140152225,
+            "net_USD_flat_1oz": -39.83662719969452,
+            "sum_R2": 22.31347137010401,
+            "mean_R": -0.3141339432981882,
+            "PF_R": 0.5319658695751965,
+            "positive_years": 0,
+            "yearly_n": [
+              2,
+              6,
+              7
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 54,
+            "wins": 21,
+            "net_R": 3.3144122839381307,
+            "gain_R": 32.42116147553421,
+            "loss_R": 29.106749191596087,
+            "net_USD_flat_1oz": 25.29374387071146,
+            "sum_R2": 96.52282977774534,
+            "mean_R": 0.06137800525811353,
+            "PF_R": 1.113870919150775,
+            "positive_years": 1,
+            "yearly_n": [
+              54
+            ]
+          },
+          "B1": {
+            "n": 54,
+            "wins": 21,
+            "net_R": 3.3144122839381307,
+            "gain_R": 32.42116147553421,
+            "loss_R": 29.106749191596087,
+            "net_USD_flat_1oz": 25.29374387071146,
+            "sum_R2": 96.52282977774534,
+            "mean_R": 0.06137800525811353,
+            "PF_R": 1.113870919150775,
+            "positive_years": 1,
+            "yearly_n": [
+              54
+            ]
+          },
+          "A2": {
+            "n": 52,
+            "wins": 20,
+            "net_R": -0.06941692365002039,
+            "gain_R": 29.12691404537048,
+            "loss_R": 29.1963309690205,
+            "net_USD_flat_1oz": -2.2447851328567907,
+            "sum_R2": 89.35040547068596,
+            "mean_R": -0.001334940839423469,
+            "PF_R": 0.9976224093457607,
+            "positive_years": 0,
+            "yearly_n": [
+              52
+            ]
+          },
+          "B2": {
+            "n": 52,
+            "wins": 20,
+            "net_R": -0.06941692365002039,
+            "gain_R": 29.12691404537048,
+            "loss_R": 29.1963309690205,
+            "net_USD_flat_1oz": -2.2447851328567907,
+            "sum_R2": 89.35040547068596,
+            "mean_R": -0.001334940839423469,
+            "PF_R": 0.9976224093457607,
+            "positive_years": 0,
+            "yearly_n": [
+              52
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 451239,
+      "priority": 1,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 5,
+        "family": "DONCHIAN_MID_RECLAIM",
+        "look": 8,
+        "side": -1,
+        "hold": 240,
+        "stop": 2.0,
+        "target": 2.5,
+        "regime": "ANY",
+        "session": "LONDON",
+        "spread": 0.35,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 103.0,
+        "wins": 42.0,
+        "net_R": 16.95105996962164,
+        "gain_R": 76.65121860939924,
+        "loss_R": 59.700158639777584,
+        "net_USD_flat_1oz": 78.63680837804687,
+        "sum_R2": 228.74936509626949
+      },
+      "development_mean_R": 0.1645733977633169,
+      "development_PF_R": 1.2839365984251732,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 1356,
+            "wins": 377,
+            "net_R": -267.67973603593936,
+            "gain_R": 727.3611080192591,
+            "loss_R": 995.0408440551984,
+            "net_USD_flat_1oz": -686.1901096676941,
+            "sum_R2": 2689.370666601925,
+            "mean_R": -0.1974039351297488,
+            "PF_R": 0.7309861824917308,
+            "positive_years": 0,
+            "yearly_n": [
+              151,
+              400,
+              390,
+              415
+            ]
+          },
+          "B1": {
+            "n": 1356,
+            "wins": 377,
+            "net_R": -267.67973603593936,
+            "gain_R": 727.3611080192591,
+            "loss_R": 995.0408440551984,
+            "net_USD_flat_1oz": -686.1901096676941,
+            "sum_R2": 2689.370666601925,
+            "mean_R": -0.1974039351297488,
+            "PF_R": 0.7309861824917308,
+            "positive_years": 0,
+            "yearly_n": [
+              151,
+              400,
+              390,
+              415
+            ]
+          },
+          "A2": {
+            "n": 156,
+            "wins": 53,
+            "net_R": -9.219059973651296,
+            "gain_R": 94.28763180127933,
+            "loss_R": 103.50669177493063,
+            "net_USD_flat_1oz": -40.86536875375212,
+            "sum_R2": 313.576805459632,
+            "mean_R": -0.059096538292636516,
+            "PF_R": 0.910932715406482,
+            "positive_years": 1,
+            "yearly_n": [
+              11,
+              79,
+              21,
+              45
+            ]
+          },
+          "B2": {
+            "n": 156,
+            "wins": 53,
+            "net_R": -9.219059973651296,
+            "gain_R": 94.28763180127933,
+            "loss_R": 103.50669177493063,
+            "net_USD_flat_1oz": -40.86536875375212,
+            "sum_R2": 313.576805459632,
+            "mean_R": -0.059096538292636516,
+            "PF_R": 0.910932715406482,
+            "positive_years": 1,
+            "yearly_n": [
+              11,
+              79,
+              21,
+              45
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 1356,
+            "wins": 360,
+            "net_R": -318.3933255283868,
+            "gain_R": 678.7201484514349,
+            "loss_R": 997.1134739798216,
+            "net_USD_flat_1oz": -965.2699682394243,
+            "sum_R2": 2557.2034778344955,
+            "mean_R": -0.23480333741031476,
+            "PF_R": 0.6806849633095721,
+            "positive_years": 0,
+            "yearly_n": [
+              403,
+              484,
+              469
+            ]
+          },
+          "B1": {
+            "n": 1356,
+            "wins": 360,
+            "net_R": -318.3933255283868,
+            "gain_R": 678.7201484514349,
+            "loss_R": 997.1134739798216,
+            "net_USD_flat_1oz": -965.2699682394243,
+            "sum_R2": 2557.2034778344955,
+            "mean_R": -0.23480333741031476,
+            "PF_R": 0.6806849633095721,
+            "positive_years": 0,
+            "yearly_n": [
+              403,
+              484,
+              469
+            ]
+          },
+          "A2": {
+            "n": 260,
+            "wins": 73,
+            "net_R": -52.394209066916666,
+            "gain_R": 133.07764815401856,
+            "loss_R": 185.4718572209352,
+            "net_USD_flat_1oz": -198.88713099797914,
+            "sum_R2": 484.29818641018096,
+            "mean_R": -0.20151618871891025,
+            "PF_R": 0.7175085759533624,
+            "positive_years": 0,
+            "yearly_n": [
+              18,
+              65,
+              177
+            ]
+          },
+          "B2": {
+            "n": 260,
+            "wins": 73,
+            "net_R": -52.394209066916666,
+            "gain_R": 133.07764815401856,
+            "loss_R": 185.4718572209352,
+            "net_USD_flat_1oz": -198.88713099797914,
+            "sum_R2": 484.29818641018096,
+            "mean_R": -0.20151618871891025,
+            "PF_R": 0.7175085759533624,
+            "positive_years": 0,
+            "yearly_n": [
+              18,
+              65,
+              177
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 307,
+            "wins": 94,
+            "net_R": -43.179095991473744,
+            "gain_R": 165.17610265652246,
+            "loss_R": 208.35519864799622,
+            "net_USD_flat_1oz": -403.23319197795274,
+            "sum_R2": 582.5606771078085,
+            "mean_R": -0.14064852114486562,
+            "PF_R": 0.792762089587108,
+            "positive_years": 0,
+            "yearly_n": [
+              307
+            ]
+          },
+          "B1": {
+            "n": 307,
+            "wins": 94,
+            "net_R": -43.179095991473744,
+            "gain_R": 165.17610265652246,
+            "loss_R": 208.35519864799622,
+            "net_USD_flat_1oz": -403.23319197795274,
+            "sum_R2": 582.5606771078085,
+            "mean_R": -0.14064852114486562,
+            "PF_R": 0.792762089587108,
+            "positive_years": 0,
+            "yearly_n": [
+              307
+            ]
+          },
+          "A2": {
+            "n": 297,
+            "wins": 87,
+            "net_R": -59.996709588452404,
+            "gain_R": 148.56212423266936,
+            "loss_R": 208.55883382112177,
+            "net_USD_flat_1oz": -604.5365650048863,
+            "sum_R2": 545.624011776374,
+            "mean_R": -0.20200912319344244,
+            "PF_R": 0.7123271717183133,
+            "positive_years": 0,
+            "yearly_n": [
+              297
+            ]
+          },
+          "B2": {
+            "n": 297,
+            "wins": 87,
+            "net_R": -59.996709588452404,
+            "gain_R": 148.56212423266936,
+            "loss_R": 208.55883382112177,
+            "net_USD_flat_1oz": -604.5365650048863,
+            "sum_R2": 545.624011776374,
+            "mean_R": -0.20200912319344244,
+            "PF_R": 0.7123271717183133,
+            "positive_years": 0,
+            "yearly_n": [
+              297
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 41112,
+      "priority": 2,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 5,
+        "family": "RETEST_BREAK",
+        "look": 8,
+        "side": 1,
+        "hold": 240,
+        "stop": 2.0,
+        "target": 2.5,
+        "regime": "ANY",
+        "session": "ALL",
+        "spread": 0.15,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 35.0,
+        "wins": 17.0,
+        "net_R": 15.810843589931105,
+        "gain_R": 31.885795379614493,
+        "loss_R": 16.074951789683386,
+        "net_USD_flat_1oz": 173.9320334624636,
+        "sum_R2": 86.22720293711609
+      },
+      "development_mean_R": 0.45173838828374585,
+      "development_PF_R": 1.9835702026850384,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 391,
+            "wins": 130,
+            "net_R": -54.58103607093552,
+            "gain_R": 188.64893424369868,
+            "loss_R": 243.2299703146342,
+            "net_USD_flat_1oz": -261.91383249200675,
+            "sum_R2": 630.8183593828294,
+            "mean_R": -0.13959344263666373,
+            "PF_R": 0.7755990513819851,
+            "positive_years": 0,
+            "yearly_n": [
+              31,
+              159,
+              90,
+              111
+            ]
+          },
+          "B1": {
+            "n": 391,
+            "wins": 130,
+            "net_R": -54.58103607093552,
+            "gain_R": 188.64893424369868,
+            "loss_R": 243.2299703146342,
+            "net_USD_flat_1oz": -261.91383249200675,
+            "sum_R2": 630.8183593828294,
+            "mean_R": -0.13959344263666373,
+            "PF_R": 0.7755990513819851,
+            "positive_years": 0,
+            "yearly_n": [
+              31,
+              159,
+              90,
+              111
+            ]
+          },
+          "A2": {
+            "n": 28,
+            "wins": 13,
+            "net_R": 3.0645026689082773,
+            "gain_R": 17.084308763130327,
+            "loss_R": 14.019806094222048,
+            "net_USD_flat_1oz": 24.367499901736792,
+            "sum_R2": 47.98902604242568,
+            "mean_R": 0.10944652388958133,
+            "PF_R": 1.2185838126656579,
+            "positive_years": 1,
+            "yearly_n": [
+              1,
+              16,
+              1,
+              10
+            ]
+          },
+          "B2": {
+            "n": 28,
+            "wins": 13,
+            "net_R": 3.0645026689082773,
+            "gain_R": 17.084308763130327,
+            "loss_R": 14.019806094222048,
+            "net_USD_flat_1oz": 24.367499901736792,
+            "sum_R2": 47.98902604242568,
+            "mean_R": 0.10944652388958133,
+            "PF_R": 1.2185838126656579,
+            "positive_years": 1,
+            "yearly_n": [
+              1,
+              16,
+              1,
+              10
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 555,
+            "wins": 210,
+            "net_R": -19.317636415491645,
+            "gain_R": 307.5983462905689,
+            "loss_R": 326.9159827060605,
+            "net_USD_flat_1oz": -172.77925376889957,
+            "sum_R2": 937.2257060353817,
+            "mean_R": -0.03480655209998495,
+            "PF_R": 0.940909476937808,
+            "positive_years": 0,
+            "yearly_n": [
+              93,
+              175,
+              287
+            ]
+          },
+          "B1": {
+            "n": 555,
+            "wins": 210,
+            "net_R": -19.317636415491645,
+            "gain_R": 307.5983462905689,
+            "loss_R": 326.9159827060605,
+            "net_USD_flat_1oz": -172.77925376889957,
+            "sum_R2": 937.2257060353817,
+            "mean_R": -0.03480655209998495,
+            "PF_R": 0.940909476937808,
+            "positive_years": 0,
+            "yearly_n": [
+              93,
+              175,
+              287
+            ]
+          },
+          "A2": {
+            "n": 30,
+            "wins": 9,
+            "net_R": -9.48313088903431,
+            "gain_R": 8.17335397820876,
+            "loss_R": 17.656484867243073,
+            "net_USD_flat_1oz": -75.23053570240752,
+            "sum_R2": 28.822331963202537,
+            "mean_R": -0.31610436296781036,
+            "PF_R": 0.46290946582307857,
+            "positive_years": 1,
+            "yearly_n": [
+              1,
+              12,
+              17
+            ]
+          },
+          "B2": {
+            "n": 30,
+            "wins": 9,
+            "net_R": -9.48313088903431,
+            "gain_R": 8.17335397820876,
+            "loss_R": 17.656484867243073,
+            "net_USD_flat_1oz": -75.23053570240752,
+            "sum_R2": 28.822331963202537,
+            "mean_R": -0.31610436296781036,
+            "PF_R": 0.46290946582307857,
+            "positive_years": 1,
+            "yearly_n": [
+              1,
+              12,
+              17
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 432,
+            "wins": 148,
+            "net_R": -35.73756634374421,
+            "gain_R": 243.26683519382058,
+            "loss_R": 279.00440153756483,
+            "net_USD_flat_1oz": -823.2377778840053,
+            "sum_R2": 804.9375330885488,
+            "mean_R": -0.08272584801792641,
+            "PF_R": 0.8719103851165138,
+            "positive_years": 0,
+            "yearly_n": [
+              432
+            ]
+          },
+          "B1": {
+            "n": 432,
+            "wins": 148,
+            "net_R": -35.73756634374421,
+            "gain_R": 243.26683519382058,
+            "loss_R": 279.00440153756483,
+            "net_USD_flat_1oz": -823.2377778840053,
+            "sum_R2": 804.9375330885488,
+            "mean_R": -0.08272584801792641,
+            "PF_R": 0.8719103851165138,
+            "positive_years": 0,
+            "yearly_n": [
+              432
+            ]
+          },
+          "A2": {
+            "n": 111,
+            "wins": 33,
+            "net_R": -31.448608432453153,
+            "gain_R": 42.80885206718049,
+            "loss_R": 74.25746049963362,
+            "net_USD_flat_1oz": -738.8310404958115,
+            "sum_R2": 163.47056559340325,
+            "mean_R": -0.28332079668876714,
+            "PF_R": 0.5764922713373924,
+            "positive_years": 0,
+            "yearly_n": [
+              111
+            ]
+          },
+          "B2": {
+            "n": 111,
+            "wins": 33,
+            "net_R": -31.448608432453153,
+            "gain_R": 42.80885206718049,
+            "loss_R": 74.25746049963362,
+            "net_USD_flat_1oz": -738.8310404958115,
+            "sum_R2": 163.47056559340325,
+            "mean_R": -0.28332079668876714,
+            "PF_R": 0.5764922713373924,
+            "positive_years": 0,
+            "yearly_n": [
+              111
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1708650,
+      "priority": 3,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 30,
+        "family": "ASIAN_RANGE_BREAK",
+        "look": 16,
+        "side": 1,
+        "hold": 240,
+        "stop": 1.0,
+        "target": 2.5,
+        "regime": "ANY",
+        "session": "US",
+        "spread": 0.15,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 40.0,
+        "wins": 23.0,
+        "net_R": 15.104805841415612,
+        "gain_R": 24.375941624644923,
+        "loss_R": 9.27113578322931,
+        "net_USD_flat_1oz": 94.61705969083455,
+        "sum_R2": 55.065690977848206
+      },
+      "development_mean_R": 0.3776201460353903,
+      "development_PF_R": 2.629229276173359,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 277,
+            "wins": 115,
+            "net_R": -18.269662342073794,
+            "gain_R": 111.1329583522946,
+            "loss_R": 129.40262069436838,
+            "net_USD_flat_1oz": -123.75777818812443,
+            "sum_R2": 310.16891517880526,
+            "mean_R": -0.06595545971867796,
+            "PF_R": 0.8588153605851285,
+            "positive_years": 2,
+            "yearly_n": [
+              30,
+              72,
+              85,
+              90
+            ]
+          },
+          "B1": {
+            "n": 277,
+            "wins": 115,
+            "net_R": -18.269662342073794,
+            "gain_R": 111.1329583522946,
+            "loss_R": 129.40262069436838,
+            "net_USD_flat_1oz": -123.75777818812443,
+            "sum_R2": 310.16891517880526,
+            "mean_R": -0.06595545971867796,
+            "PF_R": 0.8588153605851285,
+            "positive_years": 2,
+            "yearly_n": [
+              30,
+              72,
+              85,
+              90
+            ]
+          },
+          "A2": {
+            "n": 60,
+            "wins": 24,
+            "net_R": -10.76198157592459,
+            "gain_R": 18.938500199217632,
+            "loss_R": 29.700481775142222,
+            "net_USD_flat_1oz": -74.93309988734151,
+            "sum_R2": 55.87239358737474,
+            "mean_R": -0.17936635959874317,
+            "PF_R": 0.6376495958078425,
+            "positive_years": 1,
+            "yearly_n": [
+              5,
+              22,
+              16,
+              17
+            ]
+          },
+          "B2": {
+            "n": 60,
+            "wins": 24,
+            "net_R": -10.76198157592459,
+            "gain_R": 18.938500199217632,
+            "loss_R": 29.700481775142222,
+            "net_USD_flat_1oz": -74.93309988734151,
+            "sum_R2": 55.87239358737474,
+            "mean_R": -0.17936635959874317,
+            "PF_R": 0.6376495958078425,
+            "positive_years": 1,
+            "yearly_n": [
+              5,
+              22,
+              16,
+              17
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 255,
+            "wins": 116,
+            "net_R": 9.145057187192158,
+            "gain_R": 137.2062937022635,
+            "loss_R": 128.06123651507136,
+            "net_USD_flat_1oz": 123.58041597633488,
+            "sum_R2": 369.8783221945982,
+            "mean_R": 0.03586296936153788,
+            "PF_R": 1.0714115952340963,
+            "positive_years": 2,
+            "yearly_n": [
+              80,
+              93,
+              82
+            ]
+          },
+          "B1": {
+            "n": 255,
+            "wins": 117,
+            "net_R": 12.645057187192204,
+            "gain_R": 139.66206752729676,
+            "loss_R": 127.01701034010456,
+            "net_USD_flat_1oz": 132.2856680197016,
+            "sum_R2": 374.818738969831,
+            "mean_R": 0.04958845955761649,
+            "PF_R": 1.0995540451891712,
+            "positive_years": 2,
+            "yearly_n": [
+              80,
+              93,
+              82
+            ]
+          },
+          "A2": {
+            "n": 79,
+            "wins": 39,
+            "net_R": 2.3593886275055045,
+            "gain_R": 38.695104622101866,
+            "loss_R": 36.33571599459636,
+            "net_USD_flat_1oz": 108.68738284574552,
+            "sum_R2": 94.95265034745815,
+            "mean_R": 0.0298656788291836,
+            "PF_R": 1.0649330435061848,
+            "positive_years": 1,
+            "yearly_n": [
+              10,
+              30,
+              39
+            ]
+          },
+          "B2": {
+            "n": 79,
+            "wins": 39,
+            "net_R": 2.3593886275055045,
+            "gain_R": 38.695104622101866,
+            "loss_R": 36.33571599459636,
+            "net_USD_flat_1oz": 108.68738284574552,
+            "sum_R2": 94.95265034745815,
+            "mean_R": 0.0298656788291836,
+            "PF_R": 1.0649330435061848,
+            "positive_years": 1,
+            "yearly_n": [
+              10,
+              30,
+              39
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 54,
+            "wins": 16,
+            "net_R": -18.767638969547566,
+            "gain_R": 13.378191338817093,
+            "loss_R": 32.14583030836466,
+            "net_USD_flat_1oz": -523.1554881463153,
+            "sum_R2": 52.14735567778675,
+            "mean_R": -0.3475488698064364,
+            "PF_R": 0.41617190193827275,
+            "positive_years": 0,
+            "yearly_n": [
+              54
+            ]
+          },
+          "B1": {
+            "n": 54,
+            "wins": 16,
+            "net_R": -18.767638969547566,
+            "gain_R": 13.378191338817093,
+            "loss_R": 32.14583030836466,
+            "net_USD_flat_1oz": -523.1554881463153,
+            "sum_R2": 52.14735567778675,
+            "mean_R": -0.3475488698064364,
+            "PF_R": 0.41617190193827275,
+            "positive_years": 0,
+            "yearly_n": [
+              54
+            ]
+          },
+          "A2": {
+            "n": 51,
+            "wins": 14,
+            "net_R": -19.064527525519306,
+            "gain_R": 12.42486904651601,
+            "loss_R": 31.489396572035318,
+            "net_USD_flat_1oz": -549.0671919546395,
+            "sum_R2": 50.66729117411985,
+            "mean_R": -0.37381426520626093,
+            "PF_R": 0.39457310711219284,
+            "positive_years": 0,
+            "yearly_n": [
+              51
+            ]
+          },
+          "B2": {
+            "n": 51,
+            "wins": 14,
+            "net_R": -19.064527525519306,
+            "gain_R": 12.42486904651601,
+            "loss_R": 31.489396572035318,
+            "net_USD_flat_1oz": -549.0671919546395,
+            "sum_R2": 50.66729117411985,
+            "mean_R": -0.37381426520626093,
+            "PF_R": 0.39457310711219284,
+            "positive_years": 0,
+            "yearly_n": [
+              51
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 409689,
+      "priority": 4,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 5,
+        "family": "TWAP_RECLAIM",
+        "look": 8,
+        "side": 1,
+        "hold": 240,
+        "stop": 2.0,
+        "target": 1.5,
+        "regime": "ANY",
+        "session": "ASIA",
+        "spread": 0.35,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 45.0,
+        "wins": 26.0,
+        "net_R": 15.090979479493523,
+        "gain_R": 31.80815700572793,
+        "loss_R": 16.71717752623441,
+        "net_USD_flat_1oz": 73.40066073638043,
+        "sum_R2": 60.5366010628359
+      },
+      "development_mean_R": 0.33535509954430054,
+      "development_PF_R": 1.902722930100558,
+      "development_positive_years": 6,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 703,
+            "wins": 250,
+            "net_R": -139.83081729576728,
+            "gain_R": 309.32075312148265,
+            "loss_R": 449.1515704172499,
+            "net_USD_flat_1oz": -397.0529435536987,
+            "sum_R2": 892.7527629384983,
+            "mean_R": -0.1989058567507358,
+            "PF_R": 0.6886778840250561,
+            "positive_years": 0,
+            "yearly_n": [
+              74,
+              266,
+              194,
+              169
+            ]
+          },
+          "B1": {
+            "n": 703,
+            "wins": 250,
+            "net_R": -139.83081729576728,
+            "gain_R": 309.32075312148265,
+            "loss_R": 449.1515704172499,
+            "net_USD_flat_1oz": -397.0529435536987,
+            "sum_R2": 892.7527629384983,
+            "mean_R": -0.1989058567507358,
+            "PF_R": 0.6886778840250561,
+            "positive_years": 0,
+            "yearly_n": [
+              74,
+              266,
+              194,
+              169
+            ]
+          },
+          "A2": {
+            "n": 89,
+            "wins": 28,
+            "net_R": -22.392221956312515,
+            "gain_R": 33.78067528266128,
+            "loss_R": 56.17289723897379,
+            "net_USD_flat_1oz": -114.92647981743173,
+            "sum_R2": 102.666373061501,
+            "mean_R": -0.25159799950912937,
+            "PF_R": 0.6013696452036237,
+            "positive_years": 3,
+            "yearly_n": [
+              11,
+              58,
+              11,
+              9
+            ]
+          },
+          "B2": {
+            "n": 89,
+            "wins": 28,
+            "net_R": -22.392221956312515,
+            "gain_R": 33.78067528266128,
+            "loss_R": 56.17289723897379,
+            "net_USD_flat_1oz": -114.92647981743173,
+            "sum_R2": 102.666373061501,
+            "mean_R": -0.25159799950912937,
+            "PF_R": 0.6013696452036237,
+            "positive_years": 3,
+            "yearly_n": [
+              11,
+              58,
+              11,
+              9
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 952,
+            "wins": 350,
+            "net_R": -146.01408012901715,
+            "gain_R": 461.8014078544362,
+            "loss_R": 607.8154879834533,
+            "net_USD_flat_1oz": -316.07289600376697,
+            "sum_R2": 1282.785462060881,
+            "mean_R": -0.15337613458930371,
+            "PF_R": 0.75977236017225,
+            "positive_years": 0,
+            "yearly_n": [
+              203,
+              331,
+              418
+            ]
+          },
+          "B1": {
+            "n": 952,
+            "wins": 350,
+            "net_R": -146.01408012901715,
+            "gain_R": 461.8014078544362,
+            "loss_R": 607.8154879834533,
+            "net_USD_flat_1oz": -316.07289600376697,
+            "sum_R2": 1282.785462060881,
+            "mean_R": -0.15337613458930371,
+            "PF_R": 0.75977236017225,
+            "positive_years": 0,
+            "yearly_n": [
+              203,
+              331,
+              418
+            ]
+          },
+          "A2": {
+            "n": 192,
+            "wins": 75,
+            "net_R": -24.530172091654503,
+            "gain_R": 92.2880894598473,
+            "loss_R": 116.81826155150179,
+            "net_USD_flat_1oz": -76.51563625753869,
+            "sum_R2": 248.62688106064522,
+            "mean_R": -0.1277613129773672,
+            "PF_R": 0.7900142343683153,
+            "positive_years": 1,
+            "yearly_n": [
+              5,
+              41,
+              146
+            ]
+          },
+          "B2": {
+            "n": 192,
+            "wins": 75,
+            "net_R": -24.530172091654503,
+            "gain_R": 92.2880894598473,
+            "loss_R": 116.81826155150179,
+            "net_USD_flat_1oz": -76.51563625753869,
+            "sum_R2": 248.62688106064522,
+            "mean_R": -0.1277613129773672,
+            "PF_R": 0.7900142343683153,
+            "positive_years": 1,
+            "yearly_n": [
+              5,
+              41,
+              146
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 300,
+            "wins": 124,
+            "net_R": -15.88808538466248,
+            "gain_R": 158.40158685354407,
+            "loss_R": 174.28967223820655,
+            "net_USD_flat_1oz": -17.644184075493513,
+            "sum_R2": 399.22392335239795,
+            "mean_R": -0.0529602846155416,
+            "PF_R": 0.9088409245331084,
+            "positive_years": 0,
+            "yearly_n": [
+              300
+            ]
+          },
+          "B1": {
+            "n": 300,
+            "wins": 124,
+            "net_R": -15.88808538466248,
+            "gain_R": 158.40158685354407,
+            "loss_R": 174.28967223820655,
+            "net_USD_flat_1oz": -17.644184075493513,
+            "sum_R2": 399.22392335239795,
+            "mean_R": -0.0529602846155416,
+            "PF_R": 0.9088409245331084,
+            "positive_years": 0,
+            "yearly_n": [
+              300
+            ]
+          },
+          "A2": {
+            "n": 244,
+            "wins": 99,
+            "net_R": -24.240523767933617,
+            "gain_R": 118.72616514636306,
+            "loss_R": 142.96668891429664,
+            "net_USD_flat_1oz": -274.7593923256294,
+            "sum_R2": 308.3756465618292,
+            "mean_R": -0.09934640888497384,
+            "PF_R": 0.8304463511604099,
+            "positive_years": 0,
+            "yearly_n": [
+              244
+            ]
+          },
+          "B2": {
+            "n": 244,
+            "wins": 99,
+            "net_R": -24.240523767933617,
+            "gain_R": 118.72616514636306,
+            "loss_R": 142.96668891429664,
+            "net_USD_flat_1oz": -274.7593923256294,
+            "sum_R2": 308.3756465618292,
+            "mean_R": -0.09934640888497384,
+            "PF_R": 0.8304463511604099,
+            "positive_years": 0,
+            "yearly_n": [
+              244
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 340959,
+      "priority": 5,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 5,
+        "family": "FAILED_BREAK",
+        "look": 8,
+        "side": -1,
+        "hold": 240,
+        "stop": 3.0,
+        "target": 2.5,
+        "regime": "WITH",
+        "session": "LONDON",
+        "spread": 0.35,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 37.0,
+        "wins": 21.0,
+        "net_R": 14.413065095460837,
+        "gain_R": 27.6343298660375,
+        "loss_R": 13.221264770576663,
+        "net_USD_flat_1oz": 78.16139277757847,
+        "sum_R2": 72.53817685222539
+      },
+      "development_mean_R": 0.3895422998773199,
+      "development_PF_R": 2.0901426864649495,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 259,
+            "wins": 103,
+            "net_R": -15.839192124366015,
+            "gain_R": 133.19999347216563,
+            "loss_R": 149.03918559653167,
+            "net_USD_flat_1oz": -82.5132963850194,
+            "sum_R2": 406.9431862723393,
+            "mean_R": -0.06115518194735913,
+            "PF_R": 0.893724646568824,
+            "positive_years": 1,
+            "yearly_n": [
+              24,
+              49,
+              97,
+              89
+            ]
+          },
+          "B1": {
+            "n": 259,
+            "wins": 103,
+            "net_R": -15.839192124366015,
+            "gain_R": 133.19999347216563,
+            "loss_R": 149.03918559653167,
+            "net_USD_flat_1oz": -82.5132963850194,
+            "sum_R2": 406.9431862723393,
+            "mean_R": -0.06115518194735913,
+            "PF_R": 0.893724646568824,
+            "positive_years": 1,
+            "yearly_n": [
+              24,
+              49,
+              97,
+              89
+            ]
+          },
+          "A2": {
+            "n": 30,
+            "wins": 13,
+            "net_R": 4.462598902241482,
+            "gain_R": 20.995356404738086,
+            "loss_R": 16.5327575024966,
+            "net_USD_flat_1oz": 26.220949768019775,
+            "sum_R2": 59.87195003092257,
+            "mean_R": 0.14875329674138274,
+            "PF_R": 1.269924657248955,
+            "positive_years": 3,
+            "yearly_n": [
+              0,
+              11,
+              12,
+              7
+            ]
+          },
+          "B2": {
+            "n": 30,
+            "wins": 13,
+            "net_R": 4.462598902241482,
+            "gain_R": 20.995356404738086,
+            "loss_R": 16.5327575024966,
+            "net_USD_flat_1oz": 26.220949768019775,
+            "sum_R2": 59.87195003092257,
+            "mean_R": 0.14875329674138274,
+            "PF_R": 1.269924657248955,
+            "positive_years": 3,
+            "yearly_n": [
+              0,
+              11,
+              12,
+              7
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 164,
+            "wins": 45,
+            "net_R": -47.08091356117909,
+            "gain_R": 63.6216685491439,
+            "loss_R": 110.70258211032298,
+            "net_USD_flat_1oz": -192.68735872944475,
+            "sum_R2": 242.73179131331483,
+            "mean_R": -0.28707874122670174,
+            "PF_R": 0.5747080812057337,
+            "positive_years": 0,
+            "yearly_n": [
+              64,
+              62,
+              38
+            ]
+          },
+          "B1": {
+            "n": 164,
+            "wins": 45,
+            "net_R": -47.08091356117909,
+            "gain_R": 63.6216685491439,
+            "loss_R": 110.70258211032298,
+            "net_USD_flat_1oz": -192.68735872944475,
+            "sum_R2": 242.73179131331483,
+            "mean_R": -0.28707874122670174,
+            "PF_R": 0.5747080812057337,
+            "positive_years": 0,
+            "yearly_n": [
+              64,
+              62,
+              38
+            ]
+          },
+          "A2": {
+            "n": 19,
+            "wins": 3,
+            "net_R": -10.292944619406597,
+            "gain_R": 2.672982597501909,
+            "loss_R": 12.965927216908508,
+            "net_USD_flat_1oz": -101.96556164557457,
+            "sum_R2": 18.925204426151726,
+            "mean_R": -0.5417339273371894,
+            "PF_R": 0.20615437313392798,
+            "positive_years": 0,
+            "yearly_n": [
+              2,
+              4,
+              13
+            ]
+          },
+          "B2": {
+            "n": 19,
+            "wins": 3,
+            "net_R": -10.292944619406597,
+            "gain_R": 2.672982597501909,
+            "loss_R": 12.965927216908508,
+            "net_USD_flat_1oz": -101.96556164557457,
+            "sum_R2": 18.925204426151726,
+            "mean_R": -0.5417339273371894,
+            "PF_R": 0.20615437313392798,
+            "positive_years": 0,
+            "yearly_n": [
+              2,
+              4,
+              13
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 71,
+            "wins": 31,
+            "net_R": 11.525014379926276,
+            "gain_R": 44.789164849958695,
+            "loss_R": 33.26415047003242,
+            "net_USD_flat_1oz": 186.84967017676274,
+            "sum_R2": 119.4343344189005,
+            "mean_R": 0.16232414619614474,
+            "PF_R": 1.3464695240093123,
+            "positive_years": 1,
+            "yearly_n": [
+              71
+            ]
+          },
+          "B1": {
+            "n": 71,
+            "wins": 31,
+            "net_R": 11.525014379926276,
+            "gain_R": 44.789164849958695,
+            "loss_R": 33.26415047003242,
+            "net_USD_flat_1oz": 186.84967017676274,
+            "sum_R2": 119.4343344189005,
+            "mean_R": 0.16232414619614474,
+            "PF_R": 1.3464695240093123,
+            "positive_years": 1,
+            "yearly_n": [
+              71
+            ]
+          },
+          "A2": {
+            "n": 70,
+            "wins": 29,
+            "net_R": 5.9927345178214795,
+            "gain_R": 40.926464874831616,
+            "loss_R": 34.93373035701015,
+            "net_USD_flat_1oz": 112.49538162613987,
+            "sum_R2": 112.75042317954053,
+            "mean_R": 0.08561049311173542,
+            "PF_R": 1.1715457941816656,
+            "positive_years": 1,
+            "yearly_n": [
+              70
+            ]
+          },
+          "B2": {
+            "n": 70,
+            "wins": 29,
+            "net_R": 5.9927345178214795,
+            "gain_R": 40.926464874831616,
+            "loss_R": 34.93373035701015,
+            "net_USD_flat_1oz": 112.49538162613987,
+            "sum_R2": 112.75042317954053,
+            "mean_R": 0.08561049311173542,
+            "PF_R": 1.1715457941816656,
+            "positive_years": 1,
+            "yearly_n": [
+              70
+            ]
+          }
+        }
+      },
+      "validation_pass": true,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 22680,
+      "priority": 6,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 5,
+        "family": "BREAKOUT",
+        "look": 32,
+        "side": 1,
+        "hold": 240,
+        "stop": 2.0,
+        "target": 2.5,
+        "regime": "ANY",
+        "session": "ALL",
+        "spread": 0.15,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 33.0,
+        "wins": 16.0,
+        "net_R": 13.874746088107091,
+        "gain_R": 26.846189461078506,
+        "loss_R": 12.971443372971418,
+        "net_USD_flat_1oz": 124.3877901373867,
+        "sum_R2": 68.25406921808667
+      },
+      "development_mean_R": 0.4204468511547603,
+      "development_PF_R": 2.069637795052005,
+      "development_positive_years": 6,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 345,
+            "wins": 108,
+            "net_R": -58.474984722816465,
+            "gain_R": 160.50526153489542,
+            "loss_R": 218.9802462577119,
+            "net_USD_flat_1oz": -271.8667333207706,
+            "sum_R2": 544.9574350800895,
+            "mean_R": -0.169492709341497,
+            "PF_R": 0.7329668510190692,
+            "positive_years": 0,
+            "yearly_n": [
+              33,
+              132,
+              78,
+              102
+            ]
+          },
+          "B1": {
+            "n": 345,
+            "wins": 108,
+            "net_R": -58.474984722816465,
+            "gain_R": 160.50526153489542,
+            "loss_R": 218.9802462577119,
+            "net_USD_flat_1oz": -271.8667333207706,
+            "sum_R2": 544.9574350800895,
+            "mean_R": -0.169492709341497,
+            "PF_R": 0.7329668510190692,
+            "positive_years": 0,
+            "yearly_n": [
+              33,
+              132,
+              78,
+              102
+            ]
+          },
+          "A2": {
+            "n": 21,
+            "wins": 9,
+            "net_R": 4.325334933872484,
+            "gain_R": 16.65074795903878,
+            "loss_R": 12.325413025166297,
+            "net_USD_flat_1oz": 29.46570558326812,
+            "sum_R2": 50.355983591204954,
+            "mean_R": 0.205968330184404,
+            "PF_R": 1.3509281940524769,
+            "positive_years": 1,
+            "yearly_n": [
+              0,
+              9,
+              1,
+              11
+            ]
+          },
+          "B2": {
+            "n": 21,
+            "wins": 9,
+            "net_R": 4.325334933872484,
+            "gain_R": 16.65074795903878,
+            "loss_R": 12.325413025166297,
+            "net_USD_flat_1oz": 29.46570558326812,
+            "sum_R2": 50.355983591204954,
+            "mean_R": 0.205968330184404,
+            "PF_R": 1.3509281940524769,
+            "positive_years": 1,
+            "yearly_n": [
+              0,
+              9,
+              1,
+              11
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 437,
+            "wins": 166,
+            "net_R": -12.894081704344273,
+            "gain_R": 243.39671356116574,
+            "loss_R": 256.29079526551004,
+            "net_USD_flat_1oz": -75.88396214416933,
+            "sum_R2": 744.1656767831955,
+            "mean_R": -0.029505907790261496,
+            "PF_R": 0.9496896418344389,
+            "positive_years": 1,
+            "yearly_n": [
+              65,
+              153,
+              219
+            ]
+          },
+          "B1": {
+            "n": 437,
+            "wins": 166,
+            "net_R": -12.894081704344273,
+            "gain_R": 243.39671356116574,
+            "loss_R": 256.29079526551004,
+            "net_USD_flat_1oz": -75.88396214416933,
+            "sum_R2": 744.1656767831955,
+            "mean_R": -0.029505907790261496,
+            "PF_R": 0.9496896418344389,
+            "positive_years": 1,
+            "yearly_n": [
+              65,
+              153,
+              219
+            ]
+          },
+          "A2": {
+            "n": 28,
+            "wins": 8,
+            "net_R": -8.452914497056419,
+            "gain_R": 10.073223080371344,
+            "loss_R": 18.526137577427765,
+            "net_USD_flat_1oz": -120.87884022088598,
+            "sum_R2": 36.16293232166616,
+            "mean_R": -0.3018898034663007,
+            "PF_R": 0.543730339811605,
+            "positive_years": 1,
+            "yearly_n": [
+              1,
+              10,
+              17
+            ]
+          },
+          "B2": {
+            "n": 28,
+            "wins": 8,
+            "net_R": -8.452914497056419,
+            "gain_R": 10.073223080371344,
+            "loss_R": 18.526137577427765,
+            "net_USD_flat_1oz": -120.87884022088598,
+            "sum_R2": 36.16293232166616,
+            "mean_R": -0.3018898034663007,
+            "PF_R": 0.543730339811605,
+            "positive_years": 1,
+            "yearly_n": [
+              1,
+              10,
+              17
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 349,
+            "wins": 113,
+            "net_R": -40.13543957103988,
+            "gain_R": 185.679429669227,
+            "loss_R": 225.81486924026686,
+            "net_USD_flat_1oz": -503.50243580479963,
+            "sum_R2": 618.5875470331497,
+            "mean_R": -0.11500125951587359,
+            "PF_R": 0.8222639646978438,
+            "positive_years": 0,
+            "yearly_n": [
+              349
+            ]
+          },
+          "B1": {
+            "n": 349,
+            "wins": 113,
+            "net_R": -40.13543957103988,
+            "gain_R": 185.679429669227,
+            "loss_R": 225.81486924026686,
+            "net_USD_flat_1oz": -503.50243580479963,
+            "sum_R2": 618.5875470331497,
+            "mean_R": -0.11500125951587359,
+            "PF_R": 0.8222639646978438,
+            "positive_years": 0,
+            "yearly_n": [
+              349
+            ]
+          },
+          "A2": {
+            "n": 83,
+            "wins": 25,
+            "net_R": -20.316847884887647,
+            "gain_R": 33.3530737198062,
+            "loss_R": 53.66992160469383,
+            "net_USD_flat_1oz": -247.49450708449706,
+            "sum_R2": 116.59911997795018,
+            "mean_R": -0.24478129981792346,
+            "PF_R": 0.6214481542467769,
+            "positive_years": 0,
+            "yearly_n": [
+              83
+            ]
+          },
+          "B2": {
+            "n": 83,
+            "wins": 25,
+            "net_R": -20.316847884887647,
+            "gain_R": 33.3530737198062,
+            "loss_R": 53.66992160469383,
+            "net_USD_flat_1oz": -247.49450708449706,
+            "sum_R2": 116.59911997795018,
+            "mean_R": -0.24478129981792346,
+            "PF_R": 0.6214481542467769,
+            "positive_years": 0,
+            "yearly_n": [
+              83
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1142441,
+      "priority": 7,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 15,
+        "family": "ASIAN_RANGE_BREAK",
+        "look": 64,
+        "side": -1,
+        "hold": 240,
+        "stop": 2.0,
+        "target": 2.5,
+        "regime": "ANY",
+        "session": "LONDON",
+        "spread": 0.35,
+        "vol": "HIGH"
+      },
+      "development": {
+        "n": 60.0,
+        "wins": 31.0,
+        "net_R": 12.988791432679564,
+        "gain_R": 37.38271807824398,
+        "loss_R": 24.39392664556442,
+        "net_USD_flat_1oz": 75.96423831763445,
+        "sum_R2": 96.29603978734478
+      },
+      "development_mean_R": 0.21647985721132607,
+      "development_PF_R": 1.5324600512825324,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 103,
+            "wins": 39,
+            "net_R": -5.277194411728924,
+            "gain_R": 51.55368179959922,
+            "loss_R": 56.83087621132814,
+            "net_USD_flat_1oz": -61.68542034758815,
+            "sum_R2": 155.3506745651689,
+            "mean_R": -0.05123489720125168,
+            "PF_R": 0.9071421247825665,
+            "positive_years": 2,
+            "yearly_n": [
+              21,
+              15,
+              32,
+              35
+            ]
+          },
+          "B1": {
+            "n": 103,
+            "wins": 39,
+            "net_R": -5.277194411728924,
+            "gain_R": 51.55368179959922,
+            "loss_R": 56.83087621132814,
+            "net_USD_flat_1oz": -61.68542034758815,
+            "sum_R2": 155.3506745651689,
+            "mean_R": -0.05123489720125168,
+            "PF_R": 0.9071421247825665,
+            "positive_years": 2,
+            "yearly_n": [
+              21,
+              15,
+              32,
+              35
+            ]
+          },
+          "A2": {
+            "n": 52,
+            "wins": 19,
+            "net_R": -10.258876257281862,
+            "gain_R": 19.338381536700943,
+            "loss_R": 29.597257793982806,
+            "net_USD_flat_1oz": -75.61698623336336,
+            "sum_R2": 60.26647766752377,
+            "mean_R": -0.19728608187080504,
+            "PF_R": 0.6533842314483771,
+            "positive_years": 0,
+            "yearly_n": [
+              8,
+              7,
+              16,
+              21
+            ]
+          },
+          "B2": {
+            "n": 52,
+            "wins": 19,
+            "net_R": -10.258876257281862,
+            "gain_R": 19.338381536700943,
+            "loss_R": 29.597257793982806,
+            "net_USD_flat_1oz": -75.61698623336336,
+            "sum_R2": 60.26647766752377,
+            "mean_R": -0.19728608187080504,
+            "PF_R": 0.6533842314483771,
+            "positive_years": 0,
+            "yearly_n": [
+              8,
+              7,
+              16,
+              21
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 68,
+            "wins": 27,
+            "net_R": -8.52173848016039,
+            "gain_R": 25.67197967483319,
+            "loss_R": 34.193718154993576,
+            "net_USD_flat_1oz": 49.76957477095507,
+            "sum_R2": 75.77676378419523,
+            "mean_R": -0.12531968353177045,
+            "PF_R": 0.7507805836869516,
+            "positive_years": 1,
+            "yearly_n": [
+              19,
+              20,
+              29
+            ]
+          },
+          "B1": {
+            "n": 68,
+            "wins": 27,
+            "net_R": -8.52173848016039,
+            "gain_R": 25.67197967483319,
+            "loss_R": 34.193718154993576,
+            "net_USD_flat_1oz": 49.76957477095507,
+            "sum_R2": 75.77676378419523,
+            "mean_R": -0.12531968353177045,
+            "PF_R": 0.7507805836869516,
+            "positive_years": 1,
+            "yearly_n": [
+              19,
+              20,
+              29
+            ]
+          },
+          "A2": {
+            "n": 53,
+            "wins": 21,
+            "net_R": -2.262696844529951,
+            "gain_R": 21.441930887884322,
+            "loss_R": 23.70462773241427,
+            "net_USD_flat_1oz": 66.62367660413693,
+            "sum_R2": 56.69319037041579,
+            "mean_R": -0.04269239329301794,
+            "PF_R": 0.9045461978955324,
+            "positive_years": 1,
+            "yearly_n": [
+              10,
+              15,
+              28
+            ]
+          },
+          "B2": {
+            "n": 53,
+            "wins": 21,
+            "net_R": -2.262696844529951,
+            "gain_R": 21.441930887884322,
+            "loss_R": 23.70462773241427,
+            "net_USD_flat_1oz": 66.62367660413693,
+            "sum_R2": 56.69319037041579,
+            "mean_R": -0.04269239329301794,
+            "PF_R": 0.9045461978955324,
+            "positive_years": 1,
+            "yearly_n": [
+              10,
+              15,
+              28
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 20,
+            "wins": 7,
+            "net_R": -1.8149829089239002,
+            "gain_R": 7.70214618989012,
+            "loss_R": 9.51712909881402,
+            "net_USD_flat_1oz": -88.24853984614514,
+            "sum_R2": 20.08974413134369,
+            "mean_R": -0.09074914544619501,
+            "PF_R": 0.8092930241799414,
+            "positive_years": 0,
+            "yearly_n": [
+              20
+            ]
+          },
+          "B1": {
+            "n": 20,
+            "wins": 7,
+            "net_R": -1.8149829089239002,
+            "gain_R": 7.70214618989012,
+            "loss_R": 9.51712909881402,
+            "net_USD_flat_1oz": -88.24853984614514,
+            "sum_R2": 20.08974413134369,
+            "mean_R": -0.09074914544619501,
+            "PF_R": 0.8092930241799414,
+            "positive_years": 0,
+            "yearly_n": [
+              20
+            ]
+          },
+          "A2": {
+            "n": 20,
+            "wins": 7,
+            "net_R": -2.292349857282267,
+            "gain_R": 7.477710142087638,
+            "loss_R": 9.770059999369906,
+            "net_USD_flat_1oz": -100.56038950026631,
+            "sum_R2": 19.949012012634395,
+            "mean_R": -0.11461749286411335,
+            "PF_R": 0.7653699304374685,
+            "positive_years": 0,
+            "yearly_n": [
+              20
+            ]
+          },
+          "B2": {
+            "n": 20,
+            "wins": 7,
+            "net_R": -2.292349857282267,
+            "gain_R": 7.477710142087638,
+            "loss_R": 9.770059999369906,
+            "net_USD_flat_1oz": -100.56038950026631,
+            "sum_R2": 19.949012012634395,
+            "mean_R": -0.11461749286411335,
+            "PF_R": 0.7653699304374685,
+            "positive_years": 0,
+            "yearly_n": [
+              20
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1957798,
+      "priority": 8,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 60,
+        "family": "INSIDE_BREAK",
+        "look": 8,
+        "side": 1,
+        "hold": 240,
+        "stop": 1.5,
+        "target": 2.5,
+        "regime": "WITH",
+        "session": "US",
+        "spread": 0.35,
+        "vol": "LOW"
+      },
+      "development": {
+        "n": 58.0,
+        "wins": 31.0,
+        "net_R": 12.525818093330335,
+        "gain_R": 33.231771199705044,
+        "loss_R": 20.705953106374707,
+        "net_USD_flat_1oz": 72.19052424517012,
+        "sum_R2": 72.96610279140755
+      },
+      "development_mean_R": 0.21596238091948852,
+      "development_PF_R": 1.6049380112560012,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 36,
+            "wins": 12,
+            "net_R": -6.869504272732449,
+            "gain_R": 14.410406454056604,
+            "loss_R": 21.27991072678905,
+            "net_USD_flat_1oz": -36.53232882612192,
+            "sum_R2": 44.65096110693741,
+            "mean_R": -0.19081956313145693,
+            "PF_R": 0.6771835953200451,
+            "positive_years": 0,
+            "yearly_n": [
+              9,
+              13,
+              8,
+              6
+            ]
+          },
+          "B1": {
+            "n": 36,
+            "wins": 12,
+            "net_R": -6.869504272732449,
+            "gain_R": 14.410406454056604,
+            "loss_R": 21.27991072678905,
+            "net_USD_flat_1oz": -36.53232882612192,
+            "sum_R2": 44.65096110693741,
+            "mean_R": -0.19081956313145693,
+            "PF_R": 0.6771835953200451,
+            "positive_years": 0,
+            "yearly_n": [
+              9,
+              13,
+              8,
+              6
+            ]
+          },
+          "A2": {
+            "n": 34,
+            "wins": 11,
+            "net_R": -10.306191868164825,
+            "gain_R": 12.172331391719874,
+            "loss_R": 22.478523259884696,
+            "net_USD_flat_1oz": -56.76386766394656,
+            "sum_R2": 43.891407460465416,
+            "mean_R": -0.30312329024014195,
+            "PF_R": 0.5415093888059225,
+            "positive_years": 0,
+            "yearly_n": [
+              9,
+              11,
+              8,
+              6
+            ]
+          },
+          "B2": {
+            "n": 34,
+            "wins": 11,
+            "net_R": -10.306191868164825,
+            "gain_R": 12.172331391719874,
+            "loss_R": 22.478523259884696,
+            "net_USD_flat_1oz": -56.76386766394656,
+            "sum_R2": 43.891407460465416,
+            "mean_R": -0.30312329024014195,
+            "PF_R": 0.5415093888059225,
+            "positive_years": 0,
+            "yearly_n": [
+              9,
+              11,
+              8,
+              6
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 28,
+            "wins": 12,
+            "net_R": 4.642355395976313,
+            "gain_R": 16.300634578617736,
+            "loss_R": 11.658279182641422,
+            "net_USD_flat_1oz": 45.091285458565224,
+            "sum_R2": 42.61093364942318,
+            "mean_R": 0.16579840699915405,
+            "PF_R": 1.3982024553751073,
+            "positive_years": 3,
+            "yearly_n": [
+              8,
+              5,
+              15
+            ]
+          },
+          "B1": {
+            "n": 28,
+            "wins": 12,
+            "net_R": 4.642355395976313,
+            "gain_R": 16.300634578617736,
+            "loss_R": 11.658279182641422,
+            "net_USD_flat_1oz": 45.091285458565224,
+            "sum_R2": 42.61093364942318,
+            "mean_R": 0.16579840699915405,
+            "PF_R": 1.3982024553751073,
+            "positive_years": 3,
+            "yearly_n": [
+              8,
+              5,
+              15
+            ]
+          },
+          "A2": {
+            "n": 27,
+            "wins": 11,
+            "net_R": 0.7175133991132125,
+            "gain_R": 12.749876668992995,
+            "loss_R": 12.032363269879783,
+            "net_USD_flat_1oz": 9.766408075499623,
+            "sum_R2": 33.787155510202645,
+            "mean_R": 0.02657457033752639,
+            "PF_R": 1.0596319594928902,
+            "positive_years": 1,
+            "yearly_n": [
+              8,
+              4,
+              15
+            ]
+          },
+          "B2": {
+            "n": 27,
+            "wins": 11,
+            "net_R": 0.7175133991132125,
+            "gain_R": 12.749876668992995,
+            "loss_R": 12.032363269879783,
+            "net_USD_flat_1oz": 9.766408075499623,
+            "sum_R2": 33.787155510202645,
+            "mean_R": 0.02657457033752639,
+            "PF_R": 1.0596319594928902,
+            "positive_years": 1,
+            "yearly_n": [
+              8,
+              4,
+              15
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 4,
+            "wins": 0,
+            "net_R": -2.2795096139303537,
+            "gain_R": 0.0,
+            "loss_R": 2.2795096139303537,
+            "net_USD_flat_1oz": -83.61661374448545,
+            "sum_R2": 1.6254284175367515,
+            "mean_R": -0.5698774034825884,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              4
+            ]
+          },
+          "B1": {
+            "n": 4,
+            "wins": 0,
+            "net_R": -2.2795096139303537,
+            "gain_R": 0.0,
+            "loss_R": 2.2795096139303537,
+            "net_USD_flat_1oz": -83.61661374448545,
+            "sum_R2": 1.6254284175367515,
+            "mean_R": -0.5698774034825884,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              4
+            ]
+          },
+          "A2": {
+            "n": 4,
+            "wins": 0,
+            "net_R": -2.3509941514599904,
+            "gain_R": 0.0,
+            "loss_R": 2.3509941514599904,
+            "net_USD_flat_1oz": -86.54947424963527,
+            "sum_R2": 1.683888659588188,
+            "mean_R": -0.5877485378649976,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              4
+            ]
+          },
+          "B2": {
+            "n": 4,
+            "wins": 0,
+            "net_R": -2.3509941514599904,
+            "gain_R": 0.0,
+            "loss_R": 2.3509941514599904,
+            "net_USD_flat_1oz": -86.54947424963527,
+            "sum_R2": 1.683888659588188,
+            "mean_R": -0.5877485378649976,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              4
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 2303422,
+      "priority": 9,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 60,
+        "family": "ASIAN_RANGE_BREAK",
+        "look": 16,
+        "side": -1,
+        "hold": 240,
+        "stop": 1.5,
+        "target": 2.5,
+        "regime": "AGAINST",
+        "session": "US",
+        "spread": 0.35,
+        "vol": "LOW"
+      },
+      "development": {
+        "n": 70.0,
+        "wins": 30.0,
+        "net_R": 11.266163887755612,
+        "gain_R": 43.531980980146706,
+        "loss_R": 32.26581709239109,
+        "net_USD_flat_1oz": 49.61823109215573,
+        "sum_R2": 118.82417215910753
+      },
+      "development_mean_R": 0.16094519839650875,
+      "development_PF_R": 1.3491671652230497,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 42,
+            "wins": 16,
+            "net_R": -4.470722464901902,
+            "gain_R": 16.98398897395178,
+            "loss_R": 21.454711438853685,
+            "net_USD_flat_1oz": -39.30309885532917,
+            "sum_R2": 51.14917434789731,
+            "mean_R": -0.10644577297385481,
+            "PF_R": 0.7916204803013295,
+            "positive_years": 2,
+            "yearly_n": [
+              9,
+              15,
+              6,
+              12
+            ]
+          },
+          "B1": {
+            "n": 42,
+            "wins": 16,
+            "net_R": -4.470722464901902,
+            "gain_R": 16.98398897395178,
+            "loss_R": 21.454711438853685,
+            "net_USD_flat_1oz": -39.30309885532917,
+            "sum_R2": 51.14917434789731,
+            "mean_R": -0.10644577297385481,
+            "PF_R": 0.7916204803013295,
+            "positive_years": 2,
+            "yearly_n": [
+              9,
+              15,
+              6,
+              12
+            ]
+          },
+          "A2": {
+            "n": 41,
+            "wins": 15,
+            "net_R": -5.681298609009411,
+            "gain_R": 15.835978485442881,
+            "loss_R": 21.517277094452293,
+            "net_USD_flat_1oz": -57.06323952128119,
+            "sum_R2": 50.0042552975154,
+            "mean_R": -0.13856825875632708,
+            "PF_R": 0.735965727258576,
+            "positive_years": 2,
+            "yearly_n": [
+              8,
+              15,
+              6,
+              12
+            ]
+          },
+          "B2": {
+            "n": 41,
+            "wins": 15,
+            "net_R": -5.681298609009411,
+            "gain_R": 15.835978485442881,
+            "loss_R": 21.517277094452293,
+            "net_USD_flat_1oz": -57.06323952128119,
+            "sum_R2": 50.0042552975154,
+            "mean_R": -0.13856825875632708,
+            "PF_R": 0.735965727258576,
+            "positive_years": 2,
+            "yearly_n": [
+              8,
+              15,
+              6,
+              12
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 23,
+            "wins": 10,
+            "net_R": 1.9446239970815524,
+            "gain_R": 13.251408304250585,
+            "loss_R": 11.306784307169032,
+            "net_USD_flat_1oz": 2.5298707613995894,
+            "sum_R2": 38.015789146218125,
+            "mean_R": 0.08454886943832837,
+            "PF_R": 1.1719873612383824,
+            "positive_years": 2,
+            "yearly_n": [
+              7,
+              9,
+              7
+            ]
+          },
+          "B1": {
+            "n": 23,
+            "wins": 10,
+            "net_R": 1.9446239970815524,
+            "gain_R": 13.251408304250585,
+            "loss_R": 11.306784307169032,
+            "net_USD_flat_1oz": 2.5298707613995894,
+            "sum_R2": 38.015789146218125,
+            "mean_R": 0.08454886943832837,
+            "PF_R": 1.1719873612383824,
+            "positive_years": 2,
+            "yearly_n": [
+              7,
+              9,
+              7
+            ]
+          },
+          "A2": {
+            "n": 23,
+            "wins": 10,
+            "net_R": 1.1002552251737419,
+            "gain_R": 12.726857902187374,
+            "loss_R": 11.626602677013635,
+            "net_USD_flat_1oz": -6.667895027042054,
+            "sum_R2": 37.12927724732363,
+            "mean_R": 0.047837183703206165,
+            "PF_R": 1.0946325642785573,
+            "positive_years": 2,
+            "yearly_n": [
+              7,
+              9,
+              7
+            ]
+          },
+          "B2": {
+            "n": 23,
+            "wins": 10,
+            "net_R": 1.1002552251737419,
+            "gain_R": 12.726857902187374,
+            "loss_R": 11.626602677013635,
+            "net_USD_flat_1oz": -6.667895027042054,
+            "sum_R2": 37.12927724732363,
+            "mean_R": 0.047837183703206165,
+            "PF_R": 1.0946325642785573,
+            "positive_years": 2,
+            "yearly_n": [
+              7,
+              9,
+              7
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 3,
+            "wins": 2,
+            "net_R": 2.5941638556182713,
+            "gain_R": 3.5985279651643207,
+            "loss_R": 1.0043641095460492,
+            "net_USD_flat_1oz": 94.75971606140712,
+            "sum_R2": 8.453858878133742,
+            "mean_R": 0.8647212852060905,
+            "PF_R": 3.582891832714709,
+            "positive_years": 1,
+            "yearly_n": [
+              3
+            ]
+          },
+          "B1": {
+            "n": 3,
+            "wins": 2,
+            "net_R": 2.5941638556182713,
+            "gain_R": 3.5985279651643207,
+            "loss_R": 1.0043641095460492,
+            "net_USD_flat_1oz": 94.75971606140712,
+            "sum_R2": 8.453858878133742,
+            "mean_R": 0.8647212852060905,
+            "PF_R": 3.582891832714709,
+            "positive_years": 1,
+            "yearly_n": [
+              3
+            ]
+          },
+          "A2": {
+            "n": 3,
+            "wins": 2,
+            "net_R": 2.5567839268575523,
+            "gain_R": 3.565512145949663,
+            "loss_R": 1.0087282190921107,
+            "net_USD_flat_1oz": 93.58121606140651,
+            "sum_R2": 8.379063501963802,
+            "mean_R": 0.8522613089525174,
+            "PF_R": 3.5346608516204134,
+            "positive_years": 1,
+            "yearly_n": [
+              3
+            ]
+          },
+          "B2": {
+            "n": 3,
+            "wins": 2,
+            "net_R": 2.5567839268575523,
+            "gain_R": 3.565512145949663,
+            "loss_R": 1.0087282190921107,
+            "net_USD_flat_1oz": 93.58121606140651,
+            "sum_R2": 8.379063501963802,
+            "mean_R": 0.8522613089525174,
+            "PF_R": 3.5346608516204134,
+            "positive_years": 1,
+            "yearly_n": [
+              3
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 412060,
+      "priority": 10,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 5,
+        "family": "TWAP_RECLAIM",
+        "look": 8,
+        "side": -1,
+        "hold": 60,
+        "stop": 2.0,
+        "target": 2.5,
+        "regime": "ANY",
+        "session": "ALL",
+        "spread": 0.35,
+        "vol": "LOW"
+      },
+      "development": {
+        "n": 54.0,
+        "wins": 25.0,
+        "net_R": 10.83944547734615,
+        "gain_R": 32.46709882787443,
+        "loss_R": 21.627653350528284,
+        "net_USD_flat_1oz": 51.956275961877544,
+        "sum_R2": 86.73233270006222
+      },
+      "development_mean_R": 0.20073047180270648,
+      "development_PF_R": 1.5011845391484129,
+      "development_positive_years": 6,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 815,
+            "wins": 288,
+            "net_R": -121.98478830890903,
+            "gain_R": 309.00384203252526,
+            "loss_R": 430.98863034143426,
+            "net_USD_flat_1oz": -300.50301917617475,
+            "sum_R2": 954.7794469219887,
+            "mean_R": -0.14967458688209698,
+            "PF_R": 0.7169651825565069,
+            "positive_years": 0,
+            "yearly_n": [
+              116,
+              359,
+              181,
+              159
+            ]
+          },
+          "B1": {
+            "n": 815,
+            "wins": 288,
+            "net_R": -121.98478830890903,
+            "gain_R": 309.00384203252526,
+            "loss_R": 430.98863034143426,
+            "net_USD_flat_1oz": -300.50301917617475,
+            "sum_R2": 954.7794469219887,
+            "mean_R": -0.14967458688209698,
+            "PF_R": 0.7169651825565069,
+            "positive_years": 0,
+            "yearly_n": [
+              116,
+              359,
+              181,
+              159
+            ]
+          },
+          "A2": {
+            "n": 99,
+            "wins": 36,
+            "net_R": -16.54787676117491,
+            "gain_R": 30.083133289888128,
+            "loss_R": 46.631010051063036,
+            "net_USD_flat_1oz": -50.99748993730591,
+            "sum_R2": 91.78022071845083,
+            "mean_R": -0.16715027031489807,
+            "PF_R": 0.6451314963357164,
+            "positive_years": 0,
+            "yearly_n": [
+              4,
+              77,
+              5,
+              13
+            ]
+          },
+          "B2": {
+            "n": 99,
+            "wins": 36,
+            "net_R": -16.54787676117491,
+            "gain_R": 30.083133289888128,
+            "loss_R": 46.631010051063036,
+            "net_USD_flat_1oz": -50.99748993730591,
+            "sum_R2": 91.78022071845083,
+            "mean_R": -0.16715027031489807,
+            "PF_R": 0.6451314963357164,
+            "positive_years": 0,
+            "yearly_n": [
+              4,
+              77,
+              5,
+              13
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 1197,
+            "wins": 442,
+            "net_R": -205.77363942866137,
+            "gain_R": 440.08816467952755,
+            "loss_R": 645.8618041081888,
+            "net_USD_flat_1oz": -779.5437018566083,
+            "sum_R2": 1367.8268783953322,
+            "mean_R": -0.1719078023631256,
+            "PF_R": 0.6813967970860343,
+            "positive_years": 0,
+            "yearly_n": [
+              206,
+              383,
+              608
+            ]
+          },
+          "B1": {
+            "n": 1197,
+            "wins": 442,
+            "net_R": -205.77363942866137,
+            "gain_R": 440.08816467952755,
+            "loss_R": 645.8618041081888,
+            "net_USD_flat_1oz": -779.5437018566083,
+            "sum_R2": 1367.8268783953322,
+            "mean_R": -0.1719078023631256,
+            "PF_R": 0.6813967970860343,
+            "positive_years": 0,
+            "yearly_n": [
+              206,
+              383,
+              608
+            ]
+          },
+          "A2": {
+            "n": 242,
+            "wins": 94,
+            "net_R": -35.8528063702108,
+            "gain_R": 80.18131031790672,
+            "loss_R": 116.0341166881175,
+            "net_USD_flat_1oz": -272.2882883642566,
+            "sum_R2": 240.10017887273563,
+            "mean_R": -0.1481520924388876,
+            "PF_R": 0.6910149584145342,
+            "positive_years": 1,
+            "yearly_n": [
+              12,
+              35,
+              195
+            ]
+          },
+          "B2": {
+            "n": 242,
+            "wins": 94,
+            "net_R": -35.8528063702108,
+            "gain_R": 80.18131031790672,
+            "loss_R": 116.0341166881175,
+            "net_USD_flat_1oz": -272.2882883642566,
+            "sum_R2": 240.10017887273563,
+            "mean_R": -0.1481520924388876,
+            "PF_R": 0.6910149584145342,
+            "positive_years": 1,
+            "yearly_n": [
+              12,
+              35,
+              195
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 607,
+            "wins": 233,
+            "net_R": -83.24782361687019,
+            "gain_R": 220.41537703030946,
+            "loss_R": 303.6632006471796,
+            "net_USD_flat_1oz": -871.1839320004221,
+            "sum_R2": 639.9499801613958,
+            "mean_R": -0.13714633215299868,
+            "PF_R": 0.7258547514501298,
+            "positive_years": 0,
+            "yearly_n": [
+              607
+            ]
+          },
+          "B1": {
+            "n": 607,
+            "wins": 233,
+            "net_R": -83.24782361687019,
+            "gain_R": 220.41537703030946,
+            "loss_R": 303.6632006471796,
+            "net_USD_flat_1oz": -871.1839320004221,
+            "sum_R2": 639.9499801613958,
+            "mean_R": -0.13714633215299868,
+            "PF_R": 0.7258547514501298,
+            "positive_years": 0,
+            "yearly_n": [
+              607
+            ]
+          },
+          "A2": {
+            "n": 475,
+            "wins": 182,
+            "net_R": -74.0089459091456,
+            "gain_R": 166.43490185130253,
+            "loss_R": 240.4438477604481,
+            "net_USD_flat_1oz": -936.2731480475951,
+            "sum_R2": 495.05690944884043,
+            "mean_R": -0.1558083071771486,
+            "PF_R": 0.6921986293328661,
+            "positive_years": 0,
+            "yearly_n": [
+              475
+            ]
+          },
+          "B2": {
+            "n": 475,
+            "wins": 182,
+            "net_R": -74.0089459091456,
+            "gain_R": 166.43490185130253,
+            "loss_R": 240.4438477604481,
+            "net_USD_flat_1oz": -936.2731480475951,
+            "sum_R2": 495.05690944884043,
+            "mean_R": -0.1558083071771486,
+            "PF_R": 0.6921986293328661,
+            "positive_years": 0,
+            "yearly_n": [
+              475
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1192580,
+      "priority": 11,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 30,
+        "family": "BREAKOUT",
+        "look": 16,
+        "side": 1,
+        "hold": 240,
+        "stop": 1.0,
+        "target": 2.5,
+        "regime": "WITH",
+        "session": "US",
+        "spread": 0.15,
+        "vol": "HIGH"
+      },
+      "development": {
+        "n": 31.0,
+        "wins": 18.0,
+        "net_R": 10.789532772822152,
+        "gain_R": 21.39531991279807,
+        "loss_R": 10.60578713997592,
+        "net_USD_flat_1oz": 32.690570286918984,
+        "sum_R2": 47.25734133968912
+      },
+      "development_mean_R": 0.34804944428458556,
+      "development_PF_R": 2.017325034947538,
+      "development_positive_years": 6,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 143,
+            "wins": 60,
+            "net_R": -11.805649892697225,
+            "gain_R": 56.02639434172015,
+            "loss_R": 67.83204423441738,
+            "net_USD_flat_1oz": -97.26431748543094,
+            "sum_R2": 164.22474861195673,
+            "mean_R": -0.08255699225662395,
+            "PF_R": 0.8259576277563053,
+            "positive_years": 1,
+            "yearly_n": [
+              35,
+              31,
+              48,
+              29
+            ]
+          },
+          "B1": {
+            "n": 143,
+            "wins": 60,
+            "net_R": -11.805649892697225,
+            "gain_R": 56.02639434172015,
+            "loss_R": 67.83204423441738,
+            "net_USD_flat_1oz": -97.26431748543094,
+            "sum_R2": 164.22474861195673,
+            "mean_R": -0.08255699225662395,
+            "PF_R": 0.8259576277563053,
+            "positive_years": 1,
+            "yearly_n": [
+              35,
+              31,
+              48,
+              29
+            ]
+          },
+          "A2": {
+            "n": 29,
+            "wins": 9,
+            "net_R": -13.803403155117335,
+            "gain_R": 3.8786104946284503,
+            "loss_R": 17.682013649745787,
+            "net_USD_flat_1oz": -94.63713652507586,
+            "sum_R2": 19.83203530700186,
+            "mean_R": -0.47597941914197706,
+            "PF_R": 0.21935343855388398,
+            "positive_years": 1,
+            "yearly_n": [
+              7,
+              11,
+              5,
+              6
+            ]
+          },
+          "B2": {
+            "n": 29,
+            "wins": 9,
+            "net_R": -13.803403155117335,
+            "gain_R": 3.8786104946284503,
+            "loss_R": 17.682013649745787,
+            "net_USD_flat_1oz": -94.63713652507586,
+            "sum_R2": 19.83203530700186,
+            "mean_R": -0.47597941914197706,
+            "PF_R": 0.21935343855388398,
+            "positive_years": 1,
+            "yearly_n": [
+              7,
+              11,
+              5,
+              6
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 147,
+            "wins": 66,
+            "net_R": 18.035906664451367,
+            "gain_R": 82.9714472410543,
+            "loss_R": 64.93554057660296,
+            "net_USD_flat_1oz": 114.29564545252623,
+            "sum_R2": 211.34616397858775,
+            "mean_R": 0.12269324261531543,
+            "PF_R": 1.2777509281404196,
+            "positive_years": 3,
+            "yearly_n": [
+              40,
+              50,
+              57
+            ]
+          },
+          "B1": {
+            "n": 147,
+            "wins": 66,
+            "net_R": 18.035906664451367,
+            "gain_R": 82.9714472410543,
+            "loss_R": 64.93554057660296,
+            "net_USD_flat_1oz": 114.29564545252623,
+            "sum_R2": 211.34616397858775,
+            "mean_R": 0.12269324261531543,
+            "PF_R": 1.2777509281404196,
+            "positive_years": 3,
+            "yearly_n": [
+              40,
+              50,
+              57
+            ]
+          },
+          "A2": {
+            "n": 69,
+            "wins": 29,
+            "net_R": -6.314378217314791,
+            "gain_R": 28.276927358475525,
+            "loss_R": 34.59130557579032,
+            "net_USD_flat_1oz": -60.88975605930592,
+            "sum_R2": 76.3382780125792,
+            "mean_R": -0.09151272778717087,
+            "PF_R": 0.8174576497704068,
+            "positive_years": 0,
+            "yearly_n": [
+              12,
+              25,
+              32
+            ]
+          },
+          "B2": {
+            "n": 69,
+            "wins": 29,
+            "net_R": -6.314378217314791,
+            "gain_R": 28.276927358475525,
+            "loss_R": 34.59130557579032,
+            "net_USD_flat_1oz": -60.88975605930592,
+            "sum_R2": 76.3382780125792,
+            "mean_R": -0.09151272778717087,
+            "PF_R": 0.8174576497704068,
+            "positive_years": 0,
+            "yearly_n": [
+              12,
+              25,
+              32
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 16,
+            "wins": 9,
+            "net_R": 3.3631119630742345,
+            "gain_R": 8.859557154756946,
+            "loss_R": 5.49644519168271,
+            "net_USD_flat_1oz": 85.23548701801975,
+            "sum_R2": 20.236833508810655,
+            "mean_R": 0.21019449769213966,
+            "PF_R": 1.6118703718111005,
+            "positive_years": 1,
+            "yearly_n": [
+              16
+            ]
+          },
+          "B1": {
+            "n": 16,
+            "wins": 9,
+            "net_R": 3.3631119630742345,
+            "gain_R": 8.859557154756946,
+            "loss_R": 5.49644519168271,
+            "net_USD_flat_1oz": 85.23548701801975,
+            "sum_R2": 20.236833508810655,
+            "mean_R": 0.21019449769213966,
+            "PF_R": 1.6118703718111005,
+            "positive_years": 1,
+            "yearly_n": [
+              16
+            ]
+          },
+          "A2": {
+            "n": 15,
+            "wins": 9,
+            "net_R": 4.028352889566256,
+            "gain_R": 8.609298231621116,
+            "loss_R": 4.580945342054858,
+            "net_USD_flat_1oz": 96.10993988300217,
+            "sum_R2": 19.036081090394912,
+            "mean_R": 0.2685568593044171,
+            "PF_R": 1.8793715246031018,
+            "positive_years": 1,
+            "yearly_n": [
+              15
+            ]
+          },
+          "B2": {
+            "n": 15,
+            "wins": 9,
+            "net_R": 4.028352889566256,
+            "gain_R": 8.609298231621116,
+            "loss_R": 4.580945342054858,
+            "net_USD_flat_1oz": 96.10993988300217,
+            "sum_R2": 19.036081090394912,
+            "mean_R": 0.2685568593044171,
+            "PF_R": 1.8793715246031018,
+            "positive_years": 1,
+            "yearly_n": [
+              15
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1814545,
+      "priority": 12,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 60,
+        "family": "RETEST_BREAK",
+        "look": 8,
+        "side": -1,
+        "hold": 240,
+        "stop": 1.0,
+        "target": 1.5,
+        "regime": "ANY",
+        "session": "ALL",
+        "spread": 0.15,
+        "vol": "LOW"
+      },
+      "development": {
+        "n": 38.0,
+        "wins": 21.0,
+        "net_R": 10.27675615575234,
+        "gain_R": 24.13108330823642,
+        "loss_R": 13.854327152484084,
+        "net_USD_flat_1oz": 64.76378671218362,
+        "sum_R2": 45.662519586597824
+      },
+      "development_mean_R": 0.27044095146716685,
+      "development_PF_R": 1.7417723028079146,
+      "development_positive_years": 6,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 102,
+            "wins": 41,
+            "net_R": -14.467948659782323,
+            "gain_R": 40.027154758039885,
+            "loss_R": 54.49510341782221,
+            "net_USD_flat_1oz": -81.14335793807696,
+            "sum_R2": 106.09206835201812,
+            "mean_R": -0.14184263391943452,
+            "PF_R": 0.7345091989484932,
+            "positive_years": 0,
+            "yearly_n": [
+              20,
+              13,
+              24,
+              45
+            ]
+          },
+          "B1": {
+            "n": 102,
+            "wins": 41,
+            "net_R": -14.467948659782323,
+            "gain_R": 40.027154758039885,
+            "loss_R": 54.49510341782221,
+            "net_USD_flat_1oz": -81.14335793807696,
+            "sum_R2": 106.09206835201812,
+            "mean_R": -0.14184263391943452,
+            "PF_R": 0.7345091989484932,
+            "positive_years": 0,
+            "yearly_n": [
+              20,
+              13,
+              24,
+              45
+            ]
+          },
+          "A2": {
+            "n": 31,
+            "wins": 13,
+            "net_R": -1.8391017714791005,
+            "gain_R": 13.712077321211092,
+            "loss_R": 15.551179092690191,
+            "net_USD_flat_1oz": -39.164101761697324,
+            "sum_R2": 33.99103992380249,
+            "mean_R": -0.059325863596100016,
+            "PF_R": 0.8817387568802699,
+            "positive_years": 1,
+            "yearly_n": [
+              5,
+              5,
+              6,
+              15
+            ]
+          },
+          "B2": {
+            "n": 31,
+            "wins": 13,
+            "net_R": -1.8391017714791005,
+            "gain_R": 13.712077321211092,
+            "loss_R": 15.551179092690191,
+            "net_USD_flat_1oz": -39.164101761697324,
+            "sum_R2": 33.99103992380249,
+            "mean_R": -0.059325863596100016,
+            "PF_R": 0.8817387568802699,
+            "positive_years": 1,
+            "yearly_n": [
+              5,
+              5,
+              6,
+              15
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 76,
+            "wins": 31,
+            "net_R": -6.208387988768724,
+            "gain_R": 33.46032866541508,
+            "loss_R": 39.668716654183804,
+            "net_USD_flat_1oz": 94.37011092743539,
+            "sum_R2": 82.47436211601206,
+            "mean_R": -0.08168931564169374,
+            "PF_R": 0.8434941053704612,
+            "positive_years": 1,
+            "yearly_n": [
+              34,
+              25,
+              17
+            ]
+          },
+          "B1": {
+            "n": 76,
+            "wins": 31,
+            "net_R": -6.208387988768724,
+            "gain_R": 33.46032866541508,
+            "loss_R": 39.668716654183804,
+            "net_USD_flat_1oz": 94.37011092743539,
+            "sum_R2": 82.47436211601206,
+            "mean_R": -0.08168931564169374,
+            "PF_R": 0.8434941053704612,
+            "positive_years": 1,
+            "yearly_n": [
+              34,
+              25,
+              17
+            ]
+          },
+          "A2": {
+            "n": 33,
+            "wins": 15,
+            "net_R": -1.1361832924872795,
+            "gain_R": 13.613695229195802,
+            "loss_R": 14.749878521683081,
+            "net_USD_flat_1oz": 72.17399197616922,
+            "sum_R2": 30.831970306185198,
+            "mean_R": -0.03442979674203877,
+            "PF_R": 0.9229699898329988,
+            "positive_years": 1,
+            "yearly_n": [
+              9,
+              12,
+              12
+            ]
+          },
+          "B2": {
+            "n": 33,
+            "wins": 15,
+            "net_R": -1.1361832924872795,
+            "gain_R": 13.613695229195802,
+            "loss_R": 14.749878521683081,
+            "net_USD_flat_1oz": 72.17399197616922,
+            "sum_R2": 30.831970306185198,
+            "mean_R": -0.03442979674203877,
+            "PF_R": 0.9229699898329988,
+            "positive_years": 1,
+            "yearly_n": [
+              9,
+              12,
+              12
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 6,
+            "wins": 3,
+            "net_R": 1.769910383849929,
+            "gain_R": 3.113952302267254,
+            "loss_R": 1.344041918417325,
+            "net_USD_flat_1oz": 86.75814313540707,
+            "sum_R2": 5.586288602928634,
+            "mean_R": 0.2949850639749882,
+            "PF_R": 2.316856535199501,
+            "positive_years": 1,
+            "yearly_n": [
+              6
+            ]
+          },
+          "B1": {
+            "n": 6,
+            "wins": 3,
+            "net_R": 1.769910383849929,
+            "gain_R": 3.113952302267254,
+            "loss_R": 1.344041918417325,
+            "net_USD_flat_1oz": 86.75814313540707,
+            "sum_R2": 5.586288602928634,
+            "mean_R": 0.2949850639749882,
+            "PF_R": 2.316856535199501,
+            "positive_years": 1,
+            "yearly_n": [
+              6
+            ]
+          },
+          "A2": {
+            "n": 6,
+            "wins": 3,
+            "net_R": 1.6618662173052245,
+            "gain_R": 3.075603514521776,
+            "loss_R": 1.4137372972165514,
+            "net_USD_flat_1oz": 84.9846431354065,
+            "sum_R2": 5.595498896331093,
+            "mean_R": 0.2769777028842041,
+            "PF_R": 2.175512749488327,
+            "positive_years": 1,
+            "yearly_n": [
+              6
+            ]
+          },
+          "B2": {
+            "n": 6,
+            "wins": 3,
+            "net_R": 1.6618662173052245,
+            "gain_R": 3.075603514521776,
+            "loss_R": 1.4137372972165514,
+            "net_USD_flat_1oz": 84.9846431354065,
+            "sum_R2": 5.595498896331093,
+            "mean_R": 0.2769777028842041,
+            "PF_R": 2.175512749488327,
+            "positive_years": 1,
+            "yearly_n": [
+              6
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1736543,
+      "priority": 13,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 30,
+        "family": "PRIOR_DAY_SWEEP",
+        "look": 8,
+        "side": 1,
+        "hold": 240,
+        "stop": 1.5,
+        "target": 1.5,
+        "regime": "WITH",
+        "session": "US",
+        "spread": 0.35,
+        "vol": "HIGH"
+      },
+      "development": {
+        "n": 39.0,
+        "wins": 21.0,
+        "net_R": 9.453538848348288,
+        "gain_R": 19.98336839407791,
+        "loss_R": 10.529829545729621,
+        "net_USD_flat_1oz": 46.97971595492692,
+        "sum_R2": 33.577371228659594
+      },
+      "development_mean_R": 0.24239843200893046,
+      "development_PF_R": 1.8977865033135488,
+      "development_positive_years": 6,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 17,
+            "wins": 12,
+            "net_R": 5.23470164712153,
+            "gain_R": 8.861303492215647,
+            "loss_R": 3.6266018450941173,
+            "net_USD_flat_1oz": 29.573094289161173,
+            "sum_R2": 14.250142457424104,
+            "mean_R": 0.30792362630126646,
+            "PF_R": 2.4434177973528493,
+            "positive_years": 3,
+            "yearly_n": [
+              2,
+              7,
+              7,
+              1
+            ]
+          },
+          "B1": {
+            "n": 17,
+            "wins": 12,
+            "net_R": 5.23470164712153,
+            "gain_R": 8.861303492215647,
+            "loss_R": 3.6266018450941173,
+            "net_USD_flat_1oz": 29.573094289161173,
+            "sum_R2": 14.250142457424104,
+            "mean_R": 0.30792362630126646,
+            "PF_R": 2.4434177973528493,
+            "positive_years": 3,
+            "yearly_n": [
+              2,
+              7,
+              7,
+              1
+            ]
+          },
+          "A2": {
+            "n": 17,
+            "wins": 9,
+            "net_R": 1.784667205118587,
+            "gain_R": 6.733248384442675,
+            "loss_R": 4.948581179324087,
+            "net_USD_flat_1oz": 9.226356485747337,
+            "sum_R2": 12.34834118976675,
+            "mean_R": 0.10498042383050511,
+            "PF_R": 1.360642200349303,
+            "positive_years": 2,
+            "yearly_n": [
+              2,
+              7,
+              7,
+              1
+            ]
+          },
+          "B2": {
+            "n": 17,
+            "wins": 9,
+            "net_R": 1.784667205118587,
+            "gain_R": 6.733248384442675,
+            "loss_R": 4.948581179324087,
+            "net_USD_flat_1oz": 9.226356485747337,
+            "sum_R2": 12.34834118976675,
+            "mean_R": 0.10498042383050511,
+            "PF_R": 1.360642200349303,
+            "positive_years": 2,
+            "yearly_n": [
+              2,
+              7,
+              7,
+              1
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 24,
+            "wins": 12,
+            "net_R": 2.1766183263220173,
+            "gain_R": 9.223808725957868,
+            "loss_R": 7.04719039963585,
+            "net_USD_flat_1oz": 36.497752300553486,
+            "sum_R2": 15.71300068577875,
+            "mean_R": 0.09069243026341739,
+            "PF_R": 1.3088632778297704,
+            "positive_years": 1,
+            "yearly_n": [
+              7,
+              7,
+              10
+            ]
+          },
+          "B1": {
+            "n": 24,
+            "wins": 12,
+            "net_R": 2.1766183263220173,
+            "gain_R": 9.223808725957868,
+            "loss_R": 7.04719039963585,
+            "net_USD_flat_1oz": 36.497752300553486,
+            "sum_R2": 15.71300068577875,
+            "mean_R": 0.09069243026341739,
+            "PF_R": 1.3088632778297704,
+            "positive_years": 1,
+            "yearly_n": [
+              7,
+              7,
+              10
+            ]
+          },
+          "A2": {
+            "n": 23,
+            "wins": 12,
+            "net_R": 2.3208110552831256,
+            "gain_R": 8.655287333826559,
+            "loss_R": 6.334476278543432,
+            "net_USD_flat_1oz": 33.4030116771139,
+            "sum_R2": 14.289763094160843,
+            "mean_R": 0.10090482849057068,
+            "PF_R": 1.3663777324645345,
+            "positive_years": 2,
+            "yearly_n": [
+              6,
+              7,
+              10
+            ]
+          },
+          "B2": {
+            "n": 23,
+            "wins": 12,
+            "net_R": 2.3208110552831256,
+            "gain_R": 8.655287333826559,
+            "loss_R": 6.334476278543432,
+            "net_USD_flat_1oz": 33.4030116771139,
+            "sum_R2": 14.289763094160843,
+            "mean_R": 0.10090482849057068,
+            "PF_R": 1.3663777324645345,
+            "positive_years": 2,
+            "yearly_n": [
+              6,
+              7,
+              10
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 1,
+            "wins": 0,
+            "net_R": -0.5732375467536264,
+            "gain_R": 0.0,
+            "loss_R": 0.5732375467536264,
+            "net_USD_flat_1oz": -11.730000000000073,
+            "sum_R2": 0.328601285008116,
+            "mean_R": -0.5732375467536264,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              1
+            ]
+          },
+          "B1": {
+            "n": 1,
+            "wins": 0,
+            "net_R": -0.5732375467536264,
+            "gain_R": 0.0,
+            "loss_R": 0.5732375467536264,
+            "net_USD_flat_1oz": -11.730000000000073,
+            "sum_R2": 0.328601285008116,
+            "mean_R": -0.5732375467536264,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              1
+            ]
+          },
+          "A2": {
+            "n": 1,
+            "wins": 0,
+            "net_R": -1.010230436787969,
+            "gain_R": 0.0,
+            "loss_R": 1.010230436787969,
+            "net_USD_flat_1oz": -21.724458173192144,
+            "sum_R2": 1.0205655354128107,
+            "mean_R": -1.010230436787969,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              1
+            ]
+          },
+          "B2": {
+            "n": 1,
+            "wins": 0,
+            "net_R": -1.010230436787969,
+            "gain_R": 0.0,
+            "loss_R": 1.010230436787969,
+            "net_USD_flat_1oz": -21.724458173192144,
+            "sum_R2": 1.0205655354128107,
+            "mean_R": -1.010230436787969,
+            "PF_R": 0.0,
+            "positive_years": 0,
+            "yearly_n": [
+              1
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 1667472,
+      "priority": 14,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 30,
+        "family": "RSI_EXTREME_RECLAIM",
+        "look": 8,
+        "side": -1,
+        "hold": 240,
+        "stop": 1.5,
+        "target": 2.5,
+        "regime": "WITH",
+        "session": "ALL",
+        "spread": 0.15,
+        "vol": "ALL"
+      },
+      "development": {
+        "n": 30.0,
+        "wins": 17.0,
+        "net_R": 9.42247892447394,
+        "gain_R": 20.835399870050445,
+        "loss_R": 11.412920945576499,
+        "net_USD_flat_1oz": 30.719705559527178,
+        "sum_R2": 51.18802937393799
+      },
+      "development_mean_R": 0.314082630815798,
+      "development_PF_R": 1.8255974933503747,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 184,
+            "wins": 74,
+            "net_R": -13.586064477698079,
+            "gain_R": 85.27678569883506,
+            "loss_R": 98.86285017653313,
+            "net_USD_flat_1oz": -59.05843595559898,
+            "sum_R2": 248.8161925197872,
+            "mean_R": -0.07383730694401129,
+            "PF_R": 0.862576645793255,
+            "positive_years": 2,
+            "yearly_n": [
+              16,
+              46,
+              49,
+              73
+            ]
+          },
+          "B1": {
+            "n": 184,
+            "wins": 74,
+            "net_R": -13.586064477698079,
+            "gain_R": 85.27678569883506,
+            "loss_R": 98.86285017653313,
+            "net_USD_flat_1oz": -59.05843595559898,
+            "sum_R2": 248.8161925197872,
+            "mean_R": -0.07383730694401129,
+            "PF_R": 0.862576645793255,
+            "positive_years": 2,
+            "yearly_n": [
+              16,
+              46,
+              49,
+              73
+            ]
+          },
+          "A2": {
+            "n": 30,
+            "wins": 14,
+            "net_R": -4.46443177092062,
+            "gain_R": 9.788558467096568,
+            "loss_R": 14.252990238017187,
+            "net_USD_flat_1oz": -24.694625960918156,
+            "sum_R2": 23.40678399573917,
+            "mean_R": -0.14881439236402066,
+            "PF_R": 0.6867722704943289,
+            "positive_years": 1,
+            "yearly_n": [
+              3,
+              9,
+              5,
+              13
+            ]
+          },
+          "B2": {
+            "n": 30,
+            "wins": 14,
+            "net_R": -4.46443177092062,
+            "gain_R": 9.788558467096568,
+            "loss_R": 14.252990238017187,
+            "net_USD_flat_1oz": -24.694625960918156,
+            "sum_R2": 23.40678399573917,
+            "mean_R": -0.14881439236402066,
+            "PF_R": 0.6867722704943289,
+            "positive_years": 1,
+            "yearly_n": [
+              3,
+              9,
+              5,
+              13
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 106,
+            "wins": 42,
+            "net_R": -9.93895726685012,
+            "gain_R": 43.31779933275899,
+            "loss_R": 53.256756599609105,
+            "net_USD_flat_1oz": -118.30654897041391,
+            "sum_R2": 127.59372394518783,
+            "mean_R": -0.09376374780047282,
+            "PF_R": 0.8133765947939258,
+            "positive_years": 1,
+            "yearly_n": [
+              41,
+              42,
+              23
+            ]
+          },
+          "B1": {
+            "n": 106,
+            "wins": 42,
+            "net_R": -9.93895726685012,
+            "gain_R": 43.31779933275899,
+            "loss_R": 53.256756599609105,
+            "net_USD_flat_1oz": -118.30654897041391,
+            "sum_R2": 127.59372394518783,
+            "mean_R": -0.09376374780047282,
+            "PF_R": 0.8133765947939258,
+            "positive_years": 1,
+            "yearly_n": [
+              41,
+              42,
+              23
+            ]
+          },
+          "A2": {
+            "n": 21,
+            "wins": 7,
+            "net_R": -5.007121724271992,
+            "gain_R": 5.547050073603822,
+            "loss_R": 10.554171797875815,
+            "net_USD_flat_1oz": -74.75882070861464,
+            "sum_R2": 19.649431468137458,
+            "mean_R": -0.23843436782247582,
+            "PF_R": 0.525578906600729,
+            "positive_years": 1,
+            "yearly_n": [
+              3,
+              8,
+              10
+            ]
+          },
+          "B2": {
+            "n": 21,
+            "wins": 7,
+            "net_R": -5.007121724271992,
+            "gain_R": 5.547050073603822,
+            "loss_R": 10.554171797875815,
+            "net_USD_flat_1oz": -74.75882070861464,
+            "sum_R2": 19.649431468137458,
+            "mean_R": -0.23843436782247582,
+            "PF_R": 0.525578906600729,
+            "positive_years": 1,
+            "yearly_n": [
+              3,
+              8,
+              10
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 43,
+            "wins": 17,
+            "net_R": -8.169059985960999,
+            "gain_R": 10.716477059741385,
+            "loss_R": 18.88553704570238,
+            "net_USD_flat_1oz": -239.28808939927478,
+            "sum_R2": 30.30487969441049,
+            "mean_R": -0.18997813920839532,
+            "PF_R": 0.5674435963249476,
+            "positive_years": 0,
+            "yearly_n": [
+              43
+            ]
+          },
+          "B1": {
+            "n": 43,
+            "wins": 17,
+            "net_R": -8.169059985960999,
+            "gain_R": 10.716477059741385,
+            "loss_R": 18.88553704570238,
+            "net_USD_flat_1oz": -239.28808939927478,
+            "sum_R2": 30.30487969441049,
+            "mean_R": -0.18997813920839532,
+            "PF_R": 0.5674435963249476,
+            "positive_years": 0,
+            "yearly_n": [
+              43
+            ]
+          },
+          "A2": {
+            "n": 43,
+            "wins": 14,
+            "net_R": -12.205192189297357,
+            "gain_R": 8.698366407194762,
+            "loss_R": 20.903558596492122,
+            "net_USD_flat_1oz": -303.1409134996631,
+            "sum_R2": 27.309266627151192,
+            "mean_R": -0.28384167882086875,
+            "PF_R": 0.4161189286045514,
+            "positive_years": 0,
+            "yearly_n": [
+              43
+            ]
+          },
+          "B2": {
+            "n": 43,
+            "wins": 14,
+            "net_R": -12.205192189297357,
+            "gain_R": 8.698366407194762,
+            "loss_R": 20.903558596492122,
+            "net_USD_flat_1oz": -303.1409134996631,
+            "sum_R2": 27.309266627151192,
+            "mean_R": -0.28384167882086875,
+            "PF_R": 0.4161189286045514,
+            "positive_years": 0,
+            "yearly_n": [
+              43
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    },
+    {
+      "id": 2031260,
+      "priority": 15,
+      "role": "ADDITIONAL",
+      "parameters": {
+        "tf": 60,
+        "family": "EMA50_DIP",
+        "look": 8,
+        "side": 1,
+        "hold": 240,
+        "stop": 1.0,
+        "target": 2.5,
+        "regime": "AGAINST",
+        "session": "US",
+        "spread": 0.15,
+        "vol": "HIGH"
+      },
+      "development": {
+        "n": 44.0,
+        "wins": 24.0,
+        "net_R": 9.381597436368166,
+        "gain_R": 18.754204490207197,
+        "loss_R": 9.37260705383903,
+        "net_USD_flat_1oz": 81.79351918975132,
+        "sum_R2": 36.839781793598604
+      },
+      "development_mean_R": 0.21321812355382194,
+      "development_PF_R": 2.0009592189747734,
+      "development_positive_years": 5,
+      "state": "FIXED_RESEARCH_PARAMETERS_AWAITING_LATER_REPLAY",
+      "production_enabled": false,
+      "periods": {
+        "validation": {
+          "A1": {
+            "n": 67,
+            "wins": 24,
+            "net_R": -3.9066463941374736,
+            "gain_R": 18.460421564108994,
+            "loss_R": 22.367067958246466,
+            "net_USD_flat_1oz": -16.399177490857717,
+            "sum_R2": 46.092478476033776,
+            "mean_R": -0.058308155136380206,
+            "PF_R": 0.8253393604637778,
+            "positive_years": 1,
+            "yearly_n": [
+              14,
+              10,
+              21,
+              22
+            ]
+          },
+          "B1": {
+            "n": 67,
+            "wins": 24,
+            "net_R": -3.9066463941374736,
+            "gain_R": 18.460421564108994,
+            "loss_R": 22.367067958246466,
+            "net_USD_flat_1oz": -16.399177490857717,
+            "sum_R2": 46.092478476033776,
+            "mean_R": -0.058308155136380206,
+            "PF_R": 0.8253393604637778,
+            "positive_years": 1,
+            "yearly_n": [
+              14,
+              10,
+              21,
+              22
+            ]
+          },
+          "A2": {
+            "n": 39,
+            "wins": 14,
+            "net_R": -0.37628027827706545,
+            "gain_R": 13.374057213686774,
+            "loss_R": 13.75033749196384,
+            "net_USD_flat_1oz": 2.749111292654394,
+            "sum_R2": 34.64403384629977,
+            "mean_R": -0.009648212263514498,
+            "PF_R": 0.9726348332543127,
+            "positive_years": 1,
+            "yearly_n": [
+              2,
+              8,
+              12,
+              17
+            ]
+          },
+          "B2": {
+            "n": 39,
+            "wins": 14,
+            "net_R": -0.37628027827706545,
+            "gain_R": 13.374057213686774,
+            "loss_R": 13.75033749196384,
+            "net_USD_flat_1oz": 2.749111292654394,
+            "sum_R2": 34.64403384629977,
+            "mean_R": -0.009648212263514498,
+            "PF_R": 0.9726348332543127,
+            "positive_years": 1,
+            "yearly_n": [
+              2,
+              8,
+              12,
+              17
+            ]
+          }
+        },
+        "evaluation": {
+          "A1": {
+            "n": 40,
+            "wins": 17,
+            "net_R": -4.911911318374148,
+            "gain_R": 11.082315729137974,
+            "loss_R": 15.994227047512123,
+            "net_USD_flat_1oz": -20.637062276441082,
+            "sum_R2": 27.972629996766194,
+            "mean_R": -0.1227977829593537,
+            "PF_R": 0.6928947360955346,
+            "positive_years": 2,
+            "yearly_n": [
+              17,
+              13,
+              10
+            ]
+          },
+          "B1": {
+            "n": 40,
+            "wins": 17,
+            "net_R": -4.911911318374148,
+            "gain_R": 11.082315729137974,
+            "loss_R": 15.994227047512123,
+            "net_USD_flat_1oz": -20.637062276441082,
+            "sum_R2": 27.972629996766194,
+            "mean_R": -0.1227977829593537,
+            "PF_R": 0.6928947360955346,
+            "positive_years": 2,
+            "yearly_n": [
+              17,
+              13,
+              10
+            ]
+          },
+          "A2": {
+            "n": 23,
+            "wins": 9,
+            "net_R": -3.6591346264772424,
+            "gain_R": 4.156891602358783,
+            "loss_R": 7.816026228836026,
+            "net_USD_flat_1oz": -9.196392248303255,
+            "sum_R2": 9.522939452655889,
+            "mean_R": -0.15909280984683663,
+            "PF_R": 0.5318420743040205,
+            "positive_years": 1,
+            "yearly_n": [
+              6,
+              8,
+              9
+            ]
+          },
+          "B2": {
+            "n": 23,
+            "wins": 9,
+            "net_R": -3.6591346264772424,
+            "gain_R": 4.156891602358783,
+            "loss_R": 7.816026228836026,
+            "net_USD_flat_1oz": -9.196392248303255,
+            "sum_R2": 9.522939452655889,
+            "mean_R": -0.15909280984683663,
+            "PF_R": 0.5318420743040205,
+            "positive_years": 1,
+            "yearly_n": [
+              6,
+              8,
+              9
+            ]
+          }
+        },
+        "partial2026": {
+          "A1": {
+            "n": 11,
+            "wins": 2,
+            "net_R": -4.809154040121935,
+            "gain_R": 0.6640750374896095,
+            "loss_R": 5.473229077611544,
+            "net_USD_flat_1oz": -142.67530457590206,
+            "sum_R2": 4.8499456892352555,
+            "mean_R": -0.4371958218292668,
+            "PF_R": 0.121331489706147,
+            "positive_years": 0,
+            "yearly_n": [
+              11
+            ]
+          },
+          "B1": {
+            "n": 11,
+            "wins": 2,
+            "net_R": -4.809154040121935,
+            "gain_R": 0.6640750374896095,
+            "loss_R": 5.473229077611544,
+            "net_USD_flat_1oz": -142.67530457590206,
+            "sum_R2": 4.8499456892352555,
+            "mean_R": -0.4371958218292668,
+            "PF_R": 0.121331489706147,
+            "positive_years": 0,
+            "yearly_n": [
+              11
+            ]
+          },
+          "A2": {
+            "n": 11,
+            "wins": 2,
+            "net_R": -4.981901491902289,
+            "gain_R": 0.6218308074636794,
+            "loss_R": 5.603732299365969,
+            "net_USD_flat_1oz": -150.2208045759006,
+            "sum_R2": 4.937322289740768,
+            "mean_R": -0.4529001356274808,
+            "PF_R": 0.1109672579352222,
+            "positive_years": 0,
+            "yearly_n": [
+              11
+            ]
+          },
+          "B2": {
+            "n": 11,
+            "wins": 2,
+            "net_R": -4.981901491902289,
+            "gain_R": 0.6218308074636794,
+            "loss_R": 5.603732299365969,
+            "net_USD_flat_1oz": -150.2208045759006,
+            "sum_R2": 4.937322289740768,
+            "mean_R": -0.4529001356274808,
+            "PF_R": 0.1109672579352222,
+            "positive_years": 0,
+            "yearly_n": [
+              11
+            ]
+          }
+        }
+      },
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "decision": "REJECT_LATER_PERIOD_SCREEN"
+    }
+  ],
+  "basket_comparison": {
+    "full2019_2025": {
+      "A1": {
+        "anchor": {
+          "n": 343,
+          "wins": 117,
+          "net_R": -41.6397362017,
+          "gain_R": 171.42844817231267,
+          "loss_R": 213.0681843740127,
+          "net_USD_flat_1oz": -161.16926396397577,
+          "sum_R2": 567.201325463389,
+          "mean_R": -0.12139864781836736,
+          "PF_R": 0.8045708404375989,
+          "positive_years": 2,
+          "yearly_n": [
+            24,
+            42,
+            73,
+            86,
+            50,
+            43,
+            25
+          ]
+        },
+        "combined": {
+          "n": 6692,
+          "wins": 2244,
+          "net_R": -1057.7661426089428,
+          "gain_R": 3221.1135377685778,
+          "loss_R": 4278.87968037752,
+          "net_USD_flat_1oz": -3100.3812051464,
+          "sum_R2": 10505.277452265556,
+          "mean_R": -0.1580642771382162,
+          "PF_R": 0.7527936699272607,
+          "positive_years": 0,
+          "yearly_n": [
+            420,
+            1049,
+            890,
+            907,
+            901,
+            1203,
+            1322
+          ]
+        },
+        "additional_slot_fills": 6533,
+        "anchor_control_fills_displaced": 218,
+        "duplicates": 2039,
+        "occupancy_or_embargo_rejects": 7914,
+        "combined_minus_anchor_fills": 6349,
+        "combined_minus_anchor_flat_USD": -2939.211941182424
+      },
+      "B1": {
+        "anchor": {
+          "n": 343,
+          "wins": 117,
+          "net_R": -41.6397362017,
+          "gain_R": 171.42844817231267,
+          "loss_R": 213.0681843740127,
+          "net_USD_flat_1oz": -161.16926396397577,
+          "sum_R2": 567.201325463389,
+          "mean_R": -0.12139864781836736,
+          "PF_R": 0.8045708404375989,
+          "positive_years": 2,
+          "yearly_n": [
+            24,
+            42,
+            73,
+            86,
+            50,
+            43,
+            25
+          ]
+        },
+        "combined": {
+          "n": 6692,
+          "wins": 2244,
+          "net_R": -1057.7661426089428,
+          "gain_R": 3221.1135377685778,
+          "loss_R": 4278.87968037752,
+          "net_USD_flat_1oz": -3100.3812051464,
+          "sum_R2": 10505.277452265556,
+          "mean_R": -0.1580642771382162,
+          "PF_R": 0.7527936699272607,
+          "positive_years": 0,
+          "yearly_n": [
+            420,
+            1049,
+            890,
+            907,
+            901,
+            1203,
+            1322
+          ]
+        },
+        "additional_slot_fills": 6533,
+        "anchor_control_fills_displaced": 218,
+        "duplicates": 2039,
+        "occupancy_or_embargo_rejects": 7914,
+        "combined_minus_anchor_fills": 6349,
+        "combined_minus_anchor_flat_USD": -2939.211941182424
+      },
+      "A2": {
+        "anchor": {
+          "n": 48,
+          "wins": 14,
+          "net_R": -5.625532899633793,
+          "gain_R": 24.866860695403656,
+          "loss_R": 30.49239359503745,
+          "net_USD_flat_1oz": -46.34576549129224,
+          "sum_R2": 84.8678860490515,
+          "mean_R": -0.11719860207570403,
+          "PF_R": 0.8155102884232305,
+          "positive_years": 1,
+          "yearly_n": [
+            0,
+            12,
+            12,
+            9,
+            2,
+            6,
+            7
+          ]
+        },
+        "combined": {
+          "n": 1411,
+          "wins": 512,
+          "net_R": -219.3102307883002,
+          "gain_R": 595.1223292139949,
+          "loss_R": 814.4325600022952,
+          "net_USD_flat_1oz": -1147.8162601721062,
+          "sum_R2": 1844.591473015451,
+          "mean_R": -0.1554289374828492,
+          "PF_R": 0.73072020746852,
+          "positive_years": 0,
+          "yearly_n": [
+            68,
+            270,
+            110,
+            158,
+            90,
+            223,
+            492
+          ]
+        },
+        "additional_slot_fills": 1382,
+        "anchor_control_fills_displaced": 19,
+        "duplicates": 196,
+        "occupancy_or_embargo_rejects": 847,
+        "combined_minus_anchor_fills": 1363,
+        "combined_minus_anchor_flat_USD": -1101.470494680814
+      },
+      "B2": {
+        "anchor": {
+          "n": 48,
+          "wins": 14,
+          "net_R": -5.625532899633793,
+          "gain_R": 24.866860695403656,
+          "loss_R": 30.49239359503745,
+          "net_USD_flat_1oz": -46.34576549129224,
+          "sum_R2": 84.8678860490515,
+          "mean_R": -0.11719860207570403,
+          "PF_R": 0.8155102884232305,
+          "positive_years": 1,
+          "yearly_n": [
+            0,
+            12,
+            12,
+            9,
+            2,
+            6,
+            7
+          ]
+        },
+        "combined": {
+          "n": 1411,
+          "wins": 512,
+          "net_R": -219.3102307883002,
+          "gain_R": 595.1223292139949,
+          "loss_R": 814.4325600022952,
+          "net_USD_flat_1oz": -1147.8162601721062,
+          "sum_R2": 1844.591473015451,
+          "mean_R": -0.1554289374828492,
+          "PF_R": 0.73072020746852,
+          "positive_years": 0,
+          "yearly_n": [
+            68,
+            270,
+            110,
+            158,
+            90,
+            223,
+            492
+          ]
+        },
+        "additional_slot_fills": 1382,
+        "anchor_control_fills_displaced": 19,
+        "duplicates": 196,
+        "occupancy_or_embargo_rejects": 847,
+        "combined_minus_anchor_fills": 1363,
+        "combined_minus_anchor_flat_USD": -1101.470494680814
+      }
+    },
+    "partial2026": {
+      "A1": {
+        "anchor": {
+          "n": 54,
+          "wins": 21,
+          "net_R": 3.3144122839381307,
+          "gain_R": 32.42116147553421,
+          "loss_R": 29.106749191596087,
+          "net_USD_flat_1oz": 25.29374387071146,
+          "sum_R2": 96.52282977774534,
+          "mean_R": 0.06137800525811353,
+          "PF_R": 1.113870919150775,
+          "positive_years": 1,
+          "yearly_n": [
+            54
+          ]
+        },
+        "combined": {
+          "n": 1053,
+          "wins": 364,
+          "net_R": -135.25361134389095,
+          "gain_R": 518.5717492450274,
+          "loss_R": 653.8253605889183,
+          "net_USD_flat_1oz": -1733.3509035194757,
+          "sum_R2": 1646.6347115587537,
+          "mean_R": -0.12844597468555646,
+          "PF_R": 0.79313495698291,
+          "positive_years": 0,
+          "yearly_n": [
+            1053
+          ]
+        },
+        "additional_slot_fills": 1034,
+        "anchor_control_fills_displaced": 39,
+        "duplicates": 720,
+        "occupancy_or_embargo_rejects": 2482,
+        "combined_minus_anchor_fills": 999,
+        "combined_minus_anchor_flat_USD": -1758.6446473901872
+      },
+      "B1": {
+        "anchor": {
+          "n": 54,
+          "wins": 21,
+          "net_R": 3.3144122839381307,
+          "gain_R": 32.42116147553421,
+          "loss_R": 29.106749191596087,
+          "net_USD_flat_1oz": 25.29374387071146,
+          "sum_R2": 96.52282977774534,
+          "mean_R": 0.06137800525811353,
+          "PF_R": 1.113870919150775,
+          "positive_years": 1,
+          "yearly_n": [
+            54
+          ]
+        },
+        "combined": {
+          "n": 1053,
+          "wins": 364,
+          "net_R": -135.25361134389095,
+          "gain_R": 518.5717492450274,
+          "loss_R": 653.8253605889183,
+          "net_USD_flat_1oz": -1733.3509035194757,
+          "sum_R2": 1646.6347115587537,
+          "mean_R": -0.12844597468555646,
+          "PF_R": 0.79313495698291,
+          "positive_years": 0,
+          "yearly_n": [
+            1053
+          ]
+        },
+        "additional_slot_fills": 1034,
+        "anchor_control_fills_displaced": 39,
+        "duplicates": 720,
+        "occupancy_or_embargo_rejects": 2482,
+        "combined_minus_anchor_fills": 999,
+        "combined_minus_anchor_flat_USD": -1758.6446473901872
+      },
+      "A2": {
+        "anchor": {
+          "n": 52,
+          "wins": 20,
+          "net_R": -0.06941692365002039,
+          "gain_R": 29.12691404537048,
+          "loss_R": 29.1963309690205,
+          "net_USD_flat_1oz": -2.2447851328567907,
+          "sum_R2": 89.35040547068596,
+          "mean_R": -0.001334940839423469,
+          "PF_R": 0.9976224093457607,
+          "positive_years": 0,
+          "yearly_n": [
+            52
+          ]
+        },
+        "combined": {
+          "n": 807,
+          "wins": 264,
+          "net_R": -163.8116238252635,
+          "gain_R": 338.34845975821605,
+          "loss_R": 502.16008358347955,
+          "net_USD_flat_1oz": -2211.2329694420905,
+          "sum_R2": 1117.8884200581074,
+          "mean_R": -0.20298838144394485,
+          "PF_R": 0.6737860511407389,
+          "positive_years": 0,
+          "yearly_n": [
+            807
+          ]
+        },
+        "additional_slot_fills": 787,
+        "anchor_control_fills_displaced": 36,
+        "duplicates": 324,
+        "occupancy_or_embargo_rejects": 1300,
+        "combined_minus_anchor_fills": 755,
+        "combined_minus_anchor_flat_USD": -2208.988184309234
+      },
+      "B2": {
+        "anchor": {
+          "n": 52,
+          "wins": 20,
+          "net_R": -0.06941692365002039,
+          "gain_R": 29.12691404537048,
+          "loss_R": 29.1963309690205,
+          "net_USD_flat_1oz": -2.2447851328567907,
+          "sum_R2": 89.35040547068596,
+          "mean_R": -0.001334940839423469,
+          "PF_R": 0.9976224093457607,
+          "positive_years": 0,
+          "yearly_n": [
+            52
+          ]
+        },
+        "combined": {
+          "n": 807,
+          "wins": 264,
+          "net_R": -163.8116238252635,
+          "gain_R": 338.34845975821605,
+          "loss_R": 502.16008358347955,
+          "net_USD_flat_1oz": -2211.2329694420905,
+          "sum_R2": 1117.8884200581074,
+          "mean_R": -0.20298838144394485,
+          "PF_R": 0.6737860511407389,
+          "positive_years": 0,
+          "yearly_n": [
+            807
+          ]
+        },
+        "additional_slot_fills": 787,
+        "anchor_control_fills_displaced": 36,
+        "duplicates": 324,
+        "occupancy_or_embargo_rejects": 1300,
+        "combined_minus_anchor_fills": 755,
+        "combined_minus_anchor_flat_USD": -2208.988184309234
+      }
+    }
+  },
+  "individual_screen_survivors": 0,
+  "fixed_basket_screen_pass": false,
+  "status": "REJECT_FIXED_BASKET",
+  "native_ACCEPT": 0,
+  "shared_V1_wallet": false,
+  "native_parity": false,
+  "V1_incremental_funded_fills": null,
+  "V1_balance_change": null,
+  "max_V1_floating_DD_change": null,
+  "production_changes": false,
+  "annual_provenance": [
+    {
+      "year": 2019,
+      "actual_first": "2019-01-01 00:00:00+00:00",
+      "actual_last": "2019-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2019,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "8333f7b9c0fccaece4969835f52d4661ca886ac915b336ee73149af3a04de179",
+            "2": "82a1337a4f2b22b86f34d2bc2490ab408f227dd10fd94701d6d4e5f6fa0ce459",
+            "3": "dd742bff0cf9304ae5be5538a847c863134428debd27a49d592b050125871bef",
+            "4": "135134c8fe8e3aab37ab3895270846875e7378b45c13ceba7ac2059a0d5fce2a",
+            "5": "bde260ca8095bbdbc412d9520c87e6234588e6235e5896d16f90dabae6b8006e",
+            "6": "76733a3dacc16f2fabec081dcc728d3645072c8f9d219a43ea3b9d48012981ee",
+            "7": "fb91c6b00a9314ddfcfbe7366e12000ad3565d16d97622c07a7e569678b2f64c",
+            "8": "a1b3bf6f5eec08872c556fb3c64ef2092828dbfa351ef9259a09152a479fa80f",
+            "9": "b1ebb464895754b809a6d91e4ddc046c156da694201d32e0a39441e84125a61a",
+            "10": "5796528586f06335d03ab940bc5d2314b35b76751919e3a0c17266f4294b2565",
+            "11": "952db00d759f16257fbf677016dfe89c5bb9458075cc38b0eb3ff57acb09e171",
+            "12": "cb49e233c8c9a01f1642149ff92c4218a8b5e29e07d7564c83b8606263829c98"
+          },
+          "ask": {
+            "1": "805ad77f3c2b619aeab80edb2647040a98e7a0879aa694211112794227b51ed1",
+            "2": "b86a0289ff4a7115a95aefce048b6d990303d0627de441bafd288e9e7af609f0",
+            "3": "7546318075caec6223ea64f54f92a2d119fd6323b95e5e596e418ff7a98b64e3",
+            "4": "ee897e21129a44db96d90d00ff326e8d078628e84c8848e9806846b00dbd964a",
+            "5": "9ed31c85e38424bd00ce55ace339350ca81ac70889525730aa206e8390e24e0d",
+            "6": "175f0dc6d19250b80ff8fd0f6587f454f4383deadd7e5bda84e6e2b432a010ec",
+            "7": "2bfbc939b50b2eea57992764179ae786ba51ca668bf967dc9385492bb8c19663",
+            "8": "96aafb0f8841af76dadde90e7063ce86b633e11968f469dd58113c1ae8d709d8",
+            "9": "3b8515561d880fda8228d4943c11336cb60ec94098890c2ef566e76005680762",
+            "10": "2ff91d81466f56836b0ea570ba81d839794701045f1d92ebbce4d867d08bca62",
+            "11": "261b67d2608d77c49e3df544c92b66426be5351439bc12ed7eb2820436baa193",
+            "12": "d8820be7432a1a363ad68b9b395f16a3d7f07b20aca87a82e60c790c3fe83ec5"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 171267,
+        "stale_quote_minutes_censored": 18387,
+        "observed_spread_median_usd_per_oz": 0.2899999999999636,
+        "observed_spread_p95_usd_per_oz": 0.34999999999990905,
+        "rows": 354333,
+        "first": "2019-01-01 00:00:00+00:00",
+        "last": "2019-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2020,
+      "actual_first": "2020-01-01 00:00:00+00:00",
+      "actual_last": "2020-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2020,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "d18e9a1ca70bc88e36b5b30d39b42593d5d6cef04ef0fee072ce33af5e14a5dc",
+            "2": "08e92e1d88651135aad81535e4750a890becd7ac793439c011d5688b2c1f9f28",
+            "3": "779112c1b114e9a3a93d406af9ac29e436ea7fab5aa63d98ce33432d99b71af7",
+            "4": "5cf7c5d7dc1a5ab7cf7a5f7a911fc930c1afc76308c03b6bb54705bf8ce97c56",
+            "5": "7be9580f0f31e6e60ff57bacc08713b2274cf1ee8538c3542510517b70cbb97e",
+            "6": "692775034a1660acc62825f403395d87c574c3c64a9238d3e4ce7dc3e83efbb3",
+            "7": "54e50173d3444d73049a48c1026b65d69a7bbbe18073634b91b727ca2d2b9f21",
+            "8": "d1737bff670af34e5b306598206c27261faff37b4d4fe141e5cca296d669ff06",
+            "9": "30f059a05f615ff0c224abd908079115bbdec1c42b210ca59791b01f23ff7a78",
+            "10": "0b67d7e7eaf7256ff2858f29f715d18aed35fee1b049b422e6af6fe507e3b748",
+            "11": "21d1b1311b86eebd18cb1c3df48a6436e70e8cf0c7aed5366a4765aa7c9247a9",
+            "12": "6cf6d0a8085a24c212f1bfc415e3c54fca4a9df9c40525a1b49d08f13b9f7ec0"
+          },
+          "ask": {
+            "1": "14162a88106b615fe00f9ba4a53ff5907113a5f2d56222142ca6dc6d94f91f6d",
+            "2": "4ec6aadbef76651c5553111bfe887e899c4aa160c2b310d69c9428d64ac64c7f",
+            "3": "c16802ec4727f715e9b38a161e191c0e1a6f1e2492d26f88b8c7c56d289bd975",
+            "4": "9d73ef82dd90b873a71a85be5bb04e1c3ab13158017994b0c9c06045a0848c42",
+            "5": "07ac80735173f02d2052d203c418324547c4f7fda67ce67c67597fb084131d62",
+            "6": "a27d38a00160acf643d8c5cf686aa92dc2371b87afb53f847ad464391c9942e2",
+            "7": "2745a4f6d221404bb8c8c3c8d3a485a6e4a361da08a89e24579612518c829759",
+            "8": "e0bb97e6dd8a10f04bc1a3ca6c7e0e8818a99a2477f7c2e7a859ab95db075436",
+            "9": "9c8b1510fef481c100f90da66371b69158b532580e170f5d77652429b722d8d1",
+            "10": "da1f4a273c7b6d05757759b6e416dffab0dd38d61334ee6d02b785fd374d102a",
+            "11": "239b77126d07c161da4781c62650e2f618c70086c775de03d2ef61569f5c7223",
+            "12": "e4e9cfb9aed4891a8f4ba7d00baca8efa43a116bee0e6761af8ba63d215f520b"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 171238,
+        "stale_quote_minutes_censored": 18358,
+        "observed_spread_median_usd_per_oz": 0.3969999999999345,
+        "observed_spread_p95_usd_per_oz": 1.1739999999999782,
+        "rows": 355802,
+        "first": "2020-01-01 00:00:00+00:00",
+        "last": "2020-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2021,
+      "actual_first": "2021-01-01 00:00:00+00:00",
+      "actual_last": "2021-12-31 21:59:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2021,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "c33b3280d3e7997b46f81961dab7bcc74b7b6fc0847e294649f68f2693670e80",
+            "2": "9c0f6d846bda6cf4c3a05aaf82cb453c6745225ccdea6ad51d972b77b3ce24cc",
+            "3": "aae5b9f6f9ef5d75f54a3343b405682c8863f9959309adfe3dd1a73e18cf223d",
+            "4": "4a334dc17f38dd5f98bf3042979ae34e1f54e03396626f966d071e8eb764cbc0",
+            "5": "e9a4da6b2c5faf582b8631e3d8f90affe880d0db57e324302ad6c51043b5b399",
+            "6": "120591390b227a1a12c09ef77d8c1cdf25149f15139326c6440f6ac136fc825b",
+            "7": "ac7d6885e11160488ba5ee0868358a83cbf8275ff60ca1aa50b9813698f3fcbb",
+            "8": "7e0584ee83ff71e6bfcb62948845561fbf461e458e7306101825010619e7cfa8",
+            "9": "43dd51364256511a736250d785ad0370d6a4da9e9f513adbfb6a817fe8e5f3c0",
+            "10": "e0d98070053e3124f9536b6149b97788fb7edeb884fd545413c3bf95e0f552ff",
+            "11": "0127ae0617eb097151ea8673e6f5d2a86234dcc7e5c04eb966b2fc35a003c82d",
+            "12": "f5fe37477a8792a50a7a1d15b438135a7bb91ff7d431191fb73b56586be234f8"
+          },
+          "ask": {
+            "1": "f075c7e6e5e31dcfd2130206ebc6f155123a37326301b960548b39de437937f1",
+            "2": "c10c3e522b2010d8bbc8c650bc51d229f2d1357b242c2bc898794f24c6f1f3ec",
+            "3": "6a8e276ecd59cbf25e6962c1026c4da3f4561db2c2e916b7e6031e5238fa07b4",
+            "4": "57b77cba77c83a5a3480f069879dd50add2850843f87fb1d718f9ca267623508",
+            "5": "a1a42b6bab9bd05617f169f8c7707ecf641b569d55f699db3620ba1d25b621e0",
+            "6": "ceb7898e32c5e1aff4bd4f0e4340ce56839172cae3530a3280eebf51baa83bb9",
+            "7": "eb903088b1da9058d573cce9dba921850063bb038163048551f8ff5ccbf81333",
+            "8": "740a2c309ece5041af629810424a01f77557337aaa3312319d00e94e77253dfd",
+            "9": "344949203de7a361c69b3e81f601f536953e3333618e50f3baad970319d55130",
+            "10": "7fd9d790335c308550098dc8485af44602e2ca14297982f2e804ae1f67fee456",
+            "11": "b3b24ee56aac098d7b2a73913ec5ee56cb16f50f1700652ac68c02c80ea90218",
+            "12": "2d9d47fc0a087f95b6898c66324d5590e7dfe98aab4437064c43be5b7c42a211"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170838,
+        "stale_quote_minutes_censored": 17838,
+        "observed_spread_median_usd_per_oz": 0.35400000000004184,
+        "observed_spread_p95_usd_per_oz": 0.4539999999999509,
+        "rows": 354762,
+        "first": "2021-01-01 00:00:00+00:00",
+        "last": "2021-12-31 21:59:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2022,
+      "actual_first": "2022-01-02 23:00:00+00:00",
+      "actual_last": "2022-12-30 21:59:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2022,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "48c7145468b08505dd0de252df8abadf65144829fa30cd176fdacc1ba48ce24f",
+            "2": "b091d3714874faf7cb5de4571138bcd473c4c451a4ffa4ad112b6c312b087de5",
+            "3": "0fb3da0b6e055abc5fbf2539e95e859b1738d9b23c203aae2eedad8dd10da9d2",
+            "4": "a0ab770823c1df42532124cce97651b0ee5039016cad198bb306bfd4af036507",
+            "5": "5050ff290734f507aa6c97f1f770bc8b73d7868ff8bc987c953c687f8cb05291",
+            "6": "34e668669dbe6dc58b96c9077481ac062d0fe7d48a43c1a252c03edba72eb693",
+            "7": "910c49b054062a5bf0112a4db8d70997df24891db26675415d313ab2751aeb6a",
+            "8": "f7f7f5f4763e414e043307c41fd9dceffafd7d24f7ad38a3ee79fc5db04ece0d",
+            "9": "938caf59faca876bb6cd37c6929ac3bc6cb1cad052e54c2f27f9a950e285e29f",
+            "10": "9d85fe527ae5c80d1d35daf5bc68dca86ac341f4bd00e07366a6f7c7756c7bb5",
+            "11": "838c4f575ac8769553cca7e295634e49e1cd95ab6cb848de0860e053a27cbe80",
+            "12": "1e71133e0cd9fb27ec797bd82083900747762f893a10a7543472691dd5be349a"
+          },
+          "ask": {
+            "1": "122acd8766b98a68ea96d22106a34c7516430f0569ee19a612f8455e4bf5eb61",
+            "2": "ea4938af8536395f9a8c0171dc9084734492d8b8e7a907977926ce9f5dfcc20d",
+            "3": "104931345bc0310e173d22705fed7dbda9a6653c9ae12fd142bf2bbb74d89b67",
+            "4": "b4c8eb7b87ef25fa3198e5be928c0d9ca55abeaeb1341f55b89bfcef9632e169",
+            "5": "ab9e4fa2b936a8a860ffe4a405a1b32e62b97e83939859b4674e0e4d3867acff",
+            "6": "32b0bf84ab709692b9682ea4e4d2d8a886f1a5e599cff6baba50f7d4fb85e95b",
+            "7": "64974577df01492beadc5b66958c43dffacdb4a606d6dba0a6b3ee1994140d7a",
+            "8": "7b4125fee8ae2cae7a2c06358fb98ba236340f78032311debe6f9574793867d8",
+            "9": "33e54f7c145061fd0954ce2b6a9dc45d39b28a043afd76fbf3ea9c3b24ad7941",
+            "10": "3ecfb766c15f3a4fd3d0a40ddb74a57358389e30270f414df18da32da0587af9",
+            "11": "ed95f86a1ba14aa2756afaf655ed415913a606147608f98db9358ead4b25626e",
+            "12": "ca0bd7708b64bfec28c0719e61b2df54e2fc79a96b3f794e9eee6d5bf7f97b8e"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170506,
+        "stale_quote_minutes_censored": 16186,
+        "observed_spread_median_usd_per_oz": 0.3669999999999618,
+        "observed_spread_p95_usd_per_oz": 0.4900000000000091,
+        "rows": 355094,
+        "first": "2022-01-02 23:00:00+00:00",
+        "last": "2022-12-30 21:59:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2023,
+      "actual_first": "2023-01-01 23:00:00+00:00",
+      "actual_last": "2023-12-31 23:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2023,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "6e5c929e3088afdce93496722cb862bb0b8691ac1c4ce8d7b5d1a45447036cc7",
+            "2": "7f826795bc7d7521bbe15cf6c2dd9d7e2bf1191d5c2026ebf8ee177eaba8f89a",
+            "3": "1cbc3972c500efa1ed2e08fed13628ab26668a5edb6de56188522b33dac378be",
+            "4": "c189ca5b1936230768b2cd84faaae09c9ec4433510a88d29d1c996253853bbb7",
+            "5": "fafe3c7a7bd77b34fcbcf91eb4d00be34485d9905f49fccea6b446962f211e06",
+            "6": "2b4c31465a97b42697520508ff4030c92fc77590566b26af055398f281604e71",
+            "7": "1122aad583132aea088dafe044de16a099ad2bdbcd7e9c3406b7a5e1383336d5",
+            "8": "ea50d3f364039cd6c8eaa46f6800fd089324533d535b0d3c716c911c31f8848d",
+            "9": "6c5f7127afd5be0a881c49b6a7aa877704fb5026f24ad8dcdb698994b2df0986",
+            "10": "ea6875e0d903d6ac666838c1d465d65c91b79f68aa549f530ddaa5dfa99183ae",
+            "11": "2d5affe5474357668d4977becae84343367951fc12b4a2056c4ef12276c2354e",
+            "12": "0773c7fd02c64941517ccd564ec30a746cd933f3e6a67455da9681097e8232ed"
+          },
+          "ask": {
+            "1": "8d90943c55c511a725130f3ea92fb31666da39faba3e4d30861fe36588ce0031",
+            "2": "b7194d770999104e5a0c342433cc39f9609f5560ae9bea9a41c70d8d9e089b6d",
+            "3": "05a23990bee929e10a38a322da1afb8504872d342265e03c4af2becfb177c4db",
+            "4": "89b1a0ed01b1ddbdd3889edfdf1ae1a4b9e9076aefb001385ce557d2f06d6efd",
+            "5": "3c0127d3dc79e2dec6625c1ce92a85e7316557f2c67fcf796ce8e7f207fe52dc",
+            "6": "a1a05ae6f86da479904e0d777036d71f20ff88317a8405f1ea6b4f850a804cbb",
+            "7": "155da5cc282c75ae35123a12a906d44963637d7cd26509c99c1a2708d85a1019",
+            "8": "afef43eb0eed80ca3e768da8c2aa17dfd773209aeb08e08883ee6b7d27ddb95e",
+            "9": "4aeae8563feff2c78719338a2df7894537960f2d1078244858d8756fba5390fa",
+            "10": "6cba0b4606b31f5f23a9ea59f59625ea10462874a2ed3d69c622be4a5e1d433e",
+            "11": "f205f7b132559b2ce4c09bf4b85b67dc0da01078c53fe9ee8154242bfbe57643",
+            "12": "fdec9028a6f3e17306a9c02b2c34f135f1c1666fce1b6a29de064cf2aaf74b68"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 172002,
+        "stale_quote_minutes_censored": 17742,
+        "observed_spread_median_usd_per_oz": 0.32999999999992724,
+        "observed_spread_p95_usd_per_oz": 0.4099999999998545,
+        "rows": 353598,
+        "first": "2023-01-01 23:00:00+00:00",
+        "last": "2023-12-31 23:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2024,
+      "actual_first": "2024-01-01 00:00:00+00:00",
+      "actual_last": "2024-12-31 22:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2024,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "7414d1cf6a02cf4fff5347e79602e9109549622cb73b152e5462188cc797135d",
+            "2": "45060c59ccfc0ef3d5f78b49d793b7e3f97757a7659c604b887850068346621f",
+            "3": "28c82e54e1bd7f586f5d22c0c39d9217618f62e8dfdd7eab94602c2c2bb81a14",
+            "4": "ce55b0d9acdf20c694c37e3c53233455cc8b772269eb39f60357808abe37b9c9",
+            "5": "18084ecf8e9d5cef352cc290a55de29f27f006653b5da24a6520f8a02488f4f6",
+            "6": "f7cad6452e9666b37f6f7830bb69a61439095919bb1609daa80839fdb3a8fd39",
+            "7": "a1c432b64a36118f1934c9c838cee83c1f05181fbfd602452fd3d46acdd4fd52",
+            "8": "69a43d059dbdb9bce3bed1be13db378437ed4131cd109d04690fadf2aa17a476",
+            "9": "b9548afce3bc91d47831654ff5745b2165241e5729fc40cdb82d2df76b3c0668",
+            "10": "7eaccb67908ef0ce451a230ee9e723cd2ed3e618f8e1ca9eb8148fc4457cd6d7",
+            "11": "8bdd99624cdebcc843d41420bbced1e57f91d9bebeb42279b85e6c9450232f8f",
+            "12": "c086505bd4ae2f98095bae1c80e6b80ade803ae8f56de6e558e37a0153f967cd"
+          },
+          "ask": {
+            "1": "a4ac5385c164b40a5760890279455228f64646180ea04bb6e45e633cafc024ae",
+            "2": "40706a4ec8abb07c6fe13e4c4562f7d07485c104226e42d36c57e06d36c1c167",
+            "3": "12ee5b98105d955b18b7a496120998f5f6647987cd16f706c94da6bd7541eb91",
+            "4": "ef4001235ec800174d32459174e2235d7cdaf9f67662108c78a962d1d4cb43c6",
+            "5": "54ffe9267ce4be51e68746c20eb0a3d5d77f46b0fc71c34af7eb8884d0af6588",
+            "6": "ec13944e0fa902394e6a48baf8e142696c3b1486d229d50603f5464085073c56",
+            "7": "129719740c4a6a034c756fefb3aa8759b00535c05345e60ffb527d75da7bae1b",
+            "8": "98326a42603240856c1d30b308b6ed16dd156b9badb7896b79d45d65b7ace208",
+            "9": "0b53c5d2372139bd985f8668e3739bfd8e31cfe698d1894dd9e13b2ebf4a750a",
+            "10": "cc4bff8d23b27fff6593d76be10d17261f8a90b7114fda06264f04875e1fa1f8",
+            "11": "3642dfbbb823ecc6c0d5807c2ec6f0bec7892ef960fa45d54f6a641cd8ebaae5",
+            "12": "b824face3d3e7f7dbf780d75d9a6081d82e5e9b26e1b5dfc403195a75df7c335"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170671,
+        "stale_quote_minutes_censored": 17791,
+        "observed_spread_median_usd_per_oz": 0.3769999999999527,
+        "observed_spread_p95_usd_per_oz": 0.4899999999997817,
+        "rows": 356369,
+        "first": "2024-01-01 00:00:00+00:00",
+        "last": "2024-12-31 22:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2025,
+      "actual_first": "2025-01-01 00:00:00+00:00",
+      "actual_last": "2025-12-31 22:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2025,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "4596e50b3fb203e12a9eee24942e0d22db8a2e409b71f9546a1e6ee6f80233a0",
+            "2": "59c6380fcccc11883f74d09bbc3fc7cddf093d0e8c00e8d6826cf19fe7350e58",
+            "3": "24b0bfbf3baa5d2bd314cb081a78835b182e1bb410d916e47479a780618874cb",
+            "4": "4e2364e526b266b788b7e980902e9e457653357b58ad5d9caff17814e4bce832",
+            "5": "d0f3a257cf9f9259d4ccc8b3a9525cfeed0413e281bb31521263d69d0aca2be0",
+            "6": "2440bcdc23708b6dcaea4e0d2cc8cab57b373dc5be3c287fc8086e82ee84d44e",
+            "7": "865435434eedc5fec42bd94bce881847be253092e44975228ce2e70959b47434",
+            "8": "eceee53a978775a2d7dab296a521890ff792d2cd426e7ba5eb094b63c97b83a5",
+            "9": "56855187ac9d16e19e422a76c198dde83be9f0be15c87e25d7561d1d7c5cd305",
+            "10": "ead56d0f295b545c8e291b4ef88a1fdd6e232b1a0fa0839051cbfb9135fa02b7",
+            "11": "0a4ad6343d60a96c78d5b72b1cf8386c9772617c500e4e5fbe3f38abc2229666",
+            "12": "92936e9e939434985ba0928cafbd8c2a248fd1c0f60371b36d3260d6481773fd"
+          },
+          "ask": {
+            "1": "b8c99a0e1b2f40c0eb8348364ca22b4c81ae395baf43547bec16e7ca41163617",
+            "2": "7f6c9348a43b99fadd6e8304d9c15108d14a328451b028353d52a7fa6ba0e355",
+            "3": "4351c24c8855c0d644cf26d2060befda3d48aaccb3aa5cb51351852ad4a5f455",
+            "4": "5b5297933a1f21fd1b69054e3e88c8694180bd2d8d540b1dcac64bde7a2f2ce8",
+            "5": "ed917c8a50ec2df090f0ad47b0fe4c619677ac99502535ecc5bada44a4d52964",
+            "6": "cc27d092f39c0a8b8bc3c2dedc610512e4baab278c2610d8536495c9ff695498",
+            "7": "a2727bb46f33ba513dea432733dba270eacf74b3a7d92587658e13eeade29ee0",
+            "8": "daa9ac2636ff4bf3f36a2b17cdee9888a2ba4d0a2f0d1029d7c1b17d28128b82",
+            "9": "f7a1ab14912dbe828213dfb4c9bdd8f5ddece7633a0a459161c730347ea18fc4",
+            "10": "4087af9a8d7b20c7d034c22b351c2f240e1940d80dd7a7dda28b401430158381",
+            "11": "fd5e83f9cace8b41fe82d5b458d85d82205902ba3bd75a2653d053611456cbf1",
+            "12": "0993e6f3ef6e5aeb70c965e5c23f4ee285721c9d7b4a1f70a206d09505465790"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170694,
+        "stale_quote_minutes_censored": 17814,
+        "observed_spread_median_usd_per_oz": 0.5799999999999272,
+        "observed_spread_p95_usd_per_oz": 0.8739999999997963,
+        "rows": 354906,
+        "first": "2025-01-01 00:00:00+00:00",
+        "last": "2025-12-31 22:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2026,
+      "actual_first": "2026-01-01 00:00:00+00:00",
+      "actual_last": "2026-08-20 23:58:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "year": 2026,
+        "rows": 225756,
+        "month_end": 8,
+        "full_year": false,
+        "missing_sep_to_dec": true,
+        "source_from": "2026-01-01",
+        "source_last": "2026-08-20 23:58:00+00:00",
+        "bid_ask_unmatched_censored": 1,
+        "bad_or_closed_minutes_removed": 79140,
+        "stale_quote_minutes_censored": 10877,
+        "monthly_sha256": {
+          "bid": {
+            "1": "906ee499bcc0236a6b6cb74ecd6c382ccf435d989a779833952a5c2fbe4ea3fe",
+            "2": "c58121aa702a061a62ca9ef976f682a613231c5b422e820491d121d347a6d7c9",
+            "3": "6f1fa7f0497d74ec053755624e9455d7ab50b0a03d1b712504b48f8690af8dab",
+            "4": "a976ab5b2511e79a87b6aaffb75d8b04b5295d7085240668faecae0f577aa721",
+            "5": "25398f20bce21bef289fe8321808488ef6165996064f38fab3f44f488dfd5bbd",
+            "6": "32498557a57cffbc80134be81755f89bb55d95aed6037e95fad259c10a52b284",
+            "7": "1861d23f4edbaa9cc5c5ca2bd419c9a7d54ef60299a75c5d4e8e8681bd308286",
+            "8": "4f61d531018a8e8c37b1f410945e1d23d59fee96cde13bef223dcc9e63d0f852"
+          },
+          "ask": {
+            "1": "b3dc4193328b2c61d44a5de8fd47f437d7e98349a978b64d72d7d57f8dfec89c",
+            "2": "a3985eb8a8236bcdecf25ec2541c3cdac1e2ff8e2266fc30e78ddd58253f28a6",
+            "3": "670a2dfc1f010661b9a435c78c9c093f7e48d8a777892619d3b84bc3a2a5e173",
+            "4": "95e5a5fd9dd9ad37bbc162bc67e4e92c44a87ef1f298ecedbf5ef37cc6c36091",
+            "5": "af9b1efcce3ede8f01c0b27806f0886419c784fa2d0feb5446e680beb53cca33",
+            "6": "e87bc45b471716a16c9849d07f32d7ca4c2267d5340e06575ddeb157ea34429f",
+            "7": "8dfba3b5b078cd3e5fbc0d6b946c3e6be34372a170bbbd50251ebd2299314f81",
+            "8": "674b6c378ec244add68b153a493f3491e9b82d1cdb2de460f16a3d033bd49662"
+          }
+        },
+        "venue_not_FP_Markets": true,
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    }
+  ]
+}

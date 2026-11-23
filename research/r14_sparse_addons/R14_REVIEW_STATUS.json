@@ -1,0 +1,168 @@
+{
+  "preregistered_registry_unchanged": true,
+  "source_commit": "4e4e5519befd189b601397001b6c3cabd8692ca2",
+  "reviews": [
+    {
+      "id": 27615,
+      "role": "ANCHOR",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "User-selected anchor retained in research registry; later-period stress return is negative."
+    },
+    {
+      "id": 451239,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 41112,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 1708650,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 409689,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 340959,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": true,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 22680,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 1142441,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 1957798,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 2303422,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 412060,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 1192580,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 1814545,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 1736543,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Positive pooled R in both later complete periods, but validation sample and annual-consistency gates fail; exploratory diagnostic only."
+    },
+    {
+      "id": 1667472,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    },
+    {
+      "id": 2031260,
+      "role": "ADDITIONAL",
+      "parameters_preserved": true,
+      "current_research_decision": "REJECT_LATER_PERIOD_SCREEN",
+      "validation_pass": false,
+      "evaluation_pass": false,
+      "production_enabled": false,
+      "notes": "Keep full later-period outcomes, including failures; no post-hoc basket pruning."
+    }
+  ],
+  "native_parity": false,
+  "V1_balance_change": null
+}
