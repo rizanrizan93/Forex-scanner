@@ -1,0 +1,30 @@
+name: ForexScanner Best Candidate Direction Board Tests
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/best_candidate_direction_ui.yml'
+      - 'src/fx_scanner/best_candidate_direction.py'
+      - 'src/fx_scanner/frozen_direction_research_dashboard.py'
+      - 'tests/test_best_candidate_direction.py'
+      - 'tests/test_r281_shadow_feed.py'
+permissions:
+  contents: read
+jobs:
+  validate-best-side-board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dashboard test dependencies
+        run: pip install -r requirements.txt
+      - name: Ensure primary best-side routing is causal and safe
+        run: python -m pytest -q tests/test_best_candidate_direction.py tests/test_r281_shadow_feed.py tests/test_rbest_side_feed.py tests/test_r294_frozen_h4_buy_feed.py
+      - name: Compile current direction dashboard
+        run: python -m py_compile src/fx_scanner/best_candidate_direction.py src/fx_scanner/frozen_direction_research_dashboard.py
