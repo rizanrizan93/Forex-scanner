@@ -103,9 +103,14 @@ def render_frozen_direction_research():
     candidates=candidate_rows(lock)
     summary=candidate_summary(lock)
 
-    @st.cache_data(ttl=30,show_spinner=False)
+    @st.cache_data(ttl=90,show_spinner=False)
     def read_r281(slot):
-        return fetch_r281()
+        try:
+            return fetch_r281()
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            # Cache transport failure briefly: avoid raw/API retry storms,
+            # retain exact WAIT DATA rather than fabricate model direction.
+            return {tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
 
     @st.cache_data(ttl=30,show_spinner=False)
     def read_chart(slot):
@@ -118,7 +123,7 @@ def render_frozen_direction_research():
     def panel():
         now=datetime.now(UTC)
         try:
-            shadow=read_r281(int(now.timestamp()//30))
+            shadow=read_r281(int(now.timestamp()//90))
         except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
             shadow={tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
         st.markdown("### Arah model sekarang · H1/H4/D1/W1")
