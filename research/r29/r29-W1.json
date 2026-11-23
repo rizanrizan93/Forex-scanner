@@ -1,0 +1,368 @@
+{
+  "contract": "RIZAN_R29_ACCURACY_RESEARCH_V1",
+  "tf": "W1",
+  "research_only": true,
+  "execution_authority": false,
+  "production_changed": false,
+  "fits": 104,
+  "folds": [
+    {
+      "year": 2023,
+      "status": "EVALUATED",
+      "policy": {
+        "BUY": {
+          "model": "structure|logit:0.03|0",
+          "cut": 0.65
+        },
+        "SELL": {
+          "model": "structure_fx|logit:0.3|0",
+          "cut": 0.5
+        }
+      },
+      "validation": {
+        "BUY": {
+          "n": 64,
+          "correct": 34,
+          "accuracy": 0.53125,
+          "wilson_lower95": 0.41072087051471007
+        },
+        "SELL": {
+          "n": 8,
+          "correct": 4,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.2152160622138776
+        },
+        "n": 72,
+        "correct": 38,
+        "accuracy": 0.5277777777777778,
+        "coverage": 0.6990291262135923,
+        "eligible": 103,
+        "conflicts": 9,
+        "wilson_lower95": 0.4140067049007661
+      },
+      "r29": {
+        "BUY": {
+          "n": 0,
+          "correct": 0,
+          "accuracy": null,
+          "wilson_lower95": null
+        },
+        "SELL": {
+          "n": 22,
+          "correct": 9,
+          "accuracy": 0.4090909090909091,
+          "wilson_lower95": 0.23255816196471868
+        },
+        "n": 22,
+        "correct": 9,
+        "accuracy": 0.4090909090909091,
+        "coverage": 0.8148148148148148,
+        "eligible": 27,
+        "conflicts": 0,
+        "wilson_lower95": 0.23255816196471868
+      },
+      "r281_same_sample": {
+        "BUY": {
+          "n": 16,
+          "correct": 9,
+          "accuracy": 0.5625,
+          "wilson_lower95": 0.331785563988119
+        },
+        "SELL": {
+          "n": 4,
+          "correct": 1,
+          "accuracy": 0.25,
+          "wilson_lower95": 0.045587260809700575
+        },
+        "n": 20,
+        "correct": 10,
+        "accuracy": 0.5,
+        "coverage": 0.7407407407407407,
+        "eligible": 27,
+        "conflicts": 7,
+        "wilson_lower95": 0.29929800819821234
+      },
+      "accuracy_delta_pp": -9.090909090909088
+    },
+    {
+      "year": 2024,
+      "status": "EVALUATED",
+      "policy": {
+        "BUY": {
+          "model": "structure_fx|hgb|0",
+          "cut": 0.5
+        },
+        "SELL": {
+          "model": "structure_fx|hgb|0",
+          "cut": 0.5
+        }
+      },
+      "validation": {
+        "BUY": {
+          "n": 63,
+          "correct": 36,
+          "accuracy": 0.5714285714285714,
+          "wilson_lower95": 0.4486161514309503
+        },
+        "SELL": {
+          "n": 16,
+          "correct": 8,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.27999563610326017
+        },
+        "n": 79,
+        "correct": 44,
+        "accuracy": 0.5569620253164557,
+        "coverage": 1.0,
+        "eligible": 79,
+        "conflicts": 0,
+        "wilson_lower95": 0.44731912948308383
+      },
+      "r29": {
+        "BUY": {
+          "n": 41,
+          "correct": 20,
+          "accuracy": 0.4878048780487805,
+          "wilson_lower95": 0.34254429554432664
+        },
+        "SELL": {
+          "n": 11,
+          "correct": 5,
+          "accuracy": 0.45454545454545453,
+          "wilson_lower95": 0.21271271622459764
+        },
+        "n": 52,
+        "correct": 25,
+        "accuracy": 0.4807692307692308,
+        "coverage": 1.0,
+        "eligible": 52,
+        "conflicts": 0,
+        "wilson_lower95": 0.35104114445455514
+      },
+      "r281_same_sample": {
+        "BUY": {
+          "n": 31,
+          "correct": 15,
+          "accuracy": 0.4838709677419355,
+          "wilson_lower95": 0.31970251562417307
+        },
+        "SELL": {
+          "n": 15,
+          "correct": 7,
+          "accuracy": 0.4666666666666667,
+          "wilson_lower95": 0.24809535365737387
+        },
+        "n": 46,
+        "correct": 22,
+        "accuracy": 0.4782608695652174,
+        "coverage": 0.8846153846153846,
+        "eligible": 52,
+        "conflicts": 0,
+        "wilson_lower95": 0.3412468943404568
+      },
+      "accuracy_delta_pp": 0.2508361204013376
+    },
+    {
+      "year": 2025,
+      "status": "EVALUATED",
+      "policy": {
+        "BUY": {
+          "model": "price|hgb|0",
+          "cut": 0.56
+        },
+        "SELL": {
+          "model": "structure_fx|hgb|0",
+          "cut": 0.5
+        }
+      },
+      "validation": {
+        "BUY": {
+          "n": 32,
+          "correct": 21,
+          "accuracy": 0.65625,
+          "wilson_lower95": 0.4831108797896222
+        },
+        "SELL": {
+          "n": 11,
+          "correct": 7,
+          "accuracy": 0.6363636363636364,
+          "wilson_lower95": 0.35380117450784887
+        },
+        "n": 43,
+        "correct": 28,
+        "accuracy": 0.6511627906976745,
+        "coverage": 0.5375,
+        "eligible": 80,
+        "conflicts": 6,
+        "wilson_lower95": 0.5017178199285204
+      },
+      "r29": {
+        "BUY": {
+          "n": 12,
+          "correct": 12,
+          "accuracy": 1.0,
+          "wilson_lower95": 0.7575059933447591
+        },
+        "SELL": {
+          "n": 12,
+          "correct": 4,
+          "accuracy": 0.3333333333333333,
+          "wilson_lower95": 0.13812009109121315
+        },
+        "n": 24,
+        "correct": 16,
+        "accuracy": 0.6666666666666666,
+        "coverage": 0.47058823529411764,
+        "eligible": 51,
+        "conflicts": 4,
+        "wilson_lower95": 0.4670631683813174
+      },
+      "r281_same_sample": {
+        "BUY": {
+          "n": 27,
+          "correct": 21,
+          "accuracy": 0.7777777777777778,
+          "wilson_lower95": 0.5924307113336742
+        },
+        "SELL": {
+          "n": 14,
+          "correct": 7,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.26799202452413634
+        },
+        "n": 41,
+        "correct": 28,
+        "accuracy": 0.6829268292682927,
+        "coverage": 0.803921568627451,
+        "eligible": 51,
+        "conflicts": 0,
+        "wilson_lower95": 0.5301580035565572
+      },
+      "accuracy_delta_pp": -1.6260162601626105
+    },
+    {
+      "year": 2026,
+      "status": "EVALUATED",
+      "policy": {
+        "BUY": {
+          "model": "structure|logit:0.03|0",
+          "cut": 0.53
+        },
+        "SELL": {
+          "model": "structure_fx|logit:0.03|0",
+          "cut": 0.5
+        }
+      },
+      "validation": {
+        "BUY": {
+          "n": 50,
+          "correct": 34,
+          "accuracy": 0.68,
+          "wilson_lower95": 0.5418970269185592
+        },
+        "SELL": {
+          "n": 18,
+          "correct": 12,
+          "accuracy": 0.6666666666666666,
+          "wilson_lower95": 0.437494672959451
+        },
+        "n": 68,
+        "correct": 46,
+        "accuracy": 0.6764705882352942,
+        "coverage": 0.6538461538461539,
+        "eligible": 104,
+        "conflicts": 29,
+        "wilson_lower95": 0.5584449810050397
+      },
+      "r29": {
+        "BUY": {
+          "n": 27,
+          "correct": 14,
+          "accuracy": 0.5185185185185185,
+          "wilson_lower95": 0.3398561575495229
+        },
+        "SELL": {
+          "n": 5,
+          "correct": 3,
+          "accuracy": 0.6,
+          "wilson_lower95": 0.23072428127601285
+        },
+        "n": 32,
+        "correct": 17,
+        "accuracy": 0.53125,
+        "coverage": 0.7111111111111111,
+        "eligible": 45,
+        "conflicts": 2,
+        "wilson_lower95": 0.36449517118974645
+      },
+      "r281_same_sample": {
+        "BUY": {
+          "n": 32,
+          "correct": 16,
+          "accuracy": 0.5,
+          "wilson_lower95": 0.3363088286932748
+        },
+        "SELL": {
+          "n": 4,
+          "correct": 1,
+          "accuracy": 0.25,
+          "wilson_lower95": 0.045587260809700575
+        },
+        "n": 36,
+        "correct": 17,
+        "accuracy": 0.4722222222222222,
+        "coverage": 0.8,
+        "eligible": 45,
+        "conflicts": 0,
+        "wilson_lower95": 0.3198604151517906
+      },
+      "accuracy_delta_pp": 5.902777777777779
+    }
+  ],
+  "protocol": "fit before validation; two preceding years select side policies; refit before test; purge boundary labels",
+  "limitations": [
+    "Previously inspected archives; chronological evaluation is not pristine holdout",
+    "2026 partial year ends at source archive cutoff, not current broker time",
+    "ECB daily proxy availability is assumed, not point-in-time audited",
+    "Historical partial-candle filters differ from strict broker aggregation",
+    "No automatic live promotion; independent prospective evidence required"
+  ],
+  "last_source_candle_open": "2026-11-09T00:00:00+00:00",
+  "ecb": {
+    "status": "ECB_2026_APPENDED",
+    "last": "2026-11-20T00:00:00+00:00",
+    "rows_2026": 228,
+    "sha256": "908dace77f866f41336206f0d0ec67bbadad2716664a683d677145818d272edb"
+  },
+  "prefix_checks": [
+    "2018-12-31T00:00:00+00:00",
+    "2019-08-12T00:00:00+00:00",
+    "2020-03-23T00:00:00+00:00",
+    "2020-11-02T00:00:00+00:00",
+    "2021-06-14T00:00:00+00:00",
+    "2022-01-24T00:00:00+00:00",
+    "2022-09-05T00:00:00+00:00",
+    "2023-10-02T00:00:00+00:00",
+    "2024-05-13T00:00:00+00:00",
+    "2024-12-23T00:00:00+00:00",
+    "2025-08-04T00:00:00+00:00",
+    "2026-03-16T00:00:00+00:00"
+  ],
+  "source_sha256": {
+    "/tmp/r98/daily-2012.csv": "ad37570e005c640a064f72c3b53f4f0ef4816abdcf214a95db304094c6043be4",
+    "/tmp/r98/daily-2013.csv": "697bd006c2aa9fb82030da2a61f127b94270c362ad9c454bb6e1512012afc070",
+    "/tmp/r98/daily-2014.csv": "d432837e0aff32f973732e645e735438e261f3b36ebe847c09ca7b33b3b66b6b",
+    "/tmp/r98/daily-2015.csv": "146bb87a8e4b8b658ad2e30179fd5e7c73e7599272e7c9d4f3a5e7b39bdcc58f",
+    "/tmp/r98/daily-2016.csv": "2be0ecd3b6106f723b115c71e909a7e08de42a9fc66498d51a04812ae605b271",
+    "/tmp/r98/daily-2017.csv": "0bfe79694bf1572503af1ba049cb5048b87e49b3ee6aa0e1bc28d7a7bf1359d5",
+    "/tmp/r98/daily-2018.csv": "85014242e03d4776d9a49a11302ea19568f871b54872a6440a4063c4426c85e0",
+    "/tmp/r98/daily-2019.csv": "10416d11fbad206add3c51b997224428d8a9cadd26fec6ab0d967cadf58487d6",
+    "/tmp/r98/daily-2020.csv": "08fd5ba8094e68c5cb80dbdfe24d1c41f4cfb8d5be74e372ff59f54a1fbba88b",
+    "/tmp/r98/daily-2021.csv": "814a2b4e4760ef08459e4c5db22133099ceddf51b66cc3294cff5e126870b91c",
+    "/tmp/r98/daily-2022.csv": "b11554644254ae4d238fece19debe78c8307d2fc7937750564f0501cf728ac42",
+    "/tmp/r98/daily-2023.csv": "a929c69f8a7ce17a267dcb3eb45b991a2b5052ab1084d84345bd8ed04a0f7741",
+    "/tmp/r98/daily-2024.csv": "a5cfcab453c6cb12132c309d45c9b2a9c8270c3eaea224a7bcf4f87aaf541f2b",
+    "/tmp/r98/daily-2025.csv": "7c0f4df9878a8916609a71698d8f8626b2e6aafe3f76fdb3b4a65621e6b94a59",
+    "/tmp/r98/daily-2026.csv": "5488cf8f6a1110fd1b86a3cc329566c18c50f402864d0df73d5d3655eda88fbd"
+  }
+}
