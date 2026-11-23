@@ -1398,5 +1398,14 @@
       "unmapped_deals": 2
     }
   },
-  "incident_actions": 11
+  "incident_actions": 11,
+  "repository_wide_ci": {
+    "baseline_run": 45098243346,
+    "repair_run": 45098732806,
+    "baseline_failed": 69,
+    "repair_failed": 69,
+    "new_failing_test_identifiers": [],
+    "repair_passed": 3058,
+    "repair_skipped": 7
+  }
 }

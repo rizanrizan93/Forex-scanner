@@ -90,9 +90,11 @@ Changed code:
 | 9. Checkpoint without traffic | Cannot become connected/healthy solely from checkpoint presence |
 | 10. Active service, broken path | Stale bridge/lease remains attention-required, execution readiness UNKNOWN |
 
+The repository-wide CI remains red: [repair run 45098732806](https://github.com/rizanrizan93/Forex-scanner/actions/runs/45098732806) has 69 failed, 3,058 passed, 7 skipped. Baseline [45098243346](https://github.com/rizanrizan93/Forex-scanner/actions/runs/45098243346), before the monitoring change, has the exact same 69 failing test identifiers (3,042 passed, 6 skipped). New failures: zero. Existing failures include retired DEMO workflow expectations and older dashboard tests; this audit does not claim the entire repository is green.
+
 No broker session exists in the injected tests. They prove bridge state/transport and monitoring behavior, not order exactly-once behavior of an unobserved cTrader restart. No LIVE order was submitted, amended or cancelled by this work. No LIVE checkpoint was reset.
 
-Deployment output: `installed=true`, `trading_service_identity_unchanged=true`, `automatic_recovery=false`. VPS copied-JSON injection output: `VPS_SHADOW_EXPIRED_HEARTBEAT_DETECTED_NO_RESTART`. The timer is active; its real journal contains advancing `V1_HEARTBEAT_OBSERVED` receipts.
+Deployment output: `installed=true`, `trading_service_identity_unchanged=true`, `automatic_recovery=false`. VPS copied-JSON injection output: `VPS_SHADOW_EXPIRED_HEARTBEAT_DETECTED_NO_RESTART`. The timer is active; its real journal contains a `V1_HEARTBEAT_OBSERVED` receipt. The post-install read also confirms all four current leases.
 
 ## E. Latest verified state and residual risk
 
