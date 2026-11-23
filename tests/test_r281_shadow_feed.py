@@ -203,3 +203,39 @@ def test_mobile_wait_cards_are_before_the_wide_benchmark_table():
     assert src.index('st.metric(tf + " · R28.1"') < src.index('st.dataframe([')
     assert "Prediksi sudah berakhir:" in src
     assert "SUDAH KEDALUWARSA · bukan sinyal entry saat ini" in src
+
+
+def test_dashboard_cached_forecast_expires_exactly_at_target_close():
+    from fx_scanner.frozen_direction_research_dashboard import expire_cached_directions
+    from fx_scanner.r281_shadow_feed import blank
+    now=datetime(2026,11,23,10,0,tzinfo=UTC)
+    rows={tf:blank() for tf in PARITY_SAMPLES}
+    rows["H1"].update(
+        state="RECONSTRUCTED_SHADOW",direction="SELL",
+        target=now.isoformat(),issued=(now-timedelta(minutes=30)).isoformat(),
+        model="R281_RECONSTRUCTED_2026_H1",
+    )
+    rows["H4"].update(
+        state="MODEL_ABSTAIN",direction="WAIT",reason="BELOW_THRESHOLD",
+        target=(now+timedelta(hours=2)).isoformat(),buy_score=.48,sell_score=.52,
+    )
+    at_close=expire_cached_directions(rows,now=now)
+    assert at_close["H1"]["direction"]=="WAIT"
+    assert at_close["H1"]["reason"]=="TARGET_CANDLE_EXPIRED"
+    assert at_close["H1"]["expired_at"]==now.isoformat()
+    assert at_close["H1"]["previous_direction"]=="SELL"
+    assert at_close["H4"]["state"]=="MODEL_ABSTAIN"
+    assert at_close["H4"]["reason"]=="BELOW_THRESHOLD"
+    assert rows["H1"]["direction"]=="SELL"  # pure, no mutation
+
+
+def test_dashboard_has_manual_refresh_short_cache_and_visible_model_score():
+    from pathlib import Path
+    p=Path(__file__).resolve().parents[1]/"src/fx_scanner/frozen_direction_research_dashboard.py"
+    source=p.read_text()
+    assert '@st.cache_data(ttl=30,show_spinner=False)' in source
+    assert 'st.button("Perbarui prediksi R28.1 sekarang"' in source
+    assert "read_r281.clear()" in source
+    assert "expire_cached_directions(shadow, now=now)" in source
+    assert "Skor model BUY " in source
+    assert "bukan sinyal trading." in source
