@@ -1,0 +1,55 @@
+name: R32.1 Freeze Verified One Ounce Profit x Extra Signal Overlay
+on:
+  push:
+    branches: ['research/r32-profit-frequency-atr-20261123']
+    paths:
+      - 'scripts/r321_seal_overlay.py'
+      - '.github/workflows/r321_seal_overlay.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Restore all six 2012-26 one-oz overlapping-exposure-guarded receipts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45195869080
+          github-token: ${{ github.token }}
+          pattern: r321-*
+          path: artifacts/r321
+          merge-multiple: true
+      - name: Recompute all trade PnL, original baseline, overlapping exposure and realized DD
+        run: |
+          set -euo pipefail
+          test "$(find artifacts/r321/ -name 'r321-*.json' | wc -l)" -eq 6
+          python -m py_compile scripts/r321_seal_overlay.py
+          python scripts/r321_seal_overlay.py
+      - name: Freeze qualified research evidence, no LIVE execution modifications
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R321_W1_PROFIT_SIGNAL_OVERLAY_LOCK_20261123.json
+          git add research/RIZAN_R321_W1_PROFIT_SIGNAL_OVERLAY_FINDINGS_20261123.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Research-only: freeze R32.1 six W1 main-plus-extra entry no-leverage outcomes"
+            git push origin HEAD:refs/heads/research/r32-profit-frequency-atr-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r321-research-frozen-profit-and-signals
+          path: |
+            research/RIZAN_R321_W1_PROFIT_SIGNAL_OVERLAY_LOCK_20261123.json
+            research/RIZAN_R321_W1_PROFIT_SIGNAL_OVERLAY_FINDINGS_20261123.md
+          retention-days: 90
+          if-no-files-found: warn
