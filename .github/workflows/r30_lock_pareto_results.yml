@@ -1,0 +1,64 @@
+name: R30 Freeze 2012-2026 Accuracy x Frequency Pareto Research Winners
+on:
+  push:
+    branches: ['research/r30-pareto-direction-2012-2026-20261123']
+    paths:
+      - 'scripts/r30_lock_pareto_research.py'
+      - '.github/workflows/r30_lock_pareto_results.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/r30-pareto-direction-2012-2026-20261123
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify latest freeze source script syntax
+        run: python -m py_compile scripts/r30_lock_pareto_research.py
+      - name: Download pinned verified H1 and H4 full 2012-2026 year results
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45184178972
+          github-token: ${{ github.token }}
+          artifact-ids: '14822199178,14822942278'
+          path: artifacts/r30_pareto
+          merge-multiple: true
+      - name: Download original D1 and W1 2012-2026 year results
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45182264766
+          github-token: ${{ github.token }}
+          artifact-ids: '14820918464,14822830211'
+          path: artifacts/r30_pareto
+          merge-multiple: true
+      - name: Verify source and donor scopes, 2019 SHA overlap, W1 96 of 152, H4 449 of 810
+        run: |
+          set -euo pipefail
+          ls -l artifacts/r30_pareto/
+          python scripts/r30_lock_pareto_research.py
+      - name: Commit immutable RESEARCH ONLY champion policies and evidence
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R30_2012_2026_PARETO_RESEARCH_LOCK_20261123.json
+          git add research/RIZAN_R30_2012_2026_PARETO_FINDINGS_20261123.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Freeze R30 W1 BUY 63.16pct/152 and H4 BUY 55.43pct/810 full-era research-only evidence"
+            git push origin HEAD:refs/heads/research/r30-pareto-direction-2012-2026-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r30-locked-2012-2026-h1-h4-d1-w1-evidence
+          path: |
+            research/RIZAN_R30_2012_2026_PARETO_RESEARCH_LOCK_20261123.json
+            research/RIZAN_R30_2012_2026_PARETO_FINDINGS_20261123.md
+          retention-days: 90
+          if-no-files-found: warn
