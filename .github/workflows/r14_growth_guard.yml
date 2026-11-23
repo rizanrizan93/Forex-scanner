@@ -1,0 +1,30 @@
+name: RIZAN R14 Terminal Growth Guard Archive Diagnostic
+on:
+  push:
+    branches: ['research/r14-terminal-growth-guards']
+    paths: ['.github/workflows/r14_growth_guard.yml', 'research/r14_growth_guard/audit.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r14-terminal-guard
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove settlement chronology and prefix invariance
+        run: python research/r14_growth_guard/audit.py --selftest
+      - name: Verify immutable native archive receipts and screen18 fixed guards
+        run: python research/r14_growth_guard/audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r14-terminal-guard-diagnostics
+          path: artifacts/r14/
+          retention-days: 90
