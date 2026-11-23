@@ -1,4 +1,4 @@
-name: R28.1 SMC Manual Entry (Read Only)
+name: RIZAN Independent Timeframe Entry Zones (Read Only)
 on:
   push:
     branches: [main]
@@ -6,6 +6,8 @@ on:
       - 'src/fx_scanner/r281_smc_entry_*.py'
       - 'src/fx_scanner/best_candidate_direction.py'
       - 'src/fx_scanner/best_candidate_smc.py'
+      - 'src/fx_scanner/independent_timeframe_zones.py'
+      - 'tests/test_independent_timeframe_zones.py'
       - 'tests/test_best_candidate_smc.py'
       - 'src/fx_scanner/manual_reversal_map.py'
       - 'main.py'
@@ -16,6 +18,8 @@ on:
       - 'src/fx_scanner/r281_smc_entry_*.py'
       - 'src/fx_scanner/best_candidate_direction.py'
       - 'src/fx_scanner/best_candidate_smc.py'
+      - 'src/fx_scanner/independent_timeframe_zones.py'
+      - 'tests/test_independent_timeframe_zones.py'
       - 'tests/test_best_candidate_smc.py'
       - 'src/fx_scanner/manual_reversal_map.py'
       - 'main.py'
@@ -34,5 +38,5 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pandas==2.2.3 numpy==2.3.5 pytest==9.0.2
-      - run: python -m py_compile src/fx_scanner/r281_smc_entry_engine.py src/fx_scanner/r281_smc_entry_dashboard.py src/fx_scanner/best_candidate_smc.py main.py
-      - run: PYTHONPATH=src pytest -q tests/test_r281_smc_entry_engine.py tests/test_best_candidate_smc.py
+      - run: python -m py_compile src/fx_scanner/r281_smc_entry_engine.py src/fx_scanner/r281_smc_entry_dashboard.py src/fx_scanner/best_candidate_smc.py src/fx_scanner/independent_timeframe_zones.py main.py
+      - run: PYTHONPATH=src pytest -q tests/test_r281_smc_entry_engine.py tests/test_best_candidate_smc.py tests/test_independent_timeframe_zones.py
