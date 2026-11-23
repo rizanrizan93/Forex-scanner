@@ -186,3 +186,29 @@ def test_h4_abstention_with_no_valid_zone_does_not_invent_one(monkeypatch):
     assert x["status"]=="WAIT"
     assert x["reason"]=="R28_H4_ABSTAIN_NO_VALID_ZONE"
     assert x["entry_reference"] is None
+
+
+def test_price_beyond_distal_zone_is_quarantined_until_source_close(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    m=market()
+    # 11:20 UTC is inside the unfinished 11:00-12:00 H1 candle.
+    m["frame"].loc[m["frame"].index[-1],["open","high","low","close"]]=[3609.9,3610.1,3609.8,3610.]
+    x=engine.evaluate_entry(model(),m,now=NOW)
+    assert x["status"]=="PENDING_INVALIDATION"
+    assert x["entry_reference"] is None
+    assert x["zone"]["zone_invalidation"]==pytest.approx(3602.75)
+    assert x["zone"]["reason"]=="LIVE_PRICE_BEYOND_ZONE_INVALIDATION_WAIT_SOURCE_CLOSE"
+
+
+def test_finished_parent_candle_invalidates_zone_even_if_detector_returns_it(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    m=market()
+    # Force the completed 10:00-11:00 H1 bar above SELL distal.
+    mask=(m["frame"].index>=pd.Timestamp("2026-11-23T10:00:00+00:00")) & (
+        m["frame"].index<pd.Timestamp("2026-11-23T11:00:00+00:00"))
+    m["frame"].loc[mask,["open","high","low","close"]]=[3610.,3610.1,3609.9,3610.]
+    x=engine.evaluate_entry(model(),m,now=NOW)
+    # Zone formed 11:00:00, so this completed bar closed exactly at its
+    # available_at; the next completed parent bar has not yet closed.
+    assert x["zone"] is None or x["status"]!="M5_BOS_CONFIRMED"
+    assert x["entry_reference"] is None
