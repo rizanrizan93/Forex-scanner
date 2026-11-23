@@ -173,7 +173,7 @@ def render_frozen_direction_research():
     @st.fragment(run_every="30s")
     def panel():
         now=datetime.now(UTC)
-        if st.button("Perbarui prediksi R28.1 sekarang", key="r281_force_refresh"):
+        if st.button("Perbarui semua kandidat sekarang", key="r281_force_refresh"):
             read_r281.clear()
             read_rbest.clear()
             read_r294.clear()
@@ -237,52 +237,53 @@ def render_frozen_direction_research():
              "Alasan":reason_labels.get(primary[tf]["reason"],primary[tf]["reason"]),
              "Target close WIB":wib(primary[tf]["target"])}
             for tf in TFS],hide_index=True,width="stretch")
-        st.markdown("### R28.1 baseline · pembanding, bukan direction utama")
-        # The wide table is difficult to inspect on a phone; put the actual
-        # reason and expiry beside EACH direction, before the benchmarks.
-        for tf in TFS:
-            row = shadow[tf]
-            with st.container(border=True):
-                st.metric(tf + " · R28.1", row["direction"])
-                status = ("MODEL AKTIF" if row["state"] == "RECONSTRUCTED_SHADOW"
-                          else "WAIT MODEL" if row["state"] == "MODEL_ABSTAIN"
-                          else "WAIT DATA")
-                st.write("**" + status + "** · " + reason_text(row["reason"]))
-                if row["state"] == "MODEL_ABSTAIN" and (
-                    row.get("buy_score") is not None and row.get("sell_score") is not None
-                ):
-                    st.caption(
-                        "Skor model BUY " + f'{row["buy_score"]:.4f}'
-                        + " · SELL " + f'{row["sell_score"]:.4f}'
-                        + " · keduanya di bawah ambang riset atau konflik; "
-                          "bukan sinyal trading."
-                    )
-                if row.get("target"):
-                    st.caption("Target close: " + wib(row["target"])
-                               + " · diterbitkan: " + wib(row["issued"]))
-                elif row.get("expired_at"):
-                    st.caption("Prediksi sudah berakhir: " + wib(row["expired_at"])
-                               + " · terakhir diterbitkan: " + wib(row["issued"]))
-                    if row.get("previous_direction") in ("BUY", "SELL"):
-                        st.caption("Arah terakhir " + row["previous_direction"]
-                                   + " SUDAH KEDALUWARSA · bukan sinyal entry saat ini")
-                elif row.get("issued"):
-                    st.caption("Penerbitan terakhir: " + wib(row["issued"]))
-        # Independent R29.2 H4 BUY detail remains visible as a research audit.
+        # R29.2 is selected as primary H4 BUY, keep its audited detail visible.
         render_h4_buy(st,r294,wib)
-        st.dataframe([
-            {"TF":tf,
-             "Arah R28.1":shadow[tf]["direction"],
-             "Panduan setup":setup_watch_label(shadow[tf]),
-             "Target close (WIB)":wib(shadow[tf]["target"] or shadow[tf].get("expired_at")),
-             "Diterbitkan (WIB)":wib(shadow[tf]["issued"]),
-             "BUY terbaik (historis)":summary[tf]["BUY"],
-             "SELL terbaik (historis)":summary[tf]["SELL"],
-             "Status":("RESEARCH SHADOW" if shadow[tf]["state"]=="RECONSTRUCTED_SHADOW"
-                       else "WAIT MODEL" if shadow[tf]["state"]=="MODEL_ABSTAIN" else "WAIT DATA"),
-             "Keterangan":reason_text(shadow[tf]["reason"])}
-            for tf in TFS],hide_index=True,width="stretch")
-        st.caption("Baseline R28.1 hanya pembanding, bukan arah utama atau sinyal entry. WAIT = jangan menyimpulkan arah dari akurasi historis.")
+        with st.expander("R28.1 baseline · pembanding, bukan direction utama", expanded=False):
+            st.markdown("### R28.1 baseline · pembanding, bukan direction utama")
+            # The wide table is difficult to inspect on a phone; put the actual
+            # reason and expiry beside EACH direction, before the benchmarks.
+            for tf in TFS:
+                row = shadow[tf]
+                with st.container(border=True):
+                    st.metric(tf + " · R28.1", row["direction"])
+                    status = ("MODEL AKTIF" if row["state"] == "RECONSTRUCTED_SHADOW"
+                              else "WAIT MODEL" if row["state"] == "MODEL_ABSTAIN"
+                              else "WAIT DATA")
+                    st.write("**" + status + "** · " + reason_text(row["reason"]))
+                    if row["state"] == "MODEL_ABSTAIN" and (
+                        row.get("buy_score") is not None and row.get("sell_score") is not None
+                    ):
+                        st.caption(
+                            "Skor model BUY " + f'{row["buy_score"]:.4f}'
+                            + " · SELL " + f'{row["sell_score"]:.4f}'
+                            + " · keduanya di bawah ambang riset atau konflik; "
+                              "bukan sinyal trading."
+                        )
+                    if row.get("target"):
+                        st.caption("Target close: " + wib(row["target"])
+                                   + " · diterbitkan: " + wib(row["issued"]))
+                    elif row.get("expired_at"):
+                        st.caption("Prediksi sudah berakhir: " + wib(row["expired_at"])
+                                   + " · terakhir diterbitkan: " + wib(row["issued"]))
+                        if row.get("previous_direction") in ("BUY", "SELL"):
+                            st.caption("Arah terakhir " + row["previous_direction"]
+                                       + " SUDAH KEDALUWARSA · bukan sinyal entry saat ini")
+                    elif row.get("issued"):
+                        st.caption("Penerbitan terakhir: " + wib(row["issued"]))
+            st.dataframe([
+                {"TF":tf,
+                 "Arah R28.1":shadow[tf]["direction"],
+                 "Panduan setup":setup_watch_label(shadow[tf]),
+                 "Target close (WIB)":wib(shadow[tf]["target"] or shadow[tf].get("expired_at")),
+                 "Diterbitkan (WIB)":wib(shadow[tf]["issued"]),
+                 "BUY terbaik (historis)":summary[tf]["BUY"],
+                 "SELL terbaik (historis)":summary[tf]["SELL"],
+                 "Status":("RESEARCH SHADOW" if shadow[tf]["state"]=="RECONSTRUCTED_SHADOW"
+                           else "WAIT MODEL" if shadow[tf]["state"]=="MODEL_ABSTAIN" else "WAIT DATA"),
+                 "Keterangan":reason_text(shadow[tf]["reason"])}
+                for tf in TFS],hide_index=True,width="stretch")
+            st.caption("Baseline R28.1 hanya pembanding, bukan arah utama atau sinyal entry. WAIT = jangan menyimpulkan arah dari akurasi historis.")
         st.markdown("### Semua 8 kandidat terbaik yang dibekukan · R1–R28.1")
         st.dataframe(candidates,hide_index=True,width="stretch",
                      column_config={"Bukti replay":st.column_config.LinkColumn("Bukti replay",display_text="GitHub Actions")})
