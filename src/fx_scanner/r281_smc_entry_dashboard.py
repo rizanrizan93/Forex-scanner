@@ -1,15 +1,28 @@
-"""Streamlit read-only R28.1 direction -> SMC zone -> M5 entry board."""
+"""Streamlit read-only BEST CANDIDATES direction -> SMC watch/zone board."""
 from __future__ import annotations
 from datetime import UTC, datetime
 
 import pandas as pd
 
 from .manual_r3_feed import fetch_market
-from .r281_shadow_feed import fetch as fetch_r281, reason_text
-from .r281_smc_entry_engine import evaluate_entry
+from .r281_shadow_feed import fetch as fetch_r281
+from .rbest_side_feed import fetch as fetch_rbest
+from .r294_frozen_h4_buy_feed import fetch as fetch_r294
+from .best_candidate_direction import select as select_best_candidate_direction
+from .best_candidate_smc import evaluate_best_entry
 
 
 REASONS = {
+    "BEST_H4_MISSING_OR_EXPIRED": "Arah H4 kandidat terbaik belum valid atau sudah berakhir; zona entry ditahan.",
+    "BEST_H1_OPPOSING": "H1 kandidat terbaik berlawanan dengan H4; zona entry ditahan.",
+    "BEST_D1_OPPOSING": "D1 kandidat terbaik berlawanan dengan H4; zona entry ditahan.",
+    "BEST_DIRECTION_INCOMPLETE_WATCH_ONLY":
+        "H4 valid, tetapi H1/D1 belum lengkap; zona WATCH saja, bukan entry.",
+    "BEST_DIRECTION_INCOMPLETE_ENTRY_BLOCKED":
+        "Zona terpantau, namun belum ada konfirmasi H1 dan D1 independen lengkap. Seluruh harga entry/SL/TP diblokir.",
+    "BEST_DIRECTION_INCOMPLETE_NO_VALID_ZONE":
+        "Arah H4 valid untuk pantauan; belum ada zona struktur broker valid.",
+    "BEST_DIRECTION_ALIGNED": "H1, H4 dan D1 independen lengkap searah (research-only).",
     "R28_D1_H4_MISSING_OR_EXPIRED": "R28.1 D1/H4 tidak aktif atau telah kedaluwarsa.",
     "R28_D1_H4_CONFLICT": "R28.1 D1 dan H4 berlawanan; zona entry ditahan.",
     "R28_H1_OPPOSING": "R28.1 H1 berlawanan dengan arah D1/H4.",
@@ -37,7 +50,7 @@ REASONS = {
     "PRICE_ALREADY_MOVED_FROM_BOS": "Harga sudah terlalu jauh dari BOS M5.",
     "STOP_DISTANCE_OR_COST_INVALID": "Jarak SL tidak memenuhi risk/spread gate.",
     "R28_M15_M5_RESEARCH_ALIGNMENT": "Semua syarat observasi terpenuhi, tetapi belum lulus replay entry gabungan.",
-    "FEED_UNAVAILABLE": "Feed R28.1 atau broker tidak dapat diakses.",
+    "FEED_UNAVAILABLE": "Feed kandidat terbaik atau broker tidak dapat diakses.",
 }
 
 
@@ -48,30 +61,42 @@ def _wib(value):
 def render_r281_smc_entry():
     import streamlit as st
 
-    st.subheader("XAUUSD · Titik Entry R28.1 × SMC")
+    st.subheader("XAUUSD · Titik Entry Kandidat Terbaik × SMC")
     st.caption(
-        "R28.1 D1/H4/H1 = filter arah; zona base-displacement H1/H4 dari broker M1; "
-        "M15 rejection/reclaim → BOS 3 candle M5 → harga bid/ask segar. "
-        "Engine masih tahap riset, bukan hasil replay entry gabungan atau instruksi order."
+        "Direction berasal dari R25/R11 H1, R29.2/R11 H4, R28.1/R18 D1, "
+        "R27/R24 W1 secara terpisah. D1 SELL R18 dan W1 masih belum terinferensi: "
+        "zona hanya WATCH selama konfirmasi D1/H1 belum lengkap. "
+        "Tidak ada auto-order dan bukan replay entry gabungan."
     )
 
     @st.cache_data(ttl=20, show_spinner=False)
     def load(slot):
+        # All sources have independently validated provenance/expiry contracts.
+        # No R28.1 H1/H4/W1 fallback when best-side feeds are absent.
         try:
-            shadow=fetch_r281()
+            best=fetch_rbest()
         except (OSError, ValueError, TypeError, KeyError, TimeoutError, OverflowError):
-            shadow={}
+            best={}
+        try:
+            h4buy=fetch_r294()
+        except (OSError, ValueError, TypeError, KeyError, TimeoutError, OverflowError):
+            h4buy={}
+        try:
+            r281=fetch_r281()
+        except (OSError, ValueError, TypeError, KeyError, TimeoutError, OverflowError):
+            r281={}
         try:
             market=fetch_market()
         except (OSError, ValueError, TypeError, KeyError, TimeoutError, OverflowError):
             market=None
-        return shadow,market
+        return best,h4buy,r281,market
 
     @st.fragment(run_every="30s")
     def panel():
         now=datetime.now(UTC)
-        shadow,market=load(int(now.timestamp()//20))
-        report=evaluate_entry(shadow,market,now=now)
+        best,h4buy,r281,market=load(int(now.timestamp()//20))
+        primary=select_best_candidate_direction(best,h4buy,r281,now=now)
+        report=evaluate_best_entry(primary,market,now=now)
         context=report["context"]
 
         st.markdown("### Kesiapan setup manual")
@@ -80,8 +105,8 @@ def render_r281_smc_entry():
         c2.metric("Status entry riset",report["status"])
         c3.metric("Konfirmasi H1","SEARAH" if context.get("h1_confirmed") else "WAIT")
         if report.get("watch_only"):
-            st.warning("H4 = WAIT MODEL (BELOW_THRESHOLD). D1/H1 searah sehingga hanya zona WATCH ditampilkan. "
-                       "Tidak ada harga entry ataupun izin trade sampai H4 memberi sinyal valid.")
+            st.warning("MODE WATCH ONLY · H4 kandidat terbaik valid, tetapi H1 atau D1 "
+                       "belum lengkap. Zona boleh dipantau, seluruh level entry/SL/TP ditahan.")
         if context.get("weekly_countertrend"):
             st.warning("W1 berlawanan dengan arah pantauan D1/H1/H4. "
                        "Ini konteks kontra arah mingguan, bukan rekomendasi entry.")
@@ -90,7 +115,14 @@ def render_r281_smc_entry():
                 {"Timeframe":tf,"Arah model aktif":context.get(tf,"WAIT")}
                 for tf in ("H1","H4","D1","W1")
             ],hide_index=True,width="stretch")
-        st.caption("Pemeriksaan: "+_wib(report["checked_at"])+" · arah menggunakan R28.1 SHADOW (bukan benchmark kandidat R1–R28).")
+        st.caption("Pemeriksaan: "+_wib(report["checked_at"])+" · sumber arah: kandidat terbaik terverifikasi per sisi, tanpa fallback R28.1 H1/H4/W1.")
+        st.dataframe([{"TF":tf, "BUY":primary[tf]["sources"]["BUY"],
+                       "SELL":primary[tf]["sources"]["SELL"],
+                       "Direction":primary[tf]["direction"],
+                       "Status":primary[tf]["status"],
+                       "Alasan":primary[tf]["reason"]}
+                      for tf in ("H1","H4","D1","W1")],
+                     hide_index=True,width="stretch")
         st.write("**Alasan/status:** "+REASONS.get(report["reason"],report["reason"]))
         zone=report.get("zone")
         if zone:
