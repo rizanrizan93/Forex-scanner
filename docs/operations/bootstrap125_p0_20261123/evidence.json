@@ -1,0 +1,1402 @@
+{
+  "audit_contract": "RIZAN_V1_P0_AUDIT_20261123",
+  "read_only": true,
+  "execution_authority": false,
+  "root_cause": "UNKNOWN_NATIVE_LIFECYCLE_EVIDENCE_MISSING",
+  "forensic_commit": "4036935a0df2bb65f8d3f600e108328379da90f0",
+  "repair_commit": "03bf0789ace00683b4a5f52d545ed366505be99f",
+  "forensic_run": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45098732849",
+  "validation_run": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45098732835",
+  "private_raw_evidence_directory": "/var/lib/rizan-bootstrap125-forensics/20261123T021123Z",
+  "service": {
+    "MainPID": "788419",
+    "Result": "success",
+    "NRestarts": "0",
+    "ExecMainStartTimestamp": "Sat 2026-11-14 21:53:10 WIB",
+    "ExecMainExitTimestamp": "",
+    "ExecMainCode": "0",
+    "ExecMainStatus": "0",
+    "ActiveState": "active",
+    "SubState": "running",
+    "ActiveEnterTimestamp": "Sat 2026-11-14 21:53:10 WIB"
+  },
+  "boot_history": [
+    "IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY",
+    " -2 c1f5cd9c17b14d1d91e5ad7ebe334dad Thu 2026-05-21 15:31:51 WIB Thu 2026-05-21 15:33:44 WIB",
+    " -1 89a031e1a8024a71a34013e23bf1e7de Sun 2026-10-11 07:29:44 WIB Mon 2026-11-02 08:24:42 WIB",
+    "  0 4052239ca72944bf9281a7666ac707fa Mon 2026-11-02 08:47:21 WIB Mon 2026-11-23 09:12:14 WIB"
+  ],
+  "journals": {
+    "bridge": {
+      "rows": 984,
+      "returncode": 0,
+      "capped": false,
+      "sha256": "d861b4ae141535757ebd097abf05a4b62c0534ca6456e9bfbdfa977bb738a2f0",
+      "first_at": "2026-11-17T03:51:22.142526+00:00",
+      "last_at": "2026-11-17T10:57:20.441056+00:00",
+      "counts": {
+        "WS_DISCONNECT": 82
+      },
+      "unit_counts": [
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "rizan-bootstrap125-bridge.service",
+          "count": 82
+        }
+      ],
+      "matched_phrases": [
+        {
+          "event": "WS_DISCONNECT",
+          "phrase": "opening handshake failed",
+          "count": 82
+        }
+      ]
+    },
+    "system": {
+      "rows": 19628,
+      "returncode": 0,
+      "capped": false,
+      "sha256": "d920385d4b3158913c974b9fef2b7aad1d395ff7dd2c62fdedcf902c7349f3aa",
+      "first_at": "2026-11-17T03:25:45.814738+00:00",
+      "last_at": "2026-11-23T00:39:24.826399+00:00",
+      "counts": {
+        "WS_DISCONNECT": 46,
+        "SERVICE_STOP": 6,
+        "PROCESS_FAILURE": 9735
+      },
+      "unit_counts": [
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "ssh.service",
+          "count": 44
+        },
+        {
+          "event": "SERVICE_STOP",
+          "unit": "init.scope",
+          "count": 6
+        },
+        {
+          "event": "PROCESS_FAILURE",
+          "unit": "init.scope",
+          "count": 9735
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "sshd",
+          "count": 2
+        }
+      ],
+      "matched_phrases": [
+        {
+          "event": "WS_DISCONNECT",
+          "phrase": "Connection reset",
+          "count": 46
+        },
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Main process exited",
+          "count": 6
+        },
+        {
+          "event": "PROCESS_FAILURE",
+          "phrase": "Failed with result",
+          "count": 9735
+        }
+      ]
+    },
+    "kernel": {
+      "rows": 3,
+      "returncode": 0,
+      "capped": false,
+      "sha256": "ff2c3c5a9b0882190ce5d4093bd72c327e907b9f6a888deabfe7b9ddd29ad2df",
+      "first_at": "2026-11-18T11:49:42.177064+00:00",
+      "last_at": "2026-11-19T01:34:10.640276+00:00",
+      "counts": {},
+      "unit_counts": [],
+      "matched_phrases": []
+    },
+    "nginx": {
+      "rows": 42,
+      "returncode": 0,
+      "capped": false,
+      "sha256": "35bc183e2f86d0494c75123e2f4d32eb7f92862c5826ef3a6dc43322d1aa75f5",
+      "first_at": "2026-11-17T03:56:14.722335+00:00",
+      "last_at": "2026-11-22T23:58:56.608114+00:00",
+      "counts": {
+        "SERVICE_STOP": 3,
+        "SERVICE_START": 2
+      },
+      "unit_counts": [
+        {
+          "event": "SERVICE_STOP",
+          "unit": "init.scope",
+          "count": 3
+        },
+        {
+          "event": "SERVICE_START",
+          "unit": "init.scope",
+          "count": 2
+        }
+      ],
+      "matched_phrases": [
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Stopping ",
+          "count": 1
+        },
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Deactivated successfully",
+          "count": 1
+        },
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Stopped ",
+          "count": 1
+        },
+        {
+          "event": "SERVICE_START",
+          "phrase": "Starting ",
+          "count": 1
+        },
+        {
+          "event": "SERVICE_START",
+          "phrase": "Started ",
+          "count": 1
+        }
+      ]
+    },
+    "incident_all": {
+      "rows": 5545,
+      "returncode": 0,
+      "capped": false,
+      "sha256": "7165156c12df5db94c54b0a80f346ab7c8d66df26adc6e6130cdf62a7291f125",
+      "first_at": "2026-11-18T00:45:01.798945+00:00",
+      "last_at": "2026-11-18T01:59:59.274262+00:00",
+      "counts": {
+        "SERVICE_START": 1121,
+        "SERVICE_STOP": 1256,
+        "WS_DISCONNECT": 146
+      },
+      "unit_counts": [
+        {
+          "event": "SERVICE_START",
+          "unit": "init.scope",
+          "count": 1070
+        },
+        {
+          "event": "SERVICE_STOP",
+          "unit": "init.scope",
+          "count": 1137
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "ssh.service",
+          "count": 94
+        },
+        {
+          "event": "SERVICE_START",
+          "unit": "user@1001.service",
+          "count": 51
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19843.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19846.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19845.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19847.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19849.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19850.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19848.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19851.scope",
+          "count": 2
+        },
+        {
+          "event": "SERVICE_STOP",
+          "unit": "user@1001.service",
+          "count": 119
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19852.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19854.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19855.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19856.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19858.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19860.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19862.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19864.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19867.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19869.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19871.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19873.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19875.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19877.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19879.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19881.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19883.scope",
+          "count": 2
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "unit": "session-19885.scope",
+          "count": 2
+        }
+      ],
+      "matched_phrases": [
+        {
+          "event": "SERVICE_START",
+          "phrase": "Starting ",
+          "count": 1060
+        },
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Deactivated successfully",
+          "count": 1069
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "phrase": "Connection closed",
+          "count": 53
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "phrase": "Disconnected",
+          "count": 45
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "phrase": "disconnected",
+          "count": 37
+        },
+        {
+          "event": "WS_DISCONNECT",
+          "phrase": "Connection reset",
+          "count": 11
+        },
+        {
+          "event": "SERVICE_START",
+          "phrase": "Started ",
+          "count": 61
+        },
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Stopping ",
+          "count": 51
+        },
+        {
+          "event": "SERVICE_STOP",
+          "phrase": "Stopped ",
+          "count": 136
+        }
+      ]
+    }
+  },
+  "source_hashes": [
+    {
+      "path": "/opt/rizan-bootstrap125-bridge/durable_store.py",
+      "size": 9356,
+      "mtime_utc": "2026-11-14T14:52:36.335926+00:00",
+      "sha256": "b6b7e598ddcc4f85a2699596b27a14a0f1add3d1a3f5cc3a450cc3318a454d79"
+    },
+    {
+      "path": "/opt/rizan-bootstrap125-bridge/test_bridge.py",
+      "size": 5118,
+      "mtime_utc": "2026-11-14T14:52:36.335926+00:00",
+      "sha256": "43b95540c161e1672db5e1bd3637dea131bb3276874452f5b5952a0050f2a295"
+    },
+    {
+      "path": "/opt/rizan-bootstrap125-bridge/server.py",
+      "size": 13441,
+      "mtime_utc": "2026-11-14T14:52:36.336926+00:00",
+      "sha256": "9b7e59d0a2e4449d6f683a9a42f2bf1de023f866ff083b8ace0cb755d26edbdd"
+    },
+    {
+      "path": "/opt/rizan-bootstrap125-bridge/btc_feed.py",
+      "size": 6066,
+      "mtime_utc": "2026-11-14T14:52:36.336926+00:00",
+      "sha256": "c9e757f54df869d6380757354fab64a3834fa74554f3b611ae3ad7ff84f4503f"
+    },
+    {
+      "path": "/opt/rizan-bootstrap125-bridge/feeds.py",
+      "size": 8117,
+      "mtime_utc": "2026-11-14T14:52:36.337926+00:00",
+      "sha256": "3421fcb4a49f2da8d1068abc36de23b77c6e0c527dbfb4d29881aa142b702414"
+    },
+    {
+      "path": "/opt/rizan-bootstrap125-bridge/timestamps.py",
+      "size": 1532,
+      "mtime_utc": "2026-11-14T14:52:36.337926+00:00",
+      "sha256": "bfc22236c30a84a945004514243865ca989883cd354b7f18a6d81a0fcb1316ee"
+    },
+    {
+      "path": "/etc/systemd/system/rizan-bootstrap125-bridge.service",
+      "size": 634,
+      "mtime_utc": "2026-11-14T14:53:08.344315+00:00",
+      "sha256": "dcc665dbf47c1ae31869e39db3ce0f9bf19d451b0b95b3ea3adf3bc78d89a872"
+    },
+    {
+      "path": "/etc/systemd/system/rizan-bootstrap125-broker.service",
+      "size": 491,
+      "mtime_utc": "2026-11-16T00:43:10.608626+00:00",
+      "sha256": "64cc8b8cf94fd9b37abda21f0d4419c2f892d739cb80c94d17a99d2abd21c950"
+    },
+    {
+      "path": "/etc/systemd/system/rizan-bootstrap125-watchdog.service",
+      "size": 460,
+      "mtime_utc": "2026-11-23T02:11:42.736043+00:00",
+      "sha256": "3ae362e5b26882e9b281fe2a5a08a4076df139922da62e4de77fd11ae8853ecd"
+    },
+    {
+      "path": "/etc/systemd/system/rizan-bootstrap125-status.service",
+      "size": 334,
+      "mtime_utc": "2026-11-16T00:43:10.608626+00:00",
+      "sha256": "322031a3b8e1bf882650533740683daa6a125d1095651970ba0c3858400639bb"
+    }
+  ],
+  "checkpoint_integrity": "ok",
+  "checkpoint_counts": {
+    "checkpoints": 6,
+    "bridge_leases": 7,
+    "checkpoint_receipts": 6032
+  },
+  "nginx_log_files": [
+    {
+      "name": "error.log.1",
+      "bytes": 2542
+    },
+    {
+      "name": "error.log.3.gz",
+      "bytes": 387
+    },
+    {
+      "name": "error.log.10.gz",
+      "bytes": 249
+    },
+    {
+      "name": "error.log.5.gz",
+      "bytes": 382
+    },
+    {
+      "name": "error.log.9.gz",
+      "bytes": 342
+    },
+    {
+      "name": "error.log",
+      "bytes": 82
+    },
+    {
+      "name": "error.log.8.gz",
+      "bytes": 367
+    },
+    {
+      "name": "error.log.12.gz",
+      "bytes": 248
+    },
+    {
+      "name": "error.log.6.gz",
+      "bytes": 380
+    },
+    {
+      "name": "error.log.11.gz",
+      "bytes": 250
+    },
+    {
+      "name": "error.log.7.gz",
+      "bytes": 362
+    },
+    {
+      "name": "error.log.13.gz",
+      "bytes": 624
+    },
+    {
+      "name": "access.log",
+      "bytes": 0
+    },
+    {
+      "name": "error.log.4.gz",
+      "bytes": 359
+    },
+    {
+      "name": "error.log.14.gz",
+      "bytes": 294
+    },
+    {
+      "name": "error.log.2.gz",
+      "bytes": 388
+    }
+  ],
+  "http_access": {
+    "access.log": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "events": []
+    }
+  },
+  "snapshot": {
+    "contract": "RIZAN_BOOTSTRAP125_READONLY_V1",
+    "profile": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114",
+    "profile_hash": "b6014ae7d456b10f88671f1e58e605509a20771386c72f3ca7ae8b210bde0128",
+    "account_suffix": "7903",
+    "observed_at": "2026-11-23T02:12:15.781629+00:00",
+    "read_only": true,
+    "execution_authority": false,
+    "service_active": true,
+    "bridge": {
+      "observed_at": "2026-11-23T02:12:08.362000+00:00",
+      "profile_ok": true,
+      "btc_feed_status": "READY",
+      "macro_snapshot_present": true
+    },
+    "roles": [
+      {
+        "role": "BOOTSTRAP",
+        "checkpoint_present": true,
+        "identity_ok": true,
+        "checkpoint_version": 6,
+        "client_revision": 6,
+        "phase": "GROWTH",
+        "lease_active": true,
+        "lease_touched_at": "2026-11-23T02:12:14.788391+00:00",
+        "lease_expires_at": "2026-11-23T02:12:59.788391+00:00",
+        "last_signal_at": null,
+        "weekend_lock_until": null,
+        "checkpoint_basket": false,
+        "pending_intent": false,
+        "fault": false,
+        "quarantined": null,
+        "halted": false,
+        "exit_pending": null
+      },
+      {
+        "role": "XAUUSD",
+        "checkpoint_present": true,
+        "identity_ok": true,
+        "checkpoint_version": 2928,
+        "client_revision": 2928,
+        "phase": null,
+        "lease_active": true,
+        "lease_touched_at": "2026-11-23T02:12:09.850890+00:00",
+        "lease_expires_at": "2026-11-23T02:12:54.850890+00:00",
+        "last_signal_at": null,
+        "weekend_lock_until": null,
+        "checkpoint_basket": false,
+        "pending_intent": false,
+        "fault": null,
+        "quarantined": false,
+        "halted": null,
+        "exit_pending": null
+      },
+      {
+        "role": "EURUSD",
+        "checkpoint_present": true,
+        "identity_ok": true,
+        "checkpoint_version": 3088,
+        "client_revision": 3088,
+        "phase": null,
+        "lease_active": true,
+        "lease_touched_at": "2026-11-23T02:12:07.904813+00:00",
+        "lease_expires_at": "2026-11-23T02:12:52.904813+00:00",
+        "last_signal_at": null,
+        "weekend_lock_until": null,
+        "checkpoint_basket": false,
+        "pending_intent": false,
+        "fault": null,
+        "quarantined": false,
+        "halted": null,
+        "exit_pending": null
+      },
+      {
+        "role": "BTCUSD",
+        "checkpoint_present": true,
+        "identity_ok": true,
+        "checkpoint_version": 4,
+        "client_revision": 5,
+        "phase": null,
+        "lease_active": true,
+        "lease_touched_at": "2026-11-23T02:12:11.812833+00:00",
+        "lease_expires_at": "2026-11-23T02:12:56.812833+00:00",
+        "last_signal_at": null,
+        "weekend_lock_until": "2026-11-16T00:00:00+00:00",
+        "checkpoint_basket": false,
+        "pending_intent": false,
+        "fault": false,
+        "quarantined": null,
+        "halted": null,
+        "exit_pending": false
+      }
+    ]
+  },
+  "tests": {
+    "monitor_and_dashboard": 29,
+    "independent_watchdog": 4,
+    "direct_monitor_isolation": 4,
+    "actual_pinned_sqlite_and_loopback_ws": 8,
+    "total": 45,
+    "passed": 45,
+    "live_crash_injected": false,
+    "live_orders_sent": false,
+    "live_bridge_restarted": false
+  },
+  "snapshot_history": [
+    {
+      "commit": "53d73c737dd84eb7afbfc82ac8df5c4d6d263e05",
+      "observed_at": "2026-11-22T21:59:19.766173+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "c8d57ea645ccccc7983cbc265e79bf7690ee8115",
+      "observed_at": "2026-11-22T16:38:30.659965+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "3a2f9f83e736596450d27436337a15f71d0af088",
+      "observed_at": "2026-11-22T08:43:46.441660+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "69c71ae1de65adf825a2334d875558d757626d9c",
+      "observed_at": "2026-11-22T01:35:34.339711+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "09cc3c4616ff8c6bd4091c75a046443982f2c69f",
+      "observed_at": "2026-11-21T21:43:52.481244+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "baf1934641a0b7cefbc18338d5e62fd5f45a4329",
+      "observed_at": "2026-11-21T16:24:10.194565+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "005d64cdfa07c73877f0041fccb954dfb63913ec",
+      "observed_at": "2026-11-21T08:46:46.410514+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "dea4a74a5228ec1672abed3f1efff93cb4923671",
+      "observed_at": "2026-11-21T01:45:00.582802+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "6697985d56135d72fbf221c35221c71b67b3de19",
+      "observed_at": "2026-11-20T20:44:09.913824+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "cef73b9c288d9bb25427ade7d0dab128aa5e65e2",
+      "observed_at": "2026-11-20T12:43:41.512260+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "2d9656a5ab52dc1a152a034fdcd5e4a3257b9053",
+      "observed_at": "2026-11-20T04:04:34.888561+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "4ea1faf581afaf3791780eaaf208d484a8a5e875",
+      "observed_at": "2026-11-19T23:24:02.143839+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "c65789b9694ac64c359acb49fe0b3051138d1443",
+      "observed_at": "2026-11-19T16:59:10.251860+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "b9d928b29f6bdf02ec47f34848c6841331cc3750",
+      "observed_at": "2026-11-19T07:57:41.452867+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "61f4efc4f4ca2e5ff58375f677564e49b2fdbd8d",
+      "observed_at": "2026-11-19T00:45:16.482318+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "de60330d52de3950e44ddf017c05e9dd2017c806",
+      "observed_at": "2026-11-18T18:47:23.863926+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "e2cd07fa716117b8fcb77d27c9ccb7b63ed199bd",
+      "observed_at": "2026-11-18T10:03:40.687515+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "6ca9638c744edfbe916f74b2d22a97025bdf7a46",
+      "observed_at": "2026-11-18T02:08:29.216492+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.001101+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:18.930115+00:00",
+          "checkpoint_version": 2879
+        },
+        "EURUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:25.958286+00:00",
+          "checkpoint_version": 3039
+        },
+        "BTCUSD": {
+          "lease_active": false,
+          "lease_touched_at": "2026-11-18T01:01:23.966288+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "9c9ac18535260e8497e3e3214ffff133e5eb5fbd",
+      "observed_at": "2026-11-17T19:59:26.107131+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T19:59:25.918903+00:00",
+          "checkpoint_version": 5
+        },
+        "XAUUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T19:59:17.921130+00:00",
+          "checkpoint_version": 2639
+        },
+        "EURUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T19:59:16.922738+00:00",
+          "checkpoint_version": 2743
+        },
+        "BTCUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T19:59:18.922391+00:00",
+          "checkpoint_version": 3
+        }
+      }
+    },
+    {
+      "commit": "360d1a093ae1f4ab3498771ba76a03b87b50b4dd",
+      "observed_at": "2026-11-17T11:35:26.802543+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T11:35:17.902046+00:00",
+          "checkpoint_version": 3
+        },
+        "XAUUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T11:35:25.895702+00:00",
+          "checkpoint_version": 2133
+        },
+        "EURUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T11:35:18.898150+00:00",
+          "checkpoint_version": 2237
+        },
+        "BTCUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T11:35:22.898759+00:00",
+          "checkpoint_version": 1
+        }
+      }
+    },
+    {
+      "commit": "f1172608440631ea56d1cecc7bb3542d1014e561",
+      "observed_at": "2026-11-17T03:01:08.785196+00:00",
+      "service_active": true,
+      "leases": {
+        "BOOTSTRAP": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T03:01:03.893049+00:00",
+          "checkpoint_version": 3
+        },
+        "XAUUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T03:01:02.900382+00:00",
+          "checkpoint_version": 1619
+        },
+        "EURUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T03:01:01.185230+00:00",
+          "checkpoint_version": 1723
+        },
+        "BTCUSD": {
+          "lease_active": true,
+          "lease_touched_at": "2026-11-17T03:01:04.893506+00:00",
+          "checkpoint_version": 1
+        }
+      }
+    }
+  ],
+  "final_observation": {
+    "status": {
+      "contract": "RIZAN_BOOTSTRAP125_READONLY_V1",
+      "profile": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114",
+      "profile_hash": "b6014ae7d456b10f88671f1e58e605509a20771386c72f3ca7ae8b210bde0128",
+      "account_suffix": "7903",
+      "observed_at": "2026-11-23T02:13:33.843667+00:00",
+      "read_only": true,
+      "execution_authority": false,
+      "service_active": true,
+      "bridge": {
+        "observed_at": "2026-11-23T02:13:23.869000+00:00",
+        "profile_ok": true,
+        "btc_feed_status": "READY",
+        "macro_snapshot_present": true
+      },
+      "roles": [
+        {
+          "role": "BOOTSTRAP",
+          "checkpoint_present": true,
+          "identity_ok": true,
+          "checkpoint_version": 6,
+          "client_revision": 6,
+          "phase": "GROWTH",
+          "lease_active": true,
+          "lease_touched_at": "2026-11-23T02:13:24.790047+00:00",
+          "lease_expires_at": "2026-11-23T02:14:09.790047+00:00",
+          "last_signal_at": null,
+          "weekend_lock_until": null,
+          "checkpoint_basket": false,
+          "pending_intent": false,
+          "fault": false,
+          "quarantined": null,
+          "halted": false,
+          "exit_pending": null
+        },
+        {
+          "role": "XAUUSD",
+          "checkpoint_present": true,
+          "identity_ok": true,
+          "checkpoint_version": 2929,
+          "client_revision": 2929,
+          "phase": null,
+          "lease_active": true,
+          "lease_touched_at": "2026-11-23T02:13:29.779152+00:00",
+          "lease_expires_at": "2026-11-23T02:14:14.779152+00:00",
+          "last_signal_at": null,
+          "weekend_lock_until": null,
+          "checkpoint_basket": false,
+          "pending_intent": false,
+          "fault": null,
+          "quarantined": false,
+          "halted": null,
+          "exit_pending": null
+        },
+        {
+          "role": "EURUSD",
+          "checkpoint_present": true,
+          "identity_ok": true,
+          "checkpoint_version": 3089,
+          "client_revision": 3089,
+          "phase": null,
+          "lease_active": true,
+          "lease_touched_at": "2026-11-23T02:13:27.782493+00:00",
+          "lease_expires_at": "2026-11-23T02:14:12.782493+00:00",
+          "last_signal_at": null,
+          "weekend_lock_until": null,
+          "checkpoint_basket": false,
+          "pending_intent": false,
+          "fault": null,
+          "quarantined": false,
+          "halted": null,
+          "exit_pending": null
+        },
+        {
+          "role": "BTCUSD",
+          "checkpoint_present": true,
+          "identity_ok": true,
+          "checkpoint_version": 4,
+          "client_revision": 5,
+          "phase": null,
+          "lease_active": true,
+          "lease_touched_at": "2026-11-23T02:13:31.783790+00:00",
+          "lease_expires_at": "2026-11-23T02:14:16.783790+00:00",
+          "last_signal_at": null,
+          "weekend_lock_until": "2026-11-16T00:00:00+00:00",
+          "checkpoint_basket": false,
+          "pending_intent": false,
+          "fault": false,
+          "quarantined": null,
+          "halted": null,
+          "exit_pending": false
+        }
+      ]
+    },
+    "broker": {
+      "contract": "RIZAN_BOOTSTRAP125_BROKER_READONLY_V1",
+      "account_suffix": "7903",
+      "read_only": true,
+      "execution_authority": false,
+      "observed_at": "2026-11-23T02:12:30.816483+00:00",
+      "status": "OBSERVED",
+      "history_from": "2026-11-21T02:12:30.816483+00:00",
+      "history_to": "2026-11-23T02:12:30.816483+00:00",
+      "orders_history_checked": true,
+      "deals_history_checked": true,
+      "roles": {
+        "XAUUSD": {
+          "open_positions": 0,
+          "pending_orders": 0,
+          "orders": 0,
+          "deals": 0,
+          "rejected_orders": 0,
+          "entry_fills": 0,
+          "last_order_at": null,
+          "last_fill_at": null
+        },
+        "EURUSD": {
+          "open_positions": 0,
+          "pending_orders": 0,
+          "orders": 0,
+          "deals": 0,
+          "rejected_orders": 0,
+          "entry_fills": 0,
+          "last_order_at": null,
+          "last_fill_at": null
+        },
+        "BTCUSD": {
+          "open_positions": 0,
+          "pending_orders": 0,
+          "orders": 0,
+          "deals": 0,
+          "rejected_orders": 0,
+          "entry_fills": 0,
+          "last_order_at": null,
+          "last_fill_at": null
+        }
+      },
+      "market": {
+        "XAUUSD": {
+          "M1": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T02:11:00+00:00"
+          },
+          "M5": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T02:05:00+00:00"
+          },
+          "H1": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T01:00:00+00:00"
+          },
+          "H4": {
+            "count": 1024,
+            "last_closed_bar_at": "2026-11-22T22:00:00+00:00"
+          }
+        },
+        "EURUSD": {
+          "M1": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T02:11:00+00:00"
+          },
+          "M5": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T02:05:00+00:00"
+          },
+          "H1": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T01:00:00+00:00"
+          },
+          "H4": {
+            "count": 1024,
+            "last_closed_bar_at": "2026-11-22T22:00:00+00:00"
+          }
+        },
+        "BTCUSD": {
+          "M1": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T02:11:00+00:00"
+          },
+          "M5": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T02:05:00+00:00"
+          },
+          "H1": {
+            "count": 512,
+            "last_closed_bar_at": "2026-11-23T01:00:00+00:00"
+          },
+          "H4": {
+            "count": 1024,
+            "last_closed_bar_at": "2026-11-22T22:00:00+00:00"
+          }
+        }
+      },
+      "error": null,
+      "foreign_exposure_present": true,
+      "unmapped_deals": 2
+    }
+  },
+  "incident_actions": 11
+}
