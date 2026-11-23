@@ -54,9 +54,11 @@ def compose(root, *, now=None):
         s = r.get("signal") or {}
         origin = r.get("market_source") or {}
         direction = s.get("direction") if s.get("direction") in ("BUY", "SELL") else "WAIT"
+        reason = str(s.get("reason") or "WAIT_DATA")
+        abstain = direction == "WAIT" and reason in ("HEAD_CONFLICT", "BELOW_THRESHOLD")
         valid = False
         target = closed = None
-        if s.get("status") == "SHADOW_ONLY" and direction in ("BUY", "SELL"):
+        if s.get("status") == "SHADOW_ONLY" and (direction in ("BUY", "SELL") or abstain):
             if (s.get("source") != "CTRADER_MARKET_DATA_READ_ONLY"
                     or s.get("execution_authority") is not False
                     or origin.get("source") != "CTRADER_MARKET_DATA_READ_ONLY"):
@@ -64,12 +66,18 @@ def compose(root, *, now=None):
             closed, target = time(s["candle_closed_at"]), time(s["target_close_at"])
             observed = time(origin["as_of"])
             valid = closed <= observed <= now < target and 0 <= (now-observed).total_seconds() <= 300
+            if now >= target:
+                reason = "TARGET_CANDLE_EXPIRED"
+            elif not 0 <= (now-observed).total_seconds() <= 300:
+                reason = "SOURCE_STALE"
+            elif not closed <= observed <= now:
+                reason = "INVALID_SIGNAL_TIME"
         if not valid:
             direction = "WAIT"
         rows[tf] = {
             "direction": direction,
-            "state": "R281_RECONSTRUCTED_SHADOW" if valid else "WAIT_DATA",
-            "reason": s.get("reason") if valid else "SOURCE_OR_TARGET_STALE",
+            "state": ("R281_MODEL_ABSTAIN" if abstain else "R281_RECONSTRUCTED_SHADOW") if valid else "WAIT_DATA",
+            "reason": reason,
             "closed_at": closed.isoformat() if valid else None,
             "target_close_at": target.isoformat() if valid else None,
             "observed_at": origin.get("as_of") if valid else None,

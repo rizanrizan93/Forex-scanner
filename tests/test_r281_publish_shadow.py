@@ -67,3 +67,28 @@ def test_model_target_expiry_never_promotes_old_sell(tmp_path):
     result=compose(root,now=now)
     assert result["rows"]["H1"]["direction"]=="WAIT"
     assert result["rows"]["H1"]["state"]=="WAIT_DATA"
+    assert result["rows"]["H1"]["reason"]=="TARGET_CANDLE_EXPIRED"
+
+
+@pytest.mark.parametrize("reason",["HEAD_CONFLICT","BELOW_THRESHOLD"])
+def test_model_wait_preserves_threshold_reason_and_times(tmp_path,reason):
+    now = datetime(2026,11,23,1,tzinfo=UTC)
+    root = fixture(tmp_path, now)
+    path = root / TF_FILES["H4"]
+    doc=json.loads(path.read_text())
+    doc["signal"].update(direction="WAIT",reason=reason)
+    path.write_text(json.dumps(doc))
+    row=compose(root,now=now)["rows"]["H4"]
+    assert row["state"]=="R281_MODEL_ABSTAIN" and row["reason"]==reason
+    assert row["direction"]=="WAIT" and row["target_close_at"]
+
+
+def test_missing_source_reason_is_not_overwritten_by_generic_stale(tmp_path):
+    now = datetime(2026,11,23,1,tzinfo=UTC)
+    root = fixture(tmp_path, now)
+    path = root / TF_FILES["D1"]
+    doc=json.loads(path.read_text())
+    doc["signal"].update(status="WAIT_DATA",direction="WAIT",reason="LIVE_HISTORY_GAP_OR_PRICE_SCALE")
+    path.write_text(json.dumps(doc))
+    row=compose(root,now=now)["rows"]["D1"]
+    assert row["state"]=="WAIT_DATA" and row["reason"]=="LIVE_HISTORY_GAP_OR_PRICE_SCALE"
