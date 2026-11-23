@@ -80,6 +80,8 @@ def score():
             x.get("exploratory_extension_id")!=FOLLOW
             or x.get("research_after_inspecting_r31") is not True
             or x.get("execution_authority") is not False
+            or x.get("recomputed_with_correct_extended_hold_binding") is not True
+            or x.get("correction")!="R311_INITIAL_BASELINE_JOBS_USED_ORIGINAL_SHORT_HOLDS_SUPERSEDED"
             or set(x.get("baselines",{}))!=set(f"h{i}" for i in hs)
         ):
             raise ValueError("R311_UNOPTIMIZED_BASELINE_MISSING:"+tf)
