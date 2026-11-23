@@ -3,6 +3,11 @@ name: R28.1 XAU Direction Shadow Hourly (Read Only)
 # atomic/fail-closed. No cBot integration or orders.
 on:
   workflow_dispatch:
+  # Backup trigger when GitHub cron is delayed or dropped.
+  # Driven by the existing read-only closed-candle publisher (no orders).
+  workflow_run:
+    workflows: ["XAU Decision Closed Candles Readonly Publisher"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -19,6 +24,8 @@ concurrency:
 
 jobs:
   infer:
+    # Never react to a failed upstream publisher.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Model parity and broker shadow ${{ matrix.tf }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
