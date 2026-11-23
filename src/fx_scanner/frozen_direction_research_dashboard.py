@@ -9,6 +9,7 @@ from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, U
 from .r281_shadow_feed import fetch as fetch_r281, blank as blank_r281, reason_text
 from .rbest_side_feed import fetch as fetch_rbest, blank as blank_rbest
 from .rbest_side_dashboard import render_best_candidate_block
+from .best_candidate_direction import select as select_best_candidate_direction
 from .r294_frozen_h4_buy_feed import fetch as fetch_r294, blank as blank_r294
 from .r294_frozen_h4_buy_dashboard import render_h4_buy
 
@@ -130,11 +131,11 @@ def load_context_sources():
 def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
-    st.subheader("RIZAN XAU · Direction Multitimeframe R1–R28.1")
-    st.caption("Panel R28.1, kandidat R25/R11 dan H4 BUY R29.2 Precision frozen. "
-               "H1/H4 kandidat R25 BUY × R11 SELL ditampilkan pada panel terpisah "
-               "hanya jika reproduksi parity serta candle broker lolos. "
-               "Kandidat historis lainnya tidak otomatis menjadi sinyal live.")
+    st.subheader("RIZAN XAU · Direction Kandidat Terbaik H1/H4/D1/W1")
+    st.caption("Arah utama diambil dari kandidat terverifikasi per sisi BUY/SELL. "
+               "R28.1 H1/H4/W1 hanya baseline pembanding; bukan fallback otomatis. "
+               "D1 BUY R28.1 masih multihead; D1 SELL R18 dan W1 R27/R24 belum "
+               "punya inferensi terverifikasi. Semua keluaran research-only.")
     lock=json.loads(LOCK.read_text())
     candidates=candidate_rows(lock)
     summary=candidate_summary(lock)
@@ -181,7 +182,62 @@ def render_frozen_direction_research():
             shadow=expire_cached_directions(shadow, now=now)
         except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
             shadow={tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
-        st.markdown("### Arah model sekarang · H1/H4/D1/W1")
+        try:
+            specialists=read_rbest(int(now.timestamp()//30))
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            specialists={tf:blank_rbest("SPECIALIST_SNAPSHOT_UNAVAILABLE") for tf in TFS}
+        try:
+            r294=read_r294(int(now.timestamp()//30))
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            r294=blank_r294("FROZEN_R292_H4_SHADOW_NOT_YET_PUBLISHED")
+        # Revalidate time on every UI rerun, even when Streamlit cached feeds.
+        if r294.get("target") and pd.Timestamp(now)>=pd.Timestamp(r294["target"]):
+            r294=blank_r294("TARGET_CANDLE_EXPIRED",
+                            expired_at=r294["target"],issued=r294.get("issued"))
+        primary=select_best_candidate_direction(specialists,r294,shadow,now=now)
+        st.markdown("### Direction utama · kandidat terbaik (research-only)")
+        st.caption(
+            "H1 R25 BUY/R11 SELL; H4 R29.2 BUY/R11 SELL; "
+            "D1 R28.1 BUY/R18 SELL; W1 R27 BUY/R24 SELL. "
+            "Kandidat tidak terinferensi tetap WAIT. Tidak ada auto-order."
+        )
+        reason_labels={
+            "R25_R11_FROZEN_TRIGGER":"Pemicu kandidat R25/R11 terverifikasi.",
+            "R292_BUY_R11_SELL_TRIGGER":"Pemicu kandidat H4 R29.2/R11 terverifikasi.",
+            "NO_SIDE_TRIGGER":"Kedua kandidat belum memicu arah.",
+            "SIDE_CONFLICT":"Kandidat BUY dan SELL bersamaan, arah ditahan.",
+            "R292_H4_BUY_NOT_FRESH":"Feed BUY H4 R29.2 tidak valid/segar.",
+            "R281_D1_BUY_LIVE_R18_SELL_UNAVAILABLE":
+                "D1 BUY R28.1 multihead tersedia, tetapi R18 SELL belum diinferensikan.",
+            "R18_D1_SELL_UNAVAILABLE_OR_R281_BUY_NOT_TRIGGERED":
+                "D1 SELL R18 belum tersedia; R28.1 BUY tidak terpicu/valid.",
+            "R27_BUY_R24_SELL_NO_VALIDATED_LIVE_INFERENCE":
+                "W1 R27 BUY dan R24 SELL masih hanya hasil riset historis.",
+        }
+        for tf in TFS:
+            row=primary[tf]
+            with st.container(border=True):
+                sources=row["sources"]
+                st.metric(tf+" · "+sources["BUY"]+" BUY / "+sources["SELL"]+" SELL",
+                          row["direction"])
+                status=("MODEL AKTIF · SHADOW" if row["status"]=="ACTIVE_SHADOW" else
+                        "MODEL PARSIAL · SHADOW" if row["status"]=="PARTIAL_HEAD" else
+                        "WAIT MODEL" if row["status"]=="WAIT_MODEL" else
+                        "BELUM ADA INFERENSI" if row["status"]=="NOT_INFERENCED"
+                        else "WAIT DATA")
+                st.write("**"+status+"** · "+reason_labels.get(row["reason"],row["reason"]))
+                if row["target"]:
+                    st.caption("Target close: "+wib(row["target"])
+                               +" · diterbitkan: "+wib(row["issued"]))
+        st.dataframe([
+            {"TF":tf,"Direction utama":primary[tf]["direction"],
+             "BUY model":primary[tf]["sources"]["BUY"],
+             "SELL model":primary[tf]["sources"]["SELL"],
+             "Status":primary[tf]["status"],
+             "Alasan":reason_labels.get(primary[tf]["reason"],primary[tf]["reason"]),
+             "Target close WIB":wib(primary[tf]["target"])}
+            for tf in TFS],hide_index=True,width="stretch")
+        st.markdown("### R28.1 baseline · pembanding, bukan direction utama")
         # The wide table is difficult to inspect on a phone; put the actual
         # reason and expiry beside EACH direction, before the benchmarks.
         for tf in TFS:
@@ -212,17 +268,7 @@ def render_frozen_direction_research():
                                    + " SUDAH KEDALUWARSA · bukan sinyal entry saat ini")
                 elif row.get("issued"):
                     st.caption("Penerbitan terakhir: " + wib(row["issued"]))
-        # Independent R29.2 H4 BUY live inference is frozen for research;
-        # never use it as authority to overwrite R28.1 or SMC entry signals.
-        try:
-            r294=read_r294(int(now.timestamp()//30))
-        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
-            r294=blank_r294("FROZEN_R292_H4_SHADOW_NOT_YET_PUBLISHED")
-        # The transport validates expiry at fetch time; a cached BUY must
-        # also expire at its exact H4 target during Streamlit reruns.
-        if r294.get("target") and pd.Timestamp(now)>=pd.Timestamp(r294["target"]):
-            r294=blank_r294("TARGET_CANDLE_EXPIRED",
-                            expired_at=r294["target"],issued=r294.get("issued"))
+        # Independent R29.2 H4 BUY detail remains visible as a research audit.
         render_h4_buy(st,r294,wib)
         st.dataframe([
             {"TF":tf,
@@ -236,22 +282,18 @@ def render_frozen_direction_research():
                        else "WAIT MODEL" if shadow[tf]["state"]=="MODEL_ABSTAIN" else "WAIT DATA"),
              "Keterangan":reason_text(shadow[tf]["reason"])}
             for tf in TFS],hide_index=True,width="stretch")
-        st.caption("PANTAU SETUP BUY/SELL adalah bias arah candle berikutnya dari model riset (shadow), bukan instruksi entry. WAIT = jangan menyimpulkan arah dari angka akurasi historis.")
+        st.caption("Baseline R28.1 hanya pembanding, bukan arah utama atau sinyal entry. WAIT = jangan menyimpulkan arah dari akurasi historis.")
         st.markdown("### Semua 8 kandidat terbaik yang dibekukan · R1–R28.1")
         st.dataframe(candidates,hide_index=True,width="stretch",
                      column_config={"Bukti replay":st.column_config.LinkColumn("Bukti replay",display_text="GitHub Actions")})
         st.caption("Akurasi per sisi berasal dari sampel, periode, dan kebijakan yang berbeda; tidak boleh dirata-rata atau digabung sebagai confidence live. H1/H4 SELL R11 memiliki estimasi net P&L negatif; W1 BUY R27 hanya n=48. Tidak ada validasi forward independen.")
-        # Independent candidate models do NOT override R28.1; both are shown.
-        try:
-            specialists=read_rbest(int(now.timestamp()//30))
-        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
-            specialists={tf:blank_rbest("SPECIALIST_SNAPSHOT_UNAVAILABLE") for tf in TFS}
+        # Original H1/H4 candidate heads remain available as an audit table.
         render_best_candidate_block(st,specialists,lock,shadow,wib)
-        st.caption("Diperiksa "+wib(now)+" · tampilan diperbarui 30 detik; waktu penerbitan menunjukkan pembaruan model sebenarnya.")
+        st.caption("Diperiksa "+wib(now)+" · direction utama memakai kandidat terverifikasi; tampilan diperbarui 30 detik.")
         st.caption("WAIT MODEL: syarat skor riset belum terpenuhi atau kedua arah bertentangan. WAIT DATA: input/model belum tersedia atau target prediksi sudah berakhir.")
         if session_closed(now):
             st.warning("Pasar XAU tutup; tunggu pembaruan model saat pasar buka.")
-        st.caption("Model direkonstruksi dari konfigurasi replay R28.1. Replay parity 2025 lulus; akurasi forward 2026 belum tervalidasi independen.")
+        st.caption("Semua model bersifat riset; paritas replay bukan validasi akurasi forward 2026 ataupun izin order.")
         with st.expander("Chart candle sumber",expanded=False):
             if not st.toggle("Tampilkan chart",key="r281_show_chart"):
                 return
@@ -268,7 +310,7 @@ def render_frozen_direction_research():
             if chart.empty:return
             chart["time"]=chart.index
             chart["WIB"]=chart.index.tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M")
-            st.caption("Candle sumber untuk referensi visual. Arah prediksi pada tabel berasal dari model R28.1.")
+            st.caption("Candle sumber adalah referensi visual. Tabel direction utama berasal dari kandidat terbaik; R28.1 ditampilkan terpisah.")
             base=alt.Chart(chart).encode(x=alt.X("time:T",title="Candle close UTC"),tooltip=["WIB","open:Q","high:Q","low:Q","close:Q"])
             color=alt.condition("datum.close >= datum.open",alt.value("#149c78"),alt.value("#d65c5c"))
             pic=base.mark_rule().encode(y=alt.Y("low:Q",scale=alt.Scale(zero=False),title="XAUUSD"),y2="high:Q",color=color)+base.mark_bar(size=4).encode(y="open:Q",y2="close:Q",color=color)
