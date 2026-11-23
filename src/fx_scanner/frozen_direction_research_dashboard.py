@@ -127,11 +127,32 @@ def render_frozen_direction_research():
         except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
             shadow={tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
         st.markdown("### Arah model sekarang · H1/H4/D1/W1")
+        # The wide table is difficult to inspect on a phone; put the actual
+        # reason and expiry beside EACH direction, before the benchmarks.
+        for tf in TFS:
+            row = shadow[tf]
+            with st.container(border=True):
+                st.metric(tf + " · R28.1", row["direction"])
+                status = ("MODEL AKTIF" if row["state"] == "RECONSTRUCTED_SHADOW"
+                          else "WAIT MODEL" if row["state"] == "MODEL_ABSTAIN"
+                          else "WAIT DATA")
+                st.write("**" + status + "** · " + reason_text(row["reason"]))
+                if row.get("target"):
+                    st.caption("Target close: " + wib(row["target"])
+                               + " · diterbitkan: " + wib(row["issued"]))
+                elif row.get("expired_at"):
+                    st.caption("Prediksi sudah berakhir: " + wib(row["expired_at"])
+                               + " · terakhir diterbitkan: " + wib(row["issued"]))
+                    if row.get("previous_direction") in ("BUY", "SELL"):
+                        st.caption("Arah terakhir " + row["previous_direction"]
+                                   + " SUDAH KEDALUWARSA · bukan sinyal entry saat ini")
+                elif row.get("issued"):
+                    st.caption("Penerbitan terakhir: " + wib(row["issued"]))
         st.dataframe([
             {"TF":tf,
              "Arah R28.1":shadow[tf]["direction"],
              "Panduan setup":setup_watch_label(shadow[tf]),
-             "Target close (WIB)":wib(shadow[tf]["target"]),
+             "Target close (WIB)":wib(shadow[tf]["target"] or shadow[tf].get("expired_at")),
              "Diterbitkan (WIB)":wib(shadow[tf]["issued"]),
              "BUY terbaik (historis)":summary[tf]["BUY"],
              "SELL terbaik (historis)":summary[tf]["SELL"],
@@ -148,13 +169,6 @@ def render_frozen_direction_research():
         st.caption("WAIT MODEL: syarat skor riset belum terpenuhi atau kedua arah bertentangan. WAIT DATA: input/model belum tersedia atau target prediksi sudah berakhir.")
         if session_closed(now):
             st.warning("Pasar XAU tutup; tunggu pembaruan model saat pasar buka.")
-        for tf in TFS:
-            row=shadow[tf]
-            with st.container(border=True):
-                st.metric(tf+" · R28.1",row["direction"])
-                st.caption(reason_text(row["reason"]))
-                if row["closed"]:
-                    st.caption("Close acuan: "+wib(row["closed"])+" · target: "+wib(row["target"])+" · diterbitkan: "+wib(row["issued"]))
         st.caption("Model direkonstruksi dari konfigurasi replay R28.1. Replay parity 2025 lulus; akurasi forward 2026 belum tervalidasi independen.")
         with st.expander("Chart candle sumber",expanded=False):
             if not st.toggle("Tampilkan chart",key="r281_show_chart"):

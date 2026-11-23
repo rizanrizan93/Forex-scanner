@@ -48,6 +48,9 @@ def test_r281_never_shows_expired_or_fake_broker_signal():
     doc["rows"]["H1"]["target_close_at"]=(now-timedelta(seconds=1)).isoformat()
     out=validate(doc,now=now)
     assert out["H1"]["direction"]=="WAIT"
+    assert out["H1"]["expired_at"]==(now-timedelta(seconds=1)).isoformat()
+    assert out["H1"]["previous_direction"]=="SELL"
+    assert out["H1"]["state"]=="WAIT_DATA"
     assert out["W1"]["direction"]=="SELL"
     doc=payload(now)
     doc["rows"]["H4"]["model_sha256"]="broken"
@@ -88,6 +91,8 @@ def test_model_abstention_is_distinct_from_missing_data(reason):
     doc["rows"]["H4"]["target_close_at"]=(now-timedelta(seconds=1)).isoformat()
     expired=validate(doc,now=now)["H4"]
     assert expired["state"]=="WAIT_DATA" and expired["reason"]=="TARGET_CANDLE_EXPIRED"
+    assert expired["expired_at"]==(now-timedelta(seconds=1)).isoformat()
+    assert expired["previous_direction"] is None
 
 
 def test_dashboard_uses_model_only_and_does_not_fetch_other_predictions():
@@ -189,3 +194,12 @@ def test_api_fallback_never_approves_forged_snapshot():
         return Resp()
     with pytest.raises(ValueError,match="CONTRACT"):
         fetch(now=now,opener=opener)
+
+def test_mobile_wait_cards_are_before_the_wide_benchmark_table():
+    from pathlib import Path
+    src=(Path(__file__).resolve().parents[1]/
+         "src/fx_scanner/frozen_direction_research_dashboard.py").read_text()
+    # User should see the why and when without horizontal-scrolling a table.
+    assert src.index('st.metric(tf + " · R28.1"') < src.index('st.dataframe([')
+    assert "Prediksi sudah berakhir:" in src
+    assert "SUDAH KEDALUWARSA · bukan sinyal entry saat ini" in src

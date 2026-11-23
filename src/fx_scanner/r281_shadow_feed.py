@@ -66,6 +66,7 @@ def blank(reason="WAIT_DATA"):
         "state": "WAIT_DATA", "reason": reason, "direction": "WAIT",
         "target": None, "issued": None, "closed": None, "model": None,
         "source": None, "buy_score": None, "sell_score": None,
+        "expired_at": None, "previous_direction": None,
         "execution_authority": False,
     }
 
@@ -111,6 +112,10 @@ def validate(payload, *, now):
         # Source was fresh at publication; target cannot have already closed.
         if now >= target:
             result[tf]["reason"] = "TARGET_CANDLE_EXPIRED"
+            # Display-only audit. Never restore an expired model as an active
+            # BUY/SELL; downstream entry engines use direction == WAIT.
+            result[tf]["expired_at"] = target.isoformat()
+            result[tf]["previous_direction"] = row["direction"] if not abstain else None
             continue
         if not (close <= observed <= issued <= now < target):
             result[tf]["reason"] = "INVALID_SIGNAL_TIME"
