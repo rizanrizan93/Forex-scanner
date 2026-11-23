@@ -11,6 +11,38 @@ from .r281_shadow_feed import fetch as fetch_r281, blank as blank_r281, reason_t
 ROOT=Path(__file__).resolve().parents[2]
 LOCK=ROOT/"research/direction_benchmark_lock_r281_20261122.json"
 
+def candidate_rows(lock):
+    """Display all eight archived candidate outcomes without implying live inference."""
+    by_key={(e.get("tf"),e.get("side")):e for e in lock.get("entries",[])}
+    out=[]
+    for tf in TFS:
+        for side in ("BUY","SELL"):
+            e=by_key.get((tf,side))
+            if e is None:
+                continue
+            out.append({
+                "TF":tf, "Kandidat":side, "Versi riset":e["version"],
+                "Akurasi historis":f'{e["accuracy"]:.2%}',
+                "Benar / sampel":f'{e["correct"]}/{e["n"]}',
+                "Status":"BENCHMARK · BELUM LIVE",
+                "Bukti replay":e.get("run_url",""),
+            })
+    return out
+
+def candidate_summary(lock):
+    """Historical performance beside each TF, never used to choose today's direction."""
+    by_key={(e.get("tf"),e.get("side")):e for e in lock.get("entries",[])}
+    def label(tf,side):
+        e=by_key.get((tf,side))
+        return f'{e["accuracy"]:.2%} · {e["version"]}' if e else "—"
+    return {tf:{"BUY":label(tf,"BUY"),"SELL":label(tf,"SELL")} for tf in TFS}
+
+def setup_watch_label(row):
+    """Only active, unexpired research model snapshots can show a directional watch."""
+    if row.get("state")!="RECONSTRUCTED_SHADOW":
+        return "TUNGGU"
+    return {"BUY":"PANTAU SETUP BUY","SELL":"PANTAU SETUP SELL"}.get(row.get("direction"),"TUNGGU")
+
 def load_market():
     now=datetime.now(UTC)
     try:
@@ -65,8 +97,11 @@ def load_context_sources():
 def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
-    st.subheader("RIZAN XAU · Prediksi R28.1")
-    st.caption("Arah H1, H4, D1, dan W1 berasal hanya dari model riset R28.1. BUY: close berikutnya lebih tinggi; SELL: lebih rendah dibanding close terakhir.")
+    st.subheader("RIZAN XAU · Direction Multitimeframe R1–R28.1")
+    st.caption("Panel arah untuk mencari setup manual: hanya snapshot model R28.1 yang masih valid memberi bias BUY/SELL. Delapan hasil R1–R28.1 di bawah adalah benchmark historis, bukan delapan sinyal live.")
+    lock=json.loads(LOCK.read_text())
+    candidates=candidate_rows(lock)
+    summary=candidate_summary(lock)
 
     @st.cache_data(ttl=30,show_spinner=False)
     def read_r281(slot):
@@ -86,15 +121,24 @@ def render_frozen_direction_research():
             shadow=read_r281(int(now.timestamp()//30))
         except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
             shadow={tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
+        st.markdown("### Arah model sekarang · H1/H4/D1/W1")
         st.dataframe([
             {"TF":tf,
              "Arah R28.1":shadow[tf]["direction"],
+             "Panduan setup":setup_watch_label(shadow[tf]),
              "Target close (WIB)":wib(shadow[tf]["target"]),
              "Diterbitkan (WIB)":wib(shadow[tf]["issued"]),
+             "BUY terbaik (historis)":summary[tf]["BUY"],
+             "SELL terbaik (historis)":summary[tf]["SELL"],
              "Status":("RESEARCH SHADOW" if shadow[tf]["state"]=="RECONSTRUCTED_SHADOW"
                        else "WAIT MODEL" if shadow[tf]["state"]=="MODEL_ABSTAIN" else "WAIT DATA"),
              "Keterangan":reason_text(shadow[tf]["reason"])}
             for tf in TFS],hide_index=True,width="stretch")
+        st.caption("PANTAU SETUP BUY/SELL adalah bias arah candle berikutnya dari model riset (shadow), bukan instruksi entry. WAIT = jangan menyimpulkan arah dari angka akurasi historis.")
+        st.markdown("### Semua 8 kandidat terbaik yang dibekukan · R1–R28.1")
+        st.dataframe(candidates,hide_index=True,width="stretch",
+                     column_config={"Bukti replay":st.column_config.LinkColumn("Bukti replay",display_text="GitHub Actions")})
+        st.caption("Akurasi per sisi berasal dari sampel, periode, dan kebijakan yang berbeda; tidak boleh dirata-rata atau digabung sebagai confidence live. H1/H4 SELL R11 memiliki estimasi net P&L negatif; W1 BUY R27 hanya n=48. Tidak ada validasi forward independen.")
         st.caption("Diperiksa "+wib(now)+" · tampilan diperbarui 30 detik; waktu penerbitan menunjukkan pembaruan model sebenarnya.")
         st.caption("WAIT MODEL: syarat skor riset belum terpenuhi atau kedua arah bertentangan. WAIT DATA: input/model belum tersedia atau target prediksi sudah berakhir.")
         if session_closed(now):
@@ -129,9 +173,9 @@ def render_frozen_direction_research():
             pic=base.mark_rule().encode(y=alt.Y("low:Q",scale=alt.Scale(zero=False),title="XAUUSD"),y2="high:Q",color=color)+base.mark_bar(size=4).encode(y="open:Q",y2="close:Q",color=color)
             st.altair_chart(pic.properties(height=340),width="stretch")
     panel()
-    with st.expander("R28.1 · hasil replay historis",expanded=False):
-        lock=json.loads(LOCK.read_text())
-        entries=lock["entries"]
-        st.dataframe([{"TF":e["tf"],"Arah":e["side"],"Versi":e["version"],"Akurasi":f"{e['accuracy']:.2%}","n":e["n"]} for e in entries],hide_index=True)
-        st.caption("Benchmark historis berasal dari berbagai kebijakan/sampel, bukan probabilitas prediksi saat ini.")
+    with st.expander("Audit R1–R28.1 · arsip dan catatan riset",expanded=False):
+        st.dataframe([{"TF":e["tf"],"Arah":e["side"],"Versi":e["version"],
+                       "Akurasi":f"{e['accuracy']:.2%}","Benar/n":f"{e['correct']}/{e['n']}",
+                       "Catatan":e.get("notes","")} for e in lock["entries"]],hide_index=True)
+        st.caption("Hasil historis tidak digunakan sebagai probabilitas keberhasilan order saat ini. Untuk sinyal individual kedelapan kandidat diperlukan implementasi dan forward validation masing-masing model.")
         st.download_button("Unduh benchmark JSON",LOCK.read_text(),file_name=LOCK.name,mime="application/json")
