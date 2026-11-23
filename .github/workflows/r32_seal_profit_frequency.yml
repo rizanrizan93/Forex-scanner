@@ -1,0 +1,55 @@
+name: R32 Freeze Profit and Signal Count ATR 2012-2026 Evidence
+on:
+  push:
+    branches: ['research/r32-profit-frequency-atr-20261123']
+    paths:
+      - 'scripts/r32_seal_profit_frequency.py'
+      - '.github/workflows/r32_seal_profit_frequency.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download all 12 completed SHA-backed R32 historical receipts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45194199077
+          github-token: ${{ github.token }}
+          pattern: r32-*
+          path: artifacts/r32
+          merge-multiple: true
+      - name: Verify complete 12-matrix and independent per-trade profit, DD, cost5 and timeline
+        run: |
+          set -euo pipefail
+          test "$(find artifacts/r32 -maxdepth 1 -name 'r32-*.json' | wc -l)" -eq 12
+          python -m py_compile scripts/r32_seal_profit_frequency.py
+          python scripts/r32_seal_profit_frequency.py
+      - name: Save frozen research checkpoint, never modifying LIVE branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R32_XAU_PROFIT_FREQUENCY_ATR_LOCK_20261123.json
+          git add research/RIZAN_R32_XAU_PROFIT_FREQUENCY_ATR_FINDINGS_20261123.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Freeze R32 2012-26 profitable signal frequency and ATR risk audit, read only"
+            git push origin HEAD:refs/heads/research/r32-profit-frequency-atr-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r32-frozen-profit-frequency-2012-26
+          path: |
+            research/RIZAN_R32_XAU_PROFIT_FREQUENCY_ATR_LOCK_20261123.json
+            research/RIZAN_R32_XAU_PROFIT_FREQUENCY_ATR_FINDINGS_20261123.md
+          retention-days: 90
+          if-no-files-found: warn
