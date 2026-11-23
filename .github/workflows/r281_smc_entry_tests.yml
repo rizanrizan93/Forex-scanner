@@ -1,0 +1,32 @@
+name: R28.1 SMC Manual Entry (Read Only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/fx_scanner/r281_smc_entry_*.py'
+      - 'src/fx_scanner/manual_reversal_map.py'
+      - 'main.py'
+      - 'tests/test_r281_smc_entry_engine.py'
+      - '.github/workflows/r281_smc_entry_tests.yml'
+  pull_request:
+    paths:
+      - 'src/fx_scanner/r281_smc_entry_*.py'
+      - 'src/fx_scanner/manual_reversal_map.py'
+      - 'main.py'
+      - 'tests/test_r281_smc_entry_engine.py'
+      - '.github/workflows/r281_smc_entry_tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas==2.2.3 numpy==2.3.5 pytest==9.0.2
+      - run: python -m py_compile src/fx_scanner/r281_smc_entry_engine.py src/fx_scanner/r281_smc_entry_dashboard.py main.py
+      - run: PYTHONPATH=src pytest -q tests/test_r281_smc_entry_engine.py
