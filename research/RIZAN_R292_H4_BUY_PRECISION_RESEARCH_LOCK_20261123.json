@@ -1,0 +1,119 @@
+{
+  "id": "RIZAN_R292_H4_BUY_PRECISION_RESEARCH_CANDIDATE_20261123",
+  "status": "HISTORICAL_RESEARCH_ONLY_NOT_FORWARD_VALIDATED",
+  "symbol": "XAUUSD",
+  "timeframe": "H4",
+  "side": "BUY",
+  "target": "next completed H4 close minus current completed H4 close >0",
+  "source_branch": "research/r292-precision-coverage-expansion-20261123",
+  "source_workflow_run_id": 45170505333,
+  "source_artifact_id": 14816656715,
+  "source_artifact_name": "r292-precision-4h",
+  "source_json_sha256": "f5fb876d38b5e8e8599037d1474aa6c2c62ffc3a8ba3a66c845916a8bc2aaa2c",
+  "source_artifact_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45170505333",
+  "selection_policy": "train earlier six years, validation immediately prior calendar year with next-candle label maturity embargo; no evaluation label used to select head",
+  "assumed_cost_usd_oz": 0.7,
+  "aggregate": {
+    "n": 126,
+    "correct": 79,
+    "accuracy": 0.626984,
+    "wilson_lower95": 0.539958,
+    "coverage_side": 0.030747,
+    "coverage_combined": 0.085896,
+    "gross_mean_usd_oz": 1.064,
+    "net_mean_usd_oz": 0.364,
+    "all_strategy_gates_passed": false
+  },
+  "folds": [
+    {
+      "evaluation_year": 2024,
+      "validation_year": 2023,
+      "model": "hgb",
+      "feature_group": "broad_context",
+      "threshold": 0.54,
+      "gate": "trend_strong",
+      "validation": {
+        "n": 40,
+        "correct": 31,
+        "accuracy": 0.775,
+        "net_mean_usd_oz": 2.08547,
+        "half_year_counts": [
+          14,
+          26
+        ]
+      },
+      "evaluation": {
+        "n": 50,
+        "correct": 35,
+        "accuracy": 0.7,
+        "net_mean_usd_oz": 1.3887
+      }
+    },
+    {
+      "evaluation_year": 2025,
+      "validation_year": 2024,
+      "model": "ridge",
+      "feature_group": "event_geometry",
+      "threshold": 0.58,
+      "gate": "all",
+      "validation": {
+        "n": 46,
+        "correct": 32,
+        "accuracy": 0.695652,
+        "net_mean_usd_oz": 1.28883,
+        "half_year_counts": [
+          27,
+          19
+        ]
+      },
+      "evaluation": {
+        "n": 53,
+        "correct": 30,
+        "accuracy": 0.566038,
+        "net_mean_usd_oz": -1.6927
+      }
+    },
+    {
+      "evaluation_year": 2026,
+      "validation_year": 2025,
+      "model": "ridge",
+      "feature_group": "broad_context",
+      "threshold": 0.54,
+      "gate": "trend_impulse",
+      "validation": {
+        "n": 63,
+        "correct": 41,
+        "accuracy": 0.650794,
+        "net_mean_usd_oz": 2.70262,
+        "half_year_counts": [
+          26,
+          37
+        ]
+      },
+      "evaluation": {
+        "n": 23,
+        "correct": 14,
+        "accuracy": 0.608696,
+        "net_mean_usd_oz": 2.8757
+      }
+    }
+  ],
+  "risk_flags": [
+    "H4 SELL paired head did not reach 60% or positive net mean",
+    "Lower 95% Wilson bound 53.9958% does not establish a true precision above 60%",
+    "Three fold policies are different; 62.6984% is aggregate historical, not one frozen 2026 live configuration accuracy",
+    "Validation/evaluation years 2023-2026 already seen through R1-R29, multiple testing risk",
+    "Side coverage 3.0747% implies most H4 candles have no BUY trigger",
+    "2026 n=23 too small for confidence",
+    "Assumed 0.70 USD/oz does not establish broker executable PnL"
+  ],
+  "execution_authority": false,
+  "execution_influence": false,
+  "forexscanner_live_promotion": false,
+  "require_prior_to_promotion": [
+    "pinned 2026 refit trained only on closed historical data",
+    "fresh broker H4 feature and prefix causal parity",
+    "prospective forward test without retuning",
+    "independent BUY/SELL and after-cost out-of-sample performance review"
+  ]
+}
