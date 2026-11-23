@@ -228,11 +228,10 @@ def run(tf,mode):
                          cfg["atr_sl_or_trail"],cfg["atr_tp"])
         side=cfg["side"]
         gate=entry_masks[side][cfg["entry"]]
-        eligible=src_valid & (year==y)&np.isfinite(gross[side])
+        # Prior-year open position blocks new orders, before greedy selection.
+        eligible=(src_valid & (year==y)&np.isfinite(gross[side])
+                  & (np.arange(len(d))>=last_exit))
         selected=pick(gate,eligible,ends[side])
-        # Reconcile one active position across adjacent years.
-        selected=np.asarray([i for i in selected if i>=last_exit],
-                            dtype=np.int64)
         if len(selected):last_exit=int(ends[side][selected[-1]])
         net=stats(selected,gross[side],2.)
         yearly=[
