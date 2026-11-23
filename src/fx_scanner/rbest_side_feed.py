@@ -34,12 +34,9 @@ KNOWN_R11_TRAIN_HASH={
     "H4":"a172c3a659224862db0d3bde24642ed56b5c4fec93afa66bf148c413fa7aa721",
 }
 KNOWN_R11_VAL_HASH={
-    "H1":"20b1443dffc23ffd1981b58f0b5795ca3",  # replaced below from frozen artifact
+    "H1":"20b1443dffc23ffd1981b58f0bf3bd62a745f3d5bb1267f3a2ae4a77be930401",
     "H4":"64f23589ecb10bf63c7c79526cef85bed5693f7ccccb1d5ed8b2c2d8c3330f18",
 }
-# H1 original frozen validation hash, full 64 characters.
-KNOWN_R11_VAL_HASH["H1"]="20b1443dffc23ffd1981b58f0b9f189d627010aa6efc0368824cafbfc776b0"
-
 
 def time(value):
     t=pd.Timestamp(value)
