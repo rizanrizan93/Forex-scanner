@@ -36,3 +36,16 @@ def test_schedule_supports_first_22_minutes_after_close():
     src = WORKFLOW.read_text()
     assert "cron: '7,22,37,52 * * * 1-5'" in src
     assert "timeout-minutes: 30" in src
+
+
+def test_model_trained_only_on_cache_miss_then_fast_refit_reuse():
+    src = WORKFLOW.read_text()
+    assert "actions/cache@v4" in src
+    assert "r281-2025-parity-refit-fast-v1" in src
+    assert "reconstructed-model.joblib" in src
+    assert "if: steps.cache.outputs.cache-hit != 'true'" in src
+    assert "if: steps.cache.outputs.cache-hit == 'true'" in src
+    assert "python scripts/r281_live_shadow_parity.py" in src
+    assert "python scripts/r281_fast_live_inference.py" in src
+    assert "tests/test_r281_fast_live_inference.py" in src
+    assert "git add runtime/r281-shadow-direction.json" in src
