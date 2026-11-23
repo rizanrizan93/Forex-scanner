@@ -1,0 +1,55 @@
+name: R31 Seal 30 Actual Net-Profit Results and Ranking 2012-2026
+on:
+  push:
+    branches: ['research/r31-net-profit-max-2012-2026-20261123']
+    paths:
+      - 'scripts/r31_consolidate_profit.py'
+      - '.github/workflows/r31_consolidate_profit.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Audit 30 actual original R31 complete replay receipts from successful GitHub run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45188335929
+          github-token: ${{ github.token }}
+          pattern: r31-*
+          path: artifacts/r31
+          merge-multiple: true
+      - name: Verify complete 30-matrix coverage and recompute PnL / DD / cost scenarios from individual receipts
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/r31_consolidate_profit.py
+          test "$(find artifacts/r31/ -maxdepth 1 -name 'r31-*.json' | wc -l)" -eq 30
+          python scripts/r31_consolidate_profit.py
+      - name: Archive READ-ONLY frozen net-profit ranking to research branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R31_XAU_MAX_NET_2012_2026_RESEARCH_LOCK_20261123.json
+          git add research/RIZAN_R31_XAU_MAX_NET_2012_2026_FINDINGS_20261123.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Freeze R31 complete 2012-2026 30-variant XAU 1oz net-profit-ranked research findings"
+            git push origin HEAD:refs/heads/research/r31-net-profit-max-2012-2026-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31-research-frozen-full-results-2012-2026
+          path: |
+            research/RIZAN_R31_XAU_MAX_NET_2012_2026_RESEARCH_LOCK_20261123.json
+            research/RIZAN_R31_XAU_MAX_NET_2012_2026_FINDINGS_20261123.md
+          retention-days: 90
+          if-no-files-found: warn
