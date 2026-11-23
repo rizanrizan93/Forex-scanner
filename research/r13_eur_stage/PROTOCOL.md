@@ -1,0 +1,11 @@
+# R13 preregistration — 23 November 2026 WIB
+
+Outcome-informed cross-instrument replication of the rejected R12 session policies. Not a new independent discovery. User requests continued research on early capital and terminal growth.
+
+64 policies unchanged from R12: two families, two sessions, H4 or H1+H4 alignment, BUY/SELL, 60/180min hold, 1.5/2.5R target. R11B spread gate0.35ATR retained without tuning. EURUSD FXCM public observed bid/ask M1, 2012–2025 ONLY; archive has no verified2026 input. Hypothesis: EUR's USD risk/margin per minimum block may improve $100 feasibility. Failure must be retained.
+
+For dimensional consistency, multiply EURUSD quotes by1000 before the unchanged R11B path replay: one replay unit represents1000EUR. Spread and ATR scale together. Commission0.06USD per1000EUR roundtrip; adverse slippage0.05USD per1000EUR per side (0.5pip). Cost2 doubles commission/slippage and widens quotes before admission/exits. These are hypothetical research costs, not current broker terms. Gap reserve3USD/1000EUR/day is inherited conservative reserve, not an actual swap schedule. Gap cases are uncertified. Paths A/B and completed-candle chronology unchanged. One standalone position, five-minute embargo, no future continuity filter.
+
+Annual wallet: initial100USD, research minimum/step1000EUR, leverage200, margin50%, risk8% below125 settledcash and3% thereafter. Include fee and slippage reserves in admission; never round up unaffordable size. Ending cash/settled drawdown are standalone diagnostics, NOT Frozen V1 cash or floating DD. No deposits, no production edits.
+
+Economic gates fixed: development2012–18 eachA2/B2 N>=100, expectancy>.02R, PF>1.10 and>=5 positive years. Validation2019–22 N>=50, expectancy>.01R, PF>1.05,>=3 positive years. Retrospective2023–25 N>=30, expectancy>0,>=2 positive years. Expanding selector from2019 uses only prior years with N>=100, expectancy>.02R, PF>1.10 and ceil65% positive years; otherwise cash. Annual independent warmup/state and max3h holding prevent positions crossing boundary. No stitched hindsight winners. All history reused; no pristine OOS or statistical significance. Multiple-testing includes all previous searches. Native/core/macro/capacity parity remains false. The $10B target is unverified.
