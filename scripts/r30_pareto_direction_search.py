@@ -513,6 +513,6 @@ def run(tf,scope):
 if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--tf",choices=TIMEFRAMES,required=True)
-    p.add_argument("--scope",choices=("archived","full"),default="archived")
+    p.add_argument("--scope",choices=("archived","full","uniform","spliced"),default="archived")
     a=p.parse_args()
     run(a.tf,a.scope)
