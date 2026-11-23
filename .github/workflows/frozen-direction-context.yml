@@ -10,12 +10,16 @@ on:
       - 'src/fx_scanner/rbest_side_dashboard.py'
       - 'src/fx_scanner/r294_frozen_h4_buy_feed.py'
       - 'src/fx_scanner/r294_frozen_h4_buy_dashboard.py'
+      - 'src/fx_scanner/r296_h4_coverage_reference_dashboard.py'
+      - 'research/RIZAN_R291_H4_BUY_COVERAGE_FROZEN_20261123.json'
+      - 'research/RIZAN_R296_H4_COVERAGE_CARRY_2026_DIAGNOSTIC.json'
       - 'src/fx_scanner/ui_terminal.py'
       - 'tests/test_frozen_direction_context.py'
       - 'tests/test_manual_direction_map.py'
       - 'tests/test_r281_shadow_feed.py'
       - 'tests/test_rbest_side_feed.py'
       - 'tests/test_r294_frozen_h4_buy_feed.py'
+      - 'tests/test_r296_h4_coverage_reference_dashboard.py'
       - 'tests/test_r281_parallel_workflow.py'
       - '.github/workflows/r281_direction_shadow_hourly.yml'
       - '.github/workflows/frozen-direction-context.yml'
@@ -28,11 +32,15 @@ on:
       - 'src/fx_scanner/rbest_side_dashboard.py'
       - 'src/fx_scanner/r294_frozen_h4_buy_feed.py'
       - 'src/fx_scanner/r294_frozen_h4_buy_dashboard.py'
+      - 'src/fx_scanner/r296_h4_coverage_reference_dashboard.py'
+      - 'research/RIZAN_R291_H4_BUY_COVERAGE_FROZEN_20261123.json'
+      - 'research/RIZAN_R296_H4_COVERAGE_CARRY_2026_DIAGNOSTIC.json'
       - 'tests/test_frozen_direction_context.py'
       - 'tests/test_manual_direction_map.py'
       - 'tests/test_r281_shadow_feed.py'
       - 'tests/test_rbest_side_feed.py'
       - 'tests/test_r294_frozen_h4_buy_feed.py'
+      - 'tests/test_r296_h4_coverage_reference_dashboard.py'
       - 'tests/test_r281_parallel_workflow.py'
       - '.github/workflows/r281_direction_shadow_hourly.yml'
       - '.github/workflows/frozen-direction-context.yml'
@@ -48,5 +56,5 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install pandas==2.2.3 streamlit==1.62.0 pytest==9.0.2
-      - run: PYTHONPATH=src pytest -q tests/test_frozen_direction_context.py tests/test_manual_direction_map.py tests/test_r281_shadow_feed.py tests/test_rbest_side_feed.py tests/test_r294_frozen_h4_buy_feed.py tests/test_r281_parallel_workflow.py tests/test_professional_terminal_ui.py
-      - run: python -m py_compile src/fx_scanner/frozen_direction_research_dashboard.py src/fx_scanner/rbest_side_feed.py src/fx_scanner/rbest_side_dashboard.py src/fx_scanner/r294_frozen_h4_buy_feed.py src/fx_scanner/r294_frozen_h4_buy_dashboard.py scripts/publish_reversal_snapshot.py
+      - run: PYTHONPATH=src pytest -q tests/test_frozen_direction_context.py tests/test_manual_direction_map.py tests/test_r281_shadow_feed.py tests/test_rbest_side_feed.py tests/test_r294_frozen_h4_buy_feed.py tests/test_r296_h4_coverage_reference_dashboard.py tests/test_r281_parallel_workflow.py tests/test_professional_terminal_ui.py
+      - run: python -m py_compile src/fx_scanner/frozen_direction_research_dashboard.py src/fx_scanner/rbest_side_feed.py src/fx_scanner/rbest_side_dashboard.py src/fx_scanner/r294_frozen_h4_buy_feed.py src/fx_scanner/r294_frozen_h4_buy_dashboard.py src/fx_scanner/r296_h4_coverage_reference_dashboard.py scripts/publish_reversal_snapshot.py
