@@ -1,0 +1,2649 @@
+{
+  "contract": "RIZAN_R32_PROFIT_AND_SIGNALS_LOCK_2012_2026_V1",
+  "symbol": "XAUUSD",
+  "source": "R30 2012-26 authenticated OHLC",
+  "evaluation_years": "2019-2026 (2026 partial)",
+  "evaluation_configurations": 12,
+  "total_candidate_scans_cumulative": 9720,
+  "best_net": {
+    "tf": "1W",
+    "mode": "profit_frequency",
+    "gross_notional": "one fixed troy ounce",
+    "candidates_considered": 900,
+    "n": 50,
+    "net_cost2_usd_oz": 2538.886045558159,
+    "net_cost5_usd_oz": 2388.886045558159,
+    "profit_factor_cost2": 2.1279663221924174,
+    "max_realized_dd_usd_oz": 650.7830000000004,
+    "profit_to_dd": 3.9012789909357766,
+    "positive_years": 5,
+    "annual": [
+      {
+        "year": 2019,
+        "n": 0,
+        "net": 0,
+        "policy": null
+      },
+      {
+        "year": 2020,
+        "n": 9,
+        "net": 199.16232486393665,
+        "policy": {
+          "tf": "1W",
+          "side": "BUY",
+          "entry": "ema_mom",
+          "hold": 6,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2021,
+        "n": 3,
+        "net": -189.45000000000005,
+        "policy": {
+          "tf": "1W",
+          "side": "BUY",
+          "entry": "ema_mom",
+          "hold": 4,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2022,
+        "n": 7,
+        "net": 49.76299999999992,
+        "policy": {
+          "tf": "1W",
+          "side": "BUY",
+          "entry": "always",
+          "hold": 8,
+          "exit": "bracket",
+          "atr_sl_or_trail": 2.5,
+          "atr_tp": 6.0
+        }
+      },
+      {
+        "year": 2023,
+        "n": 3,
+        "net": -81.74699999999962,
+        "policy": {
+          "tf": "1W",
+          "side": "SELL",
+          "entry": "always",
+          "hold": 8,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 6.0
+        }
+      },
+      {
+        "year": 2024,
+        "n": 10,
+        "net": 768.5023989628712,
+        "policy": {
+          "tf": "1W",
+          "side": "BUY",
+          "entry": "ema",
+          "hold": 6,
+          "exit": "bracket",
+          "atr_sl_or_trail": 1.5,
+          "atr_tp": 4.0
+        }
+      },
+      {
+        "year": 2025,
+        "n": 14,
+        "net": 1686.6682665202593,
+        "policy": {
+          "tf": "1W",
+          "side": "BUY",
+          "entry": "ema_adx",
+          "hold": 4,
+          "exit": "bracket",
+          "atr_sl_or_trail": 1.5,
+          "atr_tp": 4.0
+        }
+      },
+      {
+        "year": 2026,
+        "n": 4,
+        "net": 105.9870552110915,
+        "policy": {
+          "tf": "1W",
+          "side": "BUY",
+          "entry": "ema_adx",
+          "hold": 6,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      }
+    ],
+    "source_sha256": "4d018ca17a9395f285b326602280e344ec147d622e28d13c82660ae272296490",
+    "robust": true
+  },
+  "most_trades_still_positive_at_cost5": {
+    "tf": "1D",
+    "mode": "max_net",
+    "gross_notional": "one fixed troy ounce",
+    "candidates_considered": 900,
+    "n": 223,
+    "net_cost2_usd_oz": 1340.3195657715482,
+    "net_cost5_usd_oz": 671.3195657715482,
+    "profit_factor_cost2": 1.199169895889894,
+    "max_realized_dd_usd_oz": 1483.8428670892263,
+    "profit_to_dd": 0.9032759434971576,
+    "positive_years": 5,
+    "annual": [
+      {
+        "year": 2019,
+        "n": 19,
+        "net": 16.730894533091032,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "ema_macd",
+          "hold": 7,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2020,
+        "n": 24,
+        "net": 129.1600978299325,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "ema_macd",
+          "hold": 5,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2021,
+        "n": 36,
+        "net": -173.03299076305825,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "always",
+          "hold": 7,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2022,
+        "n": 37,
+        "net": 35.36246108829755,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "always",
+          "hold": 7,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2023,
+        "n": 7,
+        "net": -4.616868180832853,
+        "policy": {
+          "tf": "1D",
+          "side": "SELL",
+          "entry": "ema_macd",
+          "hold": 5,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      },
+      {
+        "year": 2024,
+        "n": 29,
+        "net": 117.33539712926859,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "ema_pressure",
+          "hold": 7,
+          "exit": "bracket",
+          "atr_sl_or_trail": 1.5,
+          "atr_tp": 4.0
+        }
+      },
+      {
+        "year": 2025,
+        "n": 38,
+        "net": 1620.4329407992523,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "always",
+          "hold": 7,
+          "exit": "bracket",
+          "atr_sl_or_trail": 2.5,
+          "atr_tp": 6.0
+        }
+      },
+      {
+        "year": 2026,
+        "n": 33,
+        "net": -401.0523666644026,
+        "policy": {
+          "tf": "1D",
+          "side": "BUY",
+          "entry": "always",
+          "hold": 7,
+          "exit": "target",
+          "atr_sl_or_trail": 0.0,
+          "atr_tp": 3.0
+        }
+      }
+    ],
+    "source_sha256": "30e1aaeaa5a8eaf45db40992798dd19ff40da630cf0cbd22339bffd11b088521",
+    "robust": true
+  },
+  "robust_winners": [
+    {
+      "tf": "1W",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 50,
+      "net_cost2_usd_oz": 2538.886045558159,
+      "net_cost5_usd_oz": 2388.886045558159,
+      "profit_factor_cost2": 2.1279663221924174,
+      "max_realized_dd_usd_oz": 650.7830000000004,
+      "profit_to_dd": 3.9012789909357766,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 9,
+          "net": 199.16232486393665,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 6,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 3,
+          "net": -189.45000000000005,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 7,
+          "net": 49.76299999999992,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 8,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 3,
+          "net": -81.74699999999962,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 8,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 10,
+          "net": 768.5023989628712,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 14,
+          "net": 1686.6682665202593,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 4,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 4,
+          "net": 105.9870552110915,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 6,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        }
+      ],
+      "source_sha256": "4d018ca17a9395f285b326602280e344ec147d622e28d13c82660ae272296490",
+      "robust": true
+    },
+    {
+      "tf": "1W",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 157,
+      "net_cost2_usd_oz": 2122.1696734068823,
+      "net_cost5_usd_oz": 1651.1696734068823,
+      "profit_factor_cost2": 1.4660060371416306,
+      "max_realized_dd_usd_oz": 960.1590000000006,
+      "profit_to_dd": 2.2102273408954987,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 13,
+          "net": 222.0540000000001,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 26,
+          "net": 223.79382024256392,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 26,
+          "net": -219.90905414582244,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 18,
+          "net": -107.44328082998868,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 11,
+          "net": -67.5146386613892,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 3,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 26,
+          "net": 590.0300303028894,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 26,
+          "net": 1449.6347964986298,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 2,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 11,
+          "net": 31.523999999999432,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 2,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "cc774a1abf80622ed75192cf0f41b0743a5004ffd55ecd33befa2191c2e7d5ea",
+      "robust": true
+    },
+    {
+      "tf": "1D",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 223,
+      "net_cost2_usd_oz": 1340.3195657715482,
+      "net_cost5_usd_oz": 671.3195657715482,
+      "profit_factor_cost2": 1.199169895889894,
+      "max_realized_dd_usd_oz": 1483.8428670892263,
+      "profit_to_dd": 0.9032759434971576,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 19,
+          "net": 16.730894533091032,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 24,
+          "net": 129.1600978299325,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 36,
+          "net": -173.03299076305825,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 37,
+          "net": 35.36246108829755,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 29,
+          "net": 117.33539712926859,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_pressure",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 38,
+          "net": 1620.4329407992523,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 33,
+          "net": -401.0523666644026,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        }
+      ],
+      "source_sha256": "30e1aaeaa5a8eaf45db40992798dd19ff40da630cf0cbd22339bffd11b088521",
+      "robust": true
+    }
+  ],
+  "pareto_frontier": [
+    {
+      "tf": "1W",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 157,
+      "net_cost2_usd_oz": 2122.1696734068823,
+      "net_cost5_usd_oz": 1651.1696734068823,
+      "profit_factor_cost2": 1.4660060371416306,
+      "max_realized_dd_usd_oz": 960.1590000000006,
+      "profit_to_dd": 2.2102273408954987,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 13,
+          "net": 222.0540000000001,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 26,
+          "net": 223.79382024256392,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 26,
+          "net": -219.90905414582244,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 18,
+          "net": -107.44328082998868,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 11,
+          "net": -67.5146386613892,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 3,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 26,
+          "net": 590.0300303028894,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 26,
+          "net": 1449.6347964986298,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 2,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 11,
+          "net": 31.523999999999432,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 2,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "cc774a1abf80622ed75192cf0f41b0743a5004ffd55ecd33befa2191c2e7d5ea",
+      "robust": true
+    },
+    {
+      "tf": "1W",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 50,
+      "net_cost2_usd_oz": 2538.886045558159,
+      "net_cost5_usd_oz": 2388.886045558159,
+      "profit_factor_cost2": 2.1279663221924174,
+      "max_realized_dd_usd_oz": 650.7830000000004,
+      "profit_to_dd": 3.9012789909357766,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 9,
+          "net": 199.16232486393665,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 6,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 3,
+          "net": -189.45000000000005,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 7,
+          "net": 49.76299999999992,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 8,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 3,
+          "net": -81.74699999999962,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 8,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 10,
+          "net": 768.5023989628712,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 14,
+          "net": 1686.6682665202593,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 4,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 4,
+          "net": 105.9870552110915,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 6,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        }
+      ],
+      "source_sha256": "4d018ca17a9395f285b326602280e344ec147d622e28d13c82660ae272296490",
+      "robust": true
+    },
+    {
+      "tf": "1D",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 223,
+      "net_cost2_usd_oz": 1340.3195657715482,
+      "net_cost5_usd_oz": 671.3195657715482,
+      "profit_factor_cost2": 1.199169895889894,
+      "max_realized_dd_usd_oz": 1483.8428670892263,
+      "profit_to_dd": 0.9032759434971576,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 19,
+          "net": 16.730894533091032,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 24,
+          "net": 129.1600978299325,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 36,
+          "net": -173.03299076305825,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 37,
+          "net": 35.36246108829755,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 29,
+          "net": 117.33539712926859,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_pressure",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 38,
+          "net": 1620.4329407992523,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 33,
+          "net": -401.0523666644026,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        }
+      ],
+      "source_sha256": "30e1aaeaa5a8eaf45db40992798dd19ff40da630cf0cbd22339bffd11b088521",
+      "robust": true
+    },
+    {
+      "tf": "1D",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 533,
+      "net_cost2_usd_oz": 33.01750322578164,
+      "net_cost5_usd_oz": -1565.9824967742184,
+      "profit_factor_cost2": 1.0027265019962581,
+      "max_realized_dd_usd_oz": 2142.7190824233053,
+      "profit_to_dd": 0.015409160956573242,
+      "positive_years": 3,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 21,
+          "net": 78.06399999999962,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 83,
+          "net": -217.54899999999975,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 59,
+          "net": -53.95816745224033,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 5,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 53,
+          "net": 70.51200000000108,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 3,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 88,
+          "net": 1360.759621282159,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 222,
+          "net": -1200.1940824233052,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 1,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "cd89c8e6fc2c0975f7e1ecdbcf31e7dedb25cd58fed39c0fdfc74bffa6f62c79",
+      "robust": false
+    },
+    {
+      "tf": "1D",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 311,
+      "net_cost2_usd_oz": 535.5234834050068,
+      "net_cost5_usd_oz": -397.4765165949932,
+      "profit_factor_cost2": 1.0617850096191725,
+      "max_realized_dd_usd_oz": 1439.0013276434852,
+      "profit_to_dd": 0.3721494018924794,
+      "positive_years": 3,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 25,
+          "net": 166.47050644179694,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 36,
+          "net": -221.2099999999998,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 22,
+          "net": -59.6043036045744,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 29,
+          "net": 117.33539712926859,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_pressure",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 80,
+          "net": 806.3942233493731,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 2,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 112,
+          "net": -269.24547173002475,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "768802801e74557eeb9bd8aa27774bc1a56909f14d756031ff8ce521ff7ac2e7",
+      "robust": false
+    },
+    {
+      "tf": "4h",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 383,
+      "net_cost2_usd_oz": 351.57004446280143,
+      "net_cost5_usd_oz": -797.4299555371986,
+      "profit_factor_cost2": 1.0687885679784894,
+      "max_realized_dd_usd_oz": 1068.5284147601724,
+      "profit_to_dd": 0.32902264423329364,
+      "positive_years": 4,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 44,
+          "net": 77.97046293734661,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 25,
+          "net": 9.42932091495959,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 58,
+          "net": 68.16088427684076,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_pullback",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 3.0,
+            "atr_tp": 9.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 187,
+          "net": 368.7717014367254,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 69,
+          "net": -172.7623251030709,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "479eeac15000807008c9ac35f49e2dfb0fa20a85c1b8e84d89a8c7aa6684242a",
+      "robust": false
+    }
+  ],
+  "baseline_previous_R31_1": {
+    "W1_EMA_BUY_4weeks": {
+      "n": 75,
+      "net": 2825.987,
+      "dd": 570.133,
+      "pf": 2.698673934251519,
+      "positive_years": 6
+    },
+    "D1_EMA_ADX_BUY_5days": {
+      "n": 193,
+      "net": 2294.642,
+      "dd": 349.355,
+      "pf": 1.6354155878608094,
+      "positive_years": 6
+    }
+  },
+  "all_results": [
+    {
+      "tf": "1W",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 63,
+      "net_cost2_usd_oz": 1646.7315301280796,
+      "net_cost5_usd_oz": 1457.7315301280796,
+      "profit_factor_cost2": 1.492079495969198,
+      "max_realized_dd_usd_oz": 1295.7419901421258,
+      "profit_to_dd": 1.2708791894190716,
+      "positive_years": 4,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 8,
+          "net": 293.6147869678025,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 8,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 14,
+          "net": 121.12671128582019,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 3,
+          "net": -189.45000000000005,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 9,
+          "net": -40.8582768586532,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 3,
+          "net": -81.74699999999962,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 8,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 7,
+          "net": 642.0800323549761,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 8,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 15,
+          "net": 1853.9842665202596,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 4,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 4,
+          "net": -952.0189901421259,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 8,
+            "exit": "stop",
+            "atr_sl_or_trail": 3.0,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "1e07258880d39301fa126934aa9f9c54923ff6aaaafe1d8949655da88338ad23",
+      "robust": false
+    },
+    {
+      "tf": "1W",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 157,
+      "net_cost2_usd_oz": 2122.1696734068823,
+      "net_cost5_usd_oz": 1651.1696734068823,
+      "profit_factor_cost2": 1.4660060371416306,
+      "max_realized_dd_usd_oz": 960.1590000000006,
+      "profit_to_dd": 2.2102273408954987,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 13,
+          "net": 222.0540000000001,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 26,
+          "net": 223.79382024256392,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 26,
+          "net": -219.90905414582244,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 18,
+          "net": -107.44328082998868,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 11,
+          "net": -67.5146386613892,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 3,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 26,
+          "net": 590.0300303028894,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 26,
+          "net": 1449.6347964986298,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 2,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 11,
+          "net": 31.523999999999432,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 2,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "cc774a1abf80622ed75192cf0f41b0743a5004ffd55ecd33befa2191c2e7d5ea",
+      "robust": true
+    },
+    {
+      "tf": "1W",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 50,
+      "net_cost2_usd_oz": 2538.886045558159,
+      "net_cost5_usd_oz": 2388.886045558159,
+      "profit_factor_cost2": 2.1279663221924174,
+      "max_realized_dd_usd_oz": 650.7830000000004,
+      "profit_to_dd": 3.9012789909357766,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 9,
+          "net": 199.16232486393665,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 6,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 3,
+          "net": -189.45000000000005,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 7,
+          "net": 49.76299999999992,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 8,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 3,
+          "net": -81.74699999999962,
+          "policy": {
+            "tf": "1W",
+            "side": "SELL",
+            "entry": "always",
+            "hold": 8,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 10,
+          "net": 768.5023989628712,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 14,
+          "net": 1686.6682665202593,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 4,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 4,
+          "net": 105.9870552110915,
+          "policy": {
+            "tf": "1W",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 6,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        }
+      ],
+      "source_sha256": "4d018ca17a9395f285b326602280e344ec147d622e28d13c82660ae272296490",
+      "robust": true
+    },
+    {
+      "tf": "1D",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 223,
+      "net_cost2_usd_oz": 1340.3195657715482,
+      "net_cost5_usd_oz": 671.3195657715482,
+      "profit_factor_cost2": 1.199169895889894,
+      "max_realized_dd_usd_oz": 1483.8428670892263,
+      "profit_to_dd": 0.9032759434971576,
+      "positive_years": 5,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 19,
+          "net": 16.730894533091032,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 24,
+          "net": 129.1600978299325,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 36,
+          "net": -173.03299076305825,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 37,
+          "net": 35.36246108829755,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 29,
+          "net": 117.33539712926859,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_pressure",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 38,
+          "net": 1620.4329407992523,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 33,
+          "net": -401.0523666644026,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        }
+      ],
+      "source_sha256": "30e1aaeaa5a8eaf45db40992798dd19ff40da630cf0cbd22339bffd11b088521",
+      "robust": true
+    },
+    {
+      "tf": "1D",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 533,
+      "net_cost2_usd_oz": 33.01750322578164,
+      "net_cost5_usd_oz": -1565.9824967742184,
+      "profit_factor_cost2": 1.0027265019962581,
+      "max_realized_dd_usd_oz": 2142.7190824233053,
+      "profit_to_dd": 0.015409160956573242,
+      "positive_years": 3,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 21,
+          "net": 78.06399999999962,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 83,
+          "net": -217.54899999999975,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 59,
+          "net": -53.95816745224033,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 5,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 53,
+          "net": 70.51200000000108,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_adx",
+            "hold": 3,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 88,
+          "net": 1360.759621282159,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 3,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 222,
+          "net": -1200.1940824233052,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 1,
+            "exit": "stop",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "cd89c8e6fc2c0975f7e1ecdbcf31e7dedb25cd58fed39c0fdfc74bffa6f62c79",
+      "robust": false
+    },
+    {
+      "tf": "1D",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 311,
+      "net_cost2_usd_oz": 535.5234834050068,
+      "net_cost5_usd_oz": -397.4765165949932,
+      "profit_factor_cost2": 1.0617850096191725,
+      "max_realized_dd_usd_oz": 1439.0013276434852,
+      "profit_to_dd": 0.3721494018924794,
+      "positive_years": 3,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 25,
+          "net": 166.47050644179694,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2021,
+          "n": 36,
+          "net": -221.2099999999998,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 7,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2022,
+          "n": 22,
+          "net": -59.6043036045744,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 7,
+          "net": -4.616868180832853,
+          "policy": {
+            "tf": "1D",
+            "side": "SELL",
+            "entry": "ema_macd",
+            "hold": 5,
+            "exit": "target",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 3.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 29,
+          "net": 117.33539712926859,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_pressure",
+            "hold": 7,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 80,
+          "net": 806.3942233493731,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 2,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 112,
+          "net": -269.24547173002475,
+          "policy": {
+            "tf": "1D",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 2,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "768802801e74557eeb9bd8aa27774bc1a56909f14d756031ff8ce521ff7ac2e7",
+      "robust": false
+    },
+    {
+      "tf": "4h",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 383,
+      "net_cost2_usd_oz": 351.57004446280143,
+      "net_cost5_usd_oz": -797.4299555371986,
+      "profit_factor_cost2": 1.0687885679784894,
+      "max_realized_dd_usd_oz": 1068.5284147601724,
+      "profit_to_dd": 0.32902264423329364,
+      "positive_years": 4,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 44,
+          "net": 77.97046293734661,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 25,
+          "net": 9.42932091495959,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 58,
+          "net": 68.16088427684076,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_pullback",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 3.0,
+            "atr_tp": 9.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 187,
+          "net": 368.7717014367254,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 69,
+          "net": -172.7623251030709,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "479eeac15000807008c9ac35f49e2dfb0fa20a85c1b8e84d89a8c7aa6684242a",
+      "robust": false
+    },
+    {
+      "tf": "4h",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 544,
+      "net_cost2_usd_oz": -273.35937296458656,
+      "net_cost5_usd_oz": -1905.3593729645866,
+      "profit_factor_cost2": 0.9697138841682525,
+      "max_realized_dd_usd_oz": 1442.0416183745792,
+      "profit_to_dd": -0.18956413565421784,
+      "positive_years": 2,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 44,
+          "net": 77.97046293734661,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2023,
+          "n": 25,
+          "net": -2.8784898046237686,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 2.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 66,
+          "net": -55.19286113909493,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_pullback",
+            "hold": 4,
+            "exit": "bracket",
+            "atr_sl_or_trail": 2.5,
+            "atr_tp": 6.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 187,
+          "net": 368.7717014367254,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 222,
+          "net": -662.0301863949398,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "always",
+            "hold": 6,
+            "exit": "bracket",
+            "atr_sl_or_trail": 1.5,
+            "atr_tp": 4.0
+          }
+        }
+      ],
+      "source_sha256": "4b58f0d6a9b88a8e2fe7d390d254a4e8085b69de862badd63269539f8b5ec8c7",
+      "robust": false
+    },
+    {
+      "tf": "4h",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 900,
+      "n": 338,
+      "net_cost2_usd_oz": 278.6956972486164,
+      "net_cost5_usd_oz": -735.3043027513836,
+      "profit_factor_cost2": 1.056594493884584,
+      "max_realized_dd_usd_oz": 1068.5284147601724,
+      "profit_to_dd": 0.2608219803973755,
+      "positive_years": 3,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2023,
+          "n": 25,
+          "net": 9.42932091495959,
+          "policy": {
+            "tf": "4h",
+            "side": "SELL",
+            "entry": "ema_breakout",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2024,
+          "n": 57,
+          "net": 73.25700000000234,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_pullback",
+            "hold": 6,
+            "exit": "fixed",
+            "atr_sl_or_trail": 0.0,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2025,
+          "n": 187,
+          "net": 368.7717014367254,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_mom",
+            "hold": 4,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        },
+        {
+          "year": 2026,
+          "n": 69,
+          "net": -172.7623251030709,
+          "policy": {
+            "tf": "4h",
+            "side": "BUY",
+            "entry": "ema_macd",
+            "hold": 6,
+            "exit": "trail",
+            "atr_sl_or_trail": 3.5,
+            "atr_tp": 0.0
+          }
+        }
+      ],
+      "source_sha256": "3896e501b2a2f3915590469928a74fd0e4eb315b29a138a16af2a45c4e1603ba",
+      "robust": false
+    },
+    {
+      "tf": "1h",
+      "mode": "max_net",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 540,
+      "n": 0,
+      "net_cost2_usd_oz": 0,
+      "net_cost5_usd_oz": 0,
+      "profit_factor_cost2": null,
+      "max_realized_dd_usd_oz": 0.0,
+      "profit_to_dd": null,
+      "positive_years": 0,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2023,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2024,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2025,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2026,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        }
+      ],
+      "source_sha256": "54cb45880770a02a616c5daf5764fdd4500e2aa1461372a159342cad45f5ae3e",
+      "robust": false
+    },
+    {
+      "tf": "1h",
+      "mode": "max_signals",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 540,
+      "n": 0,
+      "net_cost2_usd_oz": 0,
+      "net_cost5_usd_oz": 0,
+      "profit_factor_cost2": null,
+      "max_realized_dd_usd_oz": 0.0,
+      "profit_to_dd": null,
+      "positive_years": 0,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2023,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2024,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2025,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2026,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        }
+      ],
+      "source_sha256": "0d797bc6200cbae8bc81dfc3c57685aefce429d8e0491038932eaa66d2275843",
+      "robust": false
+    },
+    {
+      "tf": "1h",
+      "mode": "profit_frequency",
+      "gross_notional": "one fixed troy ounce",
+      "candidates_considered": 540,
+      "n": 0,
+      "net_cost2_usd_oz": 0,
+      "net_cost5_usd_oz": 0,
+      "profit_factor_cost2": null,
+      "max_realized_dd_usd_oz": 0.0,
+      "profit_to_dd": null,
+      "positive_years": 0,
+      "annual": [
+        {
+          "year": 2019,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2020,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2021,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2022,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2023,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2024,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2025,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        },
+        {
+          "year": 2026,
+          "n": 0,
+          "net": 0,
+          "policy": null
+        }
+      ],
+      "source_sha256": "18053c2a256cae4507e7e6ce86edc97ba6c2d073a840b61ad578f4c40ffd8d2d",
+      "robust": false
+    }
+  ],
+  "research_only": true,
+  "execution_authority": false,
+  "live_promotion": false,
+  "limitations": [
+    "Selection used previous two years but 2019-26 research folds were inspected repeatedly",
+    "Optimized against many entry and exit models; winner's curse and model-selection bias",
+    "ATR OHLC stop-first intrabar conservative, but opens/stops/targets not real broker fills",
+    "One 1oz position per timeframe; concurrent multi-timeframe portfolio not modelled",
+    "Realized drawdown misses floating drawdown and margin risk",
+    "2/5 USD cost assumptions exclude measured spread, swap, broker slippage",
+    "No automatic ForexScanner signals or cTrader orders"
+  ]
+}
