@@ -25,66 +25,54 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
-      - run: PYTHONPATH=src:. python -m pytest -q tests/test_r30_tf_zone_replay.py
+      - run: PYTHONPATH=src:. python -m pytest -q tests/test_r30_tf_zone_replay.py tests/test_r30_duka_shards.py
       - run: python -m py_compile scripts/research_tf_zone_direction_mega.py scripts/research_tf_zone_mega_aggregate.py
 
-  m1-historical-shards-2012-2018:
-    name: Reconstruct historical H1/H4 from verified HistData M1 ${{ matrix.year }}
+  dukascopy-h1-h4-2012-2026:
+    name: Dukascopy verified XAU H1 and derived H4 year ${{ matrix.year }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        year: [2012,2013,2014,2015,2016,2017,2018]
-    env:
-      XAU_V193_YEAR: ${{ matrix.year }}
-      XAU_V193_PRICE_CSV: /tmp/r30-source-m1.csv
-      XAU_V193_PRICE_PROVENANCE: /tmp/r30-source-provenance.json
-      PYTHONPATH: src:.
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout original, immutable V193 and R10 candle builder
-        uses: actions/checkout@v4
-        with:
-          ref: research/r281-direction-inference-parity-20261123
-          path: research_reference
-          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - name: Install pinned public historic source downloader
+      - name: Install pinned market data tooling (TLS validation enabled)
         run: |
+          npm install --global dukascopy-node@1.51.1
           pip install numpy==2.3.5 pandas==2.2.3
-          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
-      - name: Download and hash immutable public M1 year shard
+      - name: Download public XAU H1 BID from Dukascopy
         run: |
-          PYTHONPATH=research_reference/src python -m fx_scanner.research_xau_histdata_download_v193
-          test -s "${XAU_V193_PRICE_CSV}"
-          test -s "${XAU_V193_PRICE_PROVENANCE}"
-      - name: Derive H1 and H4 without unfinished candles
+          NEXT=$(( ${{ matrix.year }} + 1 ))
+          mkdir -p /tmp/r30-duka
+          dukascopy-node -i xauusd \
+            -from "${{ matrix.year }}-01-01" -to "${NEXT}-01-01" \
+            -t h1 -p bid -f csv \
+            -dir /tmp/r30-duka -fn "xauusd-h1-${{ matrix.year }}" \
+            -bs 3 -bp 1200 -r 3 --cache
+          test -s "/tmp/r30-duka/xauusd-h1-${{ matrix.year }}.csv"
+      - name: Validate source OHLC, UTC, months and H4 closed-candle derivation
         run: |
-          cd research_reference
-          python scripts/r10_million.py shard
-          python - <<'PY'
-          import glob,json,os
-          year=int(os.environ["XAU_V193_YEAR"])
-          prov=json.load(open(f"artifacts/r10-provenance-{year}.json"))
-          assert prov["year"]==year and prov["source"]=="HISTDATA_XAUUSD_M1"
-          assert prov["execution_authority"] is False
-          assert all(glob.glob(f"artifacts/r10-{tf}-{year}.csv") for tf in ["1h","4h"])
-          print("R30_YEAR_SHARD_VALIDATED",year,prov["normalized_csv_sha256"])
-          PY
-      - name: Upload source SHA and OHLC, never secrets or orders
+          python scripts/r30_duka_h1_h4_shard.py \
+            --year ${{ matrix.year }} \
+            --csv "/tmp/r30-duka/xauusd-h1-${{ matrix.year }}.csv"
+      - name: Upload provenance SHA + price bars, never orders
         uses: actions/upload-artifact@v4
         with:
-          name: r30-early-shard-${{ matrix.year }}
-          path: research_reference/artifacts/r10-*
+          name: r30-duka-year-${{ matrix.year }}
+          path: artifacts/r30/
           if-no-files-found: error
           retention-days: 45
 
   replay:
     name: ${{ matrix.tf }} direction-model-block-start-${{ matrix.model_start }}
-    needs: [audit-synthetic-contract,m1-historical-shards-2012-2018]
+    needs: [audit-synthetic-contract,dukascopy-h1-h4-2012-2026]
     runs-on: ubuntu-latest
     timeout-minutes: 75
     strategy:
@@ -102,19 +90,11 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install numpy==2.3.5 pandas==2.2.3
-      - name: Download audited 2012-2018 M1-derived H1/H4 shards
-        uses: actions/download-artifact@v4
-        with:
-          pattern: r30-early-shard-*
-          path: /tmp/r30
-          merge-multiple: true
-      - name: Download immutable 2019-2026 H1 H4 shards from R10 (no future-data fetch)
+      - name: Download uniform Dukascopy H1/H4 2012-2026
         if: ${{ matrix.tf == 'H1' || matrix.tf == 'H4' }}
         uses: actions/download-artifact@v4
         with:
-          run-id: 44901264975
-          github-token: ${{ github.token }}
-          pattern: r10-shard-*
+          pattern: r30-duka-year-*
           path: /tmp/r30
           merge-multiple: true
       - name: Download immutable 2012-2026 D1 daily shards from R98
