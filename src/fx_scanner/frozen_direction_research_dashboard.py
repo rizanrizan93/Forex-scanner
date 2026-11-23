@@ -104,6 +104,7 @@ def render_frozen_direction_research():
             v05_paths={}
         tactical=r2_tactical(r2_snapshot,now=now) if r2_snapshot is not None else {"state":"WAIT"}
         st.markdown("**Model entry R2 · sinyal taktis 60 menit (SELL saja)**")
+        st.caption("R2 diuji: 2023–2024 SELL 70/110 (63,6%), namun 2025 hanya 28/65 (43,1%). Bukan jaminan edge live atau prediksi H1 close.")
         if tactical["state"]=="TRIGGER_SELL":
             st.warning("R2: Pemicu SELL teramati (bukan prediksi close H1 dan bukan sinyal R28). Periksa kembali cTrader sebelum entry manual.")
             x,y=st.columns(2)
