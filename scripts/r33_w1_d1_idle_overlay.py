@@ -12,7 +12,7 @@ filters after reviewing R32/R32.1 is EXPLORATORY and NOT blind OOS.
 At an identical D1/W1 opening, W1 baseline has priority. Existing D1
 overlay is closed at that observable W1 open, after which W1 may enter.
 Trades can exit at bar close and the next trade enter at the same clock
-boundary; no more than 1oz concurrently. No live broker/orders.
+boundary; no more than 1oz concurrently. No live execution.
 """
 from __future__ import annotations
 import argparse
