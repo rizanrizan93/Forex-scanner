@@ -28,6 +28,8 @@ def market():
     v.loc[pd.Timestamp("2026-11-23T11:10:00+00:00"):pd.Timestamp("2026-11-23T11:13:00+00:00")]=3597.
     v.loc[pd.Timestamp("2026-11-23T11:14:00+00:00")]=3594.
     v.loc[pd.Timestamp("2026-11-23T11:15:00+00:00"):]=3588.
+    for minute, price in [(15,3593.),(16,3592.),(17,3591.),(18,3590.)]:
+        v.loc[pd.Timestamp(f"2026-11-23T11:{minute:02d}:00+00:00")]=price
     frame=pd.DataFrame({"open":v.values,"high":v.values+.1,"low":v.values-.1,
                         "close":v.values},index=idx)
     return {"as_of":NOW-pd.Timedelta(seconds=1),"frame":frame,
