@@ -111,10 +111,11 @@ def validate(payload,*,now):
         expected="WAIT" if b["active"]==s["active"] else "BUY" if b["active"] else "SELL"
         if q.get("direction")!=expected:
             raise ValueError("RBEST_CONFLICT_RESOLUTION_INVALID:"+tf)
-        ct,tt,obs=time(closed),time(target),time(observed)
+        ct,tt,obs,generated=time(closed),time(target),time(observed),time(q["generated_at"])
         hours=1 if tf=="H1" else 4
-        if (tt-ct!=pd.Timedelta(hours=hours) or not ct<=obs<=issued
-                or (issued-obs).total_seconds()>300):
+        if (tt-ct!=pd.Timedelta(hours=hours) or not ct<=obs<=generated<=issued
+                or (generated-obs).total_seconds()>300
+                or (issued-generated).total_seconds()>1200):
             raise ValueError("RBEST_BROKER_TIME_INVALID:"+tf)
         score=b.get("score")
         if (type(score) not in (int,float) or not math.isfinite(score)
