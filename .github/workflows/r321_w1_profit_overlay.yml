@@ -1,0 +1,77 @@
+name: R32.1 W1 Extra Profitable Signals on Baseline Idle Periods (Read Only)
+on:
+  push:
+    branches: ['research/r32-profit-frequency-atr-20261123']
+    paths:
+      - 'scripts/r321_w1_profit_signal_overlay.py'
+      - 'tests/test_r321_w1_profit_signal_overlay.py'
+      - '.github/workflows/r321_w1_profit_overlay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'scripts:src:.'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl pytest==9.0.2
+      - name: Verify 1oz gross exposure, no-lookahead next-OPEN preemption, main position priority
+        run: |
+          python -m py_compile scripts/r321_w1_profit_signal_overlay.py
+          python -m pytest -q tests/test_r321_w1_profit_signal_overlay.py
+
+  hybrid:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        mode: ['max_signals','profit_frequency','max_net']
+        gate: ['any_flat','ema_direction']
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    name: W1 EMA 4W + ${{ matrix.mode }} ${{ matrix.gate }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - name: Restore original R9.8 2012–26 W1 bars
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Restore original already-validated R32 W1 candidate and trade receipts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45194199077
+          github-token: ${{ github.token }}
+          pattern: r32-1W-*
+          path: artifacts/r32
+          merge-multiple: true
+      - name: Reproduce exact unoptimized 75-trade 2825.987 W1 baseline, then add only idle-period trades
+        run: python scripts/r321_w1_profit_signal_overlay.py --mode "${{ matrix.mode }}" --gate "${{ matrix.gate }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r321-${{ matrix.mode }}-${{ matrix.gate }}
+          path: artifacts/r321/r321-${{ matrix.mode }}-${{ matrix.gate }}.json
+          retention-days: 90
+          if-no-files-found: warn
