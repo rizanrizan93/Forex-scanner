@@ -341,8 +341,9 @@ def run(tf,scope):
     }
     # Full history 2012-26: first six calendar years are for training,
     # and 2018 is a first diagnostic; primary comparison 2019-26.
-    years=list(range(2019,2027)) if tf in ("1D","1W") or scope=="full"
-          else [2024,2025,2026]
+    years=(list(range(2019,2027))
+           if tf in ("1D","1W") or scope=="full"
+           else [2024,2025,2026])
     permode={mode:[] for mode in VERSIONS}
     for year in years:
         outcomes=annual_fold(tf,year,d,z,y,valid,times,groups,allowed)
