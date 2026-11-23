@@ -40,7 +40,7 @@ def extract():
             "london","london_bos","london_sweep"
         ):
             raise ValueError("R296_INVALID_GATE_"+yr)
-        validation=selected["validation"]
+        validation=selected["selection"]
         if validation["n"]<35 or validation["correct"]>validation["n"]:
             raise ValueError("R296_INVALID_VALIDATION_"+yr)
         years[yr]={
