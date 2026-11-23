@@ -1,9 +1,11 @@
 """R28.1 dashboard only admits unexpired and provenance-verified SHADOW."""
 from datetime import UTC,datetime,timedelta
+import base64
+import json
 
 import pytest
 
-from fx_scanner.r281_shadow_feed import validate, blank, CONTRACT, SOURCE, PARITY_SAMPLES
+from fx_scanner.r281_shadow_feed import validate, blank, fetch, API_URL, CONTRACT, SOURCE, PARITY_SAMPLES
 
 
 def payload(now):
@@ -148,3 +150,42 @@ def test_all_eight_candidates_are_historical_and_not_converted_to_live_signals()
     assert setup_watch_label({"state":"MODEL_ABSTAIN","direction":"SELL"})=="TUNGGU"
     assert setup_watch_label({"state":"RECONSTRUCTED_SHADOW","direction":"BUY"})=="PANTAU SETUP BUY"
     assert setup_watch_label({"state":"RECONSTRUCTED_SHADOW","direction":"SELL"})=="PANTAU SETUP SELL"
+
+
+def test_raw_github_cdn_failure_falls_back_to_same_provenance_checked_api_packet():
+    now=datetime(2026,11,23,1,30,tzinfo=UTC)
+    document=payload(now)
+    encoded=base64.b64encode(json.dumps(document).encode()).decode()
+    response=json.dumps({"encoding":"base64","content":encoded}).encode()
+    urls=[]
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self,*args): return False
+        def read(self, cap): return response
+    def opener(request, timeout):
+        urls.append(request.full_url)
+        if "raw.githubusercontent.com" in request.full_url:
+            raise OSError("CDN temporarily unavailable")
+        assert request.full_url==API_URL
+        return Resp()
+    result=fetch(now=now,opener=opener)
+    assert len(urls)==2
+    assert all(result[tf]["direction"]=="SELL" for tf in PARITY_SAMPLES)
+    assert all(not result[tf]["execution_authority"] for tf in PARITY_SAMPLES)
+
+
+def test_api_fallback_never_approves_forged_snapshot():
+    now=datetime(2026,11,23,1,30,tzinfo=UTC)
+    doc=payload(now)
+    doc["execution_authority"]=True
+    response=json.dumps({"encoding":"base64","content":base64.b64encode(json.dumps(doc).encode()).decode()}).encode()
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self,*args): return False
+        def read(self, cap): return response
+    def opener(request, timeout):
+        if "raw.githubusercontent.com" in request.full_url:
+            raise OSError("raw down")
+        return Resp()
+    with pytest.raises(ValueError,match="CONTRACT"):
+        fetch(now=now,opener=opener)

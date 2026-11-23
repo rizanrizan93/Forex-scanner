@@ -7,6 +7,8 @@ win rate, execution advice, or evidence of independent 2026 forward precision.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import base64
+import binascii
 import json
 import math
 import re
@@ -20,6 +22,9 @@ LINEAGE = "R28.1_RECONSTRUCTED_SHADOW_NOT_FROZEN_LIVE"
 URL = ("https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
        "research/r281-direction-inference-parity-20261123/"
        "runtime/r281-shadow-direction.json")
+API_URL = ("https://api.github.com/repos/rizanrizan93/Forex-scanner/contents/"
+           "runtime/r281-shadow-direction.json"
+           "?ref=research%2Fr281-direction-inference-parity-20261123")
 MAX_TARGET_DAYS = {"H1": 1/24, "H4": 4/24, "D1": 4, "W1": 7}
 PARITY_SAMPLES = {"H1": 5633, "H4": 1422, "D1": 253, "W1": 51}
 
@@ -31,7 +36,11 @@ REASONS = {
     "TARGET_CANDLE_EXPIRED": "Target close prediksi sudah berakhir; menunggu hasil model terbaru.",
     "SOURCE_OR_TARGET_STALE": "Sumber atau target prediksi kedaluwarsa; menunggu pembaruan model.",
     "SOURCE_STALE": "Data sumber kedaluwarsa saat model diterbitkan.",
-    "MODEL_SNAPSHOT_UNAVAILABLE": "Snapshot model tidak dapat dibaca atau tidak lolos validasi.",
+    "MODEL_SNAPSHOT_UNAVAILABLE": "Feed GitHub model gagal diakses atau snapshot tidak lolos validasi (raw dan API).",
+    "CONTEMPORARY_PRICE_NOT_AVAILABLE": "Input harga broker saat ini belum tersedia.",
+    "H1_CONTEXT_UNAVAILABLE": "Konteks H1 broker belum lengkap untuk model ini.",
+    "LIVE_FEATURE_SCHEMA_MISMATCH": "Fitur model live tidak identik dengan replay.",
+
     "LATEST_COMPLETE_BROKER_BAR_UNAVAILABLE": "Candle broker tertutup belum lengkap untuk model.",
     "LIVE_HISTORY_GAP_OR_PRICE_SCALE": "Riwayat broker belum tersambung dengan data model.",
     "ECB_2026_UNAVAILABLE": "Input kurs ECB tahun berjalan belum tersedia.",
@@ -131,13 +140,37 @@ def validate(payload, *, now):
     return result
 
 
-def fetch(*, now=None, opener=urlopen):
-    now = moment(now or datetime.now(UTC))
-    req = Request(URL + "?minute=" + str(int(now.timestamp() // 60)),
-                  headers={"Cache-Control": "no-cache",
-                           "User-Agent": "RIZAN-R281-shadow-viewer/1"})
-    with opener(req, timeout=6) as resp:
+def _read_snapshot(request, *, opener, api=False):
+    with opener(request, timeout=6) as resp:
         raw = resp.read(256_001)
     if len(raw) > 256_000:
         raise ValueError("R281_SHADOW_TOO_LARGE")
-    return validate(json.loads(raw), now=now)
+    doc = json.loads(raw)
+    if api:
+        # GitHub Contents API is a redundant transport for the same exact
+        # immutable branch/path; never substitute a different model/source.
+        if (not isinstance(doc, dict) or doc.get("encoding") != "base64"
+                or not isinstance(doc.get("content"), str)):
+            raise ValueError("R281_GITHUB_API_CONTENT_INVALID")
+        try:
+            raw = base64.b64decode(doc["content"], validate=False)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("R281_GITHUB_API_BASE64_INVALID") from exc
+        if len(raw) > 256_000:
+            raise ValueError("R281_SHADOW_TOO_LARGE")
+        doc = json.loads(raw)
+    return doc
+
+
+def fetch(*, now=None, opener=urlopen):
+    now = moment(now or datetime.now(UTC))
+    headers={"Cache-Control": "no-cache", "User-Agent": "RIZAN-R281-shadow-viewer/1"}
+    raw_req=Request(URL + "?minute=" + str(int(now.timestamp() // 60)),headers=headers)
+    try:
+        return validate(_read_snapshot(raw_req, opener=opener), now=now)
+    except (OSError, TimeoutError, ValueError, TypeError, KeyError):
+        # A raw CDN/network error must not turn an otherwise valid H4/W1
+        # model into four misleading WAIT rows. Fall back to GitHub REST.
+        # The contract, provenance, and candle expiry are ALWAYS enforced.
+        api_req=Request(API_URL, headers={**headers,"Accept":"application/vnd.github+json"})
+        return validate(_read_snapshot(api_req, opener=opener, api=True), now=now)
