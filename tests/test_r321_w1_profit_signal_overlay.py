@@ -27,7 +27,7 @@ def test_overlay_only_when_main_is_flat_one_oz():
     base=[trade("baseline",0,4,4),trade("baseline",5,9,6)]
     overlay=[
         trade("overlay",1,2,2),
-        trade("overlay",4,5,5),
+        trade("overlay",5,6,5),
     ]
     p=r.portfolio(d,z,base,overlay,"any_flat")
     assert p["baseline_n"]==2
