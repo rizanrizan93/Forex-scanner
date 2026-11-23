@@ -21,11 +21,24 @@ def admit(rows,scope,loss_limit,days):
         chosen.append(row);heapq.heappush(pending,(stamp(row[1]),sequence,row));sequence+=1
     return chosen
 
+def normalize(rows):
+    # Some BTC records store ReferenceBalance=0. Preserve the raw field and
+    # append a disclosed baseline settled-cash proxy using past exits only.
+    settled=sorted(enumerate(rows),key=lambda pair:(pair[1][1],pair[0]))
+    cursor=0;last=100.;result=[];fallback=0
+    for r in sorted(rows,key=lambda r:(r[0],r[2],r[1])):
+        while cursor<len(settled) and settled[cursor][1][1]<=r[0]:
+            last=settled[cursor][1][5];cursor+=1
+        den=r[4] if r[4]>0 else last
+        assert den>0 and math.isfinite(den)
+        fallback+=r[4]<=0;result.append(r+[den])
+    return result,fallback
+
 def metric(rows,years):
     a=[r for r in rows if stamp(r[1]).year in years]
-    returns=[r[3]/r[4] for r in a]
+    returns=[r[3]/r[7] for r in a]
     gain=sum(v for v in returns if v>0);loss=-sum(v for v in returns if v<0)
-    annual={str(y):sum(r[3]/r[4] for r in a if stamp(r[1]).year==y) for y in years}
+    annual={str(y):sum(r[3]/r[7] for r in a if stamp(r[1]).year==y) for y in years}
     return dict(n=len(a),sum_normalized_return=sum(returns),mean_normalized_return=sum(returns)/len(a) if a else None,pf_normalized=gain/loss if loss else None,positive_years=sum(v>0 for v in annual.values()),annual_additive_normalized=annual)
 
 def run():
@@ -35,8 +48,9 @@ def run():
         obj=json.loads(p.read_text());assert obj['member_sha256']==entry['compressed_member_sha256']
         assert not obj['cashflows'] and not obj['errors']
         assert len(obj['rows'])==obj['summary']['Baskets']==entry['rows']
-        assert all(r[4]>0 and math.isfinite(r[3]/r[4]) and stamp(r[1])>=stamp(r[0]) for r in obj['rows'])
+        assert all(r[4]>=0 and math.isfinite(r[3]) and stamp(r[1])>=stamp(r[0]) for r in obj['rows'])
         assert abs(100+math.fsum(r[3] for r in obj['rows'])-obj['summary']['EndingBalance'])<.01
+        obj['rows'],obj['normalizer_fallback_rows']=normalize(obj['rows'])
         data[name]=obj
     periods={'development':range(2019,2023),'validation':range(2023,2026),'partial2026':[2026]}
     controls={n:{label:metric(o['rows'],years) for label,years in periods.items()} for n,o in data.items()}
@@ -56,7 +70,7 @@ def run():
         summaries.append(dict(scope=scope,loss_limit=limit,pause_days=days,development_pass=dev,validation_pass=val,development_min_sum_lift=lift,diagnostics=candidate))
     selected=max(summaries,key=lambda c:(c['development_pass'],c['development_min_sum_lift'],c['scope'],c['loss_limit'],c['pause_days']))
     risk={name:{'archived_ending_balance':o['summary']['EndingBalance'],'archived_max_floating_DD_pct':o['summary']['MaxEquityDDPct'],'observed_open_risk_pct':o['summary']['MaxObservedOpenRiskPct'],'observed_margin_pct':o['summary']['MaxObservedMarginPct'],'planned_cap_observation_pass':o['summary']['MaxObservedOpenRiskPct']<=20.75 and o['summary']['MaxObservedMarginPct']<=50} for name,o in data.items()}
-    report=dict(study='R14_CAUSAL_GROWTH_GUARD_DIAGNOSTIC',policies=18,archived_native_records=sum(len(o['rows']) for o in data.values()),archive_risk_observations=risk,controls=controls,development_qualified=sum(c['development_pass'] for c in summaries),validation_qualified=sum(c['validation_pass'] for c in summaries),selected_on_development_only=selected,all_policies=summaries,attachment=manifest['attachment'],native_counterfactual_replay=False,new_terminal_balance=None,new_floating_DD=None,production_changes=False,promotion_allowed=False,target10B_verified=False,run_url=f"https://github.com/{os.getenv('GITHUB_REPOSITORY','rizanrizan93/Forex-scanner')}/actions/runs/{os.getenv('GITHUB_RUN_ID','LOCAL')}",commit_sha=os.getenv('GITHUB_SHA'))
+    report=dict(study='R14_CAUSAL_GROWTH_GUARD_DIAGNOSTIC',policies=18,archived_native_records=sum(len(o['rows']) for o in data.values()),archive_risk_observations=risk,normalizer_fallback_rows={n:o['normalizer_fallback_rows'] for n,o in data.items()},normalizer_warning='BTC zero references use original baseline last settled BalanceAfter at or before entry; approximate, not true entry equity. Raw references preserved. No native balance claim.',controls=controls,development_qualified=sum(c['development_pass'] for c in summaries),validation_qualified=sum(c['validation_pass'] for c in summaries),selected_on_development_only=selected,all_policies=summaries,attachment=manifest['attachment'],native_counterfactual_replay=False,new_terminal_balance=None,new_floating_DD=None,production_changes=False,promotion_allowed=False,target10B_verified=False,run_url=f"https://github.com/{os.getenv('GITHUB_REPOSITORY','rizanrizan93/Forex-scanner')}/actions/runs/{os.getenv('GITHUB_RUN_ID','LOCAL')}",commit_sha=os.getenv('GITHUB_SHA'))
     out=Path('artifacts/r14');out.mkdir(parents=True,exist_ok=True);(out/'report.json').write_text(json.dumps(report,indent=2,allow_nan=False)+'\n')
     print('R14_RESULT',json.dumps({k:v for k,v in report.items() if k not in ('all_policies','controls','selected_on_development_only')}),flush=True)
     print('R14_DEVELOPMENT_SELECTED',json.dumps({k:v for k,v in selected.items() if k!='diagnostics'}),flush=True)
@@ -73,6 +87,11 @@ def selftest():
         for cut in range(1,len(rows)+1):assert admit(rows[:cut],scope,2,1)==[r for r in admit(rows,scope,2,1) if r[0]<=rows[cut-1][0]]
     rows3=[row(1,2,-1),row(2,3,-1),row(3,4,100,'EURUSD')]
     assert len(admit(rows3,'symbol',2,7))==3
+    raw=[row(1,2,-1),row(3,4,1)]
+    raw[0][5]=99.;raw[1][4]=0
+    n,f=normalize(raw);assert f==1 and n[1][7]==99.
+    raw[0][1]='2020-01-10T00:00:00Z'
+    n,f=normalize(raw);assert n[1][7]==100.
     print('R14_SELFTEST_PASS settlement-first, no future settlement leakage, prefix and per-symbol isolation')
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--selftest',action='store_true');a=p.parse_args()
