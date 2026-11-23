@@ -21,16 +21,22 @@ def audit(input_root=None):
   inputs[name]=dict(required_sha256=digest,available=p.is_file(),
       actual_sha256=sha(p) if p.is_file() else None)
   inputs[name]['matched']=inputs[name]['actual_sha256']==digest
+ inputs_matched=all(v['matched'] for v in inputs.values())
+ blockers=[]
+ if not inputs_matched:
+  blockers.append('Exact 3-asset corrected CSV bytes are missing or mismatched in this environment')
+ blockers.extend([
+      'SEED_DATA base{Base}_symbol{sid}.bin signal tapes missing; generator recovered but tapes and parity not verified',
+      'Original MACRO_DATA and XAU buyOk/sellOk vintage provenance uncertified',
+      'Original full 1047-basket reference order/settlement/equity ledger missing',
+      'FP Markets actual minlot/step/margin tiers/fees/capacity not certified'])
  result=dict(source_files_verified=len(manifest['files']),
     original_source_unchanged=True,target_framework='net8.0',input_audit=inputs,
+    exact_price_input_bytes_matched=inputs_matched,
     signal_tape_generator_recovered=True,
     signal_tapes_present=False,macro_input_present=False,reference_basket_ledger_present=False,
     native_parity=False,can_run_exact_control=False,production_changes=False,
-    blockers=['Exact 3-asset corrected CSV bytes are not restored into this GitHub runner',
-      'SEED_DATA base{Base}_symbol{sid}.bin signal tapes missing; generator recovered but needs exact CSVs',
-      'Original MACRO_DATA and XAU buyOk/sellOk vintage provenance uncertified',
-      'Original full 1047-basket reference order/settlement/equity ledger missing',
-      'FP Markets actual minlot/step/margin tiers/fees/capacity not certified'],
+    blockers=blockers,
     commit_sha=os.getenv('GITHUB_SHA'),run_id=os.getenv('GITHUB_RUN_ID'))
  out=ROOT.parents[1]/'artifacts/r11/native_input_audit.json';out.parent.mkdir(parents=True,exist_ok=True)
  out.write_text(json.dumps(result,indent=2)+'\n');print('R11_NATIVE_AUDIT',json.dumps(result),flush=True)

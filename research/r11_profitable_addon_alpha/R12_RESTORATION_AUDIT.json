@@ -1,0 +1,29 @@
+{
+  "XAUUSD": {
+    "rows": 5271503,
+    "bytes": 407682982,
+    "sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+    "expected": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+    "matched": true,
+    "first": "2011-11-01 05:00:00+00:00",
+    "last": "2026-11-13 02:59:00+00:00"
+  },
+  "EURUSD": {
+    "rows": 5534545,
+    "bytes": 318406782,
+    "sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+    "expected": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+    "matched": true,
+    "first": "2011-11-01 05:00:00+00:00",
+    "last": "2026-11-13 02:59:00+00:00"
+  },
+  "BTCUSD": {
+    "rows": 4137300,
+    "bytes": 245702202,
+    "sha256": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+    "expected": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+    "matched": true,
+    "first": "2019-01-01 00:00:00+00:00",
+    "last": "2026-11-13 02:59:00+00:00"
+  }
+}

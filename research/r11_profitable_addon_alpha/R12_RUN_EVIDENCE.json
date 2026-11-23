@@ -1,0 +1,839 @@
+{
+  "study": "R12_32_PULLBACK_POLICIES",
+  "commit": "2b57912beb93abd70dca0711efa33fa1d9a8296b",
+  "run_id": 45260707501,
+  "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45260707501",
+  "artifact_id": 14859899155,
+  "artifact_zip_sha256": "ad7a2befc144e1060b9599eaf89bf482729053683498b6d5c6052ee770af1944",
+  "configurations": 32,
+  "scenario_model_years": 1920,
+  "development_qualified": 0,
+  "validation_qualified": 0,
+  "evaluation_qualified": 0,
+  "walk_forward": [
+    {
+      "year": 2019,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2020,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2021,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2022,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2023,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2024,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2025,
+      "selected_from_past_only": null,
+      "next_year": null
+    },
+    {
+      "year": 2026,
+      "selected_from_past_only": null,
+      "next_year": null
+    }
+  ],
+  "source_provenance": [
+    {
+      "year": 2012,
+      "first": "2012-01-01 23:00:00+00:00",
+      "last": "2012-12-31 22:20:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2012,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "5ab7167ec36b50b322494cbe5f89a18bbc23726ac8f82915ee976ee6e9c95f1b",
+            "2": "608ffde0f46658d5b18178dcb2681bad1a30cdf870615e35ae406c42112549c4",
+            "3": "6cf76c950eaa69c6c6b7330f9ad357487edb2c638d88b1e18647493a90680d4c",
+            "4": "eb17ae2902cc9734d2c12365002de9d61cf6a70805754437c137d2c819fa7915",
+            "5": "dbea2a322a08d67501658ed5b4981318450b31540121e2eef20a9aa8c22a4050",
+            "6": "193455b7493667ddbd35549cb92abaa6a626f7f862ef15d1352767cdade3dc74",
+            "7": "75f7df5b6cfca359ba0f2ada06788aea0b2a7da5cd967481e1b83ae7ef27cd6b",
+            "8": "9fa502c6fa704608be3a0c7f995b45311af988ca9a02891468ddd72411ccc5e2",
+            "9": "9de699df424099402df0cff582492b4ca3075a8208849e0018f673758ba83175",
+            "10": "793f2854ab3ae27239540517d8e6a8ad1b08e96dbdb7db90ab523d780094bc19",
+            "11": "85eafbfaa3c4d1a81cafbec8dee919fa0be8cbf44459bcbc951e122f53cd6159",
+            "12": "f95fb8ccb9df2d13657d2e6c9a9c6f6c68b68adb755b513ce86aa135aa0c49da"
+          },
+          "ask": {
+            "1": "267223a30076216f35900c3b2002aa78465e1f2989ece176313f440dadcbbd56",
+            "2": "d7dfc2354366a82f058147d65bbe9d00ec92cce2280e5fa76dd1e9fd7e2a726a",
+            "3": "644dff1a32e2df2e324662f0f0a7f3f0fb8013f698ca41cc1251b86ea4a3e15d",
+            "4": "e19b995e3b3cb56cab9f8e14cce52be953f062b4e983dd69fccbeabb8ca022ac",
+            "5": "6d7305926fd7f26c3472b32ad4fa84d81b010402b6ec5d1bdba62159d235b5e7",
+            "6": "8471e80c8495a1e997343038a7f7e6aaeb86f4cd79a4153234794e39c0ac4089",
+            "7": "ba2d4e76ca6b908c9402b8b2d101f3f287fd203303faa1b71fe58e7189837224",
+            "8": "56a6ecd0e52a08fccccb154a88b274c4e0e33bb07cc3ff8ece3e2bcab9ced587",
+            "9": "6f3ce3c8e024db7faf1b269326ba73fba95f0c8883c167d95902c7472938f2a7",
+            "10": "df368c6ee28a1d5f8c2788ca1fd18103dc9e0e343c02355a1b5f2dec9b95bf4d",
+            "11": "c97e925d072aa041b4b5c35ff1e3c058a49705749457e1fb9f41b75beebc3300",
+            "12": "c0b53f8a39642ec51368d365e78dbfec39f4e2d41a07835e4a9e4c352b861286"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 162189,
+        "stale_quote_minutes_censored": 7929,
+        "observed_spread_median_usd_per_oz": 0.3630000000000564,
+        "observed_spread_p95_usd_per_oz": 0.5340000000001055,
+        "rows": 364851,
+        "first": "2012-01-01 23:00:00+00:00",
+        "last": "2012-12-31 22:20:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2013,
+      "first": "2013-01-01 00:00:00+00:00",
+      "last": "2013-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2013,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "2f99c6a645ea360d9ddfa92ac0506c7be7b6719a77dcb14421025c6ffc5b0a63",
+            "2": "6fe9a4b2daa61d61e732eaffe1dd18b2ed037644158c81eb2a3d8bc5583cf56d",
+            "3": "b87c3597817909d9673ea1de42cccc0d7af29059c5c4842260addfa2ab6e0d83",
+            "4": "2f8acbddce84ae46eeaece4c08701987081a13e43a2e1901c74e74711513c6c3",
+            "5": "27c88fbef1540b26b840bfb2ab358a8d9a14913ae6c3810675b1b7a81ea712eb",
+            "6": "3fdf2a4db792989cbde5ed688b53db5055cfc4afa96f98cb6baab89ac38caf77",
+            "7": "a891fda042bf9f7d7c57422b5d376a566b16434634770067ad2adaca6f12e015",
+            "8": "ff57ff79b4aacd56960e7ff65df5710264f91fc193ba9cbd8d141c0f51c2ea43",
+            "9": "1809476193318626c6435047e8d986ae75189aa0b31f6999179df2acbf7753dd",
+            "10": "8f4b0e824e3211ac0fee462f73474d9289d4739112653c5660f93b9235bbaa8b",
+            "11": "595ae1b5ef38a9b32430fdf58b14b5d782642f7458b81843d8c2d8a08b78217a",
+            "12": "aa70c905170623972b7e79e8772258e52dbaed40e5186f05e229bfabf63967ed"
+          },
+          "ask": {
+            "1": "2ab348f5ac9c08a6968ab278e83f8bacba156a36f78d6c46a9a25ddd5b216296",
+            "2": "06fa1fd1e3e213b558eb9ceb50155bf29f2978bfaeded39fdf7ea5ebad67446d",
+            "3": "b07e51b72dd392d0208a82324a8e90ac64d6cf2f702e37432d0616939f6eee8a",
+            "4": "f43031715eb2280fedf3f8de649127a1651bc887c4bfe13ee88555dc55af51b6",
+            "5": "6d4c609d0267a10c3b33351bfccf607fce6cce0c76ddeccc4b8b50abfae391fa",
+            "6": "ffaa2357254653ba6f0636e3e233af11dd51ea9040843498220de38bd3e4379f",
+            "7": "9bb31b585b46998e847f0a8dd2ba665b248ca4914da3a2e7663d0f7066c261ab",
+            "8": "b9fd88753eeec2ed335386f0158ee1ece3746c81cfd38ec681cab6fa9a0d98b2",
+            "9": "208d9fa7813f95465b9d7ae0dec7e06d51a659aab9188ae8959642111fabf5e0",
+            "10": "d1b1afbd1b7c82096e33c516bd9d50752d00a0b5313c890bdbfe3d8d29c2055f",
+            "11": "e3d83a33fb3f1197f61ccca5de907377895090cac8ba40a2065951d89352acfe",
+            "12": "bc651ad4fcd32fb7380ec2cca9e475fb8cd492ea97ac8c23fbff65f396c893d2"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 172115,
+        "stale_quote_minutes_censored": 19235,
+        "observed_spread_median_usd_per_oz": 0.34600000000000364,
+        "observed_spread_p95_usd_per_oz": 0.5739999999998417,
+        "rows": 353485,
+        "first": "2013-01-01 00:00:00+00:00",
+        "last": "2013-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2014,
+      "first": "2014-01-01 00:00:00+00:00",
+      "last": "2014-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2014,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "60a2a7586668e89a4d50f04dd323f0f5a6090ece5aa90e4791996d5169f3fd4d",
+            "2": "d3d70d7dc299a852499e84d467550b47586f556d8ce866c40e73539f30963738",
+            "3": "91401d397c915a9f8b44ea35fb83ea04324e417f2664b6ef53e08cc675e7d61b",
+            "4": "a082f3b034bc5b1d0154109b08e736319eceaf88b8ecf5ba0414d53d831dca0b",
+            "5": "c7b3e3852fe5d3cdadf4fa5000db4a40762bd50964022f40b929c7482215e73e",
+            "6": "27799f2566ab9fe687540b624e7b92e7a86f2d8b67d4438c407bace9bfaf6094",
+            "7": "337c17b5d33126bdb517a054b7e6fe89bf80a28bdd30ddc5bcb77707a94ff271",
+            "8": "8bf4ca0292f64d99e34e6bb7f9ca744f8abf08996ac06bd6c0b3ae3d81440711",
+            "9": "7c8f45532ba6e16d1bb15a554ec2e4316d19a8afefeb216b002a557922132b9b",
+            "10": "8f2e659e40946d183b48f0963c1ed92bc340789f94b6e0682cfabedfee613fe9",
+            "11": "2f8c4e756b7295cf02f37fd64f011f5225cd0105853217c09995fb7900e585aa",
+            "12": "d25029ac74aa8ea60f3c1d2657f2ed3a83ecbd9e30c7983db8ad6525be18ddb6"
+          },
+          "ask": {
+            "1": "477a85306af822ec255f19f5d0a096d431eb69467c62dcbe18ee912218e0da54",
+            "2": "7ab296efbb5b94058c149806231437105b8f8b05cf0561ecb1393b6bddc62c2b",
+            "3": "7ca5b0edd74c26444cb709449fcf4f0549173df12cf39131b3bbb330967f3a4d",
+            "4": "7936a7d3a8b17c85c3ef4db2ac5d0a206d938cec47ba2fdafd02fa9ae2c65d16",
+            "5": "f9354bcead337027fc64e51ef0bf277baf92c77417bb20ef2e57a55795a35d0f",
+            "6": "0f0e3efe75dea060e08013dcb81532574585d70fa84a75ff97008f00e7c19a99",
+            "7": "2cb8b92f8d47abd7c0652970092c9c0bc726691052474ef109ac73644391c026",
+            "8": "fdc6688326d94774154a5a9cdecb127d0c1b8223a567bc11a9f97eba141545c3",
+            "9": "9dd0569574f80bccf188e425daab69d2517de694c7159716517f43fadf83b932",
+            "10": "737ff81491888e6376576c39d1de13f75c855f01b38dd0af8ccb05afaf4d943f",
+            "11": "701da2b4eb6ed53d424d75823af59ede78f676dc4ece13b80ddbadd13ee32640",
+            "12": "3e564b2a005b439fd7a49eef7d5dacc25bdd508fd29aaca55112ab5761562019"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 172950,
+        "stale_quote_minutes_censored": 20070,
+        "observed_spread_median_usd_per_oz": 0.27900000000022374,
+        "observed_spread_p95_usd_per_oz": 0.38400000000001455,
+        "rows": 352650,
+        "first": "2014-01-01 00:00:00+00:00",
+        "last": "2014-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2015,
+      "first": "2015-01-01 00:00:00+00:00",
+      "last": "2015-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2015,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "0f0d238275cac2c8694861c21d1859e48aaf7a6799a8d1e2162740ec3bf4cf79",
+            "2": "d035d4e2901704671b99803ccc081cd17cdcc8cde71acc234b951940580ecd39",
+            "3": "e56abc200190d9dd86f12ccb89c468b5306302ac208e13f275b7f53a35c36e37",
+            "4": "cb69cea176af7a825bf98d043e538c7f6972165403b3bb6c3e4b183a848bf1b0",
+            "5": "e593aeb6e06d8fab4df1b534871484c5cc0897a8deb09ccf52abbc64d9757e4b",
+            "6": "ac2a10dc3caf7e08c3c0dbeeec5bdcf2bbb48558346d3b373db9ec506d3d44a1",
+            "7": "dfb0f73ec5fe96d26df5acc3b70c031aac25f8224d438be72545dd5f6d6d7fb3",
+            "8": "e4a7245761bb1096f9b332410c4b47c0321d2929913cb2b33e621aac6ca2577d",
+            "9": "985ca2dde524c96dde322f858c010d1f84ad5cf7483bbe63455585be4def4093",
+            "10": "3372a118d3b65c12ed6e58cd66088acb498468d24a776babb1142092d66728e0",
+            "11": "90ee9842c7df80857d206bbc9231a6bae6d74d07caa55145c5deaa6688d42f94",
+            "12": "39215a9ee6988fc34404e57a672cf2db63d0ff303cd6e4e2dfa46498e972da7d"
+          },
+          "ask": {
+            "1": "0f96a916b2ede5c20fab4e849054317ee62de3d19716507efc11a8f0e474fa41",
+            "2": "bc1d82e81d477deb4e8e49a2693e5eaad80e240a225be7e3c025571c40ebf644",
+            "3": "9696978189dc0d0814d5d1780ed980c7efbecba15d47dc9e04079cc5e580ea55",
+            "4": "a413629852b0f8823170228e8589db717308cdeb45b2dd13aca9190a744ad609",
+            "5": "9cdc94af56d56a37f367cccac3192c994691e70d5e4bb432236870768726318c",
+            "6": "4685ceb3a4d3d26cc0aba84ed3b0431dee88e0f6db1f16d372a5c8140279fc2e",
+            "7": "27b9be21412e272e114c2f06bfe0ab9418f91c77d1b96d842e257ee84ec15562",
+            "8": "459f034956983c01a1a17c4f114672e47fc14c3199a13f5edf1788addd0cce39",
+            "9": "80fecbcb1f6f26752c982f1248456acb6795067df4fbcc0aefe4f87ea83f9d59",
+            "10": "cbfe22d2986b16efd5e99f23f9c61ef869a5e8db8301918d444c71f45d475505",
+            "11": "11a3e03a956f8b0b0605e79605bfbe21f3e14fe0038620b2b0388595cbbcbe9a",
+            "12": "3ed5486fa7ba36e43e1ecafa04d24120c897272f4c3a722e969ec275a1c15110"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 171272,
+        "stale_quote_minutes_censored": 18392,
+        "observed_spread_median_usd_per_oz": 0.30500000000006366,
+        "observed_spread_p95_usd_per_oz": 0.40399999999999636,
+        "rows": 354328,
+        "first": "2015-01-01 00:00:00+00:00",
+        "last": "2015-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2016,
+      "first": "2016-01-01 00:00:00+00:00",
+      "last": "2016-12-30 21:59:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2016,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "96576fa51f783def8055791660fe248985d993520dad142aac3c8b5e0ecf8e24",
+            "2": "72126d4150773eb6bfb136fc540bfb121aa4ae38e4aa1a6bcbde13dd51ed2852",
+            "3": "9928c1fac4b85af3acb1dddc2b83e31758a1b2eb2f1c07b010989db9f0305189",
+            "4": "7e066be49085335b3bf3680ea2b7c5161d71e3db5a4709805c62306bdc1e921f",
+            "5": "04c9b0b8dd351a7d3e70ec51f02af82a77f878d9caa8484a515fabee7aafafd7",
+            "6": "b80feb94cb8bb2dd610dfe4e99f89d38eba6b39e24c2262e43e21765945d9255",
+            "7": "f17546c4ac1a6dddd6e20f94ca2f45c11ebd79f755720624eff4d58d87e37f99",
+            "8": "63208b9930323298812b94ecd19258eac8ade566dec951d617689ecba8541d21",
+            "9": "28152d943f07b2af747848a6fb174b328caebbccbdd46199f3308658b0a667cf",
+            "10": "e4c38fe65a116ab981d248a2f3926fadb7de59a43a9c877962fb4941f1375101",
+            "11": "95abe30e5e371e072776e0d9a5c1f46f2b542ed321a968186bbb7c933c909fdf",
+            "12": "a8bfae8fcad5a464be94ad2395113505b3ef817aeea6b4c2ba34178543b53b79"
+          },
+          "ask": {
+            "1": "0fe8eeab4d79e7ec153bdcd3cfd8c436c124c5d5b3719cb699fc063ebc710e37",
+            "2": "86c322e9d11d27455d10105c5e2f00c0c7fea6165337c48c0d241b1295de365d",
+            "3": "45fe4572e00b49080f97d45e260a9fc28233105f4636bf3637bf4533b436aa87",
+            "4": "0c40104efe679933ef4b80957e447d2e705b517e1e6158b1dd7edbe0c3f3ac4b",
+            "5": "3ff453e143ef2c5fdd27641978c6f092b23df0e6f51bd6263a8b1b985585b2be",
+            "6": "1fb7b57020ce0bb83745f20049181f16f3de32b16b19cb12d19d310c19b2289b",
+            "7": "5c196b29460c241ab879789900c5a0a4e09c00e741a3b70247f11916b72de688",
+            "8": "98d6c2d4f8fb4dbfbb84c3f1327bac5361996dd053cef54574bdabaa4eb04e00",
+            "9": "8cc2b5b47efe7de9b4dacf1acc12589d4878d1e4c4726431d2341693a7c45e77",
+            "10": "43833a0ac9cb0051a365f24cf4be668554ed12b7ee6d8f4a9cabc9ee84ac938a",
+            "11": "2924fe361b535e522030c47e90782e152415c20b950a7ae8e17215f3e3155597",
+            "12": "3e4d7b88c0c5af6dad6486819fe21a8ae58e08d421e9a9296f0d0c3f6765316c"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 172239,
+        "stale_quote_minutes_censored": 17799,
+        "observed_spread_median_usd_per_oz": 0.30199999999990723,
+        "observed_spread_p95_usd_per_oz": 0.40200000000004366,
+        "rows": 354801,
+        "first": "2016-01-01 00:00:00+00:00",
+        "last": "2016-12-30 21:59:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2017,
+      "first": "2017-01-01 23:00:00+00:00",
+      "last": "2017-12-31 23:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2017,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "7f885dd73faed06706409b13fa4e7f16dfffc2521a73b819236476159ff54803",
+            "2": "b653fef03cac5032598deffbc590afe33bb0dd882736b75ffbdd5aad46e5b190",
+            "3": "25ed84e9ef2447408792671a048087cb4bef43d0bd14ad4175b6acb3c49f0972",
+            "4": "f3e790a55f8a3d04580ea32148913e06f6a068afb5d590aa1cc345ef62e93c31",
+            "5": "784b8338b3c8d0faf2ea586eef86250d35e38944abb53c06a0bd4204201e4c27",
+            "6": "4a05273282e1d6efa50d8ffff7f6281f370d5b7f1b047f5dbfefcc045c66a136",
+            "7": "390e11dd0476cd563ba350eca4fe22424d13b6f8aeead42909528fc8d9674488",
+            "8": "23155221c92c437c50c9d232515c9ddd8d29c9db8e91843cf51bb1949a362bdb",
+            "9": "b66a5f14ba011a13c9df2aa0225cacb1ee3be7403e83ae5b46bb45e39819ad97",
+            "10": "4afa6f923bfd5676510078f80eb2e52d22a669015ab7624420b36a6db531de54",
+            "11": "1c46922b676a7353a637a2d0d6108839e688c904f8ae43b44d46753ac9549e8f",
+            "12": "4db1077b8d9af6bdd4cace490eaa4a25b57ae64793e512081149742802872e98"
+          },
+          "ask": {
+            "1": "a6c160695262bc5b27753fd941300e014ff85aa805dabf12b9c67bb2654ff302",
+            "2": "4c6c1dd055a4858b5e413fd12cffa584198ea46dbab67ee474be5081a1295cd9",
+            "3": "5649e6c77e336e95286c2f79e68b0af02bc56314f019b4ce76e4e091c88079d8",
+            "4": "e88609c5e945cee6a4fe17f5fe89d01aa4ee0d38fb87c454c6c4a128ec665d04",
+            "5": "232f6630a1922427b306b0de3bb4380fc61ee9d5a48be74f959139e29bc3a9ce",
+            "6": "2e76f88e9744fc5ba4fc31e8f056e69bec5e8bca658db70fcf68f4950a15a5cb",
+            "7": "6ca312ec4466ece534d0ca9afdc4ec180a927824b99cbadbc92adbcd77dfe597",
+            "8": "855412c1d941480cf06392d3359b892f752de80471fe76a8cfc85e13b2121f6d",
+            "9": "6fd9f364ff83d1bc980b72fe44996ccaed37b4e9af504752ab43d6288dff7916",
+            "10": "52442321104e0fab2e7e0c1f448395a5d7b730afdbdf6e5b0483b04a7154fc05",
+            "11": "328e1d8ac940ffd401f92fcf2774d9254e1da1a105cf867dfd1abd54a800fc1c",
+            "12": "c18fe9c744dad824b5b2c94e01d57e68e6f12a2d46f03010a1d34b502d7be7a6"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 172420,
+        "stale_quote_minutes_censored": 18160,
+        "observed_spread_median_usd_per_oz": 0.2400000000000091,
+        "observed_spread_p95_usd_per_oz": 0.29899999999997817,
+        "rows": 353180,
+        "first": "2017-01-01 23:00:00+00:00",
+        "last": "2017-12-31 23:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2018,
+      "first": "2018-01-01 00:00:00+00:00",
+      "last": "2018-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2018,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "426eb38a60c37f72a9d6cdb90fc5dc016e880be6f2e2dd6b1232b78aa2ebc2c5",
+            "2": "6b7d11d29c8738950a1a9e4de717e76dd373b4575a1146adf5cde0a8ca14cd42",
+            "3": "83870d4065f0ca26a4afdec029603b93098c3ad1f1567bdd298fa0f0cdb00b9c",
+            "4": "2e42dee2dfa79c4d29c7f717c21907a9921a72e7d18bc45f307229ea23bd7e66",
+            "5": "d317fde8c10c3e05ed352fcbcc073634016021437f95436c37f0c8ca4248b682",
+            "6": "32c5143dca46d70bb0535e69123a93059eafcef26b9ca27c9a8bec19d8244985",
+            "7": "fec7850d0541c978488ecdc7e1edcdb5725944c59ec709147fdf564e14c720da",
+            "8": "e10f6e32fd1b0fd383a378b637a3bc4f61d38f36412ae48897c67ad10f504be0",
+            "9": "29115085f6f255a14abbf1415731743818c33db991eb06873687d2a4d53a695e",
+            "10": "fe769063929d375cd7e86857e986001c90051d142e167b238e3177a439a58e3e",
+            "11": "817c9754a946005db249b67f2ad4e757ccec066ca54603141bacc33285e7170b",
+            "12": "570699ae65e99fd6296d7098afb9ca602f2d8a9631874758c8e255aa153b205c"
+          },
+          "ask": {
+            "1": "536cb2e867869d44407e4ad99378ad284a411a9444e62d929cfef55b5018a21b",
+            "2": "ff2a79fd39ba79720be68f73cfc40b797e52d1a2f54f812880cb8f9e11a015b3",
+            "3": "3e417ee630fa01a5bc4d3b138ff298a0dd73d176760e2da54d4d8f3759f5a4c2",
+            "4": "7cac3d7c9afaf72ef342b7807d2da93c1328a822d75ba798ac71a1ba66c0e2b7",
+            "5": "698b0ecb4b2486f764de61f1224cd2ec3ea1ac7ab859bf294057bb2e5fe9ea2c",
+            "6": "f020b16aa7d47aab668f26d4633b2169ada53a16a3aab5ecf5245517db989016",
+            "7": "a59062f66742c8ea3018f1c18fea0913ed6841f8cdcacec6b71140ae5ab1285e",
+            "8": "0b0cb0c9e6ab28a98ae0084a65614c9a4af72e79c8193d6a83ed500cee8fbd9d",
+            "9": "0676f1af4ebfe433d1d4e79b56642fd56339b8a2ffae11df33659d870c71efc5",
+            "10": "f8165716fa53c192c4e731b8be39f309b52f89fc86cd1814a6891c90a44cfd7c",
+            "11": "048a7a841e75aba9426089ef17aad815f60704ae0ab959b896ddf890e7f6908d",
+            "12": "40112ea55fff4b07140e51332bfd061d0cb24c94b1cbf5667705495ede0ed207"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 171098,
+        "stale_quote_minutes_censored": 18218,
+        "observed_spread_median_usd_per_oz": 0.23400000000015098,
+        "observed_spread_p95_usd_per_oz": 0.3100000000001728,
+        "rows": 354502,
+        "first": "2018-01-01 00:00:00+00:00",
+        "last": "2018-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2019,
+      "first": "2019-01-01 00:00:00+00:00",
+      "last": "2019-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2019,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "8333f7b9c0fccaece4969835f52d4661ca886ac915b336ee73149af3a04de179",
+            "2": "82a1337a4f2b22b86f34d2bc2490ab408f227dd10fd94701d6d4e5f6fa0ce459",
+            "3": "dd742bff0cf9304ae5be5538a847c863134428debd27a49d592b050125871bef",
+            "4": "135134c8fe8e3aab37ab3895270846875e7378b45c13ceba7ac2059a0d5fce2a",
+            "5": "bde260ca8095bbdbc412d9520c87e6234588e6235e5896d16f90dabae6b8006e",
+            "6": "76733a3dacc16f2fabec081dcc728d3645072c8f9d219a43ea3b9d48012981ee",
+            "7": "fb91c6b00a9314ddfcfbe7366e12000ad3565d16d97622c07a7e569678b2f64c",
+            "8": "a1b3bf6f5eec08872c556fb3c64ef2092828dbfa351ef9259a09152a479fa80f",
+            "9": "b1ebb464895754b809a6d91e4ddc046c156da694201d32e0a39441e84125a61a",
+            "10": "5796528586f06335d03ab940bc5d2314b35b76751919e3a0c17266f4294b2565",
+            "11": "952db00d759f16257fbf677016dfe89c5bb9458075cc38b0eb3ff57acb09e171",
+            "12": "cb49e233c8c9a01f1642149ff92c4218a8b5e29e07d7564c83b8606263829c98"
+          },
+          "ask": {
+            "1": "805ad77f3c2b619aeab80edb2647040a98e7a0879aa694211112794227b51ed1",
+            "2": "b86a0289ff4a7115a95aefce048b6d990303d0627de441bafd288e9e7af609f0",
+            "3": "7546318075caec6223ea64f54f92a2d119fd6323b95e5e596e418ff7a98b64e3",
+            "4": "ee897e21129a44db96d90d00ff326e8d078628e84c8848e9806846b00dbd964a",
+            "5": "9ed31c85e38424bd00ce55ace339350ca81ac70889525730aa206e8390e24e0d",
+            "6": "175f0dc6d19250b80ff8fd0f6587f454f4383deadd7e5bda84e6e2b432a010ec",
+            "7": "2bfbc939b50b2eea57992764179ae786ba51ca668bf967dc9385492bb8c19663",
+            "8": "96aafb0f8841af76dadde90e7063ce86b633e11968f469dd58113c1ae8d709d8",
+            "9": "3b8515561d880fda8228d4943c11336cb60ec94098890c2ef566e76005680762",
+            "10": "2ff91d81466f56836b0ea570ba81d839794701045f1d92ebbce4d867d08bca62",
+            "11": "261b67d2608d77c49e3df544c92b66426be5351439bc12ed7eb2820436baa193",
+            "12": "d8820be7432a1a363ad68b9b395f16a3d7f07b20aca87a82e60c790c3fe83ec5"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 171267,
+        "stale_quote_minutes_censored": 18387,
+        "observed_spread_median_usd_per_oz": 0.2899999999999636,
+        "observed_spread_p95_usd_per_oz": 0.34999999999990905,
+        "rows": 354333,
+        "first": "2019-01-01 00:00:00+00:00",
+        "last": "2019-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2020,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2020-12-31 22:01:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2020,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "d18e9a1ca70bc88e36b5b30d39b42593d5d6cef04ef0fee072ce33af5e14a5dc",
+            "2": "08e92e1d88651135aad81535e4750a890becd7ac793439c011d5688b2c1f9f28",
+            "3": "779112c1b114e9a3a93d406af9ac29e436ea7fab5aa63d98ce33432d99b71af7",
+            "4": "5cf7c5d7dc1a5ab7cf7a5f7a911fc930c1afc76308c03b6bb54705bf8ce97c56",
+            "5": "7be9580f0f31e6e60ff57bacc08713b2274cf1ee8538c3542510517b70cbb97e",
+            "6": "692775034a1660acc62825f403395d87c574c3c64a9238d3e4ce7dc3e83efbb3",
+            "7": "54e50173d3444d73049a48c1026b65d69a7bbbe18073634b91b727ca2d2b9f21",
+            "8": "d1737bff670af34e5b306598206c27261faff37b4d4fe141e5cca296d669ff06",
+            "9": "30f059a05f615ff0c224abd908079115bbdec1c42b210ca59791b01f23ff7a78",
+            "10": "0b67d7e7eaf7256ff2858f29f715d18aed35fee1b049b422e6af6fe507e3b748",
+            "11": "21d1b1311b86eebd18cb1c3df48a6436e70e8cf0c7aed5366a4765aa7c9247a9",
+            "12": "6cf6d0a8085a24c212f1bfc415e3c54fca4a9df9c40525a1b49d08f13b9f7ec0"
+          },
+          "ask": {
+            "1": "14162a88106b615fe00f9ba4a53ff5907113a5f2d56222142ca6dc6d94f91f6d",
+            "2": "4ec6aadbef76651c5553111bfe887e899c4aa160c2b310d69c9428d64ac64c7f",
+            "3": "c16802ec4727f715e9b38a161e191c0e1a6f1e2492d26f88b8c7c56d289bd975",
+            "4": "9d73ef82dd90b873a71a85be5bb04e1c3ab13158017994b0c9c06045a0848c42",
+            "5": "07ac80735173f02d2052d203c418324547c4f7fda67ce67c67597fb084131d62",
+            "6": "a27d38a00160acf643d8c5cf686aa92dc2371b87afb53f847ad464391c9942e2",
+            "7": "2745a4f6d221404bb8c8c3c8d3a485a6e4a361da08a89e24579612518c829759",
+            "8": "e0bb97e6dd8a10f04bc1a3ca6c7e0e8818a99a2477f7c2e7a859ab95db075436",
+            "9": "9c8b1510fef481c100f90da66371b69158b532580e170f5d77652429b722d8d1",
+            "10": "da1f4a273c7b6d05757759b6e416dffab0dd38d61334ee6d02b785fd374d102a",
+            "11": "239b77126d07c161da4781c62650e2f618c70086c775de03d2ef61569f5c7223",
+            "12": "e4e9cfb9aed4891a8f4ba7d00baca8efa43a116bee0e6761af8ba63d215f520b"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 171238,
+        "stale_quote_minutes_censored": 18358,
+        "observed_spread_median_usd_per_oz": 0.3969999999999345,
+        "observed_spread_p95_usd_per_oz": 1.1739999999999782,
+        "rows": 355802,
+        "first": "2020-01-01 00:00:00+00:00",
+        "last": "2020-12-31 22:01:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2021,
+      "first": "2021-01-01 00:00:00+00:00",
+      "last": "2021-12-31 21:59:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2021,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "c33b3280d3e7997b46f81961dab7bcc74b7b6fc0847e294649f68f2693670e80",
+            "2": "9c0f6d846bda6cf4c3a05aaf82cb453c6745225ccdea6ad51d972b77b3ce24cc",
+            "3": "aae5b9f6f9ef5d75f54a3343b405682c8863f9959309adfe3dd1a73e18cf223d",
+            "4": "4a334dc17f38dd5f98bf3042979ae34e1f54e03396626f966d071e8eb764cbc0",
+            "5": "e9a4da6b2c5faf582b8631e3d8f90affe880d0db57e324302ad6c51043b5b399",
+            "6": "120591390b227a1a12c09ef77d8c1cdf25149f15139326c6440f6ac136fc825b",
+            "7": "ac7d6885e11160488ba5ee0868358a83cbf8275ff60ca1aa50b9813698f3fcbb",
+            "8": "7e0584ee83ff71e6bfcb62948845561fbf461e458e7306101825010619e7cfa8",
+            "9": "43dd51364256511a736250d785ad0370d6a4da9e9f513adbfb6a817fe8e5f3c0",
+            "10": "e0d98070053e3124f9536b6149b97788fb7edeb884fd545413c3bf95e0f552ff",
+            "11": "0127ae0617eb097151ea8673e6f5d2a86234dcc7e5c04eb966b2fc35a003c82d",
+            "12": "f5fe37477a8792a50a7a1d15b438135a7bb91ff7d431191fb73b56586be234f8"
+          },
+          "ask": {
+            "1": "f075c7e6e5e31dcfd2130206ebc6f155123a37326301b960548b39de437937f1",
+            "2": "c10c3e522b2010d8bbc8c650bc51d229f2d1357b242c2bc898794f24c6f1f3ec",
+            "3": "6a8e276ecd59cbf25e6962c1026c4da3f4561db2c2e916b7e6031e5238fa07b4",
+            "4": "57b77cba77c83a5a3480f069879dd50add2850843f87fb1d718f9ca267623508",
+            "5": "a1a42b6bab9bd05617f169f8c7707ecf641b569d55f699db3620ba1d25b621e0",
+            "6": "ceb7898e32c5e1aff4bd4f0e4340ce56839172cae3530a3280eebf51baa83bb9",
+            "7": "eb903088b1da9058d573cce9dba921850063bb038163048551f8ff5ccbf81333",
+            "8": "740a2c309ece5041af629810424a01f77557337aaa3312319d00e94e77253dfd",
+            "9": "344949203de7a361c69b3e81f601f536953e3333618e50f3baad970319d55130",
+            "10": "7fd9d790335c308550098dc8485af44602e2ca14297982f2e804ae1f67fee456",
+            "11": "b3b24ee56aac098d7b2a73913ec5ee56cb16f50f1700652ac68c02c80ea90218",
+            "12": "2d9d47fc0a087f95b6898c66324d5590e7dfe98aab4437064c43be5b7c42a211"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170838,
+        "stale_quote_minutes_censored": 17838,
+        "observed_spread_median_usd_per_oz": 0.35400000000004184,
+        "observed_spread_p95_usd_per_oz": 0.4539999999999509,
+        "rows": 354762,
+        "first": "2021-01-01 00:00:00+00:00",
+        "last": "2021-12-31 21:59:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2022,
+      "first": "2022-01-02 23:00:00+00:00",
+      "last": "2022-12-30 21:59:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2022,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "48c7145468b08505dd0de252df8abadf65144829fa30cd176fdacc1ba48ce24f",
+            "2": "b091d3714874faf7cb5de4571138bcd473c4c451a4ffa4ad112b6c312b087de5",
+            "3": "0fb3da0b6e055abc5fbf2539e95e859b1738d9b23c203aae2eedad8dd10da9d2",
+            "4": "a0ab770823c1df42532124cce97651b0ee5039016cad198bb306bfd4af036507",
+            "5": "5050ff290734f507aa6c97f1f770bc8b73d7868ff8bc987c953c687f8cb05291",
+            "6": "34e668669dbe6dc58b96c9077481ac062d0fe7d48a43c1a252c03edba72eb693",
+            "7": "910c49b054062a5bf0112a4db8d70997df24891db26675415d313ab2751aeb6a",
+            "8": "f7f7f5f4763e414e043307c41fd9dceffafd7d24f7ad38a3ee79fc5db04ece0d",
+            "9": "938caf59faca876bb6cd37c6929ac3bc6cb1cad052e54c2f27f9a950e285e29f",
+            "10": "9d85fe527ae5c80d1d35daf5bc68dca86ac341f4bd00e07366a6f7c7756c7bb5",
+            "11": "838c4f575ac8769553cca7e295634e49e1cd95ab6cb848de0860e053a27cbe80",
+            "12": "1e71133e0cd9fb27ec797bd82083900747762f893a10a7543472691dd5be349a"
+          },
+          "ask": {
+            "1": "122acd8766b98a68ea96d22106a34c7516430f0569ee19a612f8455e4bf5eb61",
+            "2": "ea4938af8536395f9a8c0171dc9084734492d8b8e7a907977926ce9f5dfcc20d",
+            "3": "104931345bc0310e173d22705fed7dbda9a6653c9ae12fd142bf2bbb74d89b67",
+            "4": "b4c8eb7b87ef25fa3198e5be928c0d9ca55abeaeb1341f55b89bfcef9632e169",
+            "5": "ab9e4fa2b936a8a860ffe4a405a1b32e62b97e83939859b4674e0e4d3867acff",
+            "6": "32b0bf84ab709692b9682ea4e4d2d8a886f1a5e599cff6baba50f7d4fb85e95b",
+            "7": "64974577df01492beadc5b66958c43dffacdb4a606d6dba0a6b3ee1994140d7a",
+            "8": "7b4125fee8ae2cae7a2c06358fb98ba236340f78032311debe6f9574793867d8",
+            "9": "33e54f7c145061fd0954ce2b6a9dc45d39b28a043afd76fbf3ea9c3b24ad7941",
+            "10": "3ecfb766c15f3a4fd3d0a40ddb74a57358389e30270f414df18da32da0587af9",
+            "11": "ed95f86a1ba14aa2756afaf655ed415913a606147608f98db9358ead4b25626e",
+            "12": "ca0bd7708b64bfec28c0719e61b2df54e2fc79a96b3f794e9eee6d5bf7f97b8e"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170506,
+        "stale_quote_minutes_censored": 16186,
+        "observed_spread_median_usd_per_oz": 0.3669999999999618,
+        "observed_spread_p95_usd_per_oz": 0.4900000000000091,
+        "rows": 355094,
+        "first": "2022-01-02 23:00:00+00:00",
+        "last": "2022-12-30 21:59:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2023,
+      "first": "2023-01-01 23:00:00+00:00",
+      "last": "2023-12-31 23:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2023,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "6e5c929e3088afdce93496722cb862bb0b8691ac1c4ce8d7b5d1a45447036cc7",
+            "2": "7f826795bc7d7521bbe15cf6c2dd9d7e2bf1191d5c2026ebf8ee177eaba8f89a",
+            "3": "1cbc3972c500efa1ed2e08fed13628ab26668a5edb6de56188522b33dac378be",
+            "4": "c189ca5b1936230768b2cd84faaae09c9ec4433510a88d29d1c996253853bbb7",
+            "5": "fafe3c7a7bd77b34fcbcf91eb4d00be34485d9905f49fccea6b446962f211e06",
+            "6": "2b4c31465a97b42697520508ff4030c92fc77590566b26af055398f281604e71",
+            "7": "1122aad583132aea088dafe044de16a099ad2bdbcd7e9c3406b7a5e1383336d5",
+            "8": "ea50d3f364039cd6c8eaa46f6800fd089324533d535b0d3c716c911c31f8848d",
+            "9": "6c5f7127afd5be0a881c49b6a7aa877704fb5026f24ad8dcdb698994b2df0986",
+            "10": "ea6875e0d903d6ac666838c1d465d65c91b79f68aa549f530ddaa5dfa99183ae",
+            "11": "2d5affe5474357668d4977becae84343367951fc12b4a2056c4ef12276c2354e",
+            "12": "0773c7fd02c64941517ccd564ec30a746cd933f3e6a67455da9681097e8232ed"
+          },
+          "ask": {
+            "1": "8d90943c55c511a725130f3ea92fb31666da39faba3e4d30861fe36588ce0031",
+            "2": "b7194d770999104e5a0c342433cc39f9609f5560ae9bea9a41c70d8d9e089b6d",
+            "3": "05a23990bee929e10a38a322da1afb8504872d342265e03c4af2becfb177c4db",
+            "4": "89b1a0ed01b1ddbdd3889edfdf1ae1a4b9e9076aefb001385ce557d2f06d6efd",
+            "5": "3c0127d3dc79e2dec6625c1ce92a85e7316557f2c67fcf796ce8e7f207fe52dc",
+            "6": "a1a05ae6f86da479904e0d777036d71f20ff88317a8405f1ea6b4f850a804cbb",
+            "7": "155da5cc282c75ae35123a12a906d44963637d7cd26509c99c1a2708d85a1019",
+            "8": "afef43eb0eed80ca3e768da8c2aa17dfd773209aeb08e08883ee6b7d27ddb95e",
+            "9": "4aeae8563feff2c78719338a2df7894537960f2d1078244858d8756fba5390fa",
+            "10": "6cba0b4606b31f5f23a9ea59f59625ea10462874a2ed3d69c622be4a5e1d433e",
+            "11": "f205f7b132559b2ce4c09bf4b85b67dc0da01078c53fe9ee8154242bfbe57643",
+            "12": "fdec9028a6f3e17306a9c02b2c34f135f1c1666fce1b6a29de064cf2aaf74b68"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 172002,
+        "stale_quote_minutes_censored": 17742,
+        "observed_spread_median_usd_per_oz": 0.32999999999992724,
+        "observed_spread_p95_usd_per_oz": 0.4099999999998545,
+        "rows": 353598,
+        "first": "2023-01-01 23:00:00+00:00",
+        "last": "2023-12-31 23:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2024,
+      "first": "2024-01-01 00:00:00+00:00",
+      "last": "2024-12-31 22:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2024,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "7414d1cf6a02cf4fff5347e79602e9109549622cb73b152e5462188cc797135d",
+            "2": "45060c59ccfc0ef3d5f78b49d793b7e3f97757a7659c604b887850068346621f",
+            "3": "28c82e54e1bd7f586f5d22c0c39d9217618f62e8dfdd7eab94602c2c2bb81a14",
+            "4": "ce55b0d9acdf20c694c37e3c53233455cc8b772269eb39f60357808abe37b9c9",
+            "5": "18084ecf8e9d5cef352cc290a55de29f27f006653b5da24a6520f8a02488f4f6",
+            "6": "f7cad6452e9666b37f6f7830bb69a61439095919bb1609daa80839fdb3a8fd39",
+            "7": "a1c432b64a36118f1934c9c838cee83c1f05181fbfd602452fd3d46acdd4fd52",
+            "8": "69a43d059dbdb9bce3bed1be13db378437ed4131cd109d04690fadf2aa17a476",
+            "9": "b9548afce3bc91d47831654ff5745b2165241e5729fc40cdb82d2df76b3c0668",
+            "10": "7eaccb67908ef0ce451a230ee9e723cd2ed3e618f8e1ca9eb8148fc4457cd6d7",
+            "11": "8bdd99624cdebcc843d41420bbced1e57f91d9bebeb42279b85e6c9450232f8f",
+            "12": "c086505bd4ae2f98095bae1c80e6b80ade803ae8f56de6e558e37a0153f967cd"
+          },
+          "ask": {
+            "1": "a4ac5385c164b40a5760890279455228f64646180ea04bb6e45e633cafc024ae",
+            "2": "40706a4ec8abb07c6fe13e4c4562f7d07485c104226e42d36c57e06d36c1c167",
+            "3": "12ee5b98105d955b18b7a496120998f5f6647987cd16f706c94da6bd7541eb91",
+            "4": "ef4001235ec800174d32459174e2235d7cdaf9f67662108c78a962d1d4cb43c6",
+            "5": "54ffe9267ce4be51e68746c20eb0a3d5d77f46b0fc71c34af7eb8884d0af6588",
+            "6": "ec13944e0fa902394e6a48baf8e142696c3b1486d229d50603f5464085073c56",
+            "7": "129719740c4a6a034c756fefb3aa8759b00535c05345e60ffb527d75da7bae1b",
+            "8": "98326a42603240856c1d30b308b6ed16dd156b9badb7896b79d45d65b7ace208",
+            "9": "0b53c5d2372139bd985f8668e3739bfd8e31cfe698d1894dd9e13b2ebf4a750a",
+            "10": "cc4bff8d23b27fff6593d76be10d17261f8a90b7114fda06264f04875e1fa1f8",
+            "11": "3642dfbbb823ecc6c0d5807c2ec6f0bec7892ef960fa45d54f6a641cd8ebaae5",
+            "12": "b824face3d3e7f7dbf780d75d9a6081d82e5e9b26e1b5dfc403195a75df7c335"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170671,
+        "stale_quote_minutes_censored": 17791,
+        "observed_spread_median_usd_per_oz": 0.3769999999999527,
+        "observed_spread_p95_usd_per_oz": 0.4899999999997817,
+        "rows": 356369,
+        "first": "2024-01-01 00:00:00+00:00",
+        "last": "2024-12-31 22:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2025,
+      "first": "2025-01-01 00:00:00+00:00",
+      "last": "2025-12-31 22:00:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "venue_not_FP_Markets": true,
+        "year": 2025,
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "monthly_sha256": {
+          "bid": {
+            "1": "4596e50b3fb203e12a9eee24942e0d22db8a2e409b71f9546a1e6ee6f80233a0",
+            "2": "59c6380fcccc11883f74d09bbc3fc7cddf093d0e8c00e8d6826cf19fe7350e58",
+            "3": "24b0bfbf3baa5d2bd314cb081a78835b182e1bb410d916e47479a780618874cb",
+            "4": "4e2364e526b266b788b7e980902e9e457653357b58ad5d9caff17814e4bce832",
+            "5": "d0f3a257cf9f9259d4ccc8b3a9525cfeed0413e281bb31521263d69d0aca2be0",
+            "6": "2440bcdc23708b6dcaea4e0d2cc8cab57b373dc5be3c287fc8086e82ee84d44e",
+            "7": "865435434eedc5fec42bd94bce881847be253092e44975228ce2e70959b47434",
+            "8": "eceee53a978775a2d7dab296a521890ff792d2cd426e7ba5eb094b63c97b83a5",
+            "9": "56855187ac9d16e19e422a76c198dde83be9f0be15c87e25d7561d1d7c5cd305",
+            "10": "ead56d0f295b545c8e291b4ef88a1fdd6e232b1a0fa0839051cbfb9135fa02b7",
+            "11": "0a4ad6343d60a96c78d5b72b1cf8386c9772617c500e4e5fbe3f38abc2229666",
+            "12": "92936e9e939434985ba0928cafbd8c2a248fd1c0f60371b36d3260d6481773fd"
+          },
+          "ask": {
+            "1": "b8c99a0e1b2f40c0eb8348364ca22b4c81ae395baf43547bec16e7ca41163617",
+            "2": "7f6c9348a43b99fadd6e8304d9c15108d14a328451b028353d52a7fa6ba0e355",
+            "3": "4351c24c8855c0d644cf26d2060befda3d48aaccb3aa5cb51351852ad4a5f455",
+            "4": "5b5297933a1f21fd1b69054e3e88c8694180bd2d8d540b1dcac64bde7a2f2ce8",
+            "5": "ed917c8a50ec2df090f0ad47b0fe4c619677ac99502535ecc5bada44a4d52964",
+            "6": "cc27d092f39c0a8b8bc3c2dedc610512e4baab278c2610d8536495c9ff695498",
+            "7": "a2727bb46f33ba513dea432733dba270eacf74b3a7d92587658e13eeade29ee0",
+            "8": "daa9ac2636ff4bf3f36a2b17cdee9888a2ba4d0a2f0d1029d7c1b17d28128b82",
+            "9": "f7a1ab14912dbe828213dfb4c9bdd8f5ddece7633a0a459161c730347ea18fc4",
+            "10": "4087af9a8d7b20c7d034c22b351c2f240e1940d80dd7a7dda28b401430158381",
+            "11": "fd5e83f9cace8b41fe82d5b458d85d82205902ba3bd75a2653d053611456cbf1",
+            "12": "0993e6f3ef6e5aeb70c965e5c23f4ee285721c9d7b4a1f70a206d09505465790"
+          }
+        },
+        "bid_ask_unmatched_censored": 0,
+        "bad_or_closed_minutes_removed": 170694,
+        "stale_quote_minutes_censored": 17814,
+        "observed_spread_median_usd_per_oz": 0.5799999999999272,
+        "observed_spread_p95_usd_per_oz": 0.8739999999997963,
+        "rows": 354906,
+        "first": "2025-01-01 00:00:00+00:00",
+        "last": "2025-12-31 22:00:00+00:00",
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    },
+    {
+      "year": 2026,
+      "first": "2026-01-01 00:00:00+00:00",
+      "last": "2026-08-20 23:58:00+00:00",
+      "provenance": {
+        "provider": "THIRD_PARTY_DUKASCOPY_DERIVED_XAU_M1_BID_ASK",
+        "repository": "3650326613-png/dukascopy_xauusd_1m_data",
+        "commit": "1d8e4c008fe177be455f6de05f5057ebdde901ae",
+        "year": 2026,
+        "rows": 225756,
+        "month_end": 8,
+        "full_year": false,
+        "missing_sep_to_dec": true,
+        "source_from": "2026-01-01",
+        "source_last": "2026-08-20 23:58:00+00:00",
+        "bid_ask_unmatched_censored": 1,
+        "bad_or_closed_minutes_removed": 79140,
+        "stale_quote_minutes_censored": 10877,
+        "monthly_sha256": {
+          "bid": {
+            "1": "906ee499bcc0236a6b6cb74ecd6c382ccf435d989a779833952a5c2fbe4ea3fe",
+            "2": "c58121aa702a061a62ca9ef976f682a613231c5b422e820491d121d347a6d7c9",
+            "3": "6f1fa7f0497d74ec053755624e9455d7ab50b0a03d1b712504b48f8690af8dab",
+            "4": "a976ab5b2511e79a87b6aaffb75d8b04b5295d7085240668faecae0f577aa721",
+            "5": "25398f20bce21bef289fe8321808488ef6165996064f38fab3f44f488dfd5bbd",
+            "6": "32498557a57cffbc80134be81755f89bb55d95aed6037e95fad259c10a52b284",
+            "7": "1861d23f4edbaa9cc5c5ca2bd419c9a7d54ef60299a75c5d4e8e8681bd308286",
+            "8": "4f61d531018a8e8c37b1f410945e1d23d59fee96cde13bef223dcc9e63d0f852"
+          },
+          "ask": {
+            "1": "b3dc4193328b2c61d44a5de8fd47f437d7e98349a978b64d72d7d57f8dfec89c",
+            "2": "a3985eb8a8236bcdecf25ec2541c3cdac1e2ff8e2266fc30e78ddd58253f28a6",
+            "3": "670a2dfc1f010661b9a435c78c9c093f7e48d8a777892619d3b84bc3a2a5e173",
+            "4": "95e5a5fd9dd9ad37bbc162bc67e4e92c44a87ef1f298ecedbf5ef37cc6c36091",
+            "5": "af9b1efcce3ede8f01c0b27806f0886419c784fa2d0feb5446e680beb53cca33",
+            "6": "e87bc45b471716a16c9849d07f32d7ca4c2267d5340e06575ddeb157ea34429f",
+            "7": "8dfba3b5b078cd3e5fbc0d6b946c3e6be34372a170bbbd50251ebd2299314f81",
+            "8": "674b6c378ec244add68b153a493f3491e9b82d1cdb2de460f16a3d033bd49662"
+          }
+        },
+        "venue_not_FP_Markets": true,
+        "approximate_minimum_oz": 1.0,
+        "no_native_execution_or_capacity_proof": true
+      }
+    }
+  ],
+  "limitations": [
+    "Reused historical sample; no independent OOS or significance claim",
+    "Fixed1oz independent opportunities; not V1 fills, equity or compounding",
+    "Third-party Dukascopy-derived M1 OHLC; not FP Markets ticks",
+    "Hypothetical fee/slippage and two intrabar paths; broker capacity unverified",
+    "2026 Jan-Aug partial; native input/reference ledger blockers unchanged"
+  ],
+  "native_incremental_profit_proven": false,
+  "production_changes": false
+}

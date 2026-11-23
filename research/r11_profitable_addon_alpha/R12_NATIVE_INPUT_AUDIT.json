@@ -1,0 +1,41 @@
+{
+  "source_files_verified": 34,
+  "original_source_unchanged": true,
+  "target_framework": "net8.0",
+  "input_audit": {
+    "eur_2012_2026.csv": {
+      "required_sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "available": true,
+      "actual_sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "matched": true
+    },
+    "xau_2012_2026.csv": {
+      "required_sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "available": true,
+      "actual_sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "matched": true
+    },
+    "BTCUSD_M1.csv": {
+      "required_sha256": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "available": true,
+      "actual_sha256": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "matched": true
+    }
+  },
+  "exact_price_input_bytes_matched": true,
+  "signal_tape_generator_recovered": true,
+  "signal_tapes_present": false,
+  "macro_input_present": false,
+  "reference_basket_ledger_present": false,
+  "native_parity": false,
+  "can_run_exact_control": false,
+  "production_changes": false,
+  "blockers": [
+    "SEED_DATA base{Base}_symbol{sid}.bin signal tapes missing; generator recovered but tapes and parity not verified",
+    "Original MACRO_DATA and XAU buyOk/sellOk vintage provenance uncertified",
+    "Original full 1047-basket reference order/settlement/equity ledger missing",
+    "FP Markets actual minlot/step/margin tiers/fees/capacity not certified"
+  ],
+  "commit_sha": null,
+  "run_id": null
+}
