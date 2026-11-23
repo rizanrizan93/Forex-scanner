@@ -41,7 +41,8 @@ def feature_groups(tf,d,z):
     global MACRO,MACRO_MANIFEST
     groups=ORIGINAL_GROUPS(tf,d,z)
     if tf!="1D":return groups
-    _,_,_,_,_,times=base.load_tf(tf)
+    # Identical to r14.load_tf('1D') completed-candle decision timestamp.
+    times=d.index+pd.Timedelta(hours=24)
     parts,meta=daily_macro()
     macro=align(parts,times,d.index)
     if macro.empty or macro.notna().sum().sum()<500:
