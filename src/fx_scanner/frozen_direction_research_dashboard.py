@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import json
 import pandas as pd
-from .frozen_direction_context import TFS, context, horizon_plan, read_context_packet, session_closed, watch_zone
+from .frozen_direction_context import TFS, context, horizon_plan, next_candle_prediction, read_context_packet, session_closed, watch_zone
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, URL
 
@@ -30,7 +30,8 @@ def reference_bars(frame, tf, cutoff):
     bars=frame.resample(freq,label="right",closed="left").agg(
         open=("open","first"),high=("high","max"),low=("low","min"),
         close=("close","last"),count=("close","count"))
-    bars=bars[(bars.index<=cutoff)&(bars["count"]>=int(minutes*.83))].dropna()
+    # No partial H1/H4 aggregation: 50/60 minutes is NOT a closed H1 candle.
+    bars=bars[(bars.index<=cutoff)&(bars["count"]==minutes)].dropna()
     return bars
 
 def load_context_sources():
@@ -63,8 +64,8 @@ def load_context_sources():
 def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
-    st.subheader("RIZAN XAU · Frozen Direction R28.1")
-    st.caption("Konteks prediksi candle berikutnya · read-only. Benchmark frozen dan prediksi teknikal sementara adalah dua hal berbeda.")
+    st.subheader("RIZAN XAU · Prediksi Candle Berikutnya")
+    st.caption("Prediksi close-ke-close H1 / H4 / D1 / W1, berbasis indikator teknikal READ-ONLY. Model frozen R28.1 belum berjalan sebagai prediktor live; tabel benchmark di bawah hanyalah hasil historis.")
     @st.cache_data(ttl=30,show_spinner=False)
     def read_sources(slot):
         return load_context_sources()
@@ -76,22 +77,31 @@ def render_frozen_direction_research():
         st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · update 60 detik")
         if session_closed(now):st.warning("Pasar XAU umumnya tutup akhir pekan. WAIT; arah terakhir tidak berlaku sebagai sinyal live.")
         elif not any(r["fresh"] for r in reports.values()):st.info("Belum ada timeframe dengan data segar.")
-        st.caption("Skor 0–5 = jumlah bukti teknikal, bukan probabilitas. Prediksi frozen R28.1 asli belum terhubung; hipotesis teknikal ini belum diuji replay.")
+        st.caption("Skor 0–5 = jumlah bukti teknikal, BUKAN probabilitas/akurasi. Hanya prediksi dengan data segar dan target candle yang belum berakhir dapat ditampilkan sebagai BUY/SELL; hipotesis teknikal ini belum diuji replay.")
         zones={tf:watch_zone(frames.get(tf),reports[tf]) for tf in TFS}
         for tf in TFS:
             r=reports[tf]
             zone=zones[tf]
             plan=horizon_plan(reports,tf)
             with st.container(border=True):
-                st.markdown("**"+tf+" · prediksi close berikutnya**")
-                a,b,c=st.columns(3)
-                a.metric("Bias candle terakhir",r["last_bias"] or "DATA KURANG")
-                b.metric("BUY · skor bukti",f"{r['buy']}/5" if r["buy"] is not None else "—")
-                c.metric("SELL · skor bukti",f"{r['sell']}/5" if r["sell"] is not None else "—")
-                st.caption("Prediksi aktif: "+r["forecast"]+" · "+("data segar" if r["fresh"] else "historis saja / belum tersedia"))
+                st.markdown("**"+tf+" · arah close candle berikutnya**")
+                prediction=next_candle_prediction(r,tf,now=now)
+                st.metric("Prediksi "+tf+" ke depan",prediction["headline"])
+                if prediction["target_at"]:
+                    target=pd.Timestamp(prediction["target_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")
+                    st.caption("Target close: "+target+" · arah dibandingkan close candle sebelumnya · hipotesis teknikal, bukan model frozen.")
+                elif r["fresh"]:
+                    st.caption("WAIT · indikator belum memberikan arah; target BUY/SELL tidak aktif.")
+                else:
+                    st.caption("WAIT DATA · belum ada candle tertutup yang valid dan cukup baru untuk memprediksi candle berikutnya.")
                 if r.get("closed_at"):
-                    st.caption("Candle tertutup "+pd.Timestamp(r["closed_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")+" · "+r.get("source",""))
-                if not r["fresh"] and r["last_bias"]:st.caption("Skor dan bias di atas hanya berdasarkan candle terakhir yang tersedia; bukan prediksi aktif.")
+                    st.caption("Candle sumber terakhir: "+pd.Timestamp(r["closed_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")+" · "+r.get("source",""))
+                with st.expander("Audit indikator "+tf+" · historis jika data kedaluwarsa"):
+                    a,b,c=st.columns(3)
+                    a.metric("Bias indikator terakhir",r["last_bias"] or "DATA KURANG")
+                    b.metric("BUY · skor bukti",f"{r['buy']}/5" if r["buy"] is not None else "—")
+                    c.metric("SELL · skor bukti",f"{r['sell']}/5" if r["sell"] is not None else "—")
+                    st.caption("Bukti di atas bukan prediksi aktif ketika data stale/WAIT; skor bukan peluang atau win rate.")
                 st.caption(r["reason"])
                 if plan["side"]!="WAIT":
                     st.write("**"+plan["setup"]+" · "+tf+"**")
