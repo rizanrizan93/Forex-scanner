@@ -1,0 +1,99 @@
+name: R29 Direction60 Separate BUY SELL Research (Read Only)
+
+on:
+  push:
+    branches: ['research/r29-direction60-walkforward-20261123']
+    paths:
+      - 'scripts/r29_direction60_walkforward.py'
+      - 'tests/test_r29_direction60_walkforward.py'
+      - '.github/workflows/r29_direction60_walkforward.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: r29-direction60-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'scripts:src:.'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/r29-direction60-walkforward-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated quant research dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl pytest==9.0.2
+      - name: Reject label leakage, unsupported sample claims and order API
+        run: python -m pytest -q tests/test_r29_direction60_walkforward.py
+      - name: Compile candidate pipeline
+        run: python -m py_compile scripts/r29_direction60_walkforward.py
+
+  walkforward:
+    needs: verify-contract
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        tf: ['1h', '4h', '1D', '1W']
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - name: Checkout research branch, no ForexScanner/Live runtime edits
+        uses: actions/checkout@v4
+        with:
+          ref: research/r29-direction60-walkforward-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install research dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - name: Restore original 2019-2026 H1/H4 historical sources
+        if: matrix.tf == '1h' || matrix.tf == '4h'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Restore original 2012-2026 D1/W1 historical sources
+        if: matrix.tf == '1D' || matrix.tf == '1W'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Verify source archive before research
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.tf }}" == "1h" || "${{ matrix.tf }}" == "4h" ]]; then
+            test "$(find /tmp/r10 -name 'r10-*.csv' | wc -l)" -ge 8
+          else
+            test "$(find /tmp/r98 -name 'daily-*.csv' | wc -l)" -ge 12
+          fi
+      - name: Pre-registered selective regime and model walk-forward
+        run: python scripts/r29_direction60_walkforward.py --tf "${{ matrix.tf }}"
+      - name: Preserve per-fold actual replay evidence (not performance claim)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r29-direction-${{ matrix.tf }}
+          path: artifacts/r29-direction-${{ matrix.tf }}.json
+          retention-days: 90
+          if-no-files-found: warn
