@@ -115,20 +115,28 @@ dashboard.render_frozen_direction_research()
 '''
     app=AppTest.from_string(source,default_timeout=12).run()
     assert not app.exception
-    board=app.dataframe[0].value
+    primary=app.dataframe[0].value
+    assert list(primary["TF"])==["H1","H4","D1","W1"]
+    # No current candidate heads in this mock: R28.1 H1 SELL must
+    # NOT be silently substituted for the selected R25/R11 H1 heads.
+    assert primary.loc[0,"Direction utama"]=="WAIT"
+    assert primary.loc[1,"Direction utama"]=="WAIT"
+    assert primary.loc[3,"Status"]=="NOT_INFERENCED"
+    board=app.dataframe[1].value
     assert board.loc[0,"Arah R28.1"]=="SELL"
     assert board.loc[0,"Panduan setup"]=="PANTAU SETUP SELL"
     assert board.loc[0,"BUY terbaik (historis)"]=="53.06% · R25"
     assert board.loc[1,"Status"]=="WAIT DATA"
     assert board.loc[1,"Panduan setup"]=="TUNGGU"
-    candidate_table=app.dataframe[1].value
+    candidate_table=app.dataframe[2].value
     assert len(candidate_table)==8
     assert candidate_table.loc[0,"Versi riset"]=="R25"
     assert candidate_table.loc[6,"Akurasi historis"]=="68.75%"
     assert set(candidate_table["Status"])=={"BENCHMARK · BELUM LIVE"}
     assert "Target close prediksi sudah berakhir" in board.loc[1,"Keterangan"]
-    assert [x.value for x in app.metric][:4]==["SELL","WAIT","WAIT","WAIT"]
-    assert len(app.metric)==7  # R28.1 four + R29.2 frozen H4 + R25/R11 two
+    assert [x.value for x in app.metric][:4]==["WAIT","WAIT","WAIT","WAIT"]
+    assert [x.value for x in app.metric][4:8]==["SELL","WAIT","WAIT","WAIT"]
+    assert len(app.metric)==11  # Best primary four + R28 four + R29 + R25/R11 two
     text="\n".join(str(x.value) for x in app.caption)
     assert "5 indikator" not in text and "skor bukti" not in text
 
@@ -203,7 +211,8 @@ def test_mobile_wait_cards_are_before_the_wide_benchmark_table():
     src=(Path(__file__).resolve().parents[1]/
          "src/fx_scanner/frozen_direction_research_dashboard.py").read_text()
     # User should see the why and when without horizontal-scrolling a table.
-    assert src.index('st.metric(tf + " · R28.1"') < src.index('st.dataframe([')
+    assert src.index('st.metric(tf+" · "+sources["BUY"]') < src.index('st.dataframe([')
+    assert src.index("### Direction utama · kandidat terbaik") < src.index("### R28.1 baseline")
     assert "Prediksi sudah berakhir:" in src
     assert "SUDAH KEDALUWARSA · bukan sinyal entry saat ini" in src
 
