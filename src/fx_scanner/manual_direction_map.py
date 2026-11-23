@@ -153,3 +153,39 @@ def r2_tactical(snapshot, *, now):
                 "expires": str(s["valid_until"])}
     except (ValueError, TypeError, KeyError, OverflowError, AttributeError):
         return out
+
+
+
+def direction_board_rows(guides):
+    """Display actual current technical forecasts, never invented R28 model results.
+
+    Every BUY/SELL is produced from a fresh completed candle; missing or neutral
+    evidence stays WAIT. Do not render benchmark hit rates as confidence.
+    """
+    result = []
+    for tf in TFS:
+        row = guides.get(tf) or {}
+        value = row.get("technical", "WAIT DATA")
+        if value not in ("BUY", "SELL", "WAIT · NETRAL", "WAIT DATA"):
+            value = "WAIT DATA"
+        active = value in ("BUY", "SELL") and row.get("technical_kind") == "TECHNICAL_RESEARCH"
+        if not active and value in ("BUY", "SELL"):
+            value = "WAIT DATA"
+        target = row.get("target_at") if active else None
+        if target is not None:
+            try:
+                t = pd.Timestamp(target)
+                if t.tzinfo is None:
+                    raise ValueError("Naive timestamp")
+                target = t.tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")
+            except (TypeError, ValueError, OverflowError):
+                value, target, active = "WAIT DATA", None, False
+        result.append({
+            "TF": tf,
+            "Arah": value,
+            "Target close (WIB)": target or "—",
+            "Sumber": "5 bukti teknikal · indikatif" if active else "WAIT · belum ada prediksi aktif",
+            "model_r28_live": False,
+            "execution_authority": False,
+        })
+    return result
