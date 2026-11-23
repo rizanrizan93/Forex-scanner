@@ -18,6 +18,8 @@ import r29_direction60_walkforward as base
 from r16_direction_complexity import features as technical_features
 from r21_horizon_specialists import price_specialist
 
+ORIGINAL_GATES=base.gates
+
 
 def structure_features(tf,d,z):
     c=d.c.astype(float);o=d.o.astype(float)
@@ -89,7 +91,7 @@ def feature_groups(tf,d,z):
 
 def gates(tf,z,times,side):
     """All event gates depend on present/past completed candles only."""
-    orig=base.gates(tf,z,times,side)
+    orig=ORIGINAL_GATES(tf,z,times,side)
     s=1 if side=="BUY" else -1
     t=(z.ema8-z.ema21)/z.atr14.replace(0,np.nan)
     g={
