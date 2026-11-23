@@ -78,7 +78,8 @@ def test_smc_ui_uses_best_side_feed_and_never_legacy_default_direction():
     root=Path(__file__).resolve().parents[1]
     p=(root/"src/fx_scanner/r281_smc_entry_dashboard.py").read_text()
     assert "select_best_candidate_direction(best,h4buy,r281,now=now)" in p
-    assert "evaluate_best_entry(primary,market,now=now)" in p
+    assert "independent_zones(primary,snapshot,now=now)" in p
+    assert "evaluate_best_entry(primary,market,now=now)" not in p
     assert "evaluate_entry(shadow,market" not in p
 
 def test_incomplete_direction_scrubs_zone_and_never_unlocks_numeric_entry(monkeypatch):
