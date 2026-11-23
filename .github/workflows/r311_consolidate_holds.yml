@@ -1,0 +1,55 @@
+name: R31.1 Freeze 24 Extended XAU 2012-2026 Net Profit and Baselines
+on:
+  push:
+    branches: ['research/r31-net-profit-max-2012-2026-20261123']
+    paths:
+      - 'scripts/r311_consolidate_holds.py'
+      - '.github/workflows/r311_consolidate_holds.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Restore all 24 extended-hold and 3 unoptimized baseline artifact receipts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45189758797
+          github-token: ${{ github.token }}
+          pattern: r311-*
+          path: artifacts/r311
+          merge-multiple: true
+      - name: Check all original 27 receipts, independently sum trade PnL and compare controls
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/r311_consolidate_holds.py
+          test "$(find artifacts/r311 -name 'r311-*.json' | wc -l)" -eq 27
+          python scripts/r311_consolidate_holds.py
+      - name: Commit final non-executable research audit and drawdown receipt
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R311_EXTENDED_NET_PROFIT_RESEARCH_LOCK_20261123.json
+          git add research/RIZAN_R311_EXTENDED_NET_PROFIT_FINDINGS_20261123.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Freeze R31.1 24 extended-hold XAU profit trials and 3 fixed trend baselines, research only"
+            git push origin HEAD:refs/heads/research/r31-net-profit-max-2012-2026-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r311-frozen-extended-net-profit-study
+          path: |
+            research/RIZAN_R311_EXTENDED_NET_PROFIT_RESEARCH_LOCK_20261123.json
+            research/RIZAN_R311_EXTENDED_NET_PROFIT_FINDINGS_20261123.md
+          retention-days: 90
+          if-no-files-found: warn
