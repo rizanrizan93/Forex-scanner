@@ -20,6 +20,7 @@ TF_MINUTES = {"M5": 5, "M15": 15, "H1": 60, "H4": 240}
 PRIORITY = {
     "M5_BOS_CONFIRMED": 0, "WAIT_BOS_M5": 1, "WAIT_RECLAIM_M15": 2,
     "WATCH_ZONE": 3, "WAIT_TOUCH_EXPIRED": 4, "WAIT_ZONE_GAP": 5,
+    "PENDING_INVALIDATION": 9,
     "WAIT_BROKER_PRICE": 6, "WAIT_RISK": 7,
 }
 ACTIVE = "RECONSTRUCTED_SHADOW"
@@ -60,7 +61,23 @@ def direction(shadow, now):
             and row.get("execution_authority") is False
         )
         ctx[tf] = row["direction"] if valid else "WAIT"
-    if ctx["D1"] == "WAIT" or ctx["H4"] == "WAIT":
+    if ctx["D1"] == "WAIT":
+        return "WAIT", "R28_D1_H4_MISSING_OR_EXPIRED", ctx
+    if ctx["H4"] == "WAIT":
+        # An explicit, unexpired research-model ABSTENTION is not missing data.
+        # D1/H1 agreement can still select a zone to WATCH, never to trade.
+        h4 = shadow.get("H4") or {}
+        abstain = (
+            h4.get("state") == "MODEL_ABSTAIN" and h4.get("direction") == "WAIT"
+            and h4.get("execution_authority") is False
+            and h4.get("target") is not None and utc(h4["target"]) > now
+        )
+        if abstain and ctx["H1"] == ctx["D1"]:
+            side = ctx["D1"]
+            ctx["h1_confirmed"] = True
+            ctx["h4_confirmed"] = False
+            ctx["weekly_countertrend"] = ctx["W1"] in ("BUY", "SELL") and ctx["W1"] != side
+            return side, "R28_H4_ABSTAIN_WATCH_ONLY", ctx
         return "WAIT", "R28_D1_H4_MISSING_OR_EXPIRED", ctx
     if ctx["D1"] != ctx["H4"]:
         return "WAIT", "R28_D1_H4_CONFLICT", ctx
@@ -134,6 +151,28 @@ def _evaluate_zone(zone, side, frame, bars, market, now):
     }
     if not (_price_ok(low) and _price_ok(high) and _price_ok(atr) and low < high):
         return None
+    # The detector carries a source-TF invalidation boundary (0.05 ATR).
+    # SL reference (0.20 ATR) is a separate hypothetical risk level.
+    boundary = zone.get("invalidation")
+    if not _price_ok(boundary):
+        boundary = low - .05 * atr if side == "BUY" else high + .05 * atr
+    boundary = float(boundary)
+    out["zone_invalidation"] = boundary
+    d = 1 if side == "BUY" else -1
+    # Causal source-TF close across distal = INVALID, not WATCH/ENTRY.
+    # Never trust a stale saved zone after a completed H1/H4 close broke it.
+    source = bars.get(zone["timeframe"])
+    if source is None or source.empty:
+        return None
+    after = source.loc[(source.index + pd.Timedelta(minutes=TF_MINUTES[zone["timeframe"]])) > formed]
+    if ((d * (after.close - boundary)) < 0).any():
+        return None
+    # Price beyond distal inside an UNFINISHED parent candle is provisional.
+    # Do not show a new entry until the parent candle closes back valid.
+    if d * (last - boundary) < 0:
+        out.update(status="PENDING_INVALIDATION",
+                   reason="LIVE_PRICE_BEYOND_ZONE_INVALIDATION_WAIT_SOURCE_CLOSE")
+        return out
     if formed > now or formed < frame.index[0]:
         out.update(status="WAIT_ZONE_GAP",reason="ZONE_ORIGIN_OUTSIDE_M1_HISTORY")
         return out
@@ -216,7 +255,9 @@ def evaluate_entry(shadow, market, *, now=None):
     """Deterministic research-stage manual watch. Never grants order authority."""
     now = utc(now or datetime.now(UTC))
     side, reason, ctx = direction(shadow, now)
+    watch_only = reason == "R28_H4_ABSTAIN_WATCH_ONLY"
     result = empty(reason, at=now, side=side, context=ctx)
+    result["watch_only"] = watch_only
     if side == "WAIT":
         return result
     if market is None or not isinstance(market, dict) or not isinstance(market.get("frame"), pd.DataFrame):
@@ -261,8 +302,19 @@ def evaluate_entry(shadow, market, *, now=None):
             if item is not None:
                 valid.append(item)
         if not valid:
-            result["reason"] = "NO_VALID_CLOSED_H1_H4_BOS_ZONE"
+            result["reason"] = ("R28_H4_ABSTAIN_NO_VALID_ZONE"
+                                if watch_only else "NO_VALID_CLOSED_H1_H4_BOS_ZONE")
             return result
+        if watch_only:
+            # A confirming M5 candle is NOT an entry if H4 abstained.
+            # Scrub broker price references even from nested candidates.
+            for z in valid:
+                for key in ("entry_reference", "sl_reference", "tp_1_5r_reference",
+                            "tp_2r_reference", "risk_per_oz", "spread"):
+                    z[key] = None
+                if z["status"] == "M5_BOS_CONFIRMED":
+                    z["status"] = "WATCH_H4_ABSTAIN"
+                    z["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
         last=float(frame.close.iloc[-1])
         valid.sort(key=lambda z: (
             PRIORITY.get(z["status"],99),
@@ -273,6 +325,13 @@ def evaluate_entry(shadow, market, *, now=None):
         result["zone"]=chosen
         result["status"]=chosen["status"]
         result["reason"]=chosen["reason"]
+        if chosen["status"] == "PENDING_INVALIDATION":
+            # Expose a warning only, not a tradable/research WATCH zone.
+            return result
+        if watch_only:
+            result["status"] = "WATCH_H4_ABSTAIN"
+            result["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
+            return result
         # H1 must confirm D1+H4 before an entry reference may be shown.
         if chosen["status"] == "M5_BOS_CONFIRMED" and ctx.get("h1_confirmed") is not True:
             result["status"] = "WAIT"

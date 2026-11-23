@@ -132,3 +132,83 @@ def test_entry_ui_is_routed_and_does_not_mutate_frozen_v1():
     engine_source=(root/"src/fx_scanner/r281_smc_entry_engine.py").read_text()
     assert "create_order" not in engine_source and "place_order" not in engine_source
     assert "NO_EXECUTION = False" in engine_source
+
+
+def test_h4_model_abstain_keeps_zones_visible_but_blocks_all_entry_levels(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    m=model()
+    m["H4"]={
+        "state":"MODEL_ABSTAIN","direction":"WAIT",
+        "target":(NOW+pd.Timedelta(hours=1)).isoformat(),
+        "execution_authority":False,
+    }
+    x=engine.evaluate_entry(m,market(),now=NOW)
+    assert x["side"]=="SELL"
+    assert x["status"]=="WATCH_H4_ABSTAIN", x
+    assert x["watch_only"] is True
+    assert x["reason"]=="R28_H4_ABSTAIN_ENTRY_BLOCKED"
+    assert x["zone"]["low"]==3599. and x["zone"]["high"]==3602.
+    for key in ("entry_reference","sl_reference","tp_1_5r_reference",
+                "tp_2r_reference","risk_per_oz","spread"):
+        assert x[key] is None
+        assert all(z[key] is None for z in x["candidates"])
+    assert x["execution_authority"] is False
+
+
+def test_h4_abstention_only_if_fresh_and_genuine(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    for state,target,authority,h1 in [
+        ("MODEL_ABSTAIN",NOW-pd.Timedelta(minutes=1),False,"SELL"),
+        ("WAIT_DATA",NOW+pd.Timedelta(hours=1),False,"SELL"),
+        ("MODEL_ABSTAIN",NOW+pd.Timedelta(hours=1),True,"SELL"),
+        ("MODEL_ABSTAIN",NOW+pd.Timedelta(hours=1),False,"BUY"),
+    ]:
+        m=model(h1=h1)
+        m["H4"]={
+            "state":state,"direction":"WAIT",
+            "target":target.isoformat(),"execution_authority":authority,
+        }
+        x=engine.evaluate_entry(m,market(),now=NOW)
+        assert x["status"]=="WAIT"
+        assert x["entry_reference"] is None
+        assert x["zone"] is None
+
+
+def test_h4_abstention_with_no_valid_zone_does_not_invent_one(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[])
+    m=model()
+    m["H4"]={
+        "state":"MODEL_ABSTAIN","direction":"WAIT",
+        "target":(NOW+pd.Timedelta(hours=1)).isoformat(),
+        "execution_authority":False,
+    }
+    x=engine.evaluate_entry(m,market(),now=NOW)
+    assert x["status"]=="WAIT"
+    assert x["reason"]=="R28_H4_ABSTAIN_NO_VALID_ZONE"
+    assert x["entry_reference"] is None
+
+
+def test_price_beyond_distal_zone_is_quarantined_until_source_close(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    m=market()
+    # 11:20 UTC is inside the unfinished 11:00-12:00 H1 candle.
+    m["frame"].loc[m["frame"].index[-1],["open","high","low","close"]]=[3609.9,3610.1,3609.8,3610.]
+    x=engine.evaluate_entry(model(),m,now=NOW)
+    assert x["status"]=="PENDING_INVALIDATION"
+    assert x["entry_reference"] is None
+    assert x["zone"]["zone_invalidation"]==pytest.approx(3602.75)
+    assert x["zone"]["reason"]=="LIVE_PRICE_BEYOND_ZONE_INVALIDATION_WAIT_SOURCE_CLOSE"
+
+
+def test_finished_parent_candle_invalidates_zone_even_if_detector_returns_it(monkeypatch):
+    older=dict(zone(),available_at="2026-11-23T09:00:00+00:00")
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[older] if tf=="H1" else [])
+    m=market()
+    # Completed 10:00-11:00 H1 close crosses SELL distal after formation.
+    mask=(m["frame"].index>=pd.Timestamp("2026-11-23T10:00:00+00:00")) & (
+        m["frame"].index<pd.Timestamp("2026-11-23T11:00:00+00:00"))
+    m["frame"].loc[mask,["open","high","low","close"]]=[3610.,3610.1,3609.9,3610.]
+    x=engine.evaluate_entry(model(),m,now=NOW)
+    assert x["zone"] is None and not x["candidates"]
+    assert x["reason"]=="NO_VALID_CLOSED_H1_H4_BOS_ZONE"
+    assert x["entry_reference"] is None
