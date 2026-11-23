@@ -1,0 +1,63 @@
+{
+  "study": "R13_FINAL",
+  "development": {
+    "study": "R13_DEVELOPMENT_SELECTION",
+    "configurations": 2359296,
+    "completed_development_years": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "completed_config_years": 16515072,
+    "development_qualified": 0,
+    "selected_count": 0,
+    "selected": [],
+    "commit_sha": "3bcc84ab54669553217394794aafcb33c7cacaa6",
+    "full_grid_shape": [
+      4,
+      16,
+      4,
+      2,
+      4,
+      4,
+      4,
+      3,
+      4,
+      2,
+      3
+    ],
+    "maximum_aggregate_fills": 3278,
+    "positive_pooled_R_configurations": 270889,
+    "status": "REJECT_ALL_DEVELOPMENT",
+    "multiple_testing": "2359296 correlated tuples plus prior searches; no independent OOS or significance claim",
+    "native_parity": false,
+    "shared_wallet": false,
+    "V1_balance_change": null,
+    "production_changes": false
+  },
+  "finalists": [],
+  "validation_qualified": 0,
+  "evaluation_qualified": 0,
+  "native_ACCEPT": 0,
+  "tested_all_configurations_years": [
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018
+  ],
+  "tested_selected_configurations_years": [],
+  "status": "NO_QUALIFIED_ADDON",
+  "shared_wallet": false,
+  "native_parity": false,
+  "incremental_V1_fills": null,
+  "V1_balance_change": null,
+  "max_floating_DD_change": null,
+  "production_changes": false
+}

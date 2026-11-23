@@ -1,0 +1,97 @@
+{
+  "study": "R13",
+  "date_WIB": "2026-11-24",
+  "run_id": 45282664556,
+  "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45282664556",
+  "source_commit": "3bcc84ab54669553217394794aafcb33c7cacaa6",
+  "status": "completed",
+  "conclusion": "success",
+  "full_grid_configurations": 2359296,
+  "full_development_years": [
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018
+  ],
+  "completed_configuration_years": 16515072,
+  "development_qualified": 0,
+  "detailed_periods_tested": [],
+  "artifacts": [
+    {
+      "id": 14871280595,
+      "name": "r13-development-2015",
+      "bytes": 17714282,
+      "digest": "sha256:48a89758a266dfcdb99e3308e3c2910512faacf0222b31fc25b58cd1d2306e34",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14870612482,
+      "name": "r13-development-2017",
+      "bytes": 16944097,
+      "digest": "sha256:1ce170be2157a32e287d9b85d7ef09fca3f93fa3b270bc282b2f998fb72d498b",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14870537395,
+      "name": "r13-development-2013",
+      "bytes": 28768045,
+      "digest": "sha256:ea5851eab53e176d70916a168941106791f0a05a156d2bc219198452045c7cde",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14870467094,
+      "name": "r13-development-2012",
+      "bytes": 21733030,
+      "digest": "sha256:d9c73f773c1670461fd305333b897f3ae7d1f1b79dba2bb002bbe8cee1e686b4",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14870377722,
+      "name": "r13-development-2016",
+      "bytes": 24995789,
+      "digest": "sha256:d508214852973af6b85ca26e11d32cf2e7cc6030de934c39b0080b777147ce21",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14870257567,
+      "name": "r13-development-2018",
+      "bytes": 17373255,
+      "digest": "sha256:484616e9e49f437542612f91a50b8a8bf2096d0bc60e607ba1e023d96820dd72",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14870052254,
+      "name": "r13-pilot",
+      "bytes": 8227761,
+      "digest": "sha256:742e0ff8d8fbd5dc79ef961bfb27970a86795d2c782386342fd173fe57b463c6",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14869858402,
+      "name": "r13-development-selection",
+      "bytes": 43962766,
+      "digest": "sha256:48fd5a297365cfa14f0c55e53ab8c97333e843afdca1816d42f1d2d78d042ef3",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14869179220,
+      "name": "r13-development-2014",
+      "bytes": 19827742,
+      "digest": "sha256:348509d48b5d27bfcfc47833d17472e220ee3aa1aa81f269b9e25fbbe07f5a39",
+      "expires_at": "2027-02-21T22:45:23Z"
+    },
+    {
+      "id": 14869897823,
+      "name": "r13-final",
+      "bytes": 711,
+      "digest": "sha256:d668cceafbcabb6f473d904ae595457699881e5a96ce7c3ac417fdca4d2f7683",
+      "expires_at": "2027-02-21T22:45:23Z"
+    }
+  ],
+  "native_parity": false,
+  "V1_balance_change": null,
+  "production_changes": false
+}
