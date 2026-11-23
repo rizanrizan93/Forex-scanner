@@ -1,7 +1,7 @@
 """Audits only the public retrospective R28.1 records, never execution."""
 import numpy as np
 
-from r281_live_shadow_parity import CONTRACT, record, resolved, classifier
+from r281_live_shadow_parity import CONTRACT, record, resolved, classifier, next_target_close
 
 
 def test_each_frozen_policy_is_from_archived_2025_and_two_sided():
@@ -33,3 +33,11 @@ def test_frozen_classifier_contract():
     p = m.predict_proba(x)
     assert p.shape == (4, 2)
     assert np.isfinite(p).all()
+
+
+def test_d1_target_skips_weekend_closed_market_period():
+    import pandas as pd
+    closed = pd.Timestamp("2026-11-21T00:00:00+00:00")  # Friday's XAU D1 close
+    assert next_target_close("1D", closed) == pd.Timestamp("2026-11-24T00:00:00+00:00")
+    assert next_target_close("1h", closed) == pd.Timestamp("2026-11-21T01:00:00+00:00")
+    assert next_target_close("1W", closed) == pd.Timestamp("2026-11-28T00:00:00+00:00")
