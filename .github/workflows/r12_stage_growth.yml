@@ -1,0 +1,93 @@
+name: RIZAN R12 Early Capital and Terminal Growth Research Only
+on:
+  push:
+    branches: ['research/r12-stage-terminal-growth']
+    paths:
+      - '.github/workflows/r12_stage_growth.yml'
+      - 'research/r12_stage_growth/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r12-stage-growth
+  cancel-in-progress: false
+env:
+  OMP_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r11_profitable_addon_alpha/requirements.txt
+      - run: pip install -r research/r11_profitable_addon_alpha/requirements.txt
+      - name: Sequential causality, stage sizing, intrabar costs and guards
+        run: |
+          python research/r12_stage_growth/engine.py --selftest
+          python scripts/snowball_s10_causal_addon_guard.py --selftest
+          python scripts/snowball_s10_causal_addon_guard.py --audit
+      - name: Real 2021 bid ask pilot 64 policies four scenarios
+        run: python research/r12_stage_growth/engine.py --year 2021 --pilot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r12-pilot-2021
+          path: artifacts/r12/*pilot*
+          retention-days: 90
+  annual:
+    needs: pilot
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r11_profitable_addon_alpha/requirements.txt
+      - run: pip install -r research/r11_profitable_addon_alpha/requirements.txt
+      - name: Annual screen and retain all failures and simulated fills
+        run: python research/r12_stage_growth/engine.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r12-year-${{ matrix.year }}
+          path: artifacts/r12/
+          retention-days: 90
+  aggregate:
+    needs: annual
+    if: always() && needs.annual.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r11_profitable_addon_alpha/requirements.txt
+      - run: pip install -r research/r11_profitable_addon_alpha/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r12-year-*
+          path: /tmp/r12-annual
+          merge-multiple: true
+      - name: Fixed gates expanding walk forward and year consistency
+        run: python research/r12_stage_growth/engine.py --aggregate /tmp/r12-annual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r12-final-selection
+          path: artifacts/r12/aggregate.json
+          retention-days: 90
