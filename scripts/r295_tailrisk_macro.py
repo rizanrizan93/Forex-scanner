@@ -116,8 +116,10 @@ def valuation(y,mask,side,delta,half,min_n):
     if not len(net) or not np.isfinite(net).all():
         return None
     q10=float(np.quantile(net,.10))
-    q20=float(np.quantile(net,.20))
-    tail=net[net<=q20]
+    # Select the exact worst 20% number of observations; percentile
+    # ties must never pull the winning tail into the expected shortfall.
+    worst_n=max(1,int(np.ceil(.20*len(net))))
+    tail=np.partition(net,worst_n-1)[:worst_n]
     neg=net[net<0]
     out["p10_net_usd_oz"]=round(q10,5)
     out["expected_shortfall20_usd_oz"]=round(float(tail.mean()),5)
