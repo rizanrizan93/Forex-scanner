@@ -60,7 +60,7 @@ def diagnostic_reason(m,tf,threshold):
     annual=m["annual"]
     positive=sum(annual[str(yr)]["net_usd_oz"]>0 for yr in range(2021,2024))
     if positive<2:return "LESS_THAN_TWO_PROFITABLE_VALIDATION_YEARS"
-    return "OTHER_GUARD"
+    return "VALIDATION_PASS" if r31._passes(m,tf,threshold) else "OTHER_GUARD"
 
 def sweep(tf,model_start=0,models=32,caps=CONFIGS):
     if tf not in TF or model_start<0 or model_start+models>MODELS or not 1<=caps<=CONFIGS:
