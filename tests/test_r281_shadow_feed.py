@@ -108,8 +108,43 @@ dashboard.render_frozen_direction_research()
     assert not app.exception
     board=app.dataframe[0].value
     assert board.loc[0,"Arah R28.1"]=="SELL"
+    assert board.loc[0,"Panduan setup"]=="PANTAU SETUP SELL"
+    assert board.loc[0,"BUY terbaik (historis)"]=="53.06% · R25"
     assert board.loc[1,"Status"]=="WAIT DATA"
+    assert board.loc[1,"Panduan setup"]=="TUNGGU"
+    candidate_table=app.dataframe[1].value
+    assert len(candidate_table)==8
+    assert candidate_table.loc[0,"Versi riset"]=="R25"
+    assert candidate_table.loc[6,"Akurasi historis"]=="68.75%"
+    assert set(candidate_table["Status"])=={"BENCHMARK · BELUM LIVE"}
     assert "Target close prediksi sudah berakhir" in board.loc[1,"Keterangan"]
     assert [x.value for x in app.metric]==["SELL","WAIT","WAIT","WAIT"]
     text="\n".join(str(x.value) for x in app.caption)
     assert "5 indikator" not in text and "skor bukti" not in text
+
+
+def test_all_eight_candidates_are_historical_and_not_converted_to_live_signals():
+    import json
+    from pathlib import Path
+    from fx_scanner.frozen_direction_research_dashboard import (
+        candidate_rows, candidate_summary, setup_watch_label
+    )
+    p=Path(__file__).resolve().parents[1]/"research/direction_benchmark_lock_r281_20261122.json"
+    lock=json.loads(p.read_text())
+    rows=candidate_rows(lock)
+    assert [(r["TF"],r["Kandidat"]) for r in rows]==[
+        ("H1","BUY"),("H1","SELL"),("H4","BUY"),("H4","SELL"),
+        ("D1","BUY"),("D1","SELL"),("W1","BUY"),("W1","SELL")]
+    assert [r["Versi riset"] for r in rows]==[
+        "R25","R11","R25","R11","R28.1","R18","R27","R24"]
+    assert rows[6]["Benar / sampel"]=="33/48"
+    assert rows[7]["Akurasi historis"]=="62.50%"
+    assert all("BELUM LIVE" in r["Status"] for r in rows)
+    assert all(r["Bukti replay"].startswith("https://github.com/") for r in rows)
+    summary=candidate_summary(lock)
+    assert summary["D1"]["BUY"]=="56.52% · R28.1"
+    assert summary["W1"]["SELL"]=="62.50% · R24"
+    assert setup_watch_label({"state":"WAIT_DATA","direction":"BUY"})=="TUNGGU"
+    assert setup_watch_label({"state":"MODEL_ABSTAIN","direction":"SELL"})=="TUNGGU"
+    assert setup_watch_label({"state":"RECONSTRUCTED_SHADOW","direction":"BUY"})=="PANTAU SETUP BUY"
+    assert setup_watch_label({"state":"RECONSTRUCTED_SHADOW","direction":"SELL"})=="PANTAU SETUP SELL"
