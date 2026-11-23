@@ -265,6 +265,9 @@ def evaluate_entry(shadow, market, *, now=None, direction_resolver=None):
     watch_block_reason = ("BEST_DIRECTION_INCOMPLETE_ENTRY_BLOCKED"
                           if reason == "BEST_DIRECTION_INCOMPLETE_WATCH_ONLY"
                           else "R28_H4_ABSTAIN_ENTRY_BLOCKED")
+    watch_status = ("WATCH_DIRECTION_INCOMPLETE"
+                    if reason == "BEST_DIRECTION_INCOMPLETE_WATCH_ONLY"
+                    else "WATCH_H4_ABSTAIN")
     result = empty(reason, at=now, side=side, context=ctx)
     result["watch_only"] = watch_only
     if side == "WAIT":
@@ -324,7 +327,7 @@ def evaluate_entry(shadow, market, *, now=None, direction_resolver=None):
                             "tp_2r_reference", "risk_per_oz", "spread"):
                     z[key] = None
                 if z["status"] == "M5_BOS_CONFIRMED":
-                    z["status"] = "WATCH_H4_ABSTAIN"
+                    z["status"] = watch_status
                     z["reason"] = watch_block_reason
         last=float(frame.close.iloc[-1])
         valid.sort(key=lambda z: (
@@ -340,7 +343,7 @@ def evaluate_entry(shadow, market, *, now=None, direction_resolver=None):
             # Expose a warning only, not a tradable/research WATCH zone.
             return result
         if watch_only:
-            result["status"] = "WATCH_H4_ABSTAIN"
+            result["status"] = watch_status
             result["reason"] = watch_block_reason
             return result
         # H1 must confirm D1+H4 before an entry reference may be shown.
