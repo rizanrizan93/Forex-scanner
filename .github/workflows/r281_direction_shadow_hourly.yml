@@ -50,7 +50,21 @@ jobs:
         run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl joblib pytest
       - name: Enforce provenance, no-orders, and candle contract
         run: python -m pytest -q tests/test_r281_live_shadow_parity.py tests/test_r281_live_market.py tests/test_r281_publish_shadow.py
+      - name: Restore immutable 2025 parity-refit model and historical source
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/r281
+            /tmp/r10
+            /tmp/r98
+            artifacts/r281_inference/r281-${{ matrix.tf }}-reconstructed-model.joblib
+            artifacts/r281_inference/r281-${{ matrix.tf }}-shadow.json
+          # Frozen through 2025. Bump this key ONLY when the model/archives/
+          # validated policy intentionally changes; cache is reusable for each close.
+          key: r281-2025-parity-refit-fast-v1-${{ runner.os }}-${{ matrix.tf }}
       - name: Download immutable ECB replay source
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v4
         with:
           run-id: 44970328847
@@ -58,7 +72,7 @@ jobs:
           name: r281-ecb
           path: /tmp/r281
       - name: Download immutable XAU H1/H4 data
-        if: matrix.tf == '1h' || matrix.tf == '4h'
+        if: steps.cache.outputs.cache-hit != 'true' && (matrix.tf == '1h' || matrix.tf == '4h')
         uses: actions/download-artifact@v4
         with:
           run-id: 44901264975
@@ -67,7 +81,7 @@ jobs:
           path: /tmp/r10
           merge-multiple: true
       - name: Download immutable XAU D1/W1 data
-        if: matrix.tf == '1D' || matrix.tf == '1W'
+        if: steps.cache.outputs.cache-hit != 'true' && (matrix.tf == '1D' || matrix.tf == '1W')
         uses: actions/download-artifact@v4
         with:
           run-id: 44886465487
@@ -75,8 +89,12 @@ jobs:
           pattern: r98-daily-*
           path: /tmp/r98
           merge-multiple: true
-      - name: Replay parity and independent model inference
+      - name: Bootstrap parity-verifiable refit ONCE on cache miss
+        if: steps.cache.outputs.cache-hit != 'true'
         run: python scripts/r281_live_shadow_parity.py --tf "${{ matrix.tf }}"
+      - name: Fast broker inference without replay or model refitting
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: python scripts/r281_fast_live_inference.py --tf "${{ matrix.tf }}"
       - name: Upload one model's proof, even when publication cannot proceed
         if: always()
         uses: actions/upload-artifact@v4
