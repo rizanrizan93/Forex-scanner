@@ -43,7 +43,7 @@ def test_two_independent_heads_resolve_without_forced_trade(
     d=pd.DataFrame({"c":np.linspace(3600,3610,10)},index=idx)
     z=pd.DataFrame({"c":d.c},index=idx)
     monkeypatch.setattr(best,"live_latest",lambda tf,now:(
-        d,z,{"as_of":now.isoformat()},
+        d,z,{"as_of":(now+pd.Timedelta(milliseconds=55)).isoformat()},
         pd.Timestamp("2026-11-23T10:00:00+00:00"),
         pd.Timestamp("2026-11-23T11:00:00+00:00")
     ))
@@ -63,6 +63,8 @@ def test_two_independent_heads_resolve_without_forced_trade(
     assert x["research_only"] is True
     assert x["execution_authority"] is False
     assert x["execution_influence"] is False
+    # Transport can finish milliseconds after run-start; retain causal stamps.
+    assert pd.Timestamp(x["generated_at"]) >= pd.Timestamp(x["observed_at"])
 
 
 class FakeModel:
