@@ -132,3 +132,57 @@ def test_entry_ui_is_routed_and_does_not_mutate_frozen_v1():
     engine_source=(root/"src/fx_scanner/r281_smc_entry_engine.py").read_text()
     assert "create_order" not in engine_source and "place_order" not in engine_source
     assert "NO_EXECUTION = False" in engine_source
+
+
+def test_h4_model_abstain_keeps_zones_visible_but_blocks_all_entry_levels(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    m=model()
+    m["H4"]={
+        "state":"MODEL_ABSTAIN","direction":"WAIT",
+        "target":(NOW+pd.Timedelta(hours=1)).isoformat(),
+        "execution_authority":False,
+    }
+    x=engine.evaluate_entry(m,market(),now=NOW)
+    assert x["side"]=="SELL"
+    assert x["status"]=="WATCH_H4_ABSTAIN", x
+    assert x["watch_only"] is True
+    assert x["reason"]=="R28_H4_ABSTAIN_ENTRY_BLOCKED"
+    assert x["zone"]["low"]==3599. and x["zone"]["high"]==3602.
+    for key in ("entry_reference","sl_reference","tp_1_5r_reference",
+                "tp_2r_reference","risk_per_oz","spread"):
+        assert x[key] is None
+        assert all(z[key] is None for z in x["candidates"])
+    assert x["execution_authority"] is False
+
+
+def test_h4_abstention_only_if_fresh_and_genuine(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    for state,target,authority,h1 in [
+        ("MODEL_ABSTAIN",NOW-pd.Timedelta(minutes=1),False,"SELL"),
+        ("WAIT_DATA",NOW+pd.Timedelta(hours=1),False,"SELL"),
+        ("MODEL_ABSTAIN",NOW+pd.Timedelta(hours=1),True,"SELL"),
+        ("MODEL_ABSTAIN",NOW+pd.Timedelta(hours=1),False,"BUY"),
+    ]:
+        m=model(h1=h1)
+        m["H4"]={
+            "state":state,"direction":"WAIT",
+            "target":target.isoformat(),"execution_authority":authority,
+        }
+        x=engine.evaluate_entry(m,market(),now=NOW)
+        assert x["status"]=="WAIT"
+        assert x["entry_reference"] is None
+        assert x["zone"] is None
+
+
+def test_h4_abstention_with_no_valid_zone_does_not_invent_one(monkeypatch):
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[])
+    m=model()
+    m["H4"]={
+        "state":"MODEL_ABSTAIN","direction":"WAIT",
+        "target":(NOW+pd.Timedelta(hours=1)).isoformat(),
+        "execution_authority":False,
+    }
+    x=engine.evaluate_entry(m,market(),now=NOW)
+    assert x["status"]=="WAIT"
+    assert x["reason"]=="R28_H4_ABSTAIN_NO_VALID_ZONE"
+    assert x["entry_reference"] is None
