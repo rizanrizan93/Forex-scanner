@@ -135,7 +135,7 @@ dashboard.render_frozen_direction_research()
     assert set(candidate_table["Status"])=={"BENCHMARK · BELUM LIVE"}
     assert "Target close prediksi sudah berakhir" in board.loc[1,"Keterangan"]
     assert [x.value for x in app.metric][:4]==["WAIT","WAIT","WAIT","WAIT"]
-    assert [x.value for x in app.metric][4:8]==["SELL","WAIT","WAIT","WAIT"]
+    assert [x.value for x in app.metric][5:9]==["SELL","WAIT","WAIT","WAIT"]
     assert len(app.metric)==11  # Best primary four + R28 four + R29 + R25/R11 two
     text="\n".join(str(x.value) for x in app.caption)
     assert "5 indikator" not in text and "skor bukti" not in text
@@ -246,7 +246,7 @@ def test_dashboard_has_manual_refresh_short_cache_and_visible_model_score():
     p=Path(__file__).resolve().parents[1]/"src/fx_scanner/frozen_direction_research_dashboard.py"
     source=p.read_text()
     assert '@st.cache_data(ttl=30,show_spinner=False)' in source
-    assert 'st.button("Perbarui prediksi R28.1 sekarang"' in source
+    assert 'st.button("Perbarui semua kandidat sekarang"' in source
     assert "read_r281.clear()" in source
     assert "expire_cached_directions(shadow, now=now)" in source
     assert "Skor model BUY " in source
