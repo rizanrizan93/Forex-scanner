@@ -1,0 +1,29 @@
+name: RIZAN R15 Indexed Native Replay Runtime
+on:
+  push:
+    branches: ['research/r15-local-native-terminal']
+    paths: ['.github/workflows/r15_indexed_runtime.yml', 'research/r15_local_native/prepare_indexed_source.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: python3 research/r11_profitable_addon_alpha/native_audit.py
+      - run: python3 research/r15_local_native/prepare_indexed_source.py
+      - run: dotnet publish artifacts/r15/guard_source/native_replay/NovemberReplay.csproj -c Release -r linux-x64 --self-contained true -o artifacts/r15/indexed_runtime
+      - name: Verify index equivalence and guard causality
+        run: R15_INDEX_SELFTEST=1 artifacts/r15/indexed_runtime/NovemberReplay
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r15-indexed-linux-runtime
+          path: |
+            artifacts/r15/indexed_runtime/
+            artifacts/r15/indexed_source_receipt.json
+          retention-days: 90
