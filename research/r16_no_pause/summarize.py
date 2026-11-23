@@ -32,6 +32,7 @@ def run(root):
         missing=sorted(core-own);new=sorted(own-core)
         result={f:s[f] for f in fields}
         result.update(terminal_change_vs_baseline=s['EndingBalance']-b['Summary']['EndingBalance'],
+            terminal_beats_baseline=s['EndingBalance']>b['Summary']['EndingBalance'],
             terminal_change_pct=100*(s['EndingBalance']/b['Summary']['EndingBalance']-1),
             floating_DD_change_pp=s['MaxEquityDDPct']-b['Summary']['MaxEquityDDPct'],
             addon_filled_baskets=len(addon),addon_winning_baskets=sum(t['Pnl']>0 for t in addon),
@@ -42,6 +43,10 @@ def run(root):
             planned_exposure_caps_pass=s['MaxObservedMarginPct']<=50 and s['MaxObservedOpenRiskPct']<=20.75,
             raw_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
         output['cases'][name]=result
+    ranked={'r15_indexed_baseline':output['baseline'],**output['cases']}
+    best=max(ranked,key=lambda n:ranked[n]['EndingBalance'])
+    output['best_research_profile']={'id':best,'ending_balance':ranked[best]['EndingBalance'],
+        'change_vs_baseline':ranked[best]['EndingBalance']-b['Summary']['EndingBalance']}
     (repo/'results.json').write_text(json.dumps(output,indent=2)+'\n')
     print(json.dumps(output,indent=2))
 if __name__=='__main__':
