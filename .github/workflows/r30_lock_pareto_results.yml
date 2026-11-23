@@ -12,7 +12,7 @@ permissions:
 jobs:
   seal:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,14 +21,41 @@ jobs:
         with: {python-version: '3.12'}
       - name: Verify latest freeze source script syntax
         run: python -m py_compile scripts/r30_lock_pareto_research.py
-      - name: Download pinned verified H1 and H4 full 2012-2026 year results
+      - name: Install reproducible historical modeling libraries
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 openpyxl requests
+      - name: Download original 2012-2018 XAU independently hashed minute-derived H1/H4 year shards
         uses: actions/download-artifact@v4
         with:
-          run-id: 45184178972
+          run-id: 45183311130
           github-token: ${{ github.token }}
-          artifact-ids: '14822199178,14822942278'
-          path: artifacts/r30_pareto
+          pattern: r30-hf-yr-*
+          path: /tmp/r30_early
           merge-multiple: true
+      - name: Download original R10 2019-2026 intraday source
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Reproduce H1 and H4 2019 overlapping vendor parity and full 2012-26 backtest
+        env:
+          PYTHONPATH: 'scripts:src:.'
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/r30_pareto
+          for tf in 1h 4h; do
+            python scripts/r30_vendor_overlap_audit.py \
+              --tf "$tf" \
+              --early "/tmp/r30_early/r10-${tf}-2019.csv" \
+              --original "/tmp/r10/r10-${tf}-2019.csv" \
+              --out "artifacts/r30_pareto/r30-2019-vendor-overlap-${tf}.json"
+            python scripts/r30_pareto_direction_search.py --tf "$tf" --scope spliced
+          done
       - name: Download original D1 and W1 2012-2026 year results
         uses: actions/download-artifact@v4
         with:
