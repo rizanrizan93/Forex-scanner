@@ -35,7 +35,21 @@ def normalize(path,year,now=None):
         raise ValueError("DUKA_OHLC_INVALID")
     if f.index.second.any() or f.index.minute.any() or f.index.microsecond.any():
         raise ValueError("DUKA_H1_TIMESTAMP_NOT_ALIGNED")
-    # Required history completeness is based on months, not synthetic padding.
+    # The provider's bar endpoint can include calendar-hour zero-volume/flat
+    # candles over CLOSED gold weekends. They are never tradable. Keep only
+    # Monday-Friday UTC hours. Conservatively omit Sunday reopening hours
+    # rather than injecting uncertain exchange/broker session timestamps.
+    raw_count=len(f)
+    weekend=(f.index.dayofweek>=5)
+    n_weekend=int(weekend.sum())
+    f=f.loc[~weekend]
+    flats=(f.h-f.l).abs()<=1e-9
+    n_flats=int(flats.sum())
+    f=f.loc[~flats]
+    if f.empty or len(f) > raw_count or len(f) < int(raw_count*.45):
+        raise ValueError("DUKA_TRADABLE_SESSION_COVERAGE_INVALID")
+    # Required history completeness is based on observed market months,
+    # never on forward-filled weekend or missing H1 bars.
     month_counts={int(y):int(n) for y,n in f.groupby(f.index.month).size().items()}
     if len(month_counts)<(8 if year==2026 else 11):
         raise ValueError(f"DUKA_YEAR_MONTH_COVERAGE_INSUFFICIENT:{year}:{month_counts}")
@@ -49,14 +63,14 @@ def normalize(path,year,now=None):
     h4=h4.loc[h4.hours==4]
     h4=h4.drop(columns="hours")
     if not len(h4)>=len(f)//8:raise ValueError("DUKA_H4_COMPLETENESS_LOW")
-    return f,h4,month_counts
+    return f,h4,month_counts,{"raw_h1":raw_count,"weekend_filtered":n_weekend,"flat_filtered":n_flats,"tradable_h1":len(f)}
 
 
 def run(year,raw):
     raw=Path(raw)
     if not raw.is_file() or raw.stat().st_size<30000:
         raise ValueError(f"DUKA_SOURCE_MISSING_OR_TOO_SHORT:{raw}")
-    h1,h4,months=normalize(raw,year)
+    h1,h4,months,session=normalize(raw,year)
     out=Path("artifacts/r30");out.mkdir(parents=True,exist_ok=True)
     files={}
     for tf,data in (("1h",h1),("4h",h4)):
@@ -70,14 +84,15 @@ def run(year,raw):
         "source":PROVIDER,"year":year,"symbol":"XAUUSD",
         "price_side":"BID","utc_origin":"UNIX_EPOCH_MILLISECONDS",
         "raw_sha256":hashlib.sha256(raw.read_bytes()).hexdigest(),
+        "session_filter":session,
         "source_files":files,"month_h1_counts":months,
-        "validation":"UTC_PRECISE_CLOSED_H1_AND_4_CONTIGUOUS_H1_TO_H4",
+        "validation":"UTC_H1_CLOSED_MON_FRI_NO_FLATS_FOUR_CONTIGUOUS_H1_TO_H4",
         "research_only":True,"execution_authority":False,"execution_influence":False,
         "warning":"Dukascopy BID may differ from FP Markets cTrader, no broker parity or executable spread",
     }
     (out/f"r30-dukascopy-provenance-{year}.json").write_text(json.dumps(metadata,indent=2)+"\n")
     print(json.dumps({"stage":"R30_DUKA_SOURCE_VERIFIED","year":year,
-                      "h1":len(h1),"h4":len(h4),
+                      "h1":len(h1),"h4":len(h4),"session":session,
                       "month_count":len(months),
                       "sha256":metadata["raw_sha256"]}),flush=True)
     return metadata
