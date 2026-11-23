@@ -1,0 +1,51 @@
+name: Bootstrap125 P0 forensic evidence (no trading mutations)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'operations/bootstrap125_forensics/**'
+      - '.github/workflows/bootstrap125-p0-forensics.yml'
+permissions:
+  contents: read
+concurrency:
+  group: bootstrap125-p0-forensics
+  cancel-in-progress: false
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile read-only collector
+        run: python -m py_compile operations/bootstrap125_forensics/collect.py
+      - name: Preserve private VPS evidence and collect sanitized observations
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf -- "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          # stdin execution avoids deployment and changes to any running service.
+          ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' 'sudo -n /usr/bin/python3 -' < operations/bootstrap125_forensics/collect.py > "$RUNNER_TEMP/bootstrap125-p0-evidence.json"
+          python - <<'PY'
+          import json,os
+          d=json.load(open(os.path.join(os.environ['RUNNER_TEMP'],'bootstrap125-p0-evidence.json')))
+          assert d['read_only'] is True and d['execution_authority'] is False
+          print(json.dumps(d))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap125-p0-sanitized-evidence
+          path: ${{ runner.temp }}/bootstrap125-p0-evidence.json
+          retention-days: 30
