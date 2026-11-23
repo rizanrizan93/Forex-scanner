@@ -1,0 +1,119 @@
+{
+  "id": "RIZAN_R291_H4_BUY_HIGH_COVERAGE_HISTORICAL_FROZEN_20261123",
+  "symbol": "XAUUSD",
+  "timeframe": "H4",
+  "side": "BUY",
+  "source_run_id": 45165585427,
+  "source_artifact_id": 14812894583,
+  "source_artifact_name": "r291-event-4h",
+  "source_json_sha256": "943e82b27b27c519774e7046aa313391633bdfb42ea17e6c187059e3931ad1fc",
+  "strategy": "R29_1_EVENT_STRUCTURE_PREDECLARED_20261123",
+  "target": "sign of next completed H4 candle close-minus-current close",
+  "historical_pooled": {
+    "n": 332,
+    "correct": 199,
+    "accuracy": 0.5993975903614458,
+    "net_mean_usd_oz": 1.4751,
+    "assumed_cost_usd_oz": 0.7
+  },
+  "annual_policies": {
+    "2024": {
+      "evaluation_year": 2024,
+      "validation_year": 2023,
+      "policy": {
+        "model": "ridge",
+        "group": "event_bos_context",
+        "threshold": 0.5,
+        "gate": "trend_highvol"
+      },
+      "selection_validation": {
+        "n": 101,
+        "correct": 67,
+        "accuracy": 0.663366,
+        "wilson_lower95": 0.566725,
+        "coverage": 0.098154
+      },
+      "evaluation": {
+        "n": 143,
+        "correct": 83,
+        "accuracy": 0.58042,
+        "wilson_lower95": 0.498468,
+        "coverage": 0.1,
+        "gross_mean_usd_oz": 1.4186,
+        "net_mean_after_assumed_cost_usd_oz": 0.7186,
+        "positive_net_estimate": true,
+        "mfe_ge_10_usd_fraction": 0.26573
+      }
+    },
+    "2025": {
+      "evaluation_year": 2025,
+      "validation_year": 2024,
+      "policy": {
+        "model": "hgb",
+        "group": "event_bos_context",
+        "threshold": 0.5,
+        "gate": "trend_impulse"
+      },
+      "selection_validation": {
+        "n": 174,
+        "correct": 109,
+        "accuracy": 0.626437,
+        "wilson_lower95": 0.552555,
+        "coverage": 0.121678
+      },
+      "evaluation": {
+        "n": 176,
+        "correct": 108,
+        "accuracy": 0.613636,
+        "wilson_lower95": 0.540003,
+        "coverage": 0.123769,
+        "gross_mean_usd_oz": 3.1516,
+        "net_mean_after_assumed_cost_usd_oz": 2.4516,
+        "positive_net_estimate": true,
+        "mfe_ge_10_usd_fraction": 0.34091
+      }
+    },
+    "2026": {
+      "evaluation_year": 2026,
+      "validation_year": 2025,
+      "policy": {
+        "model": "ridge",
+        "group": "event_geometry",
+        "threshold": 0.53,
+        "gate": "bos_displacement"
+      },
+      "selection_validation": {
+        "n": 48,
+        "correct": 32,
+        "accuracy": 0.666667,
+        "wilson_lower95": 0.525398,
+        "coverage": 0.033755
+      },
+      "evaluation": {
+        "n": 13,
+        "correct": 8,
+        "accuracy": 0.615385,
+        "wilson_lower95": 0.355225,
+        "coverage": 0.010433,
+        "gross_mean_usd_oz": -2.7232,
+        "net_mean_after_assumed_cost_usd_oz": -3.4232,
+        "positive_net_estimate": false,
+        "mfe_ge_10_usd_fraction": 0.76923
+      }
+    }
+  },
+  "live_policy_year": 2026,
+  "research_only": true,
+  "execution_authority": false,
+  "execution_influence": false,
+  "forward_validated": false,
+  "forexscanner_mode": "SIDE_BY_SIDE_SHADOW_NOT_ENTRY_PERMISSION",
+  "warning": [
+    "332 cumulative signals use different yearly selected policies, not a single frozen model",
+    "2026 frozen fold generated only 13 historical BUY signals vs 23 for R29.2",
+    "2026 R29.1 8/13 BUY net mean -3.4232 USD/oz after assumed $0.70/oz cost",
+    "59.94% historic pooled score is NOT statistically established >60% or validated live",
+    "This is a frequency-diversification historical candidate; forward signal count not guaranteed",
+    "Strict no-order read-only publisher and closed broker H4 candle only"
+  ]
+}

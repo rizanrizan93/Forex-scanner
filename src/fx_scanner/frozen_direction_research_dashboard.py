@@ -12,6 +12,7 @@ from .rbest_side_dashboard import render_best_candidate_block
 from .best_candidate_direction import select as select_best_candidate_direction
 from .r294_frozen_h4_buy_feed import fetch as fetch_r294, blank as blank_r294
 from .r294_frozen_h4_buy_dashboard import render_h4_buy
+from .r296_h4_coverage_reference_dashboard import render_h4_high_coverage_reference
 
 ROOT=Path(__file__).resolve().parents[2]
 LOCK=ROOT/"research/direction_benchmark_lock_r281_20261122.json"
@@ -290,6 +291,7 @@ def render_frozen_direction_research():
         st.caption("Akurasi per sisi berasal dari sampel, periode, dan kebijakan yang berbeda; tidak boleh dirata-rata atau digabung sebagai confidence live. H1/H4 SELL R11 memiliki estimasi net P&L negatif; W1 BUY R27 hanya n=48. Tidak ada validasi forward independen.")
         # Original H1/H4 candidate heads remain available as an audit table.
         render_best_candidate_block(st,specialists,lock,shadow,wib)
+        render_h4_high_coverage_reference(st)
         st.caption("Diperiksa "+wib(now)+" · direction utama memakai kandidat terverifikasi; tampilan diperbarui 30 detik.")
         st.caption("WAIT MODEL: syarat skor riset belum terpenuhi atau kedua arah bertentangan. WAIT DATA: input/model belum tersedia atau target prediksi sudah berakhir.")
         if session_closed(now):

@@ -1,0 +1,53 @@
+{
+  "contract": "RIZAN_R296_R291_H4_COVERAGE_CARRY_2026_DIAGNOSTIC_V1",
+  "source_run_id": 45178443988,
+  "source_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45178443988",
+  "source_branch": "research/r296-r291-h4-coverage-frozen-20261123",
+  "frozen_lock_source_sha256": "943e82b27b27c519774e7046aa313391633bdfb42ea17e6c187059e3931ad1fc",
+  "scope": "2025 model applied unmodified to 2026 closed H4 test candles; diagnostic only",
+  "side": "BUY",
+  "symbol": "XAUUSD",
+  "carry_2025_to_2026": {
+    "policy": {
+      "model": "hgb",
+      "group": "event_bos_context",
+      "threshold": 0.5,
+      "gate": "trend_impulse"
+    },
+    "n": 111,
+    "correct": 54,
+    "accuracy": 0.486486,
+    "wilson_lower95": 0.395522,
+    "coverage": 0.089085,
+    "gross_mean_usd_oz": -2.5026,
+    "net_mean_after_assumed_cost_usd_oz": -3.2026,
+    "positive_net_estimate": false
+  },
+  "native_2026_policy_evaluation": {
+    "policy": {
+      "model": "ridge",
+      "group": "event_geometry",
+      "threshold": 0.53,
+      "gate": "bos_displacement"
+    },
+    "n": 13,
+    "correct": 8,
+    "accuracy": 0.615385,
+    "wilson_lower95": 0.355225,
+    "coverage": 0.010433,
+    "gross_mean_usd_oz": -2.7232,
+    "net_mean_after_assumed_cost_usd_oz": -3.4232,
+    "positive_net_estimate": false
+  },
+  "decision": "LOCK_AS_HISTORICAL_FREQUENCY_REFERENCE_NOT_SIGNAL_PROMOTION",
+  "execution_authority": false,
+  "execution_influence": false,
+  "research_only": true,
+  "limitations": [
+    "Test years reused across previous research; not a pristine unseen holdout",
+    "2025 to 2026 policy transfer was not original R29.1 annual model selection",
+    "Larger sample counts do not guarantee higher live signal frequency",
+    "Net estimates use assumed 0.70 USD/oz, not realized FP Markets fills/slippage",
+    "No R29.1 H4 BUY direction may supersede approved read-only R29.2/SMC controls"
+  ]
+}

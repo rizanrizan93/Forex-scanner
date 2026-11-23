@@ -136,7 +136,7 @@ dashboard.render_frozen_direction_research()
     assert "Target close prediksi sudah berakhir" in board.loc[1,"Keterangan"]
     assert [x.value for x in app.metric][:4]==["WAIT","WAIT","WAIT","WAIT"]
     assert [x.value for x in app.metric][5:9]==["SELL","WAIT","WAIT","WAIT"]
-    assert len(app.metric)==11  # Best primary four + R28 four + R29 + R25/R11 two
+    assert len(app.metric)==13  # Best primary 4 + R28 4 + R29.2 1 + R25/R11 2 + R29.1 coverage 2
     text="\n".join(str(x.value) for x in app.caption)
     assert "5 indikator" not in text and "skor bukti" not in text
 
