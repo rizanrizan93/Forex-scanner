@@ -47,6 +47,9 @@ def probe(year,out):
         if k in df.columns:
             times=pd.to_datetime(df[k],utc=True,errors="coerce",unit="s" if k in ("ts","timestamp") and pd.api.types.is_numeric_dtype(df[k]) else None)
             report["timestamp_field"]=k
+            report["ts_monotonic"]=bool(times.is_monotonic_increasing)
+            report["ts_duplicates"]=int(times.duplicated().sum())
+            report["year_counts"]={str(y):int(n) for y,n in times.dt.year.value_counts().sort_index().items()}
             report["timestamp_first"]=str(times.min())
             report["timestamp_last"]=str(times.max())
             report["median_diff_seconds"] = float(times.sort_values().diff().dt.total_seconds().median())
