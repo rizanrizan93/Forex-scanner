@@ -55,7 +55,7 @@ def test_stop_first_tie_and_costs_are_conservative():
     e=[{"entry_index":25,"year":2024,"side":1,"stop":98.,"risk":2.,
         "entry":100.,"signal_index":24}]
     pnl,ex=r31.outcome_matrix(d,e)
-    assert np.all(pnl[:,0]==pytest.approx(-2.-r31.BASE_COST))
+    np.testing.assert_allclose(pnl[:,0],-2.-r31.BASE_COST)
     assert np.all(ex[:,0]==25)
 
 
@@ -64,13 +64,13 @@ def test_metrics_no_overlap_and_year_purge():
     d=pd.DataFrame({"o":100.,"h":101.,"l":99.,"c":100.},index=ix)
     ev=[{"entry_index":2,"signal_index":1,"side":1},
         {"entry_index":4,"signal_index":3,"side":1},
-        {"entry_index":7,"signal_index":6,"side":1}]
+        {"entry_index":5,"signal_index":4,"side":1}]
     pnl=np.zeros((8,3));pnl[0]=[100.,2.,-1.]
-    exits=np.zeros((8,3),dtype=int);exits[:]=[5,5,8]
+    exits=np.zeros((8,3),dtype=int);exits[:]=[5,7,8]
     m=r31.report_metrics(ev,np.ones(3,bool),"H1",d,pnl,exits,0,2020,2020)
     assert m["n"]==0  # all exits mature in 2021
     m=r31.report_metrics(ev,np.ones(3,bool),"H1",d,pnl,exits,0,2021,2021)
-    assert m["n"]==1  # the first 2021 trade starts after overlapping trade
+    assert m["n"]==1  # only the first 2021 trade survives overlap guard
 
 
 def test_candidate_floor_requires_positive_expectancy_pf_and_annual_support():
