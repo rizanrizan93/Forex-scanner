@@ -1,0 +1,223 @@
+{
+  "archive_name": "R15_NATIVE_CONTROL_B1.zip",
+  "archive_bytes": 14144516,
+  "archive_sha256": "3c61e8348d151689746f4a700bee3b89ff5dc8f9ba5ae020c176f2d2c78b30bc",
+  "parts": [
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part001",
+      "bytes": 393216,
+      "sha256": "8fd98d497352d2392c7a352bef61d1f36acc9da4412b5df562fb1627c71aea88",
+      "git_blob_sha1": "286e63490e5660f009873e11bf30a83b8c24b86c"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part002",
+      "bytes": 393216,
+      "sha256": "726c49b562c13afec0fcc9b2d6125da4cdaa066a89178b1083e98af62e433bc1",
+      "git_blob_sha1": "685d159589e362d6a7560d1f2861117aff866466"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part003",
+      "bytes": 393216,
+      "sha256": "e8624b9bda4f36aa07e0e104715d52c964e4e85c41369d25dd745cd020c0edd4",
+      "git_blob_sha1": "fe3249270a113d8791905a0a45536e3be6825751"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part004",
+      "bytes": 393216,
+      "sha256": "dab2c40d6ef1551b87ace802ba3b1e3b4e0cf745e2e6f7eb36ad1ecdb6812af7",
+      "git_blob_sha1": "db1a189fd50ac122b4d79206f79a27dfa55b7363"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part005",
+      "bytes": 393216,
+      "sha256": "42c304fd0a52003001ac326a30e4c61b05c097bddb9ad6fcf75ef0b6c9372af5",
+      "git_blob_sha1": "8bd91e4819b64180fb0c4d7efc0bd0de48caf0ed"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part006",
+      "bytes": 393216,
+      "sha256": "58622deedc6c8b55957b7aafe976e9f187c19369c017a03381b3dc8bd2e4b70b",
+      "git_blob_sha1": "9f732b40251365b7fa110cea188fc029a76c57e4"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part007",
+      "bytes": 393216,
+      "sha256": "297022a1be451daa83135a7748826fee66c142c57eec950ba6e8c58c6962ddfb",
+      "git_blob_sha1": "aca0c338557f2816390043df2f3ea59cf116c470"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part008",
+      "bytes": 393216,
+      "sha256": "588efa5b54a91dcf32263eb9372efef2b79bf4e6958c1ddcdce5dff84493f777",
+      "git_blob_sha1": "c06fb13384b59c1f861ff95da90a451ec21fea65"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part009",
+      "bytes": 393216,
+      "sha256": "fdbd2f2cc2e5609b73ca906ff5c85a01803bc0722f3a6d26324e5b796c459fe0",
+      "git_blob_sha1": "1d7943b9d1bad37b76b4534d61b6f0032bc10d4d"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part010",
+      "bytes": 393216,
+      "sha256": "ffe53ef02f6ef0cfd7395022cf5acb320f9740930d434446ce22bda855daf1da",
+      "git_blob_sha1": "b7a517df238ff1271a8da34925ef275f529be94b"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part011",
+      "bytes": 393216,
+      "sha256": "bed9fa3dfa3eb1276ae63c8ac4ac0dd5ffe3d5def3ff774dfe9f8df4bf01c707",
+      "git_blob_sha1": "aa047b949394f129eb6f30ee327028e723aa2ae1"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part012",
+      "bytes": 393216,
+      "sha256": "566d72fa047fe5b8e70070f445bfb363d7f8e6273c477e3a8021820ff2c60434",
+      "git_blob_sha1": "2c04ad4e899ee573a7566268039f159eeccb9ff9"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part013",
+      "bytes": 393216,
+      "sha256": "f82637a4a81a9f652217d5042d033619070563e901dc64488c7685b0bfa9fe75",
+      "git_blob_sha1": "869ac9f3d4acb168e4d04b6f3de34feec35a50bb"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part014",
+      "bytes": 393216,
+      "sha256": "ecf39c9b61924b552eb73fa673b0987e7e99261fbce0b1ca9761f5d5c29478e1",
+      "git_blob_sha1": "d51c507ec15cad39fbef818beb80c779fc2a65f2"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part015",
+      "bytes": 393216,
+      "sha256": "a1e56f88bae7e0bfe865a186ef1e54bc8a77b88a22ba48bc89a8ae7022f8f64e",
+      "git_blob_sha1": "ec32f91d8d3fd2dc193f2197627fab00d042907b"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part016",
+      "bytes": 393216,
+      "sha256": "5c2ef193c326d21bb7519b5a76da567cba4823dd2aff9688833ea1356dbb9232",
+      "git_blob_sha1": "dcf747dbe32f18d3ad6ceea04bd27e733a69923e"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part017",
+      "bytes": 393216,
+      "sha256": "ff5a0890f40d1f711b45f56fc834ef6c717434fcb1b9c3f51b7ab8d536386821",
+      "git_blob_sha1": "c4302c533a66affe0d4515e2831edc1f58f2701f"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part018",
+      "bytes": 393216,
+      "sha256": "7cb58bef4b279557002b33ce099163d23281097bff5e255a26bab378c63120d5",
+      "git_blob_sha1": "a533eafa6e7a12f6e142570c96183c6da37c4bbf"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part019",
+      "bytes": 393216,
+      "sha256": "929306f9b2af58a6863fb3d35155fa057d0137c32e1dc7b86491cf48d5b93176",
+      "git_blob_sha1": "a09990aed7a491bd5c050f4f71c410993c3f7f49"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part020",
+      "bytes": 393216,
+      "sha256": "83a820654e446368410e96e2918164d9ca32401f15541a2dbe677b8de3904329",
+      "git_blob_sha1": "3ea97535d14aae5350d7527664672099a7ffa9b3"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part021",
+      "bytes": 393216,
+      "sha256": "6607c1aebdea68c8c406e20cde76245fcfb473325de9a67eec61c0658e8608eb",
+      "git_blob_sha1": "5126eb10cbce5f6f92d71788128cfbd7e6c37bea"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part022",
+      "bytes": 393216,
+      "sha256": "556cdfc95b19a0fe78401f8a0998bfa1899b2a8d1527578f296da66b213be9cf",
+      "git_blob_sha1": "a2e0ae258bceb65c0bd100219bef59fa1e3e4552"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part023",
+      "bytes": 393216,
+      "sha256": "ec555fa6de8123342d3824957d17e7d053c48534fa85af06b593a56748b43ada",
+      "git_blob_sha1": "52647a653faa4eaa094042443d2a223b1f06cb99"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part024",
+      "bytes": 393216,
+      "sha256": "f7ff2c6119dd2ba9558502497ed665e9812354448df45270b938143bf40e83fa",
+      "git_blob_sha1": "c0a939bdd7b9e4feed2cc3fbc7f348fec0552cce"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part025",
+      "bytes": 393216,
+      "sha256": "c1f517be5d572fa2348928ee3a2d357aed1d6783c0f73f8cc09256c2e6511508",
+      "git_blob_sha1": "bb8ebf5a7426e949aace54bf3c018ee7f5c7427b"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part026",
+      "bytes": 393216,
+      "sha256": "da851ea356ad9d1ffd532533976344000b336dafa044abaf177dbbe910575942",
+      "git_blob_sha1": "bccfb0bcc97253d69b1fbe49e974669046255fb9"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part027",
+      "bytes": 393216,
+      "sha256": "735e1a7e7b9f9b5686ed40fe9b70b6501114c78f73966a1b9456488d528a5af3",
+      "git_blob_sha1": "7bd1daeaa3ff5b7b96ab232b186165ecd6d0a6b8"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part028",
+      "bytes": 393216,
+      "sha256": "667708177ca69c60e7b9b5bc9b93564090b5b045de8a25563143d1e955ebb8e9",
+      "git_blob_sha1": "8c1fd88e214c6e323b05ac69aedd8a80273407d5"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part029",
+      "bytes": 393216,
+      "sha256": "954fc550f69e48ee1c62645223f33cc01fe3eddc4b1819fdc01fdff41585a8d3",
+      "git_blob_sha1": "71fbde0f4c26d4b761946f7cbb812b15dab46620"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part030",
+      "bytes": 393216,
+      "sha256": "769324ac515eb766723399442d26661483c9cf8c93a664ea2e14cd01bf841b5f",
+      "git_blob_sha1": "ef04048f9e8a5e52f0b7658450ccb50222fd8b87"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part031",
+      "bytes": 393216,
+      "sha256": "2937c2c3c01a14df63ceb2dc2e8e38d7dfd3b3ed2df4f2b6088973b9414c7ec2",
+      "git_blob_sha1": "a65e5961e28d59c9fbe8d08467b4ffcd11cb3987"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part032",
+      "bytes": 393216,
+      "sha256": "6c3ddbd8c83c2aaabc499db22ace35c99ae8e6345115a808e3573cc6e9516f1e",
+      "git_blob_sha1": "399a83fe4cf304cdf9453ef382902358ee686341"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part033",
+      "bytes": 393216,
+      "sha256": "6fc1b154aa7740c1c0efd817fe1215dd7df1d5dd7dc38ca4f2075a35fa1f213a",
+      "git_blob_sha1": "74cc4466b4c4445ead36e9c2cd27c71fb76bc285"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part034",
+      "bytes": 393216,
+      "sha256": "06c0474e4974cfda8058e8fb850d6ee3022db29cbfc0d87febe07c86fadd96f7",
+      "git_blob_sha1": "f8a9d26a9787dbb6c525089078053debbfeefd80"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part035",
+      "bytes": 393216,
+      "sha256": "879e49bc5d7f8aa6614320a84243a559c224bb28d7c103579b08a095f6cccbaf",
+      "git_blob_sha1": "236065f6a3c5ee43b53d9ad56b5a7e38dd3c2657"
+    },
+    {
+      "name": "R15_NATIVE_CONTROL_B1.zip.part036",
+      "bytes": 381956,
+      "sha256": "4938b95ec628595f16153c0ef568551d9cac375c8e9f7e754059ea4f1338ce40",
+      "git_blob_sha1": "014115dfd0e7e20332680960361f04aed5341ae6"
+    }
+  ]
+}
