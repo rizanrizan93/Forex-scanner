@@ -250,7 +250,7 @@ def render_brand(st) -> None:
 
 
 SECTION_DESCRIPTIONS = {
-    "Frozen Direction": ("MULTI-TIMEFRAME RESEARCH", "Frozen Direction R28.1", "Bias dan skenario candle terbaru, chart, zona referensi bersyarat, serta benchmark historis terpisah."),
+    "Frozen Direction": ("MULTI-TIMEFRAME RESEARCH", "Frozen Direction R28.1", "Prediksi model riset R28.1 untuk H1/H4/D1/W1, waktu target close, alasan WAIT, dan benchmark historis."),
     "Arah Entry": ("MANUAL ENTRY", "Arah Entry R2", "Pemantauan setup SELL, skor seleksi, data terbaru, dan hasil historis model R2."),
     "Fed R6 · Area Entry": ("FED MACRO / SMC", "Area Entry R6", "Zona swing M5, trigger M1, invalidasi, TP skenario, dan filter arah Fed yang gagal-tertutup ketika data belum valid."),
     "Manual R3": ("MANUAL TRADING", "Range Reclaim R3", "Zona Keltner, bias H1, checklist dan pemicu M1 untuk keputusan trading manual."),

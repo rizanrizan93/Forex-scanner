@@ -23,6 +23,27 @@ URL = ("https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
 MAX_TARGET_DAYS = {"H1": 1/24, "H4": 4/24, "D1": 4, "W1": 7}
 PARITY_SAMPLES = {"H1": 5633, "H4": 1422, "D1": 253, "W1": 51}
 
+REASONS = {
+    "2025_PARITY_PASS_2026_FORWARD_UNPROVEN": "Prediksi model R28.1 tersedia.",
+    "RESEARCH_SIGNAL": "Prediksi model R28.1 tersedia.",
+    "BELOW_THRESHOLD": "Skor BUY dan SELL belum memenuhi ambang riset.",
+    "HEAD_CONFLICT": "Skor BUY dan SELL sama-sama memenuhi ambang; model menahan arah.",
+    "TARGET_CANDLE_EXPIRED": "Target close prediksi sudah berakhir; menunggu hasil model terbaru.",
+    "SOURCE_OR_TARGET_STALE": "Sumber atau target prediksi kedaluwarsa; menunggu pembaruan model.",
+    "SOURCE_STALE": "Data sumber kedaluwarsa saat model diterbitkan.",
+    "MODEL_SNAPSHOT_UNAVAILABLE": "Snapshot model tidak dapat dibaca atau tidak lolos validasi.",
+    "LATEST_COMPLETE_BROKER_BAR_UNAVAILABLE": "Candle broker tertutup belum lengkap untuk model.",
+    "LIVE_HISTORY_GAP_OR_PRICE_SCALE": "Riwayat broker belum tersambung dengan data model.",
+    "ECB_2026_UNAVAILABLE": "Input kurs ECB tahun berjalan belum tersedia.",
+    "INVALID_SIGNAL_TIME": "Waktu sumber dan target model tidak sesuai.",
+    "INVALID_TARGET_HORIZON": "Horizon target model tidak sesuai timeframe.",
+    "INVALID_MODEL_SCORES": "Skor model atau harga sumber tidak valid.",
+}
+
+
+def reason_text(reason):
+    return REASONS.get(reason, "Menunggu model/data R28.1: " + str(reason))
+
 
 def moment(value):
     t = pd.Timestamp(value)
@@ -65,29 +86,42 @@ def validate(payload, *, now):
                 or not re.fullmatch("[0-9a-f]{64}", str(row.get("model_sha256") or ""))
                 or row.get("historical_2025_parity") != PARITY_SAMPLES[tf]):
             raise ValueError("R281_MODEL_LINEAGE_NOT_VERIFIED:" + tf)
-        if row.get("state") != "R281_RECONSTRUCTED_SHADOW":
+        result[tf] = {**blank(str(row.get("reason") or "WAIT_DATA")),
+                      "issued": published.isoformat(), "model": row["model_id"]}
+        if row.get("state") not in ("R281_RECONSTRUCTED_SHADOW", "R281_MODEL_ABSTAIN"):
             continue
-        if row.get("direction") not in ("BUY", "SELL"):
+        abstain = row.get("state") == "R281_MODEL_ABSTAIN"
+        if (abstain and (row.get("direction") != "WAIT"
+                         or row.get("reason") not in ("BELOW_THRESHOLD", "HEAD_CONFLICT"))
+                or not abstain and row.get("direction") not in ("BUY", "SELL")):
             continue
         issued, close, target, observed = (
             published, moment(row["closed_at"]), moment(row["target_close_at"]),
             moment(row["observed_at"])
         )
         # Source was fresh at publication; target cannot have already closed.
+        if now >= target:
+            result[tf]["reason"] = "TARGET_CANDLE_EXPIRED"
+            continue
         if not (close <= observed <= issued <= now < target):
+            result[tf]["reason"] = "INVALID_SIGNAL_TIME"
             continue
         if not (0 < (target-close).total_seconds() <= MAX_TARGET_DAYS[tf]*86400):
+            result[tf]["reason"] = "INVALID_TARGET_HORIZON"
             continue
         if (issued-observed).total_seconds() > 300:
+            result[tf]["reason"] = "SOURCE_STALE"
             continue
         prices = (row.get("last_close"), row.get("buy_head_score"), row.get("sell_head_score"))
         if any(type(x) not in (float,int) or not math.isfinite(x) for x in prices):
+            result[tf]["reason"] = "INVALID_MODEL_SCORES"
             continue
         if not (prices[0] > 0 and 0 <= prices[1] <= 1 and 0 <= prices[2] <= 1):
+            result[tf]["reason"] = "INVALID_MODEL_SCORES"
             continue
         result[tf] = {
-            "state": "RECONSTRUCTED_SHADOW",
-            "reason": "2025_PARITY_PASS_2026_FORWARD_UNPROVEN",
+            "state": "MODEL_ABSTAIN" if abstain else "RECONSTRUCTED_SHADOW",
+            "reason": row["reason"] if abstain else "2025_PARITY_PASS_2026_FORWARD_UNPROVEN",
             "direction": row["direction"], "target": target.isoformat(),
             "issued": issued.isoformat(), "closed": close.isoformat(),
             "model": row["model_id"], "source": SOURCE,

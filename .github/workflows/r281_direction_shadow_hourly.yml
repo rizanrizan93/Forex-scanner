@@ -1,8 +1,12 @@
 name: R28.1 XAU Direction Shadow Hourly (Read Only)
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/r281_direction_shadow_hourly.yml'
   schedule:
-    - cron: '7 * * * 1-5'
+    - cron: '7,37 * * * 1-5'
 permissions:
   contents: write
   actions: read
