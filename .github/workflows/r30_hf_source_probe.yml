@@ -1,0 +1,38 @@
+name: R30 Verify Alternative XAU 2012–2026 Data Source (Read Only)
+on:
+  push:
+    branches: ['research/r30-pareto-direction-2012-2026-20261123']
+    paths:
+      - 'scripts/r30_hf_source_probe.py'
+      - '.github/workflows/r30_hf_source_probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        year: [2012,2016,2019]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/r30-pareto-direction-2012-2026-20261123
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install only parquet QA dependencies
+        run: pip install pandas==2.2.3 numpy==2.3.5 pyarrow
+      - name: HTTPS certificate-verified public XAU year parquet and field QA
+        run: |
+          python scripts/r30_hf_source_probe.py \
+            --year "${{ matrix.year }}" \
+            --output "artifacts/r30_source_probe/xau-${{ matrix.year }}.parquet"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r30-hf-source-probe-${{ matrix.year }}
+          path: artifacts/r30_source_probe/r30-source-probe-${{ matrix.year }}.json
+          retention-days: 30
+          if-no-files-found: warn
