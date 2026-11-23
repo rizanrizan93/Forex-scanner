@@ -41,6 +41,8 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
             st.session_state.setdefault("rizan_pair", default_pair)
             if default_pair == "XAUUSD":
                 st.session_state.setdefault("rizan_xau_detail", default_detail)
+    if st.session_state["rizan_xau_detail"] == "Titik Entry R28":
+        st.session_state["rizan_xau_detail"] = "Zona Entry TF"
                 st.session_state.setdefault(
                     "_rizan_last_xau_detail", st.session_state["rizan_xau_detail"]
                 )
@@ -89,7 +91,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Frozen Direction", "Titik Entry R28", "Arah Entry", "Fed R6 · Area Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Frozen Direction", "Zona Entry TF", "Arah Entry", "Fed R6 · Area Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -107,7 +109,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
                             if label == "Frozen Direction":
                                 from fx_scanner.frozen_direction_research_dashboard import render_frozen_direction_research
                                 render_frozen_direction_research()
-                            elif label == "Titik Entry R28":
+                            elif label in ("Zona Entry TF", "Titik Entry R28"):
                                 from fx_scanner.r281_smc_entry_dashboard import render_r281_smc_entry
                                 render_r281_smc_entry()
                             elif label == "Manual R3":
