@@ -170,7 +170,7 @@ def render_frozen_direction_research():
                     with st.expander("Bukti teknikal "+tf):st.dataframe(r["checks"],hide_index=True)
         st.markdown("### Chart dan zona tunggu")
         tf=st.radio("Timeframe chart",list(TFS),horizontal=True,key="frozen_r281_chart_tf")
-        bars=frames.get(tf);r=reports[tf];plan=horizon_plan(reports,tf)
+        bars=frames.get(tf);r=reports[tf];plan=horizon_plan(reports,tf);guide=guides[tf]
         st.caption("Horizon teknikal "+tf+" · "+plan["setup"]+" · timing "+str(plan["timing_tf"] or "lokal")+" "+str(plan["timing_side"] or "belum dievaluasi")+" · bukan hasil inferensi frozen")
         if bars is None or len(bars)<20:
             st.info("WAIT DATA · Data chart/level belum cukup.")
@@ -183,13 +183,13 @@ def render_frozen_direction_research():
         if chart.empty:return
         value=float(chart.close.iloc[-1])
         st.metric("Close terakhir "+tf,f"{value:,.2f}")
-        st.caption("Rentang 20 candle · kuartil bawah/atas, zona deskriptif, bukan zona yang sudah diuji.")
+        st.caption("Chart candle tertutup. Area berasal dari V05 WATCH atau kuartil 20 candle; belum lolos forward test sebagai level entry.")
         selected=[]
         if zone is not None:
-            st.metric(zone["label"]+" · "+zone["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
+            st.metric("AREA TUNGGU · "+guide["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
             st.caption("Batal jika close "+tf+(" di bawah " if zone["side"]=="BUY" else " di atas ")+f"{zone['invalidation']:,.2f}")
             if guide["state"]!="WATCH_ONLY":st.warning("Zona hanya referensi dengan konflik atau verifikasi belum lengkap; jangan anggap setup aktif.")
-            selected=[{"lo":zone["low"],"hi":zone["high"],"zone":zone["label"]}]
+            selected=[{"lo":zone["low"],"hi":zone["high"],"zone":"Buy the dip" if zone["side"]=="BUY" else "Sell on rebound"}]
         else:st.info("WAIT · Belum ada arah atau level yang dapat dihitung.")
         base=alt.Chart(chart).encode(x=alt.X("time:T",title="Candle close UTC"),tooltip=["WIB","open:Q","high:Q","low:Q","close:Q"])
         color=alt.condition("datum.close >= datum.open",alt.value("#149c78"),alt.value("#d65c5c"))
