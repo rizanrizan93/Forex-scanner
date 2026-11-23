@@ -325,6 +325,9 @@ def evaluate_entry(shadow, market, *, now=None):
         result["zone"]=chosen
         result["status"]=chosen["status"]
         result["reason"]=chosen["reason"]
+        if chosen["status"] == "PENDING_INVALIDATION":
+            # Expose a warning only, not a tradable/research WATCH zone.
+            return result
         if watch_only:
             result["status"] = "WATCH_H4_ABSTAIN"
             result["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
