@@ -11,8 +11,9 @@ from .r281_shadow_feed import fetch as fetch_r281
 from .rbest_side_feed import fetch as fetch_rbest
 from .r294_frozen_h4_buy_feed import fetch as fetch_r294
 from .manual_reversal_dashboard import fetch_manual_map
+from .manual_r3_feed import fetch_market
 from .best_candidate_direction import select as select_best_candidate_direction
-from .independent_timeframe_zones import independent_zones, TFS
+from .independent_timeframe_zones import independent_zones, fresh_m1_fallback_packet, TFS
 
 
 REASONS = {
@@ -72,6 +73,13 @@ def render_r281_smc_entry():
             snapshot=fetch_manual_map()
         except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
             snapshot=None
+        if not isinstance(snapshot,dict) or snapshot.get("fresh") is not True:
+            # GitHub reversal snapshot may lag behind LIVE M1. Reconstruct
+            # only native, fully closed H1/H4; never invent D1/W1 candles.
+            try:
+                snapshot=fresh_m1_fallback_packet(fetch_market(),now=datetime.now(UTC))
+            except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+                snapshot=None
         return best,h4buy,r281,snapshot
 
     @st.fragment(run_every="30s")
@@ -82,7 +90,17 @@ def render_r281_smc_entry():
         best,h4buy,r281,snapshot=load(int(now.timestamp()//20))
         primary=select_best_candidate_direction(best,h4buy,r281,now=now)
         zones=independent_zones(primary,snapshot,now=now)
-
+        if isinstance(snapshot,dict) and snapshot.get("source_detail")=="VALIDATED_FRESH_M1_REAGGREGATED_H1_H4_ONLY":
+            st.info(
+                "Sumber zona: cTrader M1 segar, diagregasi menjadi H1/H4 tertutup "
+                "secara ketat. D1/W1 memerlukan riwayat candle broker native "
+                "yang lebih panjang dan tidak akan ditebak dari M1."
+            )
+        elif snapshot is None or snapshot.get("fresh") is not True:
+            st.warning(
+                "Feed zona broker belum segar. Tidak menampilkan harga "
+                "dari snapshot historis yang kedaluwarsa."
+            )
         st.markdown("### Zona sesuai arah per timeframe")
         for tf in TFS:
             model=primary[tf]
