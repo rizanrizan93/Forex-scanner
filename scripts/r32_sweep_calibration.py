@@ -122,9 +122,9 @@ def exact_metrics(e,selected,variant,start,end,stress=0.):
         (e.entry_at>=begin).to_numpy()&(e.entry_at<until).to_numpy()&
         (e[f"exit_at_{variant}"]<until).to_numpy()&
         e[f"pnl_{variant}"].notna().to_numpy())
-    entries=e.entry_at.to_numpy()
-    exits=e[f"exit_at_{variant}"].to_numpy()
-    kept=[];last_end=np.datetime64("1900-01-01")
+    entries=e.entry_at.array.asi8
+    exits=e[f"exit_at_{variant}"].array.asi8
+    kept=[];last_end=np.iinfo(np.int64).min
     for i in candidates:
         if entries[i]<=last_end:continue
         kept.append(int(i));last_end=exits[i]
