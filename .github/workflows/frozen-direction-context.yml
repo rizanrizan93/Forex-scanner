@@ -4,8 +4,17 @@ on:
     branches: [main]
     paths:
       - 'src/fx_scanner/frozen_direction*.py'
+      - 'src/fx_scanner/manual_direction_map.py'
       - 'src/fx_scanner/ui_terminal.py'
       - 'tests/test_frozen_direction_context.py'
+      - 'tests/test_manual_direction_map.py'
+      - '.github/workflows/frozen-direction-context.yml'
+  pull_request:
+    paths:
+      - 'src/fx_scanner/frozen_direction*.py'
+      - 'src/fx_scanner/manual_direction_map.py'
+      - 'tests/test_frozen_direction_context.py'
+      - 'tests/test_manual_direction_map.py'
       - '.github/workflows/frozen-direction-context.yml'
   workflow_dispatch:
 permissions:
@@ -19,5 +28,5 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install pandas==2.2.3 streamlit==1.62.0 pytest==9.0.2
-      - run: PYTHONPATH=src pytest -q tests/test_frozen_direction_context.py tests/test_professional_terminal_ui.py
+      - run: PYTHONPATH=src pytest -q tests/test_frozen_direction_context.py tests/test_manual_direction_map.py tests/test_professional_terminal_ui.py
       - run: python -m py_compile src/fx_scanner/frozen_direction_research_dashboard.py scripts/publish_reversal_snapshot.py

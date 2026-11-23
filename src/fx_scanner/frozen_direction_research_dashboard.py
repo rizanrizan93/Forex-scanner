@@ -3,9 +3,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import json
 import pandas as pd
-from .frozen_direction_context import TFS, context, horizon_plan, next_candle_prediction, read_context_packet, session_closed, watch_zone
+from .frozen_direction_context import TFS, context, horizon_plan, read_context_packet, session_closed
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, URL
+from .manual_direction_map import historical_benchmarks, timeframe_guidance, r2_tactical
+from .predictive_zone_to_zone import build_zone_paths
+from .zone_v05_dashboard import fetch as fetch_v05
+from .entry_direction_r2.dashboard import fetch_snapshot as fetch_r2
 
 ROOT=Path(__file__).resolve().parents[2]
 LOCK=ROOT/"research/direction_benchmark_lock_r281_20261122.json"
@@ -64,36 +68,77 @@ def load_context_sources():
 def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
-    st.subheader("RIZAN XAU · Prediksi Candle Berikutnya")
-    st.caption("Prediksi close-ke-close H1 / H4 / D1 / W1, berbasis indikator teknikal READ-ONLY. Model frozen R28.1 belum berjalan sebagai prediktor live; tabel benchmark di bawah hanyalah hasil historis.")
+    st.subheader("RIZAN XAU · Panduan Manual per Timeframe")
+    st.caption("Riset close-ke-close H1/H4/D1/W1 dipisahkan dari bias teknikal dan zona observasi. Data historis terbaik TIDAK sama dengan model live. Tidak mengirim order.")
+    lock=json.loads(LOCK.read_text())
+    marks=historical_benchmarks(lock)
+    st.markdown("**Benchmark hasil replay (historis saja)**")
+    st.dataframe([
+        {"TF":tf,
+         "BUY (historis)":f"{marks[(tf,'BUY')]['accuracy']:.2%} · n={marks[(tf,'BUY')]['n']} · {marks[(tf,'BUY')]['version']}" if (tf,"BUY") in marks else "—",
+         "SELL (historis)":f"{marks[(tf,'SELL')]['accuracy']:.2%} · n={marks[(tf,'SELL')]['n']} · {marks[(tf,'SELL')]['version']}" if (tf,"SELL") in marks else "—"}
+        for tf in TFS],hide_index=True)
+    st.warning("Model R11–R28.1 yang diuji masih memerlukan ekspor model + parity replay sebelum menghasilkan sinyal live. Semua timeframe berstatus WAIT MODEL. Hasil BUY dan SELL berasal dari kebijakan/sampel berbeda; jangan digabung menjadi tingkat akurasi trading.")
     @st.cache_data(ttl=30,show_spinner=False)
     def read_sources(slot):
         return load_context_sources()
-    @st.fragment(run_every="60s")
+    @st.cache_data(ttl=30,show_spinner=False)
+    def read_manual_sources(slot):
+        try:
+            v05=fetch_v05()
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            v05=None
+        try:
+            r2=fetch_r2()
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,ImportError,OverflowError):
+            r2=None
+        return v05,r2
+
+    @st.fragment(run_every="30s")
     def panel():
         frames,reports,now=read_sources(int(datetime.now(UTC).timestamp()//30))
+        v05_snapshot,r2_snapshot=read_manual_sources(int(datetime.now(UTC).timestamp()//30))
+        try:
+            v05_paths=build_zone_paths(v05_snapshot,now=now) if v05_snapshot is not None else {}
+        except (ValueError,TypeError,KeyError,OverflowError):
+            v05_paths={}
+        tactical=r2_tactical(r2_snapshot,now=now) if r2_snapshot is not None else {"state":"WAIT"}
+        st.markdown("**Model entry R2 · sinyal taktis 60 menit (SELL saja)**")
+        st.caption("R2 diuji: 2023–2024 SELL 70/110 (63,6%), namun 2025 hanya 28/65 (43,1%). Bukan jaminan edge live atau prediksi H1 close.")
+        if tactical["state"]=="TRIGGER_SELL":
+            st.warning("R2: Pemicu SELL teramati (bukan prediksi close H1 dan bukan sinyal R28). Periksa kembali cTrader sebelum entry manual.")
+            x,y=st.columns(2)
+            x.metric("Acuan R2",f"{tactical['reference']:,.2f}")
+            y.metric("Level pola R2",f"{tactical['level']:,.2f}")
+            st.caption("Kedaluwarsa "+pd.Timestamp(tactical["expires"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB"))
+        else:
+            st.caption("R2: belum ada trigger SELL aktif yang lolos validasi feed/waktu. Detail dan checklist tersedia pada tab Arah Entry.")
         st.metric("Status pasar", "PASAR TUTUP" if session_closed(now) else "SESI PERDAGANGAN")
         st.caption("H1, H4, D1, W1 independen. Arah berbeda adalah konteks pullback/rebound potensial, bukan veto.")
         st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · update 60 detik")
         if session_closed(now):st.warning("Pasar XAU umumnya tutup akhir pekan. WAIT; arah terakhir tidak berlaku sebagai sinyal live.")
         elif not any(r["fresh"] for r in reports.values()):st.info("Belum ada timeframe dengan data segar.")
-        st.caption("Skor 0–5 = jumlah bukti teknikal, BUKAN probabilitas/akurasi. Hanya prediksi dengan data segar dan target candle yang belum berakhir dapat ditampilkan sebagai BUY/SELL; hipotesis teknikal ini belum diuji replay.")
-        zones={tf:watch_zone(frames.get(tf),reports[tf]) for tf in TFS}
+        st.caption("Skor 0–5 = bukti indikator, bukan probabilitas atau akurasi replay. Zona per TF adalah AREA TUNGGU, bukan sinyal eksekusi. Diperlukan rejection/reclaim dan BOS M5.")
+        guides={tf:timeframe_guidance(tf,reports[tf],frames.get(tf),reports,now=now,v05_paths=v05_paths) for tf in TFS}
+        zones={tf:guides[tf]["watch_area"] for tf in TFS}
         for tf in TFS:
             r=reports[tf]
+            guide=guides[tf]
             zone=zones[tf]
             plan=horizon_plan(reports,tf)
             with st.container(border=True):
-                st.markdown("**"+tf+" · arah close candle berikutnya**")
-                prediction=next_candle_prediction(r,tf,now=now)
-                st.metric("Prediksi "+tf+" ke depan",prediction["headline"])
-                if prediction["target_at"]:
-                    target=pd.Timestamp(prediction["target_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")
-                    st.caption("Target close: "+target+" · arah dibandingkan close candle sebelumnya · hipotesis teknikal, bukan model frozen.")
+                st.markdown("**"+tf+" · arah candle berikutnya & area tunggu**")
+                a,b=st.columns(2)
+                a.metric("Model hasil replay",guide["model"])
+                b.metric("Bias TEKNIKAL sementara",guide["technical"])
+                st.caption("Sumber riset: belum ada model live dengan parity replay terverifikasi. Bias teknikal saat ini adalah hipotesis TERPISAH, bukan prediksi R28.")
+                if guide["target_at"]:
+                    target=pd.Timestamp(guide["target_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")
+                    st.caption("Target close teknikal: "+target+" · dibandingkan close "+tf+" sebelumnya")
                 elif r["fresh"]:
-                    st.caption("WAIT · indikator belum memberikan arah; target BUY/SELL tidak aktif.")
+                    st.caption("WAIT · indikator teknikal belum memberi arah BUY/SELL.")
                 else:
-                    st.caption("WAIT DATA · belum ada candle tertutup yang valid dan cukup baru untuk memprediksi candle berikutnya.")
+                    st.caption("WAIT DATA · tidak tersedia candle tertutup yang cukup segar untuk timeframe ini.")
                 if r.get("closed_at"):
                     st.caption("Candle sumber terakhir: "+pd.Timestamp(r["closed_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")+" · "+r.get("source",""))
                 with st.expander("Audit indikator "+tf+" · historis jika data kedaluwarsa"):
@@ -111,18 +156,23 @@ def render_frozen_direction_research():
                     else:st.caption("Timing belum terkonfirmasi. Pantau struktur lokal; bukan sinyal entry.")
                 if zone is not None:
                     zc,dc=st.columns(2)
-                    zc.metric(zone["label"]+" · "+zone["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
-                    dc.metric("Jarak dari close "+tf,f"${zone['distance']:,.2f}")
-                    st.caption(zone["position"]+" · close referensi "+f"{zone['reference_close']:,.2f}"+" · batas invalidasi "+f"{zone['invalidation']:,.2f}"+" (close "+tf+")")
-                    st.caption("Zona kuartil rentang 20 candle; belum tervalidasi. "+("Tunggu konfirmasi lokal." if zone["active"] else "Historis saja; bukan area aktif."))
+                    zc.metric("AREA TUNGGU · "+zone["side"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
+                    dc.metric("Jarak ke zona (USD/oz)",f"{zone['distance']:,.2f}")
+                    st.caption(zone["source"]+" · "+zone["position"])
+                    st.caption("Invalidasi struktur: CLOSE "+tf+(" di bawah " if zone["side"]=="BUY" else " di atas ")+f"{zone['invalidation']:,.2f}"+". Bukan penempatan SL otomatis.")
+                    st.caption("Syarat timing: "+guide["confirmation"])
+                    if guide["state"]=="WAIT_OPPOSING_HIGHER_TF":
+                        st.warning("WAIT KONFLIK: timeframe lebih tinggi yang segar mengarah berlawanan. Jangan gunakan zona ini sebagai setup searah tren besar.")
+                    else:
+                        st.info("WATCH · Hanya referensi observasi. Butuh sentuhan, reclaim/rejection dan break struktur; tidak ada angka probabilitas pantulan yang tervalidasi.")
                 else:
-                    st.info("Zona "+tf+" belum tersedia: data kurang atau bias netral.")
+                    st.info("WAIT AREA "+tf+" · tidak ada zona pantau aktif dengan arah teknikal dan data valid.")
                 if r["checks"]:
                     with st.expander("Bukti teknikal "+tf):st.dataframe(r["checks"],hide_index=True)
         st.markdown("### Chart dan zona tunggu")
         tf=st.radio("Timeframe chart",list(TFS),horizontal=True,key="frozen_r281_chart_tf")
-        bars=frames.get(tf);r=reports[tf];plan=horizon_plan(reports,tf)
-        st.caption("Horizon acuan "+tf+" · "+plan["setup"]+" · timing "+str(plan["timing_tf"] or "lokal")+" "+str(plan["timing_side"] or "belum dievaluasi"))
+        bars=frames.get(tf);r=reports[tf];plan=horizon_plan(reports,tf);guide=guides[tf]
+        st.caption("Horizon teknikal "+tf+" · "+plan["setup"]+" · timing "+str(plan["timing_tf"] or "lokal")+" "+str(plan["timing_side"] or "belum dievaluasi")+" · bukan hasil inferensi frozen")
         if bars is None or len(bars)<20:
             st.info("WAIT DATA · Data chart/level belum cukup.")
             return
@@ -134,26 +184,25 @@ def render_frozen_direction_research():
         if chart.empty:return
         value=float(chart.close.iloc[-1])
         st.metric("Close terakhir "+tf,f"{value:,.2f}")
-        st.caption("Rentang 20 candle · kuartil bawah/atas, zona deskriptif, bukan zona yang sudah diuji.")
+        st.caption("Chart candle tertutup. Area berasal dari V05 WATCH atau kuartil 20 candle; belum lolos forward test sebagai level entry.")
         selected=[]
         if zone is not None:
-            st.metric(zone["label"]+" · "+zone["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
+            st.metric("AREA TUNGGU · "+guide["state"],f"{zone['low']:,.2f}–{zone['high']:,.2f}")
             st.caption("Batal jika close "+tf+(" di bawah " if zone["side"]=="BUY" else " di atas ")+f"{zone['invalidation']:,.2f}")
-            if not zone["active"]:st.warning("Zona historis saja · tidak berlaku sebagai zona aktif.")
-            selected=[{"lo":zone["low"],"hi":zone["high"],"zone":zone["label"]}]
+            if guide["state"]!="WATCH_ONLY":st.warning("Zona hanya referensi dengan konflik atau verifikasi belum lengkap; jangan anggap setup aktif.")
+            selected=[{"lo":zone["low"],"hi":zone["high"],"zone":"Buy the dip" if zone["side"]=="BUY" else "Sell on rebound"}]
         else:st.info("WAIT · Belum ada arah atau level yang dapat dihitung.")
         base=alt.Chart(chart).encode(x=alt.X("time:T",title="Candle close UTC"),tooltip=["WIB","open:Q","high:Q","low:Q","close:Q"])
         color=alt.condition("datum.close >= datum.open",alt.value("#149c78"),alt.value("#d65c5c"))
         pic=base.mark_rule().encode(y=alt.Y("low:Q",scale=alt.Scale(zero=False),title="XAUUSD"),y2="high:Q",color=color)+base.mark_bar(size=4).encode(y="open:Q",y2="close:Q",color=color)
         if selected:
             shades=pd.DataFrame([{**z,"start":chart.index.min(),"end":chart.index.max()} for z in selected])
-            rect=alt.Chart(shades).mark_rect(opacity=.12 if zone["active"] else .06).encode(x="start:T",x2="end:T",y=alt.Y("lo:Q",scale=alt.Scale(zero=False)),y2="hi:Q",color=alt.Color("zone:N",scale=alt.Scale(domain=["Buy the dip","Sell on rebound"],range=["#149c78","#d65c5c"]),legend=None))
+            rect=alt.Chart(shades).mark_rect(opacity=.12 if guide["state"]=="WATCH_ONLY" else .06).encode(x="start:T",x2="end:T",y=alt.Y("lo:Q",scale=alt.Scale(zero=False)),y2="hi:Q",color=alt.Color("zone:N",scale=alt.Scale(domain=["Buy the dip","Sell on rebound"],range=["#149c78","#d65c5c"]),legend=None))
             pic=rect+pic
         st.altair_chart(pic.properties(height=340),width="stretch")
         st.caption("Tidak ada izin entry/order; arah setiap timeframe adalah hipotesis teknikal, bukan model probabilitas.")
     panel()
-    lock=json.loads(LOCK.read_text())
-    with st.expander("8 benchmark historis frozen R28.1",expanded=True):
+    with st.expander("8 benchmark historis frozen R28.1 · rincian audit",expanded=False):
         entries=lock["entries"]
         st.dataframe([{"TF":e["tf"],"Arah":e["side"],"Versi":e["version"],"Akurasi":f"{e['accuracy']:.2%}","n":e["n"]} for e in entries],hide_index=True)
         st.caption("Hasil berbeda kebijakan dan periode; bukan peluang BUY/SELL sekarang.")
