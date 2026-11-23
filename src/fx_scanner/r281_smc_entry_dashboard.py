@@ -17,6 +17,7 @@ REASONS = {
     "R28_H4_ABSTAIN_WATCH_ONLY": "D1 dan H1 searah; H4 abstain. Pantau zona tanpa entry.",
     "R28_H4_ABSTAIN_ENTRY_BLOCKED": "H4 WAIT MODEL (ambang skor); zona tetap terlihat, harga entry diblokir.",
     "R28_H4_ABSTAIN_NO_VALID_ZONE": "D1 dan H1 searah, tetapi H4 abstain dan belum ada zona H1/H4 valid.",
+    "LIVE_PRICE_BEYOND_ZONE_INVALIDATION_WAIT_SOURCE_CLOSE": "Harga melewati batas invalidasi zona saat candle sumber belum ditutup; bukan zona entry.",
     "BROKER_M1_UNAVAILABLE": "Feed candle M1 cTrader tidak tersedia.",
     "BROKER_M1_STALE": "Data M1 cTrader terlambat; tunggu pembaruan.",
     "M1_HISTORY_INSUFFICIENT": "Riwayat M1 tidak cukup untuk membangun zona.",
@@ -93,10 +94,14 @@ def render_r281_smc_entry():
         st.write("**Alasan/status:** "+REASONS.get(report["reason"],report["reason"]))
         zone=report.get("zone")
         if zone:
+            if report["status"]=="PENDING_INVALIDATION":
+                st.error("ZONA PENDING INVALIDATION · harga melewati batas zona. "
+                         "Tunggu candle H1/H4 selesai sebelum menyatakan batal atau pulih. "
+                         "Dilarang digunakan sebagai referensi entry.")
             st.markdown("### Zona harga hasil rekonstruksi candle cTrader")
             z1,z2,z3=st.columns(3)
             z1.metric("Zona "+zone["timeframe"],f'{zone["low"]:,.2f} – {zone["high"]:,.2f}')
-            z2.metric("SL struktural indikatif",f'{zone["invalidation_reference"]:,.2f}')
+            z2.metric("Batas invalidasi zona",f'{zone["zone_invalidation"]:,.2f}')
             z3.metric("Harga candle referensi",f'{zone["last_price"]:,.2f}')
             st.caption(
                 "Zona: "+zone["side"]+" · dibentuk "+_wib(zone["formed_at"])
@@ -122,7 +127,7 @@ def render_r281_smc_entry():
             st.info("WAIT ENTRY · belum ada harga entry yang memenuhi semua filter. "
                     "Tampilkan zona pantauan tanpa memasang order otomatis.")
         if report.get("candidates"):
-            st.markdown("### Zona kandidat & checkpoint")
+            st.markdown("### Zona kandidat & checkpoint (bukan izin order)")
             st.dataframe([
                 {"TF":z["timeframe"],"Side":z["side"],"Zona":f'{z["low"]:.2f}–{z["high"]:.2f}',
                  "Tahap":z["status"],"Alasan":REASONS.get(z["reason"],z["reason"]),
