@@ -50,7 +50,7 @@ def record(tf):
     year = next((a for a in data["annual"] if a["year"] == 2025), None)
     if not year or year["status"] != "EVALUATED":
         raise ValueError("R281_FROZEN_ANNUAL_CONFIG_MISSING")
-    family = "price_fx" if tf == "1D" else "price"
+    family = {"1h": "price", "4h": "price", "1D": "price_fx", "1W": "fx"}[tf]
     policy = year["policies"][family]
     for side in ("BUY", "SELL"):
         if policy[side + "_config"] is None:
@@ -162,7 +162,7 @@ def run(tf, now=None):
         raise AssertionError("R281_FEATURE_INDEX_PARITY")
     # Replicate the original R28.1 common-sample policy: ALL price/fx columns
     # must be finite even for the price-only group.
-    x = pd.concat([p, q], axis=1) if family == "price_fx" else p
+    x = pd.concat([p, q], axis=1) if family == "price_fx" else q if family == "fx" else p
     eligible = eligible & (times.year >= 2019) & (times.year <= 2025)
     clean = np.isfinite(p.to_numpy(float)).all(axis=1) & np.isfinite(q.to_numpy(float)).all(axis=1)
     valid = eligible & clean
