@@ -132,7 +132,7 @@ def liquidity_sweep_events(d, features, tf):
                         "hour_wib":int((d.index[signal].hour+7)%24),
                         "entry":entryp,"stop":stop,"risk":float(risk),
                     })
-    if not out:raise RuntimeError(f"R32L_SOURCE_TF_SWEEPS_EMPTY:{tf}")
+    # Empty is a valid research outcome (especially sparse W1), never invent trades.
     return out
 
 
