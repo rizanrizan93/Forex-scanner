@@ -1,0 +1,75 @@
+{
+  "profile": "r16_quality_all",
+  "first_missing_core_entries": [
+    {
+      "Entry": "2019-04-01T07:30:00Z",
+      "Exit": "2019-04-01T11:30:00Z",
+      "Symbol": "EURUSD",
+      "Pnl": -17.123000000001973,
+      "BalanceAfter": 497.1761195075341,
+      "Children": 43,
+      "ReferenceBalance": 514.299119507536,
+      "AcceptedChildren": 43,
+      "Origin": "GUARD47"
+    },
+    {
+      "Entry": "2019-06-07T15:00:00Z",
+      "Exit": "2019-06-07T15:55:23Z",
+      "Symbol": "XAUUSD",
+      "Pnl": -41.928499999998266,
+      "BalanceAfter": 1081.9129907032386,
+      "Children": 10,
+      "ReferenceBalance": 1123.8414907032368,
+      "AcceptedChildren": 10,
+      "Origin": "GUARD47"
+    },
+    {
+      "Entry": "2019-06-17T13:00:00Z",
+      "Exit": "2019-06-17T19:59:00Z",
+      "Symbol": "XAUUSD",
+      "Pnl": -0.770099999999593,
+      "BalanceAfter": 1045.412890703239,
+      "Children": 10,
+      "ReferenceBalance": 1046.1829907032386,
+      "AcceptedChildren": 10,
+      "Origin": "GUARD47"
+    }
+  ],
+  "first_addon_baskets": [
+    {
+      "Entry": "2019-01-03T06:00:02Z",
+      "Exit": "2019-01-03T07:52:17Z",
+      "Symbol": "XAUUSD",
+      "Pnl": -2.731399999999776,
+      "BalanceAfter": 125.10459999999951,
+      "Children": 1,
+      "ReferenceBalance": 0,
+      "AcceptedChildren": 1,
+      "Origin": "ADDON"
+    },
+    {
+      "Entry": "2019-01-07T06:00:02Z",
+      "Exit": "2019-01-07T06:07:39Z",
+      "Symbol": "XAUUSD",
+      "Pnl": -3.737999999999083,
+      "BalanceAfter": 126.66560000000058,
+      "Children": 1,
+      "ReferenceBalance": 0,
+      "AcceptedChildren": 1,
+      "Origin": "ADDON"
+    },
+    {
+      "Entry": "2019-01-15T14:30:02Z",
+      "Exit": "2019-01-15T15:14:16Z",
+      "Symbol": "XAUUSD",
+      "Pnl": -1.8982999999996628,
+      "BalanceAfter": 122.31820000000104,
+      "Children": 1,
+      "ReferenceBalance": 0,
+      "AcceptedChildren": 1,
+      "Origin": "ADDON"
+    }
+  ],
+  "guard_enabled": false,
+  "native_profile_completed_marker": "r16_quality_all"
+}
