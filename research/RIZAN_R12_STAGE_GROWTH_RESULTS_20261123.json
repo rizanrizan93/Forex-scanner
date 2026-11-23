@@ -1,0 +1,1134 @@
+{
+  "study": "R12_64_SESSION_STAGE_POLICIES",
+  "configurations": 64,
+  "families": 2,
+  "model_years": 960,
+  "execution_scenarios": 4,
+  "scenario_model_years": 3840,
+  "development_qualified": 0,
+  "validation_qualified": 0,
+  "evaluation_qualified": 0,
+  "positive_pooled_stress_expectancy_configurations": 0,
+  "screen_survivors": [],
+  "native_ACCEPT": 0,
+  "native_parity": false,
+  "incremental_filled_baskets": null,
+  "incremental_winning_baskets": null,
+  "continuous_wallet_balance_change": null,
+  "max_floating_DD_change": null,
+  "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45102692253",
+  "commit_sha": "8f1bbd6c6e773778c1bdcd8585f610cafe40d8e8",
+  "multiple_testing": "64 related policies across two families, plus all prior searches S5-S10/R11/R11B. No significance or pristine OOS claim; forward and family-wise evidence required.",
+  "status": "REJECT_ALL_SCREENED",
+  "production_changes": false,
+  "standalone_past_only_annual_switch": [
+    {
+      "year": 2019,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2020,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2021,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2022,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2023,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2024,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2025,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2026,
+      "selected_using_prior_years": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    }
+  ],
+  "standalone_past_only_ending_cash": {
+    "A1": 100.0,
+    "B1": 100.0,
+    "A2": 100.0,
+    "B2": 100.0
+  },
+  "selection_warning": "All per-policy annual wallets are descriptive; no Frozen balance improvement. Reused history; no pristine OOS.",
+  "target_10_billion_verified": false,
+  "annual_diagnostics_not_selection": {
+    "2023": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 8,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 144.15644848858142,
+        "worst_ending_cash": 42.96360826639935,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|-1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 8,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 144.15644848858142,
+        "worst_ending_cash": 42.96360826639935,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|-1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 137.21884979622374,
+        "worst_ending_cash": 79.83793118854368,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_H4|-1|12|12|180|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 137.21884979622374,
+        "worst_ending_cash": 79.83793118854368,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_H4|-1|12|12|180|2.5|False"
+      }
+    },
+    "2022": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 18,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 134.22127060778104,
+        "worst_ending_cash": 47.27929889639125,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 18,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 134.22127060778104,
+        "worst_ending_cash": 47.27929889639125,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 116.56388921973362,
+        "worst_ending_cash": 71.20320806896781,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|1|12|12|180|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 116.56388921973362,
+        "worst_ending_cash": 71.20320806896781,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|1|12|12|180|2.5|False"
+      }
+    },
+    "2024": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 21,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 143.0168147833178,
+        "worst_ending_cash": 48.67155450209819,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|-1|12|12|60|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 21,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 143.0168147833178,
+        "worst_ending_cash": 48.67155450209819,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|-1|12|12|60|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 4,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 136.9341067396175,
+        "worst_ending_cash": 70.78744756060567,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_BOTH|1|12|12|180|1.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 4,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 136.9341067396175,
+        "worst_ending_cash": 70.78744756060567,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_BOTH|1|12|12|180|1.5|False"
+      }
+    },
+    "2016": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 131.1709902849157,
+        "worst_ending_cash": 43.935082109108514,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_BOTH|1|12|12|180|1.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 131.1709902849157,
+        "worst_ending_cash": 43.935082109108514,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_BOTH|1|12|12|180|1.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 124.87085743819563,
+        "worst_ending_cash": 61.71681366760637,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_BOTH|-1|12|12|60|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 124.87085743819563,
+        "worst_ending_cash": 61.71681366760637,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_BOTH|-1|12|12|60|2.5|False"
+      }
+    },
+    "2021": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 13,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 158.5000943446815,
+        "worst_ending_cash": 32.51130234953889,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_H4|-1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 13,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 158.5000943446815,
+        "worst_ending_cash": 32.51130234953889,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_H4|-1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 8,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 141.45030763358176,
+        "worst_ending_cash": 68.26404737005203,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|-1|12|12|180|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 8,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 141.45030763358176,
+        "worst_ending_cash": 68.26404737005203,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|-1|12|12|180|2.5|False"
+      }
+    },
+    "2012": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 121.47062528417021,
+        "worst_ending_cash": 41.01776816070719,
+        "hindsight_best_config_not_selected": "OR30_LONDON_BOTH|-1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 121.47062528417021,
+        "worst_ending_cash": 41.01776816070719,
+        "hindsight_best_config_not_selected": "OR30_LONDON_BOTH|-1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 117.19135146505893,
+        "worst_ending_cash": 65.48742339741001,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|60|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 117.19135146505893,
+        "worst_ending_cash": 65.48742339741001,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|60|2.5|False"
+      }
+    },
+    "2017": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 116.80947996401575,
+        "worst_ending_cash": 39.01133763336749,
+        "hindsight_best_config_not_selected": "OR30_LONDON_BOTH|1|12|12|180|1.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 116.80947996401575,
+        "worst_ending_cash": 39.01133763336749,
+        "hindsight_best_config_not_selected": "OR30_LONDON_BOTH|1|12|12|180|1.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 109.55818702814635,
+        "worst_ending_cash": 75.37786172181322,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_H4|-1|12|12|180|1.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 109.55818702814635,
+        "worst_ending_cash": 75.37786172181322,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_H4|-1|12|12|180|1.5|False"
+      }
+    },
+    "2026": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 127.4256443272717,
+        "worst_ending_cash": 69.17674239902198,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|-1|12|12|180|1.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 127.4256443272717,
+        "worst_ending_cash": 69.17674239902198,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|-1|12|12|180|1.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 107.31211726825461,
+        "worst_ending_cash": 71.7517143752874,
+        "hindsight_best_config_not_selected": "OR30_LONDON_BOTH|1|12|12|60|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 107.31211726825461,
+        "worst_ending_cash": 71.7517143752874,
+        "hindsight_best_config_not_selected": "OR30_LONDON_BOTH|1|12|12|60|2.5|False"
+      }
+    },
+    "2018": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 101.43377150404133,
+        "worst_ending_cash": 33.9717926785014,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_BOTH|-1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 101.43377150404133,
+        "worst_ending_cash": 33.9717926785014,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_BOTH|-1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 100.0,
+        "worst_ending_cash": 76.37363899472574,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|1|12|12|60|1.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 100.0,
+        "worst_ending_cash": 76.37363899472574,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|1|12|12|60|1.5|False"
+      }
+    },
+    "2020": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 116.73474311728646,
+        "worst_ending_cash": 37.5350892321092,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|-1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 116.73474311728646,
+        "worst_ending_cash": 37.5350892321092,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|-1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 127.90439858170025,
+        "worst_ending_cash": 68.74471894881447,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|180|1.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 127.90439858170025,
+        "worst_ending_cash": 68.74471894881447,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|180|1.5|False"
+      }
+    },
+    "2019": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 11,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 136.21645476752664,
+        "worst_ending_cash": 55.54156585459671,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|-1|12|12|60|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 11,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 136.21645476752664,
+        "worst_ending_cash": 55.54156585459671,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|-1|12|12|60|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 127.598508145544,
+        "worst_ending_cash": 84.27763624756234,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|1|12|12|180|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 127.598508145544,
+        "worst_ending_cash": 84.27763624756234,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|1|12|12|180|2.5|False"
+      }
+    },
+    "2014": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 6,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 140.30414415527758,
+        "worst_ending_cash": 37.117825546176434,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|180|2.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 6,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 140.30414415527758,
+        "worst_ending_cash": 37.117825546176434,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|180|2.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 100.0,
+        "worst_ending_cash": 67.9481354246081,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|1|12|12|60|1.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 100.0,
+        "worst_ending_cash": 67.9481354246081,
+        "hindsight_best_config_not_selected": "OR30_LONDON_H4|1|12|12|60|1.5|False"
+      }
+    },
+    "2025": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 139.52358384554572,
+        "worst_ending_cash": 41.55361805247537,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|1|12|12|180|1.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 139.52358384554572,
+        "worst_ending_cash": 41.55361805247537,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|1|12|12|180|1.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 131.94214986334453,
+        "worst_ending_cash": 80.26060079660046,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|60|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 131.94214986334453,
+        "worst_ending_cash": 80.26060079660046,
+        "hindsight_best_config_not_selected": "M15PULLBACK_LONDON_H4|1|12|12|60|2.5|False"
+      }
+    },
+    "2013": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 14,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 160.11428248690183,
+        "worst_ending_cash": 36.98028093615778,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|-1|12|12|180|1.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 14,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 160.11428248690183,
+        "worst_ending_cash": 36.98028093615778,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|-1|12|12|180|1.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 132.21707018708918,
+        "worst_ending_cash": 67.8581240231678,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|-1|12|12|180|1.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 132.21707018708918,
+        "worst_ending_cash": 67.8581240231678,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_H4|-1|12|12|180|1.5|False"
+      }
+    },
+    "2015": {
+      "A1": {
+        "configurations": 64,
+        "hit125": 11,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 143.23266717972737,
+        "worst_ending_cash": 53.235877078280154,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_BOTH|-1|12|12|180|1.5|False"
+      },
+      "B1": {
+        "configurations": 64,
+        "hit125": 11,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 143.23266717972737,
+        "worst_ending_cash": 53.235877078280154,
+        "hindsight_best_config_not_selected": "M15PULLBACK_NEWYORK_BOTH|-1|12|12|180|1.5|False"
+      },
+      "A2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 113.10800000000111,
+        "worst_ending_cash": 77.31250004543726,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|1|12|12|180|2.5|False"
+      },
+      "B2": {
+        "configurations": 64,
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_descriptive_only": 113.10800000000111,
+        "worst_ending_cash": 77.31250004543726,
+        "hindsight_best_config_not_selected": "OR30_NEWYORK_BOTH|1|12|12|180|2.5|False"
+      }
+    }
+  }
+}
