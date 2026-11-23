@@ -1,0 +1,28 @@
+name: RIZAN R15 Build Local Native Replay Runtime
+on:
+  push:
+    branches: ['research/r15-local-native-terminal']
+    paths: ['.github/workflows/r15_native_runtime.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Verify original native source hashes
+        run: python3 research/r11_profitable_addon_alpha/native_audit.py
+      - name: Publish self-contained Linux native replay
+        run: dotnet publish research/r11_profitable_addon_alpha/native_original/native_replay/NovemberReplay.csproj -c Release -r linux-x64 --self-contained true -o artifacts/r15/runtime
+      - name: Record binary hashes
+        run: sha256sum artifacts/r15/runtime/* > artifacts/r15/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r15-native-linux-runtime
+          path: artifacts/r15/
+          retention-days: 90
