@@ -92,6 +92,19 @@ def render_frozen_direction_research():
     @st.fragment(run_every="30s")
     def panel():
         frames,reports,now=read_sources(int(datetime.now(UTC).timestamp()//30))
+        # Render the next-close directions immediately; zone/R2 network calls
+        # cannot delay or falsely override the H1/H4/D1/W1 forecast summary.
+        quick_guides={tf:timeframe_guidance(tf,reports[tf],frames.get(tf),reports,now=now) for tf in TFS}
+        st.markdown("### Prediksi arah indikatif · candle berikutnya")
+        summary=direction_board_rows(quick_guides)
+        st.dataframe([{k:v for k,v in x.items() if k in ("TF","Arah","Target close (WIB)","Sumber")} for x in summary],
+                     hide_index=True, width="stretch")
+        st.caption("BUY: diperkirakan close berikutnya lebih tinggi · SELL: lebih rendah. Data stale/netral = WAIT. Ini bukti teknikal, bukan hasil fitted R28.1.")
+        st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · pembaruan otomatis 30 detik")
+        if session_closed(now):
+            st.warning("Pasar XAU tutup; arah historis tidak boleh dibaca sebagai sinyal saat ini.")
+        elif not any(r["fresh"] for r in reports.values()):
+            st.info("Belum ada candle segar untuk prediksi BUY/SELL; tunggu feed broker.")
         v05_snapshot,r2_snapshot=read_manual_sources(int(datetime.now(UTC).timestamp()//30))
         try:
             v05_paths=build_zone_paths(v05_snapshot,now=now) if v05_snapshot is not None else {}
@@ -99,17 +112,6 @@ def render_frozen_direction_research():
             v05_paths={}
         guides={tf:timeframe_guidance(tf,reports[tf],frames.get(tf),reports,now=now,v05_paths=v05_paths) for tf in TFS}
         zones={tf:guides[tf]["watch_area"] for tf in TFS}
-        st.markdown("### Prediksi arah indikatif · candle berikutnya")
-        summary=direction_board_rows(guides)
-        # Display forecasts before historical metrics or unrelated entry engines.
-        st.dataframe([{k:v for k,v in x.items() if k in ("TF","Arah","Target close (WIB)","Sumber")} for x in summary],
-                     hide_index=True, width="stretch")
-        st.caption("BUY berarti perkiraan close candle berikutnya lebih tinggi; SELL lebih rendah. Lima indikator ini belum memiliki akurasi replay R28.1. WAIT jika data kedaluwarsa, pasar tutup atau bukti netral.")
-        st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · pembaruan otomatis 30 detik")
-        if session_closed(now):
-            st.warning("Pasar XAU tutup; arah historis tidak boleh dibaca sebagai sinyal saat ini.")
-        elif not any(r["fresh"] for r in reports.values()):
-            st.info("Belum ada candle segar untuk prediksi BUY/SELL; tunggu feed broker.")
         tactical=r2_tactical(r2_snapshot,now=now) if r2_snapshot is not None else {"state":"WAIT"}
         if tactical["state"]=="TRIGGER_SELL":
             st.warning("R2: Pemicu SELL manual teramati; model R2 berbeda dari prediksi close-ke-close dan tidak mengesahkan order.")
