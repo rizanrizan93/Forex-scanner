@@ -1,0 +1,911 @@
+{
+  "study": "R13_EURUSD_R12_REPLICATION",
+  "configurations": 64,
+  "families": 2,
+  "years": 14,
+  "scenario_configuration_years": 3584,
+  "development_qualified": 0,
+  "validation_qualified": 0,
+  "evaluation_qualified": 0,
+  "positive_pooled_stress_expectancy_configurations": 0,
+  "native_parity": false,
+  "production_changes": false,
+  "terminal_Frozen_balance_change": null,
+  "standalone_past_only_ending_cash": {
+    "A1": 100.0,
+    "B1": 100.0,
+    "A2": 100.0,
+    "B2": 100.0
+  },
+  "walk_forward": [
+    {
+      "year": 2019,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2020,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2021,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2022,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2023,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2024,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    },
+    {
+      "year": 2025,
+      "past_only_selected": null,
+      "wallet": {
+        "A1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B1": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "A2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        },
+        "B2": {
+          "initial_cash": 100.0,
+          "ending_cash": 100.0,
+          "filled": 0,
+          "rejects": {},
+          "first_settled_threshold_utc": {
+            "125": null,
+            "250": null,
+            "1000": null
+          },
+          "max_settled_cash_DD": 0.0,
+          "native_wallet": false,
+          "floating_DD": null,
+          "broker_specs_certified": false
+        }
+      }
+    }
+  ],
+  "commit_sha": "60e12fd01d06faf2de0f0d2975ec961480e2922d",
+  "run_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45104089377",
+  "target_10_billion_verified": false,
+  "caveat": "Reused history and related R12 hypotheses; hypothetical execution costs/specs. No2026, pristine OOS, significance, floating DD or native wallet claim.",
+  "annual_diagnostics_only": {
+    "2023": {
+      "A1": {
+        "hit125": 15,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 144.52352905652756,
+        "worst_ending_cash": 27.22514589756877
+      },
+      "B1": {
+        "hit125": 15,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 144.52352905652756,
+        "worst_ending_cash": 27.22514589756877
+      },
+      "A2": {
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.53901153221202,
+        "worst_ending_cash": 22.44121592743788
+      },
+      "B2": {
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.53901153221202,
+        "worst_ending_cash": 22.44121592743788
+      }
+    },
+    "2022": {
+      "A1": {
+        "hit125": 12,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 124.26805590012819,
+        "worst_ending_cash": 36.01031157010711
+      },
+      "B1": {
+        "hit125": 12,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 124.26805590012819,
+        "worst_ending_cash": 36.01031157010711
+      },
+      "A2": {
+        "hit125": 4,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 89.59416295591362,
+        "worst_ending_cash": 32.48058979354947
+      },
+      "B2": {
+        "hit125": 4,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 89.59416295591362,
+        "worst_ending_cash": 32.48058979354947
+      }
+    },
+    "2024": {
+      "A1": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 130.69169941448254,
+        "worst_ending_cash": 37.2107750711381
+      },
+      "B1": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 130.69169941448254,
+        "worst_ending_cash": 37.2107750711381
+      },
+      "A2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 72.6390835394282,
+        "worst_ending_cash": 29.220895093365993
+      },
+      "B2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 72.6390835394282,
+        "worst_ending_cash": 29.220895093365993
+      }
+    },
+    "2016": {
+      "A1": {
+        "hit125": 15,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 143.95849877699325,
+        "worst_ending_cash": 31.67622831925728
+      },
+      "B1": {
+        "hit125": 15,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 143.95849877699325,
+        "worst_ending_cash": 31.67622831925728
+      },
+      "A2": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.67578709025904,
+        "worst_ending_cash": 26.37499424207144
+      },
+      "B2": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.67578709025904,
+        "worst_ending_cash": 26.37499424207144
+      }
+    },
+    "2021": {
+      "A1": {
+        "hit125": 3,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 104.03716627306781,
+        "worst_ending_cash": 30.508756752656797
+      },
+      "B1": {
+        "hit125": 3,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 104.03716627306781,
+        "worst_ending_cash": 30.508756752656797
+      },
+      "A2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 75.76874057407535,
+        "worst_ending_cash": 25.076127094730282
+      },
+      "B2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 75.76874057407535,
+        "worst_ending_cash": 25.076127094730282
+      }
+    },
+    "2012": {
+      "A1": {
+        "hit125": 6,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 143.82342221066799,
+        "worst_ending_cash": 24.476829509170845
+      },
+      "B1": {
+        "hit125": 6,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 143.82342221066799,
+        "worst_ending_cash": 24.476829509170845
+      },
+      "A2": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 135.75764772363922,
+        "worst_ending_cash": 24.642482885261938
+      },
+      "B2": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 135.75764772363922,
+        "worst_ending_cash": 24.642482885261938
+      }
+    },
+    "2017": {
+      "A1": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 92.89951122780667,
+        "worst_ending_cash": 29.311849989294178
+      },
+      "B1": {
+        "hit125": 2,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 92.89951122780667,
+        "worst_ending_cash": 29.311849989294178
+      },
+      "A2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 80.64879523775892,
+        "worst_ending_cash": 24.803519162933213
+      },
+      "B2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 80.64879523775892,
+        "worst_ending_cash": 25.377068968191104
+      }
+    },
+    "2018": {
+      "A1": {
+        "hit125": 10,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 135.6567162883117,
+        "worst_ending_cash": 39.764584323672324
+      },
+      "B1": {
+        "hit125": 10,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 135.6567162883117,
+        "worst_ending_cash": 39.764584323672324
+      },
+      "A2": {
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 114.37203811529048,
+        "worst_ending_cash": 33.67651548223211
+      },
+      "B2": {
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 114.37203811529048,
+        "worst_ending_cash": 33.67651548223211
+      }
+    },
+    "2020": {
+      "A1": {
+        "hit125": 6,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.99481903886624,
+        "worst_ending_cash": 38.702838749105
+      },
+      "B1": {
+        "hit125": 6,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.99481903886624,
+        "worst_ending_cash": 38.702838749105
+      },
+      "A2": {
+        "hit125": 3,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 95.9143546011218,
+        "worst_ending_cash": 33.30816196412476
+      },
+      "B2": {
+        "hit125": 3,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 95.9143546011218,
+        "worst_ending_cash": 33.30816196412476
+      }
+    },
+    "2019": {
+      "A1": {
+        "hit125": 11,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 122.13210096796882,
+        "worst_ending_cash": 31.217927285272136
+      },
+      "B1": {
+        "hit125": 11,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 122.13210096796882,
+        "worst_ending_cash": 31.217927285272136
+      },
+      "A2": {
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 103.2518346906263,
+        "worst_ending_cash": 21.691409628509916
+      },
+      "B2": {
+        "hit125": 5,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 103.2518346906263,
+        "worst_ending_cash": 21.691409628509916
+      }
+    },
+    "2014": {
+      "A1": {
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 141.73914185902896,
+        "worst_ending_cash": 31.986519299467904
+      },
+      "B1": {
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 141.73914185902896,
+        "worst_ending_cash": 31.986519299467904
+      },
+      "A2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 101.95197236029392,
+        "worst_ending_cash": 26.981654874672152
+      },
+      "B2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 101.95197236029392,
+        "worst_ending_cash": 26.981654874672152
+      }
+    },
+    "2025": {
+      "A1": {
+        "hit125": 3,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.79748681110235,
+        "worst_ending_cash": 27.17419252162087
+      },
+      "B1": {
+        "hit125": 3,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 132.79748681110235,
+        "worst_ending_cash": 27.17419252162087
+      },
+      "A2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 105.53438129700315,
+        "worst_ending_cash": 25.92279752133943
+      },
+      "B2": {
+        "hit125": 0,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 105.53438129700315,
+        "worst_ending_cash": 25.92279752133943
+      }
+    },
+    "2013": {
+      "A1": {
+        "hit125": 9,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 139.76369159777903,
+        "worst_ending_cash": 47.29101197558782
+      },
+      "B1": {
+        "hit125": 9,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 139.76369159777903,
+        "worst_ending_cash": 47.29101197558782
+      },
+      "A2": {
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 124.98212037778941,
+        "worst_ending_cash": 35.071992866619816
+      },
+      "B2": {
+        "hit125": 1,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 124.98212037778941,
+        "worst_ending_cash": 35.071992866619816
+      }
+    },
+    "2015": {
+      "A1": {
+        "hit125": 29,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 153.07699869549612,
+        "worst_ending_cash": 30.52797585567905
+      },
+      "B1": {
+        "hit125": 29,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 153.07699869549612,
+        "worst_ending_cash": 30.52797585567905
+      },
+      "A2": {
+        "hit125": 19,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 137.64583590286264,
+        "worst_ending_cash": 29.537509411684635
+      },
+      "B2": {
+        "hit125": 19,
+        "hit250": 0,
+        "hit1000": 0,
+        "best_ending_cash_hindsight_only": 137.64583590286264,
+        "worst_ending_cash": 29.537509411684635
+      }
+    }
+  },
+  "full_results_artifact": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45104089377/artifacts/14786198392"
+}
