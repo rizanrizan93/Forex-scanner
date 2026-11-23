@@ -41,8 +41,6 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
             st.session_state.setdefault("rizan_pair", default_pair)
             if default_pair == "XAUUSD":
                 st.session_state.setdefault("rizan_xau_detail", default_detail)
-    if st.session_state["rizan_xau_detail"] == "Titik Entry R28":
-        st.session_state["rizan_xau_detail"] = "Zona Entry TF"
                 st.session_state.setdefault(
                     "_rizan_last_xau_detail", st.session_state["rizan_xau_detail"]
                 )
@@ -55,6 +53,8 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
         st.session_state["_rizan_active_route"] = route
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
+    if st.session_state.get("rizan_xau_detail") == "Titik Entry R28":
+        st.session_state["rizan_xau_detail"] = "Zona Entry TF"
     # Normalize retired analysis labels after a live Streamlit reload.
     if st.session_state.get("rizan_xau_detail") in {"USD Lead", "Teknikal", "Checklist", "Teknikal + USD Lead", "Analisis Terpadu", "Keputusan", "Setup"}:
         st.session_state["rizan_xau_detail"] = "Arah Entry"
