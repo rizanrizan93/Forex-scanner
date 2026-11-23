@@ -60,7 +60,23 @@ def direction(shadow, now):
             and row.get("execution_authority") is False
         )
         ctx[tf] = row["direction"] if valid else "WAIT"
-    if ctx["D1"] == "WAIT" or ctx["H4"] == "WAIT":
+    if ctx["D1"] == "WAIT":
+        return "WAIT", "R28_D1_H4_MISSING_OR_EXPIRED", ctx
+    if ctx["H4"] == "WAIT":
+        # An explicit, unexpired research-model ABSTENTION is not missing data.
+        # D1/H1 agreement can still select a zone to WATCH, never to trade.
+        h4 = shadow.get("H4") or {}
+        abstain = (
+            h4.get("state") == "MODEL_ABSTAIN" and h4.get("direction") == "WAIT"
+            and h4.get("execution_authority") is False
+            and h4.get("target") is not None and utc(h4["target"]) > now
+        )
+        if abstain and ctx["H1"] == ctx["D1"]:
+            side = ctx["D1"]
+            ctx["h1_confirmed"] = True
+            ctx["h4_confirmed"] = False
+            ctx["weekly_countertrend"] = ctx["W1"] in ("BUY", "SELL") and ctx["W1"] != side
+            return side, "R28_H4_ABSTAIN_WATCH_ONLY", ctx
         return "WAIT", "R28_D1_H4_MISSING_OR_EXPIRED", ctx
     if ctx["D1"] != ctx["H4"]:
         return "WAIT", "R28_D1_H4_CONFLICT", ctx
@@ -216,7 +232,9 @@ def evaluate_entry(shadow, market, *, now=None):
     """Deterministic research-stage manual watch. Never grants order authority."""
     now = utc(now or datetime.now(UTC))
     side, reason, ctx = direction(shadow, now)
+    watch_only = reason == "R28_H4_ABSTAIN_WATCH_ONLY"
     result = empty(reason, at=now, side=side, context=ctx)
+    result["watch_only"] = watch_only
     if side == "WAIT":
         return result
     if market is None or not isinstance(market, dict) or not isinstance(market.get("frame"), pd.DataFrame):
@@ -261,8 +279,19 @@ def evaluate_entry(shadow, market, *, now=None):
             if item is not None:
                 valid.append(item)
         if not valid:
-            result["reason"] = "NO_VALID_CLOSED_H1_H4_BOS_ZONE"
+            result["reason"] = ("R28_H4_ABSTAIN_NO_VALID_ZONE"
+                                if watch_only else "NO_VALID_CLOSED_H1_H4_BOS_ZONE")
             return result
+        if watch_only:
+            # A confirming M5 candle is NOT an entry if H4 abstained.
+            # Scrub broker price references even from nested candidates.
+            for z in valid:
+                for key in ("entry_reference", "sl_reference", "tp_1_5r_reference",
+                            "tp_2r_reference", "risk_per_oz", "spread"):
+                    z[key] = None
+                if z["status"] == "M5_BOS_CONFIRMED":
+                    z["status"] = "WATCH_H4_ABSTAIN"
+                    z["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
         last=float(frame.close.iloc[-1])
         valid.sort(key=lambda z: (
             PRIORITY.get(z["status"],99),
@@ -273,6 +302,10 @@ def evaluate_entry(shadow, market, *, now=None):
         result["zone"]=chosen
         result["status"]=chosen["status"]
         result["reason"]=chosen["reason"]
+        if watch_only:
+            result["status"] = "WATCH_H4_ABSTAIN"
+            result["reason"] = "R28_H4_ABSTAIN_ENTRY_BLOCKED"
+            return result
         # H1 must confirm D1+H4 before an entry reference may be shown.
         if chosen["status"] == "M5_BOS_CONFIRMED" and ctx.get("h1_confirmed") is not True:
             result["status"] = "WAIT"
