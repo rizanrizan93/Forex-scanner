@@ -26,7 +26,10 @@ def synthetic_csv(tmp_path):
 def test_dukascopy_h1_to_h4_requires_closed_four_hour_candles(tmp_path):
     p=synthetic_csv(tmp_path)
     h1,h4,months,session=normalize(p,2012,now=pd.Timestamp("2013-01-01",tz="UTC"))
-    assert 1500<len(h1)<3000\n    assert session["weekend_filtered"]>0\n    assert session["tradable_h1"]==len(h1)\n    assert (h1.index.dayofweek<5).all()
+    assert 1500<len(h1)<3000
+    assert session["weekend_filtered"]>0
+    assert session["tradable_h1"]==len(h1)
+    assert (h1.index.dayofweek<5).all()
     assert len(months)==12 and all(n>=120 for n in months.values())
     assert len(h4)>=400
     assert all(h4.index.hour%4==0)
