@@ -203,10 +203,19 @@ def contemporary_signal(tf, d, fx, fitted, saved, now, expected_columns):
             add_context(z, joined_h1, 1 if tf == "1h" else 4)
         times = combined.index + pd.Timedelta(SIZES[tf])
         price = features(z)
-        forex = cross(fx, combined, times, tf)
         family = {"1h": "price", "4h": "price", "1D": "price_fx", "1W": "fx"}[tf]
-        matrix = (pd.concat([price, forex], axis=1)
-                  if family == "price_fx" else forex if family == "fx" else price)
+        # The selected H1/H4 heads consume *price only*. Do not fetch or
+        # compute ECB/FX just to throw those columns away at live inference.
+        # Historical selection/parity remains unchanged and was enforced when
+        # the frozen refit model was first produced.
+        if family == "price":
+            matrix = price
+        else:
+            if fx is None:
+                signal["reason"] = "ECB_2026_UNAVAILABLE"
+                return signal, source
+            forex = cross(fx, combined, times, tf)
+            matrix = pd.concat([price, forex], axis=1) if family == "price_fx" else forex
         if list(matrix.columns) != expected_columns:
             signal["reason"] = "LIVE_FEATURE_SCHEMA_MISMATCH"
             return signal, source
