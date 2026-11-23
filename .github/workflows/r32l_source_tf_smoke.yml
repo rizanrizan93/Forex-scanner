@@ -1,0 +1,26 @@
+name: R32L Source Timeframe Liquidity Sweep Causal Tests
+on:
+  push:
+    branches: [research/r32-liquidity-sweep-m5-2012-2026]
+    paths:
+      - "scripts/research_r32l_source_tf_sweep.py"
+      - "tests/test_r32l_source_tf_sweep.py"
+      - ".github/workflows/r32l_source_tf_smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.:scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Run stop-first and causal zone tests (no live data)
+        run: |
+          python -m py_compile scripts/research_r32l_source_tf_sweep.py
+          python -m pytest -q tests/test_r32l_source_tf_sweep.py
