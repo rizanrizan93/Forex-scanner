@@ -20,6 +20,7 @@ TF_MINUTES = {"M5": 5, "M15": 15, "H1": 60, "H4": 240}
 PRIORITY = {
     "M5_BOS_CONFIRMED": 0, "WAIT_BOS_M5": 1, "WAIT_RECLAIM_M15": 2,
     "WATCH_ZONE": 3, "WAIT_TOUCH_EXPIRED": 4, "WAIT_ZONE_GAP": 5,
+    "PENDING_INVALIDATION": 9,
     "WAIT_BROKER_PRICE": 6, "WAIT_RISK": 7,
 }
 ACTIVE = "RECONSTRUCTED_SHADOW"
@@ -150,6 +151,28 @@ def _evaluate_zone(zone, side, frame, bars, market, now):
     }
     if not (_price_ok(low) and _price_ok(high) and _price_ok(atr) and low < high):
         return None
+    # The detector carries a source-TF invalidation boundary (0.05 ATR).
+    # SL reference (0.20 ATR) is a separate hypothetical risk level.
+    boundary = zone.get("invalidation")
+    if not _price_ok(boundary):
+        boundary = low - .05 * atr if side == "BUY" else high + .05 * atr
+    boundary = float(boundary)
+    out["zone_invalidation"] = boundary
+    d = 1 if side == "BUY" else -1
+    # Causal source-TF close across distal = INVALID, not WATCH/ENTRY.
+    # Never trust a stale saved zone after a completed H1/H4 close broke it.
+    source = bars.get(zone["timeframe"])
+    if source is None or source.empty:
+        return None
+    after = source.loc[(source.index + pd.Timedelta(minutes=TF_MINUTES[zone["timeframe"]])) > formed]
+    if ((d * (after.close - boundary)) < 0).any():
+        return None
+    # Price beyond distal inside an UNFINISHED parent candle is provisional.
+    # Do not show a new entry until the parent candle closes back valid.
+    if d * (last - boundary) < 0:
+        out.update(status="PENDING_INVALIDATION",
+                   reason="LIVE_PRICE_BEYOND_ZONE_INVALIDATION_WAIT_SOURCE_CLOSE")
+        return out
     if formed > now or formed < frame.index[0]:
         out.update(status="WAIT_ZONE_GAP",reason="ZONE_ORIGIN_OUTSIDE_M1_HISTORY")
         return out
