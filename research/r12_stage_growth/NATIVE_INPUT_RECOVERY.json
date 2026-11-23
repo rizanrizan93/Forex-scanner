@@ -1,0 +1,45 @@
+{
+  "date_wib": "2026-11-23",
+  "restored_exact_input_count": 3,
+  "inputs": {
+    "XAUUSD": {
+      "rows": 5271503,
+      "bytes": 407682982,
+      "sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "expected": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "matched": true,
+      "first": "2011-11-01 05:00:00+00:00",
+      "last": "2026-11-13 02:59:00+00:00"
+    },
+    "EURUSD": {
+      "rows": 5534545,
+      "bytes": 318406782,
+      "sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "expected": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "matched": true,
+      "first": "2011-11-01 05:00:00+00:00",
+      "last": "2026-11-13 02:59:00+00:00"
+    },
+    "BTCUSD": {
+      "rows": 4137300,
+      "bytes": 245702202,
+      "sha256": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "expected": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "matched": true,
+      "first": "2019-01-01 00:00:00+00:00",
+      "last": "2026-11-13 02:59:00+00:00"
+    }
+  },
+  "archives": {
+    "RIZAN_REPLAY_SETTLEMENT_2016_2026_20261017.zip": "8aede88d0be49ac8f134ad983d00ae67313fca35edd676f903b7d6b6016a3ecb",
+    "RIZAN_BTC_RAW_20261113_PART_1.zip": "3f71fc9d81b6fc894321f451f3afd92f6ed6d4910eec4ac7cc79e189ae4afa79",
+    "RIZAN_BTC_RAW_20261113_PART_2.zip": "9f3659e3fb82a4cfb8eeb1aed1cb241194c500e4004f44ce652aa0ecc3e62e99",
+    "RIZAN_NOVEMBER_REPLAY_AND_ENTRY_AUDIT_20261113.zip": "16664fc84da965b7a39a11056fd90eb707cf4b6cc16c2004cb3a48971636a56c"
+  },
+  "native_parity": false,
+  "signal_tapes_verified": false,
+  "macro_vintage_verified": false,
+  "reference_1047_basket_ledger_verified": false,
+  "production_changes": false,
+  "note": "Exact input bytes recovered in research workspace. Not yet staged in GitHub runner. This removes the missing-CSV blocker only; no native balance improvement inferred."
+}
