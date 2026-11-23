@@ -1,0 +1,68 @@
+{
+  "original_replay_sha256": "bdc6616cfdc6e5dc4b41467dee9a296546279f6b10d250228e42d11cbf888bb7",
+  "patched_replay_sha256": "0f99ffe3da098d3cb8487a668116af382897e3686e4f2aac59d59d2d60141025",
+  "changes": [
+    {
+      "old": "readonly SeedController seed;readonly XauAddonController addon;",
+      "new": "readonly SeedController seed;readonly XauAddonController addon;readonly SparseAddon sparse;",
+      "count": 1
+    },
+    {
+      "old": "\"ADDON\"));});}",
+      "new": "\"ADDON\"));});sparse=new(host,c.Cost,h=>{ReplaySizing.Settle(h.NetProfit);trades.Add(new(h.EntryTime,h.ClosingTime,h.SymbolName,h.NetProfit,host.Account.Balance,1,0,1,\"SPARSE\"));});}",
+      "count": 1
+    },
+    {
+      "old": ".Concat(seed.SignalTimes).Concat(addon.SignalTimes)",
+      "new": ".Concat(seed.SignalTimes).Concat(addon.SignalTimes).Concat(sparse.SignalTimes)",
+      "count": 1
+    },
+    {
+      "old": ";int si=0;",
+      "new": ";var nativeSignalTimes=xt.Signals.Keys.Where(t=>cfg.Xau&&t<cutoff).Concat(et.Signals.Keys.Where(t=>cfg.Eur&&t<cutoff)).Concat(cfg.Btc?bt.Keys:Enumerable.Empty<DateTime>()).Concat(seed.SignalTimes).Concat(addon.SignalTimes).Where(t=>t.Year>=Period.StartYear).Distinct().OrderBy(t=>t).ToArray().ToHashSet();int si=0;",
+      "count": 1
+    },
+    {
+      "old": "while(si<signals.Length&&signals[si]<at)si++;",
+      "new": "while(si<signals.Length&&(signals[si]<at||!seed.GrowthEnabled&&!nativeSignalTimes.Contains(signals[si])))si++;",
+      "count": 1
+    },
+    {
+      "old": "if(legs.All(l=>!l.Active)&&!host.Positions.Any(p=>p.SymbolName==\"BTCUSD\"))",
+      "new": "if(legs.All(l=>!l.Active)&&!host.Positions.Any(p=>p.SymbolName==\"BTCUSD\")&&!sparse.Active)",
+      "count": 2
+    },
+    {
+      "old": "if(legs.Any(l=>l.Active)||host.Positions.Any(p=>p.SymbolName==\"BTCUSD\"))for",
+      "new": "if(legs.Any(l=>l.Active)||host.Positions.Any(p=>p.SymbolName==\"BTCUSD\")||sparse.Active)for",
+      "count": 1
+    },
+    {
+      "old": "if(hasSignal){var signalTime=",
+      "new": "sparse.ObserveCore(at,l.Symbol,hasSignal);if(hasSignal){var signalTime=",
+      "count": 1
+    },
+    {
+      "old": "if(seed.GrowthEnabled&&hb&&cfg.Btc&&bt.TryGetValue(at,out var bs))host.Btc?.Enter(bs,host.Server.TimeInUtc);RecordBtc();",
+      "new": "if(seed.GrowthEnabled&&hb&&cfg.Btc&&bt.TryGetValue(at,out var bs))host.Btc?.Enter(bs,host.Server.TimeInUtc);RecordBtc();sparse.Manage(host.Server.TimeInUtc);sparse.Enter(at,seed.GrowthEnabled,legs.All(l=>l.Basket==null&&l.Acks.Count==0)&&host.Btc?.ResearchBatchQueued!=true);",
+      "count": 1
+    },
+    {
+      "old": "RecordBtc();seed.Manage(host.Server.TimeInUtc);if(seed.GrowthEnabled)addon.Manage(host.Server.TimeInUtc);Observe();",
+      "new": "RecordBtc();seed.Manage(host.Server.TimeInUtc);if(seed.GrowthEnabled)addon.Manage(host.Server.TimeInUtc);sparse.Manage(host.Server.TimeInUtc);Observe();",
+      "count": 1
+    },
+    {
+      "old": "RecordBtc();seed.Manage(_clock);if(seed.GrowthEnabled)addon.Manage(_clock);foreach",
+      "new": "RecordBtc();seed.Manage(_clock);if(seed.GrowthEnabled)addon.Manage(_clock);sparse.Manage(_clock);foreach",
+      "count": 1
+    },
+    {
+      "old": "return new{AddonAudit=addon.Audit(),",
+      "new": "return new{SparseAudit=sparse.Audit(),AddonAudit=addon.Audit(),",
+      "count": 1
+    }
+  ],
+  "original_source_modified": false,
+  "production_source_modified": false
+}

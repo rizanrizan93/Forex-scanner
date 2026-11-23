@@ -1,0 +1,11 @@
+{
+  "source_sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+  "source_rows": 3247524,
+  "records": 30717,
+  "record_bytes": 40,
+  "output_sha256": "be1c56222a8d817c744bc0b76b35eaf940709781211291d5769906193795d4a1",
+  "original_tape_hash_unknown": true,
+  "reference_ledger_parity": false,
+  "first_minute": 25773230,
+  "last_minute": 29908910
+}

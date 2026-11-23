@@ -1,0 +1,50 @@
+{
+  "source_sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+  "data_source_changed_from_R14_vendor": true,
+  "original_flags_preserved": true,
+  "macro_vintage_certified": false,
+  "candidates": [
+    {
+      "candidate": 1736543,
+      "parameters": {
+        "tf": 30,
+        "family": "PRIOR_DAY_SWEEP",
+        "look": 8,
+        "side": 1,
+        "hold": 240,
+        "stop": 1.5,
+        "target": 1.5,
+        "regime": "WITH",
+        "session": "US",
+        "spread": 0.35,
+        "vol": "HIGH"
+      },
+      "raw_source_signal_points": 58,
+      "original_flag_allowed": 27,
+      "first": "2019-01-08T15:00:00Z",
+      "last": "2026-08-27T15:00:00Z",
+      "sha256": "82b3f474f46cb60f02e15924d0e13c01555930dacec3e1734ae36c9dfa91396b"
+    },
+    {
+      "candidate": 27615,
+      "parameters": {
+        "tf": 5,
+        "family": "BREAKOUT",
+        "look": 32,
+        "side": -1,
+        "hold": 240,
+        "stop": 3.0,
+        "target": 2.5,
+        "regime": "WITH",
+        "session": "LONDON",
+        "spread": 0.35,
+        "vol": "ALL"
+      },
+      "raw_source_signal_points": 1410,
+      "original_flag_allowed": 612,
+      "first": "2019-01-25T09:40:00Z",
+      "last": "2026-11-12T09:00:00Z",
+      "sha256": "7793a05edde0c94b8036c4a9662ec8fa12084ccc46c2df040677b92e96ed336f"
+    }
+  ]
+}
