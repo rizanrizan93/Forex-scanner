@@ -252,7 +252,7 @@ def metrics(events,selected,year_begin,year_end, *, overlap_guard=False,cost_ext
     }
 
 
-def sweep(tf,cap=ZONE_COUNT,models=MODEL_COUNT):
+def sweep(tf,cap=ZONE_COUNT,models=MODEL_COUNT,model_start=0):
     d,source_hash=load(tf)
     features=prepare(d)
     events=raw_events(d,features,tf)
@@ -274,7 +274,7 @@ def sweep(tf,cap=ZONE_COUNT,models=MODEL_COUNT):
     axis=np.asarray([[pack(q) for q in a] for a in z],dtype=np.uint8)
     devb,winb=pack(dev),pack(dev&good)
     heap=[];tested=eligible=0
-    for model_id in range(min(models,MODEL_COUNT)):
+    for model_id in range(model_start,min(model_start+models,MODEL_COUNT)):
         pred=pack(mv[model_id])
         for start in range(0,min(cap,ZONE_COUNT),256):
             ids=np.arange(start,min(start+256,cap,ZONE_COUNT),dtype=np.uint32)
@@ -332,7 +332,8 @@ def sweep(tf,cap=ZONE_COUNT,models=MODEL_COUNT):
         "valid_zone_retest_events":len(events),
         "event_counts":{"development":int(dev.sum()),"selection":int(val.sum()),
                         "retrospective_evaluation":int(evl.sum())},
-        "direction_model_variants":min(models,MODEL_COUNT),
+        "direction_model_variants":min(models,MODEL_COUNT-model_start),
+        "direction_model_start":model_start,
         "zone_config_variants":min(cap,ZONE_COUNT),
         "parameter_combinations_actually_evaluated":tested,
         "parameter_combinations_full_space":MODEL_COUNT*ZONE_COUNT,
@@ -355,11 +356,12 @@ def sweep(tf,cap=ZONE_COUNT,models=MODEL_COUNT):
             "No split-second timing, liquidity execution, realized P&L, leverage, cBot integration or order authority",
         ]
     }
-    file=OUT/f"r30-{tf}.json"
+    file=OUT/f"r30-{tf}-models-{model_start}.json"
     file.write_text(json.dumps(report,indent=2,allow_nan=False)+"\n")
     print(json.dumps({"stage":"R30_DONE","tf":tf,
                       "candles":len(d),"events":len(events),
-                      "models":min(models,MODEL_COUNT),"tested":tested,
+                      "models":min(models,MODEL_COUNT-model_start),
+                      "model_start":model_start,"tested":tested,
                       "top":top[:1]}),flush=True)
     return report
 
@@ -369,7 +371,11 @@ if __name__=="__main__":
     ap.add_argument("--tf",choices=list(TF),required=True)
     ap.add_argument("--zone-configs",type=int,default=ZONE_COUNT)
     ap.add_argument("--direction-models",type=int,default=MODEL_COUNT)
+    ap.add_argument("--model-start",type=int,default=0)
     args=ap.parse_args()
-    if not 1<=args.zone_configs<=ZONE_COUNT or not 1<=args.direction_models<=MODEL_COUNT:
+    if (not 1<=args.zone_configs<=ZONE_COUNT
+            or not 1<=args.direction_models<=MODEL_COUNT
+            or not 0<=args.model_start<MODEL_COUNT
+            or args.model_start+args.direction_models>MODEL_COUNT):
         raise SystemExit("CONFIG_CAP_OUT_OF_RANGE")
-    sweep(args.tf,args.zone_configs,args.direction_models)
+    sweep(args.tf,args.zone_configs,args.direction_models,args.model_start)
