@@ -47,6 +47,8 @@ def load(tf):
             raise ValueError(f"OHLC_FIELDS_MISSING:{tf}:{yr}")
         if z.empty or not (z.index.year==yr).all():
             raise ValueError(f"SHARD_YEAR_MISMATCH:{tf}:{yr}")
+        if tf in ("H1","H4") and (z.index.dayofweek>=5).any():
+            raise ValueError(f"NONTRADABLE_WEEKEND_BAR_IN_SOURCE:{tf}:{yr}")
         if not np.isfinite(z[["o","h","l","c"]].to_numpy(float)).all():
             raise ValueError(f"NONFINITE_OHLC:{tf}:{yr}")
         if ((z.l<=0)|(z.h<z[["o","c","l"]].max(axis=1))
