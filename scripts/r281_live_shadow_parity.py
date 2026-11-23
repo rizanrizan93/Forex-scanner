@@ -29,6 +29,9 @@ from sklearn.preprocessing import StandardScaler
 from r14_multitimeframe_direction import load_tf
 from r16_direction_complexity import features
 from r281_ecb_usd_context import CURRENCIES, cross, XML
+from r10_million import ohlc_indicators, load as load_intraday
+from r102_calibrated import context as add_context
+from r281_live_market import read_m1, aggregate, combine_history
 
 REPORTS = {
     "1h": "14733416718/r281-1h-fx.json",
@@ -148,6 +151,79 @@ def enforce_replay_parity(tf, family, d, y, valid, times, x, policy, annual):
             "selected_configs": heads}
 
 
+
+
+def contemporary_signal(tf, d, fx, fitted, saved, now, expected_columns):
+    """Infer using latest cTrader CLOSED candles; fail closed on any gap.
+
+    Validates a different broker source than the historical replay (not
+    identical feature parity with the Dukascopy/HistData training vendor).
+    Research shadow only; source timestamps and model provenance retained.
+    """
+    signal = {"status": "WAIT_DATA", "direction": "WAIT",
+              "reason": "CONTEMPORARY_PRICE_NOT_AVAILABLE", "candle_closed_at": None,
+              "target_close_at": None, "buy_head_score": None,
+              "sell_head_score": None, "source": "CTRADER_MARKET_DATA_READ_ONLY",
+              "execution_authority": False}
+    source = {"status": "UNAVAILABLE"}
+    try:
+        m1, source = read_m1(now=now)
+        latest = aggregate(m1, tf, now=now)
+        combined = combine_history(d, latest, tf)
+        if combined is None:
+            signal["reason"] = "LIVE_HISTORY_GAP_OR_PRICE_SCALE"
+            return signal, source
+        z = ohlc_indicators(combined)
+        if tf in ("1h", "4h"):
+            h1 = load_intraday("1h")
+            current_h1 = aggregate(m1, "1h", now=now)
+            joined_h1 = combine_history(h1, current_h1, "1h")
+            if joined_h1 is None:
+                signal["reason"] = "H1_CONTEXT_UNAVAILABLE"
+                return signal, source
+            add_context(z, joined_h1, 1 if tf == "1h" else 4)
+        times = combined.index + pd.Timedelta(SIZES[tf])
+        price = features(z)
+        forex = cross(fx, combined, times, tf)
+        family = {"1h": "price", "4h": "price", "1D": "price_fx", "1W": "fx"}[tf]
+        matrix = (pd.concat([price, forex], axis=1)
+                  if family == "price_fx" else forex if family == "fx" else price)
+        if list(matrix.columns) != expected_columns:
+            signal["reason"] = "LIVE_FEATURE_SCHEMA_MISMATCH"
+            return signal, source
+        good = np.isfinite(matrix.to_numpy(float)).all(axis=1)
+        eligible = np.flatnonzero(good & (times <= now) & (times.year >= 2026))
+        if len(eligible) == 0:
+            signal["reason"] = "LATEST_COMPLETE_BROKER_BAR_UNAVAILABLE"
+            return signal, source
+        k = int(eligible[-1])
+        closed = pd.Timestamp(times[k])
+        target = closed + pd.Timedelta(SIZES[tf])
+        if not (closed <= now < target):
+            signal["reason"] = "TARGET_CANDLE_EXPIRED"
+            return signal, source
+        point = matrix.iloc[k:k+1].to_numpy(float)
+        b = float(fitted["BUY"].predict_proba(point)[0, 1])
+        s = float(fitted["SELL"].predict_proba(point)[0, 1])
+        B = b >= float(saved["BUY"]["threshold"])
+        S = s >= float(saved["SELL"]["threshold"])
+        direction = "BUY" if B and not S else "SELL" if S and not B else "WAIT"
+        signal.update(status="SHADOW_ONLY", direction=direction,
+                      reason=("HEAD_CONFLICT" if B and S else
+                              "BELOW_THRESHOLD" if not B and not S else
+                              "RESEARCH_SIGNAL"),
+                      candle_closed_at=closed.isoformat(),
+                      target_close_at=target.isoformat(),
+                      buy_head_score=b, sell_head_score=s,
+                      last_close=float(combined.c.iloc[k]),
+                      broker_closed_m1_at=source["last_closed_m1"],
+                      native_tf_closed=int(len(latest)))
+        return signal, source
+    except (OSError, ValueError, TypeError, KeyError, TimeoutError, OverflowError,
+            AssertionError, ImportError) as exc:
+        signal["reason"] = "LIVE_SOURCE_" + type(exc).__name__.upper()
+        return signal, source
+
 def run(tf, now=None):
     now = pd.Timestamp(now or datetime.now(UTC))
     if now.tzinfo is None:
@@ -192,33 +268,16 @@ def run(tf, now=None):
     sha = hashlib.sha256(model_bytes).hexdigest()
     (OUTPUT / f"r281-{tf}-reconstructed-model.joblib").write_bytes(model_bytes)
 
-    signal = {"status": "WAIT_DATA", "direction": "WAIT", "reason": "CURRENT_DATA_NOT_ADMISSIBLE",
-              "candle_closed_at": None, "target_close_at": None,
-              "buy_head_score": None, "sell_head_score": None}
-    full = np.isfinite(x.to_numpy(float)).all(axis=1)
-    latest = np.flatnonzero((times.year >= 2026) & (times <= now) & full)
-    if fx_meta["status"] != "ECB_2026_APPENDED":
-        signal["reason"] = "ECB_2026_UNAVAILABLE"
-    elif len(latest):
-        k = int(latest[-1])
-        closed = pd.Timestamp(times[k])
-        target = closed + pd.Timedelta(SIZES[tf])
-        if now < target and 0 <= (now - closed).total_seconds():
-            point = X[k:k+1]
-            b = float(fitted["BUY"].predict_proba(point)[0,1])
-            s = float(fitted["SELL"].predict_proba(point)[0,1])
-            B = b >= float(saved["BUY"]["threshold"])
-            S = s >= float(saved["SELL"]["threshold"])
-            direction = "BUY" if B and not S else "SELL" if S and not B else "WAIT"
-            signal.update(status="SHADOW_ONLY", direction=direction,
-                          reason="HEAD_CONFLICT" if B and S else "BELOW_THRESHOLD" if not B and not S else "RESEARCH_SIGNAL",
-                          candle_closed_at=closed.isoformat(), target_close_at=target.isoformat(),
-                          buy_head_score=b, sell_head_score=s,
-                          last_close=float(d.c.iloc[k]), source="HISTORICAL_SOURCE_ARCHIVE_2026_NOT_BROKER")
-        else:
-            signal["reason"] = "TARGET_CANDLE_EXPIRED"
+    if fx_meta["status"] == "ECB_2026_APPENDED":
+        signal, market_source = contemporary_signal(
+            tf, d, fx, fitted, saved, now, list(x.columns))
     else:
-        signal["reason"] = "HISTORICAL_2026_PRICE_NOT_FRESH"
+        signal, market_source = (
+            {"status": "WAIT_DATA", "direction": "WAIT", "reason": "ECB_2026_UNAVAILABLE",
+             "candle_closed_at": None, "target_close_at": None,
+             "buy_head_score": None, "sell_head_score": None,
+             "execution_authority": False},
+            {"status": "UNAVAILABLE"})
     result = {
         "contract": CONTRACT, "tf": {"1h": "H1", "4h": "H4", "1D": "D1", "1W": "W1"}[tf],
         "origin": "R28.1 RECONSTRUCTED 2026 SHADOW", "research_only": True,
@@ -227,10 +286,10 @@ def run(tf, now=None):
         "training_rows": int(tr.sum()), "training_end": "2025-12-31",
         "refit_policy": saved, "historical_parity": proof,
         "archived_2025": policy["BUY"], "archived_2025_sell": policy["SELL"],
-        "ecb_source": fx_meta, "generated_at": now.isoformat(), "signal": signal,
+        "ecb_source": fx_meta, "market_source": market_source, "generated_at": now.isoformat(), "signal": signal,
         "limitations": ["2025 performance is historical reused-fold evaluation; not forward evidence",
                         "R28.1 replay source FX/ECB proxies not point-in-time audited",
-                        "2026 price input is archived, not live cTrader; no manual order authority",
+                        "2026 inferencer uses read-only cTrader broker bars when fresh; broker-vendor parity not yet proven",
                         "Model refit through 2025 is distinct from original 2025 fitted instance"],
     }
     (OUTPUT / f"r281-{tf}-shadow.json").write_text(json.dumps(result, indent=2, allow_nan=False))
