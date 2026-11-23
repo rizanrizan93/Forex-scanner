@@ -89,7 +89,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if pair == "XAUUSD":
         with st.container(key="rizan_xau_content"):
-            labels = ["Frozen Direction", "Arah Entry", "Fed R6 · Area Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
+            labels = ["Frozen Direction", "Titik Entry R28", "Arah Entry", "Fed R6 · Area Entry", "Manual R3", "Zona reversal", "Zona A→B", "Hierarki zona", "Demand", "Pre-News", "Makro", "Pengaturan"]
             # Preserve the last XAU detail across EUR/cBots runs, even though
             # Streamlit cleans up widgets that are not rendered on that run.
             with st.container(key="rizan_xau_navigation"):
@@ -98,7 +98,7 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
                     horizontal=True, label_visibility="collapsed",
                     on_change=navigate_detail,
                 )
-            paths = [None, "pages/8_XAU_Entry_Direction_R2.py", None, None, None, None, "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, None, "pages/8_XAU_Entry_Direction_R2.py", None, None, None, None, "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             render_section_intro(st, pair="XAUUSD", detail=selected_detail)
             for label, path in zip(labels, paths):
                 if label == selected_detail:
@@ -107,6 +107,9 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Arah Entry"):
                             if label == "Frozen Direction":
                                 from fx_scanner.frozen_direction_research_dashboard import render_frozen_direction_research
                                 render_frozen_direction_research()
+                            elif label == "Titik Entry R28":
+                                from fx_scanner.r281_smc_entry_dashboard import render_r281_smc_entry
+                                render_r281_smc_entry()
                             elif label == "Manual R3":
                                 from fx_scanner.manual_r3_dashboard import render_manual_r3
                                 render_manual_r3()
