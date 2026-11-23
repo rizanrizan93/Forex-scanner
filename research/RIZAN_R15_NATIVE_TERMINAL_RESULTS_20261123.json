@@ -1,0 +1,425 @@
+{
+  "stage": "R15_COMPLETED_CONTINUOUS_B1_LOCAL_NATIVE_PILOT",
+  "model": "Original synthetic M1 execution engine, exact restored inputs and reconstructed seed tapes; indexed history adapter matched controls. Not FP Markets real ticks.",
+  "baseline_matches_archived_terminal_cent": true,
+  "baseline_matches_archived_baskets": true,
+  "cases": {
+    "baseline": {
+      "EndingBalance": 1662133293.0811067,
+      "MaxEquityDDPct": 56.67209330213908,
+      "MaxClosedDDPct": 52.77230081046095,
+      "Baskets": 1047,
+      "PF": 2.176797152950957,
+      "MaxObservedMarginPct": 54.07385767743372,
+      "MaxObservedOpenRiskPct": 27.209882157452796,
+      "ErrorCount": 0,
+      "OpenPositions": 0,
+      "ActualCutoff": "2026-11-13T03:00:00Z",
+      "Orders": 187560,
+      "terminal_change_vs_baseline": 0.0,
+      "terminal_ratio": 1.0,
+      "floating_DD_change_pp": 0.0,
+      "original_core_keys_missing": 0,
+      "new_core_keys": 0,
+      "addon_filled_baskets": 0,
+      "planned_caps_observation_pass": false,
+      "guard_audit": {
+        "Enabled": false,
+        "LossLimit": 4,
+        "PauseHours": 24,
+        "PerSymbol": true,
+        "SettlementsProcessed": 0,
+        "ChecksBlocked": 0,
+        "Events": []
+      },
+      "addon_audit": {
+        "Enabled": false,
+        "c": null,
+        "HandoffEquity": 0,
+        "Entries": 0,
+        "Requests": 0,
+        "UnaffordableMinLot": 0,
+        "PostfillBudgetCloses": 0,
+        "GraduatedUtc": null,
+        "GraduationBalance": 0,
+        "GrowthEnabled": true,
+        "Halted": false,
+        "SeedMaxEquityDDPct": 0,
+        "SignalTimes": 0
+      },
+      "seed_audit": {
+        "Enabled": true,
+        "c": {
+          "Base": 3,
+          "Sl": 2,
+          "Tp": 3,
+          "Hold": 2,
+          "Trend": 2,
+          "Session": 0,
+          "Risk": 5,
+          "Universe": 1,
+          "Day": 1,
+          "Threshold": 3,
+          "Direction": 1,
+          "SeedOnly": false,
+          "HandoffEquity": 125
+        },
+        "HandoffEquity": 125,
+        "Entries": 2,
+        "Requests": 2,
+        "UnaffordableMinLot": 0,
+        "PostfillBudgetCloses": 0,
+        "GraduatedUtc": "2019-01-03T04:30:00Z",
+        "GraduationBalance": 127.83599999999929,
+        "GrowthEnabled": true,
+        "Halted": false,
+        "SeedMaxEquityDDPct": 8.233114763739087,
+        "SignalTimes": 5128
+      },
+      "sha256": "16abf89b4cc47559dd7a82e6462708eda9989606d3f12afb42a9660121d9c8bc",
+      "trace": {
+        "BrokerHistoryCount": 187560,
+        "CashEvents": 544263,
+        "CurvePoints": 9767
+      }
+    },
+    "guard4_24h": {
+      "EndingBalance": 1663437984.6450803,
+      "MaxEquityDDPct": 56.54332945338349,
+      "MaxClosedDDPct": 52.507682563734335,
+      "Baskets": 1043,
+      "PF": 2.1761026185809746,
+      "MaxObservedMarginPct": 54.09367418044462,
+      "MaxObservedOpenRiskPct": 27.21744286860811,
+      "ErrorCount": 0,
+      "OpenPositions": 0,
+      "ActualCutoff": "2026-11-13T03:00:00Z",
+      "Orders": 187939,
+      "terminal_change_vs_baseline": 1304691.5639736652,
+      "terminal_ratio": 1.0007849500213999,
+      "floating_DD_change_pp": -0.12876384875558955,
+      "original_core_keys_missing": 5,
+      "new_core_keys": 1,
+      "addon_filled_baskets": 0,
+      "planned_caps_observation_pass": false,
+      "guard_audit": {
+        "Enabled": true,
+        "LossLimit": 4,
+        "PauseHours": 24,
+        "PerSymbol": true,
+        "SettlementsProcessed": 1042,
+        "ChecksBlocked": 6198,
+        "Events": [
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2019-04-09T19:06:28Z",
+            "PauseUntil": "2019-04-10T19:06:28Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2019-05-14T12:14:18Z",
+            "PauseUntil": "2019-05-15T12:14:18Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2019-06-03T13:34:08Z",
+            "PauseUntil": "2019-06-04T13:34:08Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2019-09-09T09:53:37Z",
+            "PauseUntil": "2019-09-10T09:53:37Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2019-10-29T15:59:29Z",
+            "PauseUntil": "2019-10-30T15:59:29Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2019-11-29T08:59:34Z",
+            "PauseUntil": "2019-11-30T08:59:34Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2020-01-20T13:00:08Z",
+            "PauseUntil": "2020-01-21T13:00:08Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2020-04-24T17:41:28Z",
+            "PauseUntil": "2020-04-25T17:41:28Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2020-06-17T12:45:00Z",
+            "PauseUntil": "2020-06-18T12:45:00Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2020-07-27T12:34:14Z",
+            "PauseUntil": "2020-07-28T12:34:14Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2020-08-27T19:59:00Z",
+            "PauseUntil": "2020-08-28T19:59:00Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2020-09-17T19:59:00Z",
+            "PauseUntil": "2020-09-18T19:59:00Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2020-09-18T18:45:00Z",
+            "PauseUntil": "2020-09-19T18:45:00Z"
+          },
+          {
+            "Symbol": "BTCUSD",
+            "Exit": "2021-11-03T14:04:39Z",
+            "PauseUntil": "2021-11-04T14:04:39Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2022-08-29T12:29:35Z",
+            "PauseUntil": "2022-08-30T12:29:35Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2022-09-30T17:00:36Z",
+            "PauseUntil": "2022-10-01T17:00:36Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2023-02-14T19:59:00Z",
+            "PauseUntil": "2023-02-15T19:59:00Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2023-06-21T08:15:09Z",
+            "PauseUntil": "2023-06-22T08:15:09Z"
+          },
+          {
+            "Symbol": "BTCUSD",
+            "Exit": "2023-10-02T21:45:15Z",
+            "PauseUntil": "2023-10-03T21:45:15Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2023-10-09T07:45:18Z",
+            "PauseUntil": "2023-10-10T07:45:18Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2024-01-11T19:59:00Z",
+            "PauseUntil": "2024-01-12T19:59:00Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2024-02-27T14:00:37Z",
+            "PauseUntil": "2024-02-28T14:00:37Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2024-04-29T13:34:26Z",
+            "PauseUntil": "2024-04-30T13:34:26Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2024-09-10T13:50:39Z",
+            "PauseUntil": "2024-09-11T13:50:39Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2024-09-11T12:15:00Z",
+            "PauseUntil": "2024-09-12T12:15:00Z"
+          },
+          {
+            "Symbol": "BTCUSD",
+            "Exit": "2025-08-21T14:13:39Z",
+            "PauseUntil": "2025-08-22T14:13:39Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2025-09-15T19:59:00Z",
+            "PauseUntil": "2025-09-16T19:59:00Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2025-11-10T14:35:36Z",
+            "PauseUntil": "2025-11-11T14:35:36Z"
+          },
+          {
+            "Symbol": "XAUUSD",
+            "Exit": "2026-01-13T17:58:19Z",
+            "PauseUntil": "2026-01-14T17:58:19Z"
+          },
+          {
+            "Symbol": "BTCUSD",
+            "Exit": "2026-05-08T21:30:00Z",
+            "PauseUntil": "2026-05-09T21:30:00Z"
+          },
+          {
+            "Symbol": "EURUSD",
+            "Exit": "2026-08-13T14:45:00Z",
+            "PauseUntil": "2026-08-14T14:45:00Z"
+          }
+        ]
+      },
+      "addon_audit": {
+        "Enabled": false,
+        "c": null,
+        "HandoffEquity": 0,
+        "Entries": 0,
+        "Requests": 0,
+        "UnaffordableMinLot": 0,
+        "PostfillBudgetCloses": 0,
+        "GraduatedUtc": null,
+        "GraduationBalance": 0,
+        "GrowthEnabled": true,
+        "Halted": false,
+        "SeedMaxEquityDDPct": 0,
+        "SignalTimes": 0
+      },
+      "seed_audit": {
+        "Enabled": true,
+        "c": {
+          "Base": 3,
+          "Sl": 2,
+          "Tp": 3,
+          "Hold": 2,
+          "Trend": 2,
+          "Session": 0,
+          "Risk": 5,
+          "Universe": 1,
+          "Day": 1,
+          "Threshold": 3,
+          "Direction": 1,
+          "SeedOnly": false,
+          "HandoffEquity": 125
+        },
+        "HandoffEquity": 125,
+        "Entries": 2,
+        "Requests": 2,
+        "UnaffordableMinLot": 0,
+        "PostfillBudgetCloses": 0,
+        "GraduatedUtc": "2019-01-03T04:30:00Z",
+        "GraduationBalance": 127.83599999999929,
+        "GrowthEnabled": true,
+        "Halted": false,
+        "SeedMaxEquityDDPct": 8.233114763739087,
+        "SignalTimes": 5128
+      },
+      "sha256": "006a5a6905db4d7ec34d739e5b274a6c40f8be7c4dc3ce394c6c847386d0dd8c",
+      "trace": {
+        "BrokerHistoryCount": 187939,
+        "CashEvents": 544638,
+        "CurvePoints": 9755
+      }
+    },
+    "addon_r3": {
+      "EndingBalance": 1085989938.0435164,
+      "MaxEquityDDPct": 61.19091457803633,
+      "MaxClosedDDPct": 54.57511300389207,
+      "Baskets": 1179,
+      "PF": 2.184980063378696,
+      "MaxObservedMarginPct": 50.63266677497221,
+      "MaxObservedOpenRiskPct": 24.331311401613462,
+      "ErrorCount": 0,
+      "OpenPositions": 0,
+      "ActualCutoff": "2026-11-13T03:00:00Z",
+      "Orders": 113048,
+      "terminal_change_vs_baseline": -576143355.0375903,
+      "terminal_ratio": 0.6533711481288064,
+      "floating_DD_change_pp": 4.5188212758972455,
+      "original_core_keys_missing": 32,
+      "new_core_keys": 7,
+      "addon_filled_baskets": 157,
+      "planned_caps_observation_pass": false,
+      "guard_audit": {
+        "Enabled": false,
+        "LossLimit": 4,
+        "PauseHours": 24,
+        "PerSymbol": true,
+        "SettlementsProcessed": 0,
+        "ChecksBlocked": 0,
+        "Events": []
+      },
+      "addon_audit": {
+        "Enabled": true,
+        "c": {
+          "Base": 13,
+          "Sl": 2,
+          "Tp": 2,
+          "Hold": 2,
+          "Trend": 1,
+          "Session": 0,
+          "Risk": 1,
+          "Universe": 2,
+          "Day": 0,
+          "Threshold": 3,
+          "Direction": 0,
+          "SeedOnly": false,
+          "HandoffEquity": 1000000000000
+        },
+        "HandoffEquity": 1000000000000,
+        "Entries": 157,
+        "Requests": 157,
+        "UnaffordableMinLot": 1,
+        "PostfillBudgetCloses": 5,
+        "GraduatedUtc": null,
+        "GraduationBalance": 0,
+        "GrowthEnabled": false,
+        "Halted": true,
+        "SeedMaxEquityDDPct": 61.19091457803633,
+        "SignalTimes": 9937
+      },
+      "seed_audit": {
+        "Enabled": true,
+        "c": {
+          "Base": 3,
+          "Sl": 2,
+          "Tp": 3,
+          "Hold": 2,
+          "Trend": 2,
+          "Session": 0,
+          "Risk": 5,
+          "Universe": 1,
+          "Day": 1,
+          "Threshold": 3,
+          "Direction": 1,
+          "SeedOnly": false,
+          "HandoffEquity": 125
+        },
+        "HandoffEquity": 125,
+        "Entries": 2,
+        "Requests": 2,
+        "UnaffordableMinLot": 0,
+        "PostfillBudgetCloses": 0,
+        "GraduatedUtc": "2019-01-03T04:30:00Z",
+        "GraduationBalance": 127.83599999999929,
+        "GrowthEnabled": true,
+        "Halted": false,
+        "SeedMaxEquityDDPct": 8.233114763739087,
+        "SignalTimes": 5128
+      },
+      "sha256": "7b15d02a5e8e6e84cea0227d34ee825d10e63e307e4b8de898bbdc6283a37073",
+      "trace": {
+        "BrokerHistoryCount": 113048,
+        "CashEvents": 468732,
+        "CurvePoints": 11422
+      }
+    }
+  },
+  "cost_path": "B1 only; A/2x/annual tests still required",
+  "new_pristine_OOS": false,
+  "live_changes": false,
+  "promotion_allowed": false,
+  "indexed_vs_original_continuous_stream_equality": {
+    "Ledger": true,
+    "OrderLedger": true,
+    "CashLedger": true,
+    "EquityCurve": true
+  }
+}
