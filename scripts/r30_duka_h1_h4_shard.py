@@ -23,7 +23,7 @@ def normalize(path,year,now=None):
         raise ValueError("DUKA_CSV_COLUMNS_MISSING")
     if f.empty:raise ValueError("DUKA_CSV_EMPTY")
     ts=pd.to_datetime(f["timestamp"],unit="ms",utc=True,errors="coerce")
-    if ts.isna().any() or ts.has_duplicates or not ts.is_monotonic_increasing:
+    if ts.isna().any() or not ts.is_unique or not ts.is_monotonic_increasing:
         raise ValueError("DUKA_TIMESTAMP_INVALID")
     f=f.assign(timestamp=ts).set_index("timestamp")
     f=f.loc[(f.index.year==year)&(f.index+pd.Timedelta(hours=1)<=now),
