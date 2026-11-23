@@ -201,14 +201,14 @@ def test_price_beyond_distal_zone_is_quarantined_until_source_close(monkeypatch)
 
 
 def test_finished_parent_candle_invalidates_zone_even_if_detector_returns_it(monkeypatch):
-    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[zone()] if tf=="H1" else [])
+    older=dict(zone(),available_at="2026-11-23T09:00:00+00:00")
+    monkeypatch.setattr(engine,"detect",lambda rows,tf,now:[older] if tf=="H1" else [])
     m=market()
-    # Force the completed 10:00-11:00 H1 bar above SELL distal.
+    # Completed 10:00-11:00 H1 close crosses SELL distal after formation.
     mask=(m["frame"].index>=pd.Timestamp("2026-11-23T10:00:00+00:00")) & (
         m["frame"].index<pd.Timestamp("2026-11-23T11:00:00+00:00"))
     m["frame"].loc[mask,["open","high","low","close"]]=[3610.,3610.1,3609.9,3610.]
     x=engine.evaluate_entry(model(),m,now=NOW)
-    # Zone formed 11:00:00, so this completed bar closed exactly at its
-    # available_at; the next completed parent bar has not yet closed.
-    assert x["zone"] is None or x["status"]!="M5_BOS_CONFIRMED"
+    assert x["zone"] is None and not x["candidates"]
+    assert x["reason"]=="NO_VALID_CLOSED_H1_H4_BOS_ZONE"
     assert x["entry_reference"] is None
