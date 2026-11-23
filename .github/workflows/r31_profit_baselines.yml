@@ -1,0 +1,65 @@
+name: R31 Profit Research Honest Baselines vs Constant 1oz Trading
+on:
+  push:
+    branches: ['research/r31-net-profit-max-2012-2026-20261123']
+    paths:
+      - 'scripts/r31_baselines.py'
+      - '.github/workflows/r31_profit_baselines.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  baseline:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        tf: ['1h','4h','1D','1W']
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install reproducible price-only research dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - uses: actions/download-artifact@v4
+        if: matrix.tf == '1h' || matrix.tf == '4h'
+        with:
+          run-id: 45183311130
+          github-token: ${{ github.token }}
+          pattern: r30-hf-yr-*
+          path: /tmp/r30_early
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        if: matrix.tf == '1h' || matrix.tf == '4h'
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        if: matrix.tf == '1D' || matrix.tf == '1W'
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Publish unoptimized equal-size one-ounce benchmark scenarios
+        run: python scripts/r31_baselines.py --tf "${{ matrix.tf }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31-baselines-${{ matrix.tf }}
+          path: artifacts/r31_baseline/r31-baselines-${{ matrix.tf }}.json
+          retention-days: 90
+          if-no-files-found: warn
