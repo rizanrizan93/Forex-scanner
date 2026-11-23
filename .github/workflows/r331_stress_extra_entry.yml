@@ -1,0 +1,56 @@
+name: R33.1 Stress Test Incremental Alpha Cost 10 and Remove 2025
+on:
+  push:
+    branches: ['research/r33-d1-w1-profit-frequency-idle-20261124']
+    paths:
+      - 'scripts/r331_stress_extra_entry.py'
+      - '.github/workflows/r331_stress_extra_entry.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5
+      - name: Restore original complete 15 audited W1/D1 simulated trades
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45255941738
+          github-token: ${{ github.token }}
+          pattern: r33-*
+          path: artifacts/r33
+          merge-multiple: true
+      - name: Stress $10 assumed cost, exclude 2025, annual block-bootstrap, confirm W1 baseline unchanged in every variant
+        run: |
+          set -euo pipefail
+          test "$(find artifacts/r33 -maxdepth 1 -name 'r33-*.json' | wc -l)" -eq 15
+          python -m py_compile scripts/r331_stress_extra_entry.py
+          python scripts/r331_stress_extra_entry.py
+      - name: Preserve risk report READ-ONLY, no LIVE model access
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R331_W1_D1_EXTRA_ENTRY_ROBUSTNESS_20261124.json
+          git add research/RIZAN_R331_W1_D1_EXTRA_ENTRY_ROBUSTNESS_20261124.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Research-only: risk-stress incremental D1 over W1, ex-2025 and 10USD cost, freeze evidence"
+            git push origin HEAD:refs/heads/research/r33-d1-w1-profit-frequency-idle-20261124
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r331-frozen-annual-concentration-and-cost-stress
+          path: |
+            research/RIZAN_R331_W1_D1_EXTRA_ENTRY_ROBUSTNESS_20261124.json
+            research/RIZAN_R331_W1_D1_EXTRA_ENTRY_ROBUSTNESS_20261124.md
+          retention-days: 90
+          if-no-files-found: warn
