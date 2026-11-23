@@ -1,0 +1,53 @@
+name: R32 XAU M5 Source and Sweep Pilot 2012 2024
+on:
+  push:
+    branches: [research/r32-liquidity-sweep-m5-2012-2026]
+    paths: [".github/workflows/r32_pilot_m5.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2012,2024]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Pinned public source (TLS enabled) and replay dependencies
+        run: |
+          npm install --global dukascopy-node@1.51.1
+          pip install pandas==2.2.3 numpy==2.3.5
+      - name: Download public XAUUSD BID M5 year with source validation
+        run: |
+          END=$((${{ matrix.year }}+1))
+          mkdir -p /tmp/r32-public
+          dukascopy-node -i xauusd -from "${{ matrix.year }}-01-01" \
+            -to "${END}-01-01" -t m5 -p bid -f csv \
+            -dir /tmp/r32-public -fn "xauusd-m5-${{ matrix.year }}" \
+            -bs 3 -bp 1200 -r 3 --cache
+          test -s /tmp/r32-public/xauusd-m5-${{ matrix.year }}.csv
+          python scripts/r32_m5_source.py --year ${{ matrix.year }} \
+            --csv /tmp/r32-public/xauusd-m5-${{ matrix.year }}.csv
+      - name: Build source-TF liquidity sweeps and M5 confirmation replay
+        run: |
+          python scripts/r32_liquidity_sweep_m5_events.py \
+            --year ${{ matrix.year }} \
+            --source artifacts/r32/r32-m5-${{ matrix.year }}.csv.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r32-pilot-${{ matrix.year }}
+          path: |
+            artifacts/r32/r32-events-*.csv.gz
+            artifacts/r32/r32-events-receipt-*.json
+            artifacts/r32/r32-source-*.json
+          if-no-files-found: warn
+          retention-days: 30
