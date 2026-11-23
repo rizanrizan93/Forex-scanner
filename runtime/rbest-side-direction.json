@@ -1,0 +1,236 @@
+{
+  "contract": "RIZAN_BEST_SIDE_SHADOW_SNAPSHOT_V1",
+  "source": "CTRADER_MARKET_DATA_READ_ONLY",
+  "symbol": "XAUUSD",
+  "research_only": true,
+  "execution_authority": false,
+  "execution_influence": false,
+  "as_of": "2026-11-23T11:07:45.162262+00:00",
+  "candidate_lineage": {
+    "H1": {
+      "BUY": "R25",
+      "SELL": "R11"
+    },
+    "H4": {
+      "BUY": "R25",
+      "SELL": "R11"
+    },
+    "D1": {
+      "BUY": "R28.1",
+      "SELL": "R18"
+    },
+    "W1": {
+      "BUY": "R27",
+      "SELL": "R24"
+    }
+  },
+  "rows": {
+    "H1": {
+      "direction": "WAIT",
+      "reason": "NO_SIDE_TRIGGER",
+      "state": "RESEARCH_SHADOW",
+      "generated_at": "2026-11-23T11:07:15.402155+00:00",
+      "closed_at": "2026-11-23T11:00:00+00:00",
+      "target_close_at": "2026-11-23T12:00:00+00:00",
+      "observed_at": "2026-11-23T11:07:00.268810+00:00",
+      "last_close": 3624.63,
+      "sides": {
+        "BUY": {
+          "version": "R25",
+          "active": false,
+          "score": 0.45169947223901563,
+          "threshold": 0.55,
+          "gate": "vol_high",
+          "gate_pass": true,
+          "parity": {
+            "parity": "PASS",
+            "n": 325,
+            "correct": 204,
+            "policy_sha256": "255d41af7f931daeb69291101fb7f01f083b867908b198b665d49952a0085b32",
+            "feature_columns": [
+              "ret1",
+              "ret2",
+              "ret3",
+              "ret6",
+              "ret12",
+              "ret24",
+              "body_atr",
+              "clv",
+              "range_atr",
+              "atr_rank",
+              "ema_atr",
+              "london_active",
+              "ny_active",
+              "asia_active",
+              "ny_open",
+              "london_open",
+              "hour_sin",
+              "hour_cos",
+              "eff3",
+              "range_rel3",
+              "eff6",
+              "range_rel6",
+              "eff12",
+              "range_rel12",
+              "london_active_body_atr",
+              "london_active_ema_atr",
+              "london_active_ret3",
+              "london_active_range_atr",
+              "ny_active_body_atr",
+              "ny_active_ema_atr",
+              "ny_active_ret3",
+              "ny_active_range_atr",
+              "asia_active_body_atr",
+              "asia_active_ema_atr",
+              "asia_active_ret3",
+              "asia_active_range_atr",
+              "ny_open_body_atr",
+              "ny_open_ema_atr",
+              "ny_open_ret3",
+              "ny_open_range_atr",
+              "london_open_body_atr",
+              "london_open_ema_atr",
+              "london_open_ret3",
+              "london_open_range_atr"
+            ],
+            "group": "session_interaction",
+            "gate": "vol_high",
+            "train_rows": 21259,
+            "training_end_exclusive": "2024-01-01T00:00:00+00:00"
+          }
+        },
+        "SELL": {
+          "version": "R11",
+          "active": false,
+          "score": null,
+          "threshold": null,
+          "parity": {
+            "parity": "PASS",
+            "historical_train_sha256": "5189b65a8bbefeb0380f5795ca3639ac663debf337e625eadd4f552289aa044d",
+            "historical_validation_sha256": "20b1443dffc23ffd1981b58f0bf3bd62a745f3d5bb1267f3a2ae4a77be930401",
+            "config_sha256": "f4e4e1764ed70e0fa0239d9a37b0cecf529bb79cd2536f5b4f67ee36126a7ff8"
+          }
+        }
+      },
+      "execution_authority": false
+    },
+    "H4": {
+      "direction": "WAIT",
+      "reason": "NO_SIDE_TRIGGER",
+      "state": "RESEARCH_SHADOW",
+      "generated_at": "2026-11-23T11:07:18.082277+00:00",
+      "closed_at": "2026-11-23T08:00:00+00:00",
+      "target_close_at": "2026-11-23T12:00:00+00:00",
+      "observed_at": "2026-11-23T11:07:00.268810+00:00",
+      "last_close": 3618.23,
+      "sides": {
+        "BUY": {
+          "version": "R25",
+          "active": false,
+          "score": 0.4755422659431252,
+          "threshold": 0.55,
+          "gate": "london_open",
+          "gate_pass": true,
+          "parity": {
+            "parity": "PASS",
+            "n": 72,
+            "correct": 51,
+            "policy_sha256": "4b2a308259851688f00e23c43441a70f5960e9990a3dc64eaa6f49d9d3b363fe",
+            "feature_columns": [
+              "sweep_high3",
+              "sweep_low3",
+              "bos_up3",
+              "bos_dn3",
+              "position3",
+              "gap_hi3",
+              "gap_lo3",
+              "sweep_high5",
+              "sweep_low5",
+              "bos_up5",
+              "bos_dn5",
+              "position5",
+              "gap_hi5",
+              "gap_lo5",
+              "sweep_high8",
+              "sweep_low8",
+              "bos_up8",
+              "bos_dn8",
+              "position8",
+              "gap_hi8",
+              "gap_lo8",
+              "sweep_high12",
+              "sweep_low12",
+              "bos_up12",
+              "bos_dn12",
+              "position12",
+              "gap_hi12",
+              "gap_lo12",
+              "sweep_high20",
+              "sweep_low20",
+              "bos_up20",
+              "bos_dn20",
+              "position20",
+              "gap_hi20",
+              "gap_lo20",
+              "sweep_high40",
+              "sweep_low40",
+              "bos_up40",
+              "bos_dn40",
+              "position40",
+              "gap_hi40",
+              "gap_lo40",
+              "fvg_bull_atr",
+              "fvg_bear_atr",
+              "body_atr",
+              "ema_atr",
+              "clv",
+              "atr_rank"
+            ],
+            "group": "structure",
+            "gate": "london_open",
+            "train_rows": 6677,
+            "training_end_exclusive": "2024-01-01T00:00:00+00:00"
+          }
+        },
+        "SELL": {
+          "version": "R11",
+          "active": false,
+          "score": null,
+          "threshold": null,
+          "parity": {
+            "parity": "PASS",
+            "historical_train_sha256": "a172c3a659224862db0d3bde24642ed56b5c4fec93afa66bf148c413fa7aa721",
+            "historical_validation_sha256": "64f23589ecb10bf63c7c79526cef85bed5693f7ccccb1d5ed8b2c2d8c3330f18",
+            "config_sha256": "2f1ffc5f876c1710471e5292dea4dea701aab69e1c9e0b9f10b27f2c4c42d4d2"
+          }
+        }
+      },
+      "execution_authority": false
+    },
+    "D1": {
+      "direction": "WAIT",
+      "reason": "INDEPENDENT_MODEL_NOT_INFERENCED",
+      "state": "NOT_INFERENCED",
+      "generated_at": null,
+      "closed_at": null,
+      "target_close_at": null,
+      "observed_at": null,
+      "last_close": null,
+      "sides": {},
+      "execution_authority": false
+    },
+    "W1": {
+      "direction": "WAIT",
+      "reason": "INDEPENDENT_MODEL_NOT_INFERENCED",
+      "state": "NOT_INFERENCED",
+      "generated_at": null,
+      "closed_at": null,
+      "target_close_at": null,
+      "observed_at": null,
+      "last_close": null,
+      "sides": {},
+      "execution_authority": false
+    }
+  },
+  "warning": "R25/R11 H1/H4 are exploratory reconstructed heads. D1/W1 side winners are archived, NOT independently inferred. No forward validation or order authority."
+}
