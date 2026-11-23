@@ -1,0 +1,26 @@
+name: R32 XAU M5 Liquidity Sweep Replay Tests
+on:
+  push:
+    branches: [research/r32-liquidity-sweep-m5-2012-2026]
+    paths:
+      - "scripts/r32_m5_source.py"
+      - "scripts/r32_liquidity_sweep_m5_events.py"
+      - "tests/test_r32_m5_sweep.py"
+      - ".github/workflows/r32_sweep_smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  causal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas==2.2.3 numpy==2.3.5 pytest==9.0.2
+      - name: Compile source/replay and test synthetic contract
+        run: |
+          python -m py_compile scripts/r32_m5_source.py scripts/r32_liquidity_sweep_m5_events.py
+          PYTHONPATH=src:scripts python -m pytest -q tests/test_r32_m5_sweep.py
