@@ -6,7 +6,7 @@ import pandas as pd
 from .frozen_direction_context import TFS, context, horizon_plan, read_context_packet, session_closed
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, URL
-from .manual_direction_map import historical_benchmarks, timeframe_guidance, r2_tactical
+from .manual_direction_map import historical_benchmarks, timeframe_guidance, r2_tactical, direction_board_rows
 from .predictive_zone_to_zone import build_zone_paths
 from .zone_v05_dashboard import fetch as fetch_v05
 from .entry_direction_r2.dashboard import fetch_snapshot as fetch_r2
@@ -68,17 +68,12 @@ def load_context_sources():
 def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
-    st.subheader("RIZAN XAU · Panduan Manual per Timeframe")
-    st.caption("Riset close-ke-close H1/H4/D1/W1 dipisahkan dari bias teknikal dan zona observasi. Data historis terbaik TIDAK sama dengan model live. Tidak mengirim order.")
+    st.subheader("RIZAN XAU · Arah Candle Berikutnya")
+    st.caption("BUY/SELL indikatif per timeframe (close-ke-close) saat feed segar. Sumber: lima bukti teknikal; bukan output model terlatih R28.1 dan bukan instruksi order.")
     lock=json.loads(LOCK.read_text())
     marks=historical_benchmarks(lock)
-    st.markdown("**Benchmark hasil replay (historis saja)**")
-    st.dataframe([
-        {"TF":tf,
-         "BUY (historis)":f"{marks[(tf,'BUY')]['accuracy']:.2%} · n={marks[(tf,'BUY')]['n']} · {marks[(tf,'BUY')]['version']}" if (tf,"BUY") in marks else "—",
-         "SELL (historis)":f"{marks[(tf,'SELL')]['accuracy']:.2%} · n={marks[(tf,'SELL')]['n']} · {marks[(tf,'SELL')]['version']}" if (tf,"SELL") in marks else "—"}
-        for tf in TFS],hide_index=True)
-    st.warning("Model R11–R28.1 yang diuji masih memerlukan ekspor model + parity replay sebelum menghasilkan sinyal live. Semua timeframe berstatus WAIT MODEL. Hasil BUY dan SELL berasal dari kebijakan/sampel berbeda; jangan digabung menjadi tingkat akurasi trading.")
+    # The history and model-admission disclaimer belong in the audit at the end,
+    # not above the actionable current-direction observation dashboard.
     @st.cache_data(ttl=30,show_spinner=False)
     def read_sources(slot):
         return load_context_sources()
@@ -97,30 +92,34 @@ def render_frozen_direction_research():
     @st.fragment(run_every="30s")
     def panel():
         frames,reports,now=read_sources(int(datetime.now(UTC).timestamp()//30))
+        # Render the next-close directions immediately; zone/R2 network calls
+        # cannot delay or falsely override the H1/H4/D1/W1 forecast summary.
+        quick_guides={tf:timeframe_guidance(tf,reports[tf],frames.get(tf),reports,now=now) for tf in TFS}
+        st.markdown("### Prediksi arah indikatif · candle berikutnya")
+        summary=direction_board_rows(quick_guides)
+        st.dataframe([{k:v for k,v in x.items() if k in ("TF","Arah","Target close (WIB)","Sumber")} for x in summary],
+                     hide_index=True, width="stretch")
+        st.caption("BUY: diperkirakan close berikutnya lebih tinggi · SELL: lebih rendah. Data stale/netral = WAIT. Ini bukti teknikal, bukan hasil fitted R28.1.")
+        st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · pembaruan otomatis 30 detik")
+        if session_closed(now):
+            st.warning("Pasar XAU tutup; arah historis tidak boleh dibaca sebagai sinyal saat ini.")
+        elif not any(r["fresh"] for r in reports.values()):
+            st.info("Belum ada candle segar untuk prediksi BUY/SELL; tunggu feed broker.")
         v05_snapshot,r2_snapshot=read_manual_sources(int(datetime.now(UTC).timestamp()//30))
         try:
             v05_paths=build_zone_paths(v05_snapshot,now=now) if v05_snapshot is not None else {}
         except (ValueError,TypeError,KeyError,OverflowError):
             v05_paths={}
+        guides={tf:timeframe_guidance(tf,reports[tf],frames.get(tf),reports,now=now,v05_paths=v05_paths) for tf in TFS}
+        zones={tf:guides[tf]["watch_area"] for tf in TFS}
         tactical=r2_tactical(r2_snapshot,now=now) if r2_snapshot is not None else {"state":"WAIT"}
-        st.markdown("**Model entry R2 · sinyal taktis 60 menit (SELL saja)**")
-        st.caption("R2 diuji: 2023–2024 SELL 70/110 (63,6%), namun 2025 hanya 28/65 (43,1%). Bukan jaminan edge live atau prediksi H1 close.")
         if tactical["state"]=="TRIGGER_SELL":
-            st.warning("R2: Pemicu SELL teramati (bukan prediksi close H1 dan bukan sinyal R28). Periksa kembali cTrader sebelum entry manual.")
+            st.warning("R2: Pemicu SELL manual teramati; model R2 berbeda dari prediksi close-ke-close dan tidak mengesahkan order.")
             x,y=st.columns(2)
             x.metric("Acuan R2",f"{tactical['reference']:,.2f}")
             y.metric("Level pola R2",f"{tactical['level']:,.2f}")
             st.caption("Kedaluwarsa "+pd.Timestamp(tactical["expires"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB"))
-        else:
-            st.caption("R2: belum ada trigger SELL aktif yang lolos validasi feed/waktu. Detail dan checklist tersedia pada tab Arah Entry.")
-        st.metric("Status pasar", "PASAR TUTUP" if session_closed(now) else "SESI PERDAGANGAN")
-        st.caption("H1, H4, D1, W1 independen. Arah berbeda adalah konteks pullback/rebound potensial, bukan veto.")
-        st.caption("Diperiksa "+pd.Timestamp(now).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M:%S WIB")+" · update 60 detik")
-        if session_closed(now):st.warning("Pasar XAU umumnya tutup akhir pekan. WAIT; arah terakhir tidak berlaku sebagai sinyal live.")
-        elif not any(r["fresh"] for r in reports.values()):st.info("Belum ada timeframe dengan data segar.")
-        st.caption("Skor 0–5 = bukti indikator, bukan probabilitas atau akurasi replay. Zona per TF adalah AREA TUNGGU, bukan sinyal eksekusi. Diperlukan rejection/reclaim dan BOS M5.")
-        guides={tf:timeframe_guidance(tf,reports[tf],frames.get(tf),reports,now=now,v05_paths=v05_paths) for tf in TFS}
-        zones={tf:guides[tf]["watch_area"] for tf in TFS}
+        st.caption("Area tiap timeframe adalah zona observasi, bukan entry terkonfirmasi. Tunggu rejection/reclaim dan BOS M5.")
         for tf in TFS:
             r=reports[tf]
             guide=guides[tf]
@@ -128,10 +127,8 @@ def render_frozen_direction_research():
             plan=horizon_plan(reports,tf)
             with st.container(border=True):
                 st.markdown("**"+tf+" · arah candle berikutnya & area tunggu**")
-                a,b=st.columns(2)
-                a.metric("Model hasil replay",guide["model"])
-                b.metric("Bias TEKNIKAL sementara",guide["technical"])
-                st.caption("Sumber riset: belum ada model live dengan parity replay terverifikasi. Bias teknikal saat ini adalah hipotesis TERPISAH, bukan prediksi R28.")
+                st.metric("Prediksi arah "+tf+" berikutnya · indikatif",guide["technical"])
+                st.caption("Dihitung dari 5 bukti teknikal candle tertutup. Bukan inferensi model R28.1 atau probabilitas 80%.")
                 if guide["target_at"]:
                     target=pd.Timestamp(guide["target_at"]).tz_convert("Asia/Jakarta").strftime("%d/%m %H:%M WIB")
                     st.caption("Target close teknikal: "+target+" · dibandingkan close "+tf+" sebelumnya")
@@ -202,9 +199,10 @@ def render_frozen_direction_research():
         st.altair_chart(pic.properties(height=340),width="stretch")
         st.caption("Tidak ada izin entry/order; arah setiap timeframe adalah hipotesis teknikal, bukan model probabilitas.")
     panel()
-    with st.expander("8 benchmark historis frozen R28.1 · rincian audit",expanded=False):
+    with st.expander("R28.1 · status model asli & hasil replay historis",expanded=False):
+        st.warning("Model R11–R28.1 belum diekspor dan diuji parity untuk inferensi broker terkini. Prediksi BUY/SELL di atas berasal dari lima indikator teknikal, BUKAN dari fitted R28.1.")
         entries=lock["entries"]
         st.dataframe([{"TF":e["tf"],"Arah":e["side"],"Versi":e["version"],"Akurasi":f"{e['accuracy']:.2%}","n":e["n"]} for e in entries],hide_index=True)
-        st.caption("Hasil berbeda kebijakan dan periode; bukan peluang BUY/SELL sekarang.")
+        st.caption("Kandidat historis memiliki periode dan kebijakan yang berbeda-beda. Angkanya bukan probabilitas prediksi yang muncul pada dashboard saat ini.")
         st.download_button("Unduh benchmark JSON",LOCK.read_text(),file_name=LOCK.name,mime="application/json")
         st.markdown("[Handover R27](https://github.com/rizanrizan93/Forex-scanner/blob/research/r91-early-warning-m1-20261121/research/RIZAN_DIRECTION_HANDOVER_R27.md) · [Replay R28.1](https://github.com/rizanrizan93/Forex-scanner/actions/runs/44970328847)")

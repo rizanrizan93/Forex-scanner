@@ -7,7 +7,7 @@ import pandas as pd
 
 from fx_scanner.frozen_direction_context import context
 from fx_scanner.manual_direction_map import (
-    MODEL_STATE, historical_benchmarks, r2_tactical, timeframe_guidance,
+    MODEL_STATE, historical_benchmarks, r2_tactical, timeframe_guidance, direction_board_rows,
 )
 
 
@@ -108,3 +108,35 @@ def test_r2_manual_trigger_is_not_h1_replay_forecast():
     assert r["model"] == "R2_RULE_670"
     assert r["execution_authority"] is False
     assert r2_tactical(p, now=now + timedelta(minutes=2))["state"] == "WAIT"
+
+
+def test_direction_board_shows_actual_buy_sell_not_wait_model():
+    now = datetime(2026, 11, 18, 12, tzinfo=UTC)
+    bars, buy = rising_h1(now)
+    sell_bars = bars.copy()
+    sell_bars["open"] = 3100 - bars.open + 3000
+    sell_bars["close"] = 3100 - bars.close + 3000
+    sell_bars["high"] = sell_bars[["open", "close"]].max(axis=1) + 2
+    sell_bars["low"] = sell_bars[["open", "close"]].min(axis=1) - 2
+    sell = context(sell_bars, "H4", now=now, observed_at=now, market_fresh=True)
+    guide1 = timeframe_guidance("H1", buy, bars, {"H1": buy}, now=now)
+    guide4 = timeframe_guidance("H4", sell, sell_bars, {"H4": sell}, now=now)
+    rows = direction_board_rows({"H1": guide1, "H4": guide4})
+    assert [r["Arah"] for r in rows] == ["BUY", "SELL", "WAIT DATA", "WAIT DATA"]
+    assert rows[0]["Target close (WIB)"] == "18/11 20:00 WIB"
+    assert rows[1]["Target close (WIB)"] == "18/11 23:00 WIB"
+    assert all(not r["model_r28_live"] and not r["execution_authority"] for r in rows)
+    assert "WAIT MODEL" not in str([r["Arah"] for r in rows])
+
+
+def test_direction_board_never_promotes_unproven_or_expired_direction():
+    now = datetime(2026, 11, 18, 12, tzinfo=UTC)
+    bars, buy = rising_h1(now)
+    guide = timeframe_guidance("H1", buy, bars, {"H1": buy}, now=now)
+    bad = dict(guide, technical="BUY", technical_kind="UNAVAILABLE")
+    assert direction_board_rows({"H1": bad})[0]["Arah"] == "WAIT DATA"
+    missing = dict(guide, target_at="not-a-timestamp")
+    assert direction_board_rows({"H1": missing})[0]["Arah"] == "WAIT DATA"
+    stale = context(bars, "H1", now=now + timedelta(hours=2), observed_at=now, market_fresh=False)
+    result = timeframe_guidance("H1", stale, bars, {"H1": stale}, now=now + timedelta(hours=2))
+    assert direction_board_rows({"H1": result})[0]["Arah"] == "WAIT DATA"
