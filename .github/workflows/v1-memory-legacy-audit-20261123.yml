@@ -48,7 +48,7 @@ jobs:
            return p
           def props(u):
            fields=['LoadState','ActiveState','SubState','MainPID','UnitFileState','NRestarts','Result','MemoryCurrent','MemoryPeak','MemoryMax','OOMPolicy','ExecMainStartTimestampMonotonic','ExecMainStartTimestamp','RequiredBy','WantedBy','TriggeredBy','PartOf','Requires']
-           p=run(['systemctl','show',u]+['-p='+f for f in fields],False)
+           p=run(['systemctl','show',u]+['--property='+f for f in fields],False)
            return dict(line.split('=',1) for line in p.stdout.splitlines() if '=' in line)
           def snap():
            spec=importlib.util.spec_from_file_location('monitor','/opt/rizan-bootstrap125-monitor/read_bootstrap125_dashboard.py')
@@ -77,8 +77,8 @@ jobs:
           folder=Path('/var/lib/rizan-bootstrap125-forensics')/('incident-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
           folder.mkdir(parents=True,mode=0o700)
           report['journal_evidence']={}
-          for name,args in [('kernel',['journalctl','-k']),('system',['journalctl']),('bridge',['journalctl','-u',KEEP])]:
-           p=run(args+['--since','2026-11-23 10:35:00 UTC','--until','2026-11-23 14:25:00 UTC','-n','20000','-o','json','--no-pager'],False)
+          for name,args in [('kernel',['journalctl','-k']),('system',['journalctl','-p','warning']),('incident',['journalctl']),('bridge',['journalctl','-u',KEEP])]:
+           p=run(args+['--since','2026-11-23 10:45:00 UTC' if name=='incident' else '2026-11-23 10:35:00 UTC','--until','2026-11-23 11:00:00 UTC' if name=='incident' else '2026-11-23 14:25:00 UTC','-n','20000','-o','json','--no-pager'],False)
            raw=p.stdout; (folder/(name+'.jsonl')).write_text(raw)
            events=[];total=0
            for line in raw.splitlines():
