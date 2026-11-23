@@ -73,8 +73,8 @@ def extended_ecb():
     try:
         req = Request(XML, headers={"User-Agent": "RIZAN-R281-research-readonly/1"})
         with urlopen(req, timeout=35) as resp:
-            raw = resp.read(4_000_001)
-        if len(raw) > 4_000_000:
+            raw = resp.read(20_000_001)
+        if len(raw) > 20_000_000:
             raise ValueError("ECB_RESPONSE_OVERSIZED")
         rows = []
         for element in ET.fromstring(raw).iter():
@@ -102,7 +102,8 @@ def extended_ecb():
                     "rows_2026": len(current), "sha256": hashlib.sha256(raw).hexdigest()}
     except (OSError, ValueError, ET.ParseError, TimeoutError) as exc:
         # A stale 2018-25 source can prove replay parity but can NEVER score 2026.
-        return fixed, {"status": "ECB_2026_UNAVAILABLE", "reason": type(exc).__name__}
+        return fixed, {"status": "ECB_2026_UNAVAILABLE", "reason": type(exc).__name__,
+                       "detail": str(exc)[:140]}
 
 
 def classifier(C):
