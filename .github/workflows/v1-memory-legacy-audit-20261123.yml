@@ -1,0 +1,151 @@
+name: V1 incident memory audit and guarded legacy cleanup
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/v1-memory-legacy-audit-20261123.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bootstrap125-p0-forensics
+  cancel-in-progress: false
+jobs:
+  audit-cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Audit memory and stop only verified unused legacy bridges
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' 'sudo -n /usr/bin/python3 -' <<'PY' > "$RUNNER_TEMP/v1-memory-legacy-audit.json"
+          import subprocess,json,time,re,sqlite3,importlib.util,hashlib,os
+          from pathlib import Path
+          from datetime import datetime,timezone
+          KEEP='rizan-bootstrap125-bridge.service'
+          OLD={
+          'rizan-buy050-bridge.service':'/var/lib/rizan-buy050-bridge',
+          'rizan-btc10-bridge.service':'/var/lib/rizan-btc10-bridge',
+          'rizan-disp1506-bridge.service':'/var/lib/rizan-disp1506-bridge',
+          'rizan-cbot-bridge.service':'/var/lib/rizan-r3-bridge',
+          'rizan-btc7d130.service':None,
+          'rizan-compression-bridge.service':'/var/lib/rizan-compression-bridge',
+          'rizan-tp500-bridge.service':'/var/lib/rizan-tp500-bridge'}
+          def run(args,check=True):
+           p=subprocess.run(args,text=True,capture_output=True,timeout=35)
+           if check and p.returncode: raise RuntimeError('COMMAND_FAILED:'+args[0])
+           return p
+          def props(u):
+           fields=['LoadState','ActiveState','SubState','MainPID','UnitFileState','NRestarts','Result','MemoryCurrent','MemoryPeak','MemoryMax','OOMPolicy','ExecMainStartTimestampMonotonic','ExecMainStartTimestamp','RequiredBy','WantedBy','TriggeredBy','PartOf','Requires']
+           p=run(['systemctl','show',u]+['-p='+f for f in fields],False)
+           return dict(line.split('=',1) for line in p.stdout.splitlines() if '=' in line)
+          def snap():
+           spec=importlib.util.spec_from_file_location('monitor','/opt/rizan-bootstrap125-monitor/read_bootstrap125_dashboard.py')
+           m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+           s=m.snapshot()
+           assert s['profile']=='RIZAN_BOOTSTRAP125_V1_FROZEN_20261114' and s['account_suffix']=='7903'
+           assert s['service_active'] and s['bridge']['profile_ok']
+           now=datetime.now(timezone.utc)
+           assert 0<=(now-datetime.fromisoformat(s['bridge']['observed_at'])).total_seconds()<60
+           assert len(s['roles'])==4 and all(r['identity_ok'] and r['lease_active'] and 0<=(now-datetime.fromisoformat(r['lease_touched_at'])).total_seconds()<30 for r in s['roles'])
+           return s
+          def memory():
+           d={}
+           for line in Path('/proc/meminfo').read_text().splitlines():
+            k,v=line.split(':',1)
+            if k in ['MemTotal','MemAvailable','MemFree','SwapTotal','SwapFree']:d[k+'_kB']=int(v.split()[0])
+           d['pressure']=Path('/proc/pressure/memory').read_text() if Path('/proc/pressure/memory').exists() else None
+           return d
+          report={'observed_at':datetime.now(timezone.utc).isoformat(),'orders_sent':0,'checkpoints_deleted':False,'memory_before':memory()}
+          names=run(['systemctl','list-units','--type=service','--all','--plain','--no-legend']).stdout
+          units=sorted({r.split()[0] for r in names.splitlines() if r.split() and re.match(r'(rizan|forex|ctrader)',r.split()[0],re.I)}|set(OLD)|{KEEP})
+          report['services_before']={u:props(u) for u in units}
+          report['process_memory']=run(['ps','-eo','pid=,comm=,rss=','--sort=-rss']).stdout.splitlines()[:20]
+          report['native_processes']=[r for r in run(['ps','-eo','comm=']).stdout.splitlines() if re.search('ctrader|calgo|dotnet',r,re.I)]
+          # Preserve raw journals locally, export only classifications and precise timestamps.
+          folder=Path('/var/lib/rizan-bootstrap125-forensics')/('incident-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
+          folder.mkdir(parents=True,mode=0o700)
+          report['journal_evidence']={}
+          for name,args in [('kernel',['journalctl','-k']),('system',['journalctl']),('bridge',['journalctl','-u',KEEP])]:
+           p=run(args+['--since','2026-11-23 10:35:00 UTC','--until','2026-11-23 14:25:00 UTC','-n','20000','-o','json','--no-pager'],False)
+           raw=p.stdout; (folder/(name+'.jsonl')).write_text(raw)
+           events=[];total=0
+           for line in raw.splitlines():
+            try:r=json.loads(line);msg=str(r.get('MESSAGE',''));total+=1
+            except Exception:continue
+            for kind,pat in [('OOM','out of memory|oom-kill|killed process|oom_reaper'),('CRASH','segfault|core dump|Failed with result|Main process exited'),('NETWORK','connection reset|keepalive ping timeout|connection closed'),('LIFECYCLE','Stopping |Stopped |Starting |Started |Rebooting')]:
+             if re.search(pat,msg,re.I):
+              unit=str(r.get('_SYSTEMD_UNIT',r.get('SYSLOG_IDENTIFIER','UNKNOWN')))
+              if re.fullmatch(r'[A-Za-z0-9_.@:-]{1,100}',unit):
+               events.append({'at':datetime.fromtimestamp(int(r['__REALTIME_TIMESTAMP'])/1e6,timezone.utc).isoformat(),'type':kind,'unit':unit,'phrase':re.search(pat,msg,re.I).group(0)})
+           report['journal_evidence'][name]={'returncode':p.returncode,'rows':total,'capped':total>=20000,'sha256':hashlib.sha256(raw.encode()).hexdigest(),'events':events[:250]}
+          report['boots']=run(['journalctl','--list-boots','--no-pager'],False).stdout.splitlines()[-5:]
+          report['before']=snap()
+          identity=props(KEEP)
+          report['decisions']={};changed=[]
+          sockets=run(['ss','-H','-tnp','state','established']).stdout
+          for u,foldername in OLD.items():
+           p=props(u);reason=None
+           if p.get('LoadState')!='loaded': reason='NOT_LOADED'
+           elif p.get('ActiveState') not in ['active','inactive','failed']:reason='TRANSITIONAL'
+           elif any(p.get(f,'') for f in ['RequiredBy','TriggeredBy','PartOf']):reason='DEPENDENCY_OR_TRIGGER'
+           elif any(x!='multi-user.target' for x in p.get('WantedBy','').split()):reason='NONSTANDARD_WANTED_BY'
+           elif p.get('MainPID','0')!='0' and re.search(r'pid='+re.escape(p['MainPID'])+r'[,)]',sockets):reason='ESTABLISHED_CONNECTIONS'
+           elif not foldername:reason='STATE_LOCATION_NOT_ESTABLISHED'
+           else:
+            dbfile=Path(foldername)/'checkpoints.sqlite'
+            if not dbfile.is_file():reason='STATE_DB_MISSING'
+            else:
+             try:
+              with sqlite3.connect(dbfile.resolve().as_uri()+'?mode=ro',uri=True,timeout=3) as db:
+               tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+               if 'bridge_leases' not in tables:reason='LEASE_TABLE_MISSING'
+               elif db.execute('SELECT count(*) FROM bridge_leases WHERE expires_at>?',(time.time(),)).fetchone()[0]:reason='ACTIVE_LEASES'
+               # Nonempty legacy checkpoints require manual review of outstanding state.
+               elif 'checkpoints' in tables:
+                for row in db.execute('SELECT state FROM checkpoints'):
+                 s=json.loads(row[0])
+                 if any(s.get(k) for k in ['Basket','BatchActive','OpenLabel','Intent','PendingLabel','NativePendingLabel','PendingFirstFill','XauPendingSignal','Sending','BatchRemaining','HandoffSignal','ExitPending']):reason='OUTSTANDING_CHECKPOINT_STATE';break
+             except Exception:reason='STATE_INSPECTION_FAILED'
+           if reason:report['decisions'][u]=reason;continue
+           if p.get('ActiveState')!='active' and p.get('UnitFileState')=='disabled':report['decisions'][u]='ALREADY_STOPPED_DISABLED';continue
+           # Check the keep-service dependency closure before each mutation.
+           deps=run(['systemctl','list-dependencies','--all','--plain',KEEP]).stdout
+           if u in deps:report['decisions'][u]='CURRENT_BRIDGE_DEPENDENCY';continue
+           try:
+            snap()
+            changed.append((u,p))
+            run(['systemctl','disable','--now',u])
+            after=props(u)
+            assert after.get('ActiveState')=='inactive' and after.get('UnitFileState') in ['disabled','static']
+            snap()
+            q=props(KEEP)
+            assert all(q[k]==identity[k] for k in ['MainPID','ExecMainStartTimestampMonotonic'])
+            report['decisions'][u]='STOPPED_DISABLED'
+           except Exception:
+            for name,previous in reversed(changed):
+             if previous.get('UnitFileState')=='enabled':run(['systemctl','enable',name],False)
+             if previous.get('ActiveState')=='active':run(['systemctl','start',name],False)
+            raise
+          report['after']=snap();report['memory_after']=memory()
+          report['services_after']={u:props(u) for u in units}
+          report['changed_units']=[u for u,p in changed]
+          report['bridge_not_restarted']=True
+          print(json.dumps(report))
+          PY
+          cat "$RUNNER_TEMP/v1-memory-legacy-audit.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v1-memory-legacy-audit
+          path: ${{ runner.temp }}/v1-memory-legacy-audit.json
