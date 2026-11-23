@@ -1,4 +1,4 @@
-name: R30 XAU Independent TF Zone Direction Mega Replay 2012-2026
+name: R30 XAU Independent TF Zone Direction Mega Replay 2012-2026 SESSION FILTERED
 
 on:
   push:
@@ -62,6 +62,19 @@ jobs:
           python scripts/r30_duka_h1_h4_shard.py \
             --year ${{ matrix.year }} \
             --csv "/tmp/r30-duka/xauusd-h1-${{ matrix.year }}.csv"
+      - name: Require tradable Monday-Friday bars and weekend quarantine receipt
+        run: |
+          python - <<'PY'
+          import glob,json
+          paths=glob.glob("artifacts/r30/r30-dukascopy-provenance-*.json")
+          assert len(paths)==1,paths
+          doc=json.load(open(paths[0]))
+          counts=doc["session_filter"]
+          assert counts["raw_h1"]>counts["tradable_h1"]>1200,counts
+          assert counts["weekend_filtered"]>0,counts
+          assert doc["validation"]=="UTC_H1_CLOSED_MON_FRI_NO_FLATS_FOUR_CONTIGUOUS_H1_TO_H4"
+          print("R30_TRADABLE_SESSION_AUDIT_PASS",counts)
+          PY
       - name: Upload provenance SHA + price bars, never orders
         uses: actions/upload-artifact@v4
         with:
