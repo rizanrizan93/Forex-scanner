@@ -1,0 +1,116 @@
+name: RIZAN Best Side R25 BUY x R11 SELL XAU H1-H4 (Read Only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rbest_direction_shadow.yml'
+  schedule:
+    - cron: '7,22,37,52 * * * 1-5'
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: rbest-side-candidates-hourly
+  cancel-in-progress: false
+
+jobs:
+  heads:
+    name: Verify original R25/R11 and infer ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tf: 1h
+            label: H1
+          - tf: 4h
+            label: H4
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - name: Checkout immutable specialist source branch, no LIVE cBots
+        uses: actions/checkout@v4
+        with:
+          ref: research/rbest-side-inference-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install research-only dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests joblib pytest==9.0.2
+      - name: Fail closed unit and no-order tests
+        run: python -m pytest -q tests/test_rbest_side_candidates.py tests/test_rbest_publish_shadow.py tests/test_r281_live_market.py
+      - name: Cache verified immutable H1 and H4 history
+        id: hist
+        uses: actions/cache@v4
+        with:
+          path: /tmp/r10
+          key: rbest-frozen-r10-2019-2026-v1-${{ runner.os }}
+      - name: Download original R10 2019-2026 H1/H4 artifact if not cached
+        if: steps.hist.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Reproduce R25 validation and R11 training/selection hashes then infer current candle
+        run: python scripts/rbest_side_candidates.py --tf "${{ matrix.tf }}"
+      - name: Save side-specific proof from this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbest-model-${{ matrix.label }}
+          path: artifacts/rbest_inference/rbest-${{ matrix.tf }}-shadow.json
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: Atomic research-only specialist side packet
+    needs: [heads]
+    if: ${{ needs.heads.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'scripts:src:.'
+    steps:
+      - name: Checkout research side-candidate branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/rbest-side-inference-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install publisher
+        run: pip install pandas==2.2.3
+      - name: Download both source reports from THIS run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rbest-model-*
+          path: artifacts/rbest_inference
+          merge-multiple: true
+      - name: Require exact H1/H4 source, parity, side conflict and candle expiry
+        run: python scripts/rbest_publish_shadow.py
+      - name: Commit read-only research snapshot; never touch Frozen V1
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add runtime/rbest-side-direction.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh R25 BUY and R11 SELL read-only H1/H4 candidate packet"
+            git push origin HEAD:refs/heads/research/rbest-side-inference-20261123
+          fi
+      - name: Retain specialist evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbest-specialist-shadow-receipt
+          path: |
+            runtime/rbest-side-direction.json
+            artifacts/rbest_inference/*-shadow.json
+          retention-days: 7
+          if-no-files-found: warn
