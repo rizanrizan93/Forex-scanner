@@ -1,6 +1,7 @@
 """Non-interfering evidence collector. Raw logs stay root-private on VPS.
 No broker calls, service mutations, checkpoint writes or process signalling.
 """
+import gzip
 import hashlib
 import importlib.util
 import json
@@ -52,11 +53,14 @@ def main():
         'system': ['journalctl', '-p', 'warning'],
         'kernel': ['journalctl', '-k'],
         'nginx': ['journalctl', '-u', 'nginx.service'],
+        'incident_all': ['journalctl'],
     }.items():
-        code, raw, err = capture(args + ['--since', START, '--until', END, '--utc', '-o', 'json', '--no-pager', '-n', '20000'])
+        since, until = ('2026-11-18 00:45:00 UTC','2026-11-18 02:00:00 UTC') if name=='incident_all' else (START,END)
+        code, raw, err = capture(args + ['--since', since, '--until', until, '--utc', '-o', 'json', '--no-pager', '-n', '20000'])
         (folder / (name+'.journal.jsonl')).write_bytes(raw)
         manifest[name] = dict(sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw), returncode=code)
         events, counts, first, last, total = [], Counter(), None, None, 0
+        units=Counter(); matches=Counter()
         for line in raw.splitlines():
             try:
                 row=json.loads(line); us=int(row['__REALTIME_TIMESTAMP'])
@@ -66,12 +70,18 @@ def main():
                 for category, pattern in PATTERNS.items():
                     if re.search(pattern,msg,re.I):
                         counts[category]+=1
+                        unit=str(row.get('_SYSTEMD_UNIT',row.get('SYSLOG_IDENTIFIER','UNKNOWN')))
+                        if re.fullmatch(r'[A-Za-z0-9_.@:-]{1,100}',unit): units[(category,unit)]+=1
+                        match=re.search(pattern,msg,re.I).group(0)
+                        matches[(category,match)]+=1
                         if len(events)<1500:
                             events.append(dict(at=at,event=category,message_sha256=hashlib.sha256(msg.encode()).hexdigest()))
             except (KeyError, ValueError, TypeError):
                 continue
         report['journals'][name]=dict(**manifest[name], rows=total, capped=total>=20000,
-                                     first_at=first,last_at=last,counts=dict(counts),events=events)
+                                     first_at=first,last_at=last,counts=dict(counts),events=events,
+                                     unit_counts=[dict(event=c,unit=u,count=n) for (c,u),n in units.items()],
+                                     matched_phrases=[dict(event=c,phrase=p,count=n) for (c,p),n in matches.items()])
     code,raw,err=capture(['journalctl','--list-boots','--no-pager'])
     (folder/'boots.txt').write_bytes(raw)
     report['boot_history']=raw.decode(errors='replace').splitlines()[-15:]
@@ -105,11 +115,13 @@ def main():
     except Exception as exc: report['errors'].append('SQLITE_'+type(exc).__name__)
     # Access logs are preserved privately; publish only role-route/time/status counts.
     report['http_access']={}
+    report['nginx_log_files']=[dict(name=p.name,bytes=p.stat().st_size) for p in Path('/var/log/nginx').iterdir() if p.is_file()]
     for p in Path('/var/log/nginx').glob('*access.log*'):
-        if p.suffix=='.gz' or not p.is_file(): continue
+        if not p.is_file(): continue
         try:
             rows=[]
-            with p.open(errors='replace') as f:
+            opener=gzip.open if p.suffix=='.gz' else open
+            with opener(p,'rt',errors='replace') as f:
                 for line in f:
                     if '/bootstrap125' in line and re.search(r'1[7-9]/Nov/2026|2[0-3]/Nov/2026',line): rows.append(line)
             raw=''.join(rows).encode();(folder/(p.name+'.private')).write_bytes(raw)

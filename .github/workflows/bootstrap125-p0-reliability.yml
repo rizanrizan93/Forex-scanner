@@ -1,0 +1,102 @@
+name: Bootstrap125 P0 lease safety and independent watchdog
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap125-p0-reliability.yml'
+      - 'src/fx_scanner/cbot_v1_reliability.py'
+      - 'operations/bootstrap125_watchdog/**'
+      - 'tests/test_cbot_v1_reliability.py'
+      - 'tests/test_bootstrap125_watchdog.py'
+      - 'tests/test_bootstrap125_native_lease_safety.py'
+permissions:
+  contents: read
+concurrency:
+  group: bootstrap125-p0-watchdog-install
+  cancel-in-progress: false
+jobs:
+  shadow-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 90172c2fba345e4221ca822c8e7d1d760a98c6b1
+          path: reference
+          sparse-checkout: repairs/bootstrap125_v1_20261114/bridge
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install websockets==15.0.1
+      - name: Monitor and independent observer failure injection
+        env:
+          PYTHONPATH: src:tests
+        run: |
+          python -m unittest discover -s tests -p 'test_cbot_v1*.py' -v
+          python -m unittest discover -s tests -p 'test_bootstrap125_watchdog.py' -v
+          python -m unittest discover -s tests -p 'test_bootstrap125_direct_monitor.py' -v
+      - name: Actual pinned bridge SQLite and loopback WebSocket fault injection
+        env:
+          RIZAN_V1_REFERENCE_BRIDGE: ${{ github.workspace }}/reference/repairs/bootstrap125_v1_20261114/bridge
+        run: python -m unittest discover -s tests -p 'test_bootstrap125_native_lease_safety.py' -v
+  install-observer:
+    needs: shadow-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install independent observer without touching trading service
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          remote=''
+          host='Rizanrizan@202.74.74.172'
+          opts=()
+          cleanup() {
+            if [[ -n "$remote" ]]; then ssh "${opts[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15)
+          remote=$(ssh "${opts[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-v1-watchdog.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-v1-watchdog\.[a-zA-Z0-9]+$ ]]
+          cp operations/bootstrap125_watchdog/watchdog.py operations/bootstrap125_watchdog/install.py src/fx_scanner/cbot_v1_reliability.py "$d/"
+          scp -q "${opts[@]}" "$d/watchdog.py" "$d/install.py" "$d/cbot_v1_reliability.py" "$host:$remote/"
+          ssh "${opts[@]}" "$host" "sudo -n /usr/bin/python3 '$remote/install.py' '$remote'"
+          ssh "${opts[@]}" "$host" 'sudo -n systemctl is-active rizan-bootstrap125-watchdog.timer'
+          # Shadow expired-heartbeat injection runs only on a copied JSON object.
+          ssh "${opts[@]}" "$host" '/usr/bin/python3 -' <<'PY'
+          import copy,json,sys
+          from datetime import datetime,timezone,timedelta
+          from pathlib import Path
+          sys.path.insert(0,'/opt/rizan-bootstrap125-watchdog')
+          from watchdog import check
+          p=json.loads(Path('/var/lib/rizan-bootstrap125-monitor/status.json').read_text())
+          now=datetime.now(timezone.utc)
+          live=check(p,now)
+          shadow=copy.deepcopy(p);shadow['observed_at']=now.isoformat()
+          for r in shadow['roles']:
+              r.update(lease_active=False,lease_expires_at=(now-timedelta(seconds=1)).isoformat())
+          r=check(shadow,now)
+          assert r['event']=='V1_HEARTBEAT_ALERT' and r['automatic_recovery'] is False
+          assert all(v['reason']=='LEASE_EXPIRED' and v['execution_ready'] is None for v in r['roles'].values())
+          print('VPS_SHADOW_EXPIRED_HEARTBEAT_DETECTED_NO_RESTART')
+          print(json.dumps(live))
+          PY
+          ssh "${opts[@]}" "$host" 'sudo -n journalctl -u rizan-bootstrap125-watchdog.service -n 5 --no-pager --utc -o cat'

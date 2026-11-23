@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor
 from fx_scanner.cbot_v1_evidence import evidence
+from fx_scanner.cbot_v1_reliability import observe
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
@@ -87,7 +88,8 @@ def evaluate_snapshot(raw, *, now=None):
     if not current or bootstrap.get("identity_ok") is not True or phase not in ("SEED", "GROWTH"):
         phase = "UNKNOWN"
     return {"fresh": current, "bridge_ready": bridge_ready, "phase": phase,
-            "roles": by_role, "statuses": states, "payload": raw, "now": now}
+            "roles": by_role, "statuses": states, "payload": raw, "now": now,
+            "reliability": observe(raw, now)}
 
 
 def checklist(model, symbol, *, market=None, broker=None):
@@ -107,7 +109,8 @@ def checklist(model, symbol, *, market=None, broker=None):
     if current:
         if model["statuses"][symbol].startswith(("TERHUBUNG", "STATE AKTIF", "TERBLOKIR")):
             connection = True
-        elif model["payload"].get("service_active") is False:
+        elif (model["payload"].get("service_active") is False
+              or model["reliability"]["roles"][symbol]["reason"] == "LEASE_EXPIRED"):
             connection = False
     add("Bridge dan lease baru", connection,
         "Heartbeat lease: " + wib(row.get("lease_touched_at")) if model else "Menunggu observasi bridge")
@@ -182,6 +185,12 @@ def render_snapshot(raw=None, *, now=None, unavailable=False, market=None, broke
         st.info("Observasi bridge V1 tersedia. Koneksi bridge belum membuktikan kesiapan trading atau keberhasilan order.")
     else:
         st.warning("Observasi diterima; heartbeat atau layanan bridge belum terverifikasi baru dan sehat.")
+    if model:
+        reliability = model["reliability"]
+        if reliability["attention_required"]:
+            st.error("Gangguan heartbeat / observasi: periksa status per role. Service bridge aktif tidak membuktikan cBot aktif.")
+        st.caption("BRIDGE_ACTIVE: " + str(reliability["bridge_active"]) +
+                   " · EXECUTION_READY: UNKNOWN · Recovery otomatis: dinonaktifkan; identitas instance dan order broker harus diaudit.")
     phase = model["phase"] if model else "UNKNOWN"
     st.metric("Fase V1 tersimpan", phase)
     st.caption("SEED: EURUSD BUY · GROWTH: XAUUSD + EURUSD + BTCUSD. "
@@ -192,7 +201,11 @@ def render_snapshot(raw=None, *, now=None, unavailable=False, market=None, broke
         if not model["fresh"]:
             st.caption("Angka dan checkpoint di bawah adalah observasi terakhir, bukan status LIVE.")
         st.dataframe([
-            {"Role": r, "Status": model["statuses"][r],
+            {"Role": r, "Status lease": model["reliability"]["roles"][r]["status"],
+             "Alasan": model["reliability"]["roles"][r]["reason"],
+             "Jalur cBot": model["reliability"]["roles"][r]["bot_connected"],
+             "Lifecycle native": "UNKNOWN", "Execution ready": "UNKNOWN",
+             "Status": model["statuses"][r],
              "Checkpoint": model["roles"][r].get("checkpoint_version"),
              "Client revision": model["roles"][r].get("client_revision"),
              "Heartbeat lease": wib(model["roles"][r].get("lease_touched_at"))}
