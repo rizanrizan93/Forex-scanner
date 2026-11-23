@@ -176,3 +176,90 @@ def independent_zones(primary, snapshot, *, now=None):
             "probability":None,
         }
     return out
+
+def fresh_m1_fallback_packet(market, *, now=None):
+    """Build H1/H4-only closed-candle zone snapshot from validated manual-R3 M1.
+
+    market MUST be returned by manual_r3_feed.fetch_market(), whose source and
+    OHLC contracts are independently validated. Never extrapolate D1 or W1
+    from a 2-8 day M1 window. A short or gappy series is WAIT, not padded.
+    """
+    from .manual_reversal_map import detect,project,annotate_intraday_zone_risk
+
+    now=utc(now or datetime.now(UTC))
+    if not isinstance(market,dict) or not isinstance(market.get("frame"),pd.DataFrame):
+        raise ValueError("M1_FALLBACK_MARKET_UNAVAILABLE")
+    at=utc(market.get("as_of"))
+    if not 0<=(now-at).total_seconds()<=90:
+        raise ValueError("M1_FALLBACK_PUBLISHER_STALE")
+    m1=market["frame"]
+    required=("open","high","low","close")
+    if (not set(required).issubset(m1.columns)
+            or m1.empty or m1.index.tz is None or m1.index.has_duplicates
+            or not m1.index.is_monotonic_increasing
+            or not all(m1.index.second==0)
+            or not all(m1.index.microsecond==0)):
+        raise ValueError("M1_FALLBACK_SOURCE_CANDLES_INVALID")
+    last_close=m1.index[-1]+pd.Timedelta(minutes=1)
+    if not 0<=(now-last_close).total_seconds()<=120:
+        raise ValueError("M1_FALLBACK_LAST_CANDLE_STALE")
+    if not all(pd.api.types.is_numeric_dtype(m1[col]) for col in required):
+        raise ValueError("M1_FALLBACK_OHLC_TYPES_INVALID")
+    if (not m1[list(required)].notna().all().all()
+            or (m1.low<=0).any() or (m1.high<m1[["open","close","low"]].max(axis=1)).any()
+            or (m1.low>m1[["open","close"]].min(axis=1)).any()):
+        raise ValueError("M1_FALLBACK_OHLC_GEOMETRY_INVALID")
+
+    def closed(minutes):
+        q=m1.resample(f"{minutes}min",label="left",closed="left").agg(
+            open=("open","first"),high=("high","max"),
+            low=("low","min"),close=("close","last"),
+            count=("close","size")
+        )
+        q=q.loc[(q["count"]==minutes)&
+                (q.index+pd.Timedelta(minutes=minutes)<=now)]
+        q=q.drop(columns="count").dropna()
+        if q.empty:return q
+        # Do not bridge gaps: use only uninterrupted source-TF history.
+        cut=len(q)-1
+        step=pd.Timedelta(minutes=minutes)
+        while cut>0 and q.index[cut]-q.index[cut-1]==step:
+            cut-=1
+        return q.iloc[cut:]
+
+    def records(q):
+        return [
+            {"timestamp":ts.isoformat(),"open":float(bar.open),
+             "high":float(bar.high),"low":float(bar.low),"close":float(bar.close)}
+            for ts,bar in q.iterrows()
+        ]
+    price=float(m1.close.iloc[-1])
+    fresh={"H1":False,"H4":False,"D1":False,"W1":False}
+    closed_at={"H1":None,"H4":None,"D1":None,"W1":None}
+    zones=[]
+    for tf,minutes in (("H1",60),("H4",240)):
+        q=closed(minutes)
+        if len(q)<24:continue
+        at_close=q.index[-1]+pd.Timedelta(minutes=minutes)
+        if not 0<=(now-at_close).total_seconds()<=CANDLE_MAX_AGE_H[tf]*3600:
+            continue
+        fresh[tf]=True
+        closed_at[tf]=at_close.isoformat()
+        zones+=detect(records(q.tail(80)),tf,now)
+    m15=closed(15)
+    m15frame=pd.DataFrame(records(m15)) if len(m15) else pd.DataFrame(
+        columns=["timestamp","open","high","low","close"])
+    for col in ("timestamp",):
+        if len(m15frame):m15frame[col]=pd.to_datetime(m15frame[col],utc=True)
+    selected=annotate_intraday_zone_risk(project(zones,price),m15frame,price)
+    return {
+        "contract":"RIZAN_XAU_MANUAL_REVERSAL_MAP_V2",
+        "symbol":"XAUUSD","source":"CTRADER_MARKET_DATA_READ_ONLY",
+        "source_detail":"VALIDATED_FRESH_M1_REAGGREGATED_H1_H4_ONLY",
+        "state":"MAP_AVAILABLE","fresh":True,
+        "as_of":at.isoformat(),"price_observed_at":last_close.isoformat(),
+        "price":price,"timeframe_fresh":fresh,
+        "timeframe_closed_at":closed_at,"zones":selected,
+        "execution_authority":False,"execution_influence":False,
+        "probability":None,
+    }
