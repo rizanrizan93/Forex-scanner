@@ -1,0 +1,44 @@
+name: R29.6 Freeze Original R29.1 H4 BUY 332 Historical Signals (Read Only)
+on:
+  push:
+    branches: ['research/r296-r291-h4-coverage-frozen-20261123']
+    paths:
+      - '.github/workflows/r296_h4_coverage_freeze.yml'
+      - 'scripts/r296_extract_h4_coverage_lock.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/r296-r291-h4-coverage-frozen-20261123
+      - name: Download ORIGINAL R29.1 H4 run artifact
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45165585427
+          github-token: ${{ github.token }}
+          name: r291-event-4h
+          path: artifacts/r296_source
+      - name: Verify annual selections, sample counts and write immutable research lock
+        run: python scripts/r296_extract_h4_coverage_lock.py
+      - name: Publish frozen RESEARCH checkpoint, not live directions
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R291_H4_BUY_COVERAGE_FROZEN_20261123.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Freeze exact R29.1 H4 BUY 332 historical signal candidate"
+            git push origin HEAD:refs/heads/research/r296-r291-h4-coverage-frozen-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r296-h4-coverage-frozen-lock
+          path: research/RIZAN_R291_H4_BUY_COVERAGE_FROZEN_20261123.json
+          if-no-files-found: error
+          retention-days: 90
