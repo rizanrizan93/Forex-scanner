@@ -1,0 +1,189 @@
+{
+  "note": "Derived year-specific requests using exact recovered original control Seed/Mode/GrowthRisk. Not replay results. Reference archive only contains2020/2026 B1 controls.",
+  "profiles": [
+    {
+      "Id": "r13_control_Y2019",
+      "Mode": "off",
+      "Year": 2019,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2020",
+      "Mode": "off",
+      "Year": 2020,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2021",
+      "Mode": "off",
+      "Year": 2021,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2022",
+      "Mode": "off",
+      "Year": 2022,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2023",
+      "Mode": "off",
+      "Year": 2023,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2024",
+      "Mode": "off",
+      "Year": 2024,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2025",
+      "Mode": "off",
+      "Year": 2025,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    },
+    {
+      "Id": "r13_control_Y2026",
+      "Mode": "off",
+      "Year": 2026,
+      "Seed": {
+        "Base": 3,
+        "Sl": 2,
+        "Tp": 3,
+        "Hold": 2,
+        "Trend": 2,
+        "Session": 0,
+        "Risk": 5,
+        "Universe": 1,
+        "Day": 1,
+        "Threshold": 3,
+        "Direction": 1,
+        "SeedOnly": false,
+        "HandoffEquity": 125
+      },
+      "GrowthRisk": 20.75,
+      "EndYear": null,
+      "Addon": null
+    }
+  ]
+}
