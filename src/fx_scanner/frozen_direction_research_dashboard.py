@@ -7,6 +7,8 @@ from .frozen_direction_context import TFS, context, read_context_packet, session
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, URL
 from .r281_shadow_feed import fetch as fetch_r281, blank as blank_r281, reason_text
+from .rbest_side_feed import fetch as fetch_rbest, blank as blank_rbest
+from .rbest_side_dashboard import render_best_candidate_block
 
 ROOT=Path(__file__).resolve().parents[2]
 LOCK=ROOT/"research/direction_benchmark_lock_r281_20261122.json"
@@ -127,7 +129,10 @@ def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
     st.subheader("RIZAN XAU · Direction Multitimeframe R1–R28.1")
-    st.caption("Panel arah untuk mencari setup manual: hanya snapshot model R28.1 yang masih valid memberi bias BUY/SELL. Delapan hasil R1–R28.1 di bawah adalah benchmark historis, bukan delapan sinyal live.")
+    st.caption("Panel arah R28.1 dan delapan kandidat riset terbaik. "
+               "H1/H4 kandidat R25 BUY × R11 SELL ditampilkan pada panel terpisah "
+               "hanya jika reproduksi parity serta candle broker lolos. "
+               "Kandidat historis lainnya tidak otomatis menjadi sinyal live.")
     lock=json.loads(LOCK.read_text())
     candidates=candidate_rows(lock)
     summary=candidate_summary(lock)
@@ -142,6 +147,13 @@ def render_frozen_direction_research():
             return {tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
 
     @st.cache_data(ttl=30,show_spinner=False)
+    def read_rbest(slot):
+        try:
+            return fetch_rbest()
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            return {tf:blank_rbest("SPECIALIST_SNAPSHOT_UNAVAILABLE") for tf in TFS}
+
+    @st.cache_data(ttl=30,show_spinner=False)
     def read_chart(slot):
         return load_context_sources()
 
@@ -153,6 +165,7 @@ def render_frozen_direction_research():
         now=datetime.now(UTC)
         if st.button("Perbarui prediksi R28.1 sekarang", key="r281_force_refresh"):
             read_r281.clear()
+            read_rbest.clear()
         try:
             shadow=read_r281(int(now.timestamp()//30))
             shadow=expire_cached_directions(shadow, now=now)
@@ -206,6 +219,12 @@ def render_frozen_direction_research():
         st.dataframe(candidates,hide_index=True,width="stretch",
                      column_config={"Bukti replay":st.column_config.LinkColumn("Bukti replay",display_text="GitHub Actions")})
         st.caption("Akurasi per sisi berasal dari sampel, periode, dan kebijakan yang berbeda; tidak boleh dirata-rata atau digabung sebagai confidence live. H1/H4 SELL R11 memiliki estimasi net P&L negatif; W1 BUY R27 hanya n=48. Tidak ada validasi forward independen.")
+        # Independent candidate models do NOT override R28.1; both are shown.
+        try:
+            specialists=read_rbest(int(now.timestamp()//30))
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            specialists={tf:blank_rbest("SPECIALIST_SNAPSHOT_UNAVAILABLE") for tf in TFS}
+        render_best_candidate_block(st,specialists,lock,shadow,wib)
         st.caption("Diperiksa "+wib(now)+" · tampilan diperbarui 30 detik; waktu penerbitan menunjukkan pembaruan model sebenarnya.")
         st.caption("WAIT MODEL: syarat skor riset belum terpenuhi atau kedua arah bertentangan. WAIT DATA: input/model belum tersedia atau target prediksi sudah berakhir.")
         if session_closed(now):
