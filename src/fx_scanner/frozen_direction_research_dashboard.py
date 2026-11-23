@@ -43,6 +43,35 @@ def setup_watch_label(row):
         return "TUNGGU"
     return {"BUY":"PANTAU SETUP BUY","SELL":"PANTAU SETUP SELL"}.get(row.get("direction"),"TUNGGU")
 
+def expire_cached_directions(rows, *, now):
+    """Never show a cached direction beyond its model target close.
+
+    Streamlit cache refresh is not a license to extend a trade forecast.
+    The same expiry gate applies to live and research-model abstention.
+    """
+    now = pd.Timestamp(now)
+    if now.tzinfo is None:
+        raise ValueError("R281_DASHBOARD_NOW_REQUIRES_TZ")
+    safe = {}
+    for tf in TFS:
+        row = dict(rows[tf])
+        target = row.get("target")
+        if target and now >= pd.Timestamp(target):
+            old = row
+            row = blank_r281("TARGET_CANDLE_EXPIRED")
+            row.update(
+                issued=old.get("issued"),
+                model=old.get("model"),
+                expired_at=target,
+                previous_direction=(
+                    old.get("direction") if old.get("state") == "RECONSTRUCTED_SHADOW"
+                    and old.get("direction") in ("BUY", "SELL") else None
+                ),
+            )
+        safe[tf] = row
+    return safe
+
+
 def load_market():
     now=datetime.now(UTC)
     try:
@@ -103,7 +132,7 @@ def render_frozen_direction_research():
     candidates=candidate_rows(lock)
     summary=candidate_summary(lock)
 
-    @st.cache_data(ttl=90,show_spinner=False)
+    @st.cache_data(ttl=30,show_spinner=False)
     def read_r281(slot):
         try:
             return fetch_r281()
@@ -122,8 +151,11 @@ def render_frozen_direction_research():
     @st.fragment(run_every="30s")
     def panel():
         now=datetime.now(UTC)
+        if st.button("Perbarui prediksi R28.1 sekarang", key="r281_force_refresh"):
+            read_r281.clear()
         try:
-            shadow=read_r281(int(now.timestamp()//90))
+            shadow=read_r281(int(now.timestamp()//30))
+            shadow=expire_cached_directions(shadow, now=now)
         except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
             shadow={tf:blank_r281("MODEL_SNAPSHOT_UNAVAILABLE") for tf in TFS}
         st.markdown("### Arah model sekarang · H1/H4/D1/W1")
@@ -137,6 +169,15 @@ def render_frozen_direction_research():
                           else "WAIT MODEL" if row["state"] == "MODEL_ABSTAIN"
                           else "WAIT DATA")
                 st.write("**" + status + "** · " + reason_text(row["reason"]))
+                if row["state"] == "MODEL_ABSTAIN" and (
+                    row.get("buy_score") is not None and row.get("sell_score") is not None
+                ):
+                    st.caption(
+                        "Skor model BUY " + f'{row["buy_score"]:.4f}'
+                        + " · SELL " + f'{row["sell_score"]:.4f}'
+                        + " · keduanya di bawah ambang riset atau konflik; "
+                          "bukan sinyal trading."
+                    )
                 if row.get("target"):
                     st.caption("Target close: " + wib(row["target"])
                                + " · diterbitkan: " + wib(row["issued"]))
