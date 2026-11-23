@@ -20,6 +20,9 @@ from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
 from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
+from fx_scanner.xau_us10y_source_recovery import (  # noqa: E402
+    PROXY_MAX_AGE_SECONDS, cash_quote_status, fetch_yahoo_proxy,
+)
 from fx_scanner.xau_treasury_schedule import (  # noqa: E402
     treasury_session_status, treasury_cash_quote_status, fred_daily_release_key, next_h15_release, WIB,
 )
@@ -173,6 +176,20 @@ def load_live_cash_us10y() -> dict[str, Any]:
     }
 
 
+@st.cache_data(ttl=45, show_spinner=False)
+def load_treasury_proxy_candidates():
+    """Independently fetch timestamped secondary market proxies (read-only)."""
+    rows, errors = [], []
+    for symbol in ("^TNX", "ZN=F"):
+        try:
+            row = fetch_yahoo_proxy(symbol)
+            if row:
+                rows.append(row)
+        except Exception as exc:
+            errors.append(symbol + ": " + _safe_error(exc))
+    return {"rows": rows, "errors": errors}
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def load_macro():
     return fetch_pre_news_snapshot()
@@ -194,7 +211,7 @@ st.caption(
     "Daily US Treasury (fallback H.15/FRED) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
-st.caption("Versi dashboard: RIZAN Macro V3.4 ASIA SESSION + TREASURY REFRESH · read-only")
+st.caption("Versi dashboard: RIZAN Macro V3.5 VERIFIED CASH + SECONDARY PROXY · read-only")
 treasury_calendar = treasury_cash_quote_status()
 calendar_state = treasury_calendar["status"]
 if calendar_state == "MARKET_HOLIDAY":
@@ -226,6 +243,7 @@ st.caption(
 if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
     load_live_cash_us10y.clear()
+    load_treasury_proxy_candidates.clear()
     _load_h15_by_release.clear()
     fred_history.clear()
     market_quote.clear()
@@ -278,6 +296,26 @@ def render_live_cash_quote() -> None:
             live_cash = load_live_cash_us10y()
         except Exception as exc:
             live_error = _safe_error(exc)
+    # A cached source age is only accurate at fetch time. Recalculate here
+    # every 20 seconds, and require the vendor's own realtime flag.
+    if live_cash:
+        verified = cash_quote_status(live_cash, now=datetime.now(UTC))
+        live_cash = {**live_cash, **verified}
+    proxy = None
+    proxy_errors = []
+    if not closed_market and not (live_cash and live_cash.get("fresh")):
+        try:
+            recovered = load_treasury_proxy_candidates()
+            proxy_errors = recovered.get("errors") or []
+            for candidate in recovered.get("rows") or []:
+                at = _dt(candidate.get("observed_at"))
+                age = ((datetime.now(UTC) - at).total_seconds()
+                       if at is not None else float("inf"))
+                if 0 <= age <= PROXY_MAX_AGE_SECONDS:
+                    proxy = {**candidate, "age_seconds": age}
+                    break
+        except Exception as exc:
+            proxy_errors = [_safe_error(exc)]
     if closed_market:
         health = treasury_cash_quote_status()["status"].replace("_", " ")
         fallback = "N/A"
@@ -294,14 +332,17 @@ def render_live_cash_quote() -> None:
         )
     elif live_cash:
         health = "CNBC STALE"
-        fallback = "YA"
+        fallback = (str(proxy["symbol"]) + " INDIKATIF" if proxy
+                    else "ZN ENGINE" if proxy_active else "BELUM TERSEDIA")
         health_detail = (
             f"quote berusia {float(live_cash.get('age_seconds') or 0.0) / 60:.1f} menit "
             f"(batas live {LIVE_CASH_MAX_AGE_SECONDS:.0f} detik)"
+            + " · " + str(live_cash.get("reason") or "not current")
         )
     else:
         health = "CNBC ERROR"
-        fallback = "YA"
+        fallback = (str(proxy["symbol"]) + " INDIKATIF" if proxy
+                    else "ZN ENGINE" if proxy_active else "BELUM TERSEDIA")
         health_detail = live_error or "sumber live tidak mengembalikan quote"
 
     h1, h2, h3 = st.columns(3)
@@ -359,6 +400,26 @@ def render_live_cash_quote() -> None:
 
     if live_error:
         st.caption("Error sumber terakhir: " + live_error)
+    if proxy:
+        st.info(
+            "Sumber sekunder tersedia (INDIKATIF, bukan cash LIVE): "
+            + str(proxy["symbol"]) + " "
+            + fmt(proxy["value"], "%" if proxy["symbol"] == "^TNX" else " poin")
+            + " · " + wib(proxy["observed_at"])
+            + f" · usia {proxy['age_seconds'] / 60:.1f} menit"
+            + " · " + str(proxy["direction"])
+        )
+        st.caption(
+            "Yahoo Finance: ^TNX adalah indeks yield sekunder; ZN adalah HARGA futures, "
+            "arah tekanan yield bersifat terbalik. Kuotasi bisa tertunda. "
+            "Tidak mengganti data Treasury resmi, tidak dihitung sebagai CNBC LIVE "
+            "dan tidak memberi sinyal eksekusi otomatis."
+        )
+    elif not proxy_active:
+        st.caption("Proksi intraday independen belum memiliki timestamp yang layak; "
+                   "daily Treasury/H.15/FRED tetap untuk regime, bukan timing.")
+    if proxy_errors:
+        st.caption("Diagnosis proksi: " + "; ".join(proxy_errors)[:300])
 
     if proxy_active:
         st.caption("Timing engine tetap memakai Treasury futures ZN yang lebih baru sampai cash feed valid kembali.")
@@ -514,6 +575,9 @@ with st.expander("Detail sumber"):
             "intraday_source": intraday.get("source"),
             "live_cash_display_source": "CNBC_US10Y_TRADEWEB_QUOTE",
             "live_cash_refresh_seconds": 20,
+            "secondary_intraday_sources": ["YAHOO_^TNX", "YAHOO_ZN=F"],
+            "secondary_max_quote_age_seconds": PROXY_MAX_AGE_SECONDS,
+            "secondary_status": "INDICATIVE_CONTEXT_ONLY_NOT_CASH_LIVE",
             "live_cash_cache_seconds": 10,
             "live_cash_max_age_seconds": LIVE_CASH_MAX_AGE_SECONDS,
             "fallback_policy": "LAST_VALID_CASH_THEN_ZN_DIRECTION_PROXY_FAIL_CLOSED",
