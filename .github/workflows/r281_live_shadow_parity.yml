@@ -15,7 +15,7 @@ permissions:
   contents: write
   actions: read
 concurrency:
-  group: r281-parity-${{ github.ref }}
+  group: r281-xau-shadow-hourly
   cancel-in-progress: false
 jobs:
   verify:
