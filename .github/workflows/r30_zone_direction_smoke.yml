@@ -7,6 +7,8 @@ on:
       - 'scripts/research_tf_zone_direction_mega.py'
       - 'scripts/research_tf_zone_mega_aggregate.py'
       - 'tests/test_r30_tf_zone_replay.py'
+      - 'tests/test_r30_duka_shards.py'
+      - 'scripts/r30_duka_h1_h4_shard.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,5 +24,5 @@ jobs:
       - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
       - name: Compile actual replay code and validate causal synthetic tests
         run: |
-          python -m py_compile scripts/research_tf_zone_direction_mega.py scripts/research_tf_zone_mega_aggregate.py
-          PYTHONPATH=src:. python -m pytest -q tests/test_r30_tf_zone_replay.py
+          python -m py_compile scripts/research_tf_zone_direction_mega.py scripts/research_tf_zone_mega_aggregate.py scripts/r30_duka_h1_h4_shard.py
+          PYTHONPATH=src:. python -m pytest -q tests/test_r30_tf_zone_replay.py tests/test_r30_duka_shards.py
