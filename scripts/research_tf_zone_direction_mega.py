@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 TF = {"H1":"1h", "H4":"4h", "D1":"1D", "W1":"1W"}
-SOURCE = {"H1":"HISTDATA_R10_M1_DERIVED", "H4":"HISTDATA_R10_M1_DERIVED",
+SOURCE = {"H1":"DUKASCOPY_NODE_H1_BID_UTC", "H4":"DUKASCOPY_NODE_H1_BID_RESAMPLED_H4",
           "D1":"HISTDATA_R98_M1_DERIVED", "W1":"HISTDATA_R98_M1_DERIVED_W1"}
 MODEL_COUNT = 128
 ZONE_COUNT = 4**7
@@ -350,7 +350,7 @@ def sweep(tf,cap=ZONE_COUNT,models=MODEL_COUNT,model_start=0):
             "All zone events formed after closed candle; retest/rejection confirmed on later closed candle; entry at following open",
             "H1/H4/D1/W1 OHLC cannot resolve first intrabar stop/target or M15->M5 confirmation; stop-first tie is conservative",
             "Selection performed on 2021-2023; 2024-2026 already studied, not pristine holdout; model-selection multiplicity remains",
-            "Historical HistData secondary feed may not match cTrader FP Markets trading sessions/spread/rollover",
+            "Dukascopy H1/H4 BID and archived HistData D1/W1 are independent sources; do not claim cross-feed broker parity or identical spreads",
             "Fixed $0.70/oz cost scenario and $0.80 stress surcharge are NOT verified broker costs",
             "Overlapping development signals can inflate screening; final out-of-sample estimates exclude overlapping positions",
             "No split-second timing, liquidity execution, realized P&L, leverage, cBot integration or order authority",
