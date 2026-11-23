@@ -1,0 +1,62 @@
+name: RIZAN Best Side Research Contract (Read Only)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/rbest_direction_shadow.yml'
+      - '.github/workflows/rbest_side_contract_tests.yml'
+      - 'src/fx_scanner/rbest_side_*.py'
+      - 'src/fx_scanner/frozen_direction_research_dashboard.py'
+      - 'tests/test_rbest_side_feed.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rbest_direction_shadow.yml'
+      - '.github/workflows/rbest_side_contract_tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  exact-source-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - name: Checkout read-only specialist research code
+        uses: actions/checkout@v4
+        with:
+          ref: research/rbest-side-inference-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated research dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl joblib pytest==9.0.2
+      - name: Check R25/R11 logic, frozen side source and publisher
+        run: python -m pytest -q tests/test_rbest_side_candidates.py tests/test_rbest_publish_shadow.py tests/test_r281_live_market.py
+      - name: Acquire original R10 immutable H1/H4 evidence
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Prove H1 frozen R25 validation + R11 original 2023 trace
+        run: python scripts/rbest_side_candidates.py --tf 1h
+      - name: Prove H4 frozen R25 validation + R11 original 2023 trace
+        run: python scripts/rbest_side_candidates.py --tf 4h
+      - name: Check atomic candidate packet contract
+        run: python scripts/rbest_publish_shadow.py
+      - name: Save research-only proof for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbest-pr-parity-receipt
+          path: |
+            artifacts/rbest_inference/*
+            runtime/rbest-side-direction.json
+          retention-days: 7
+          if-no-files-found: warn
