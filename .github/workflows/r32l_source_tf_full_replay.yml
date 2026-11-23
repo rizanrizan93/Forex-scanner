@@ -1,0 +1,102 @@
+name: R32L XAU Source TF Liquidity Sweep Calibration 2012-2026
+on:
+  push:
+    branches: [research/r32-liquidity-sweep-m5-2012-2026]
+    paths:
+      - '.github/workflows/r32l_source_tf_full_replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r32l-source-tf-replay-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  audit:
+    name: Research-only source timeframe and gap-stop proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.:scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - run: |
+          python -m py_compile scripts/research_r32l_source_tf_sweep.py scripts/research_r32l_source_tf_aggregate.py
+          python -m pytest -q tests/test_r32l_source_tf_sweep.py
+  sweep:
+    needs: audit
+    name: ${{ matrix.tf }} liquidity-sweep model block ${{ matrix.model_start }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        tf: [H1,H4,D1,W1]
+        model_start: [0,32,64,96,128,160,192,224]
+    env:
+      PYTHONPATH: src:.:scripts
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - name: Restore full 2012-26 audited H1/H4 Dukascopy BID session-filtered history
+        if: ${{ matrix.tf == 'H1' || matrix.tf == 'H4' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45190531878
+          github-token: ${{ github.token }}
+          pattern: r30-duka-year-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Restore D1/W1 original 2012-26 daily OHLC archive separately
+        if: ${{ matrix.tf == 'D1' || matrix.tf == 'W1' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Screen 1,048,576 source-TF sweep, direction, risk/exit configurations
+        run: |
+          python scripts/research_r32l_source_tf_sweep.py \
+            --tf ${{ matrix.tf }} --model-start ${{ matrix.model_start }} \
+            --models 32 --zone-configs 4096
+      - name: Archive exact model-block results and historical source SHA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r32l-result-${{ matrix.tf }}-${{ matrix.model_start }}
+          path: artifacts/r32l/r32l-${{ matrix.tf }}-models-${{ matrix.model_start }}.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: sweep
+    name: Validate 33.55M real replay combos / no M5 claim
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r32l-result-*
+          path: /tmp/r32l-results
+          merge-multiple: true
+      - name: Verify all 32 shards, 2012-26 data and retrospective metrics
+        run: python scripts/research_r32l_source_tf_aggregate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r32l-verified-source-tf-liquidity-sweep-2012-2026
+          path: artifacts/r32l/r32l-source-tf-liquidity-sweep-2012-2026.json
+          if-no-files-found: warn
+          retention-days: 90
