@@ -1,0 +1,32 @@
+{
+  "source_signals": 18707,
+  "trend7_signals": 5406,
+  "exact_quote_matches": 18707,
+  "prefix_checks": {
+    "2020-01-01": true,
+    "2023-01-01": true,
+    "2026-01-01": true
+  },
+  "signal_source_sha256": "655ce692b658ab5b8f621b5bb3728fa3a5830b98b7c24c48fdf9d448b86f4174",
+  "seed_sha256": "be1c56222a8d817c744bc0b76b35eaf940709781211291d5769906193795d4a1",
+  "runtime_sha256": "5467c9e70d645abad4ef2c52ab8094bb6b3b070e568342b298f6381b741fe4bb",
+  "quote_columns_read": [
+    "timestamp",
+    "spread",
+    "buy_ok",
+    "sell_ok"
+  ],
+  "extra_24h_guard": false,
+  "candidates": {
+    "r16_quality_all": {
+      "all_years_signals": 2636,
+      "research_period_signals": 2636,
+      "sha256": "0b4d7bd3e8aa994ee619205f8efeb9e714fb1182657461712ec1dbd2fbd1d394"
+    },
+    "r16_quality_asia": {
+      "all_years_signals": 92,
+      "research_period_signals": 92,
+      "sha256": "a9727d48c37fed493ea6634804d4c5c6d7be63532eef6c22e002c66687fddf1b"
+    }
+  }
+}
