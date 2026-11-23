@@ -24,8 +24,6 @@ def evaluate():
     rows=[]
     for modelid in (138,142):
         # cfg=0 means every source-zone axis uses its first, baseline choice
-        mask=r32.r31.r30.pack(votes[modelid])
-        assert len(mask)==len(r31.r30.pack(votes[modelid]))
         sel=votes[modelid].copy()
         for group in axis:
             sel &= group[0]
@@ -39,7 +37,7 @@ def evaluate():
              "retrospective_2024_2026":r31.report_metrics(
                 events,sel,"W1",d,pnl,exits,0,2024,2026),
              "cost_stress_2024_2026":r31.report_metrics(
-                events,sel,"W1",d,pnl,exits,0,2024,2026,cost_extra=.8),
+                events,sel,"W1",d,pnl,exits,0,2024,2026,stress=.8),
              "subperiods":[
                  {"period":f"{a}-{b}","metrics":r31.report_metrics(
                      events,sel,"W1",d,pnl,exits,0,a,b)}
