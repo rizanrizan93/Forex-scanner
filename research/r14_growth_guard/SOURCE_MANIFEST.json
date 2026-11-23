@@ -1,0 +1,41 @@
+{
+  "archive_sha256": "16664fc84da965b7a39a11056fd90eb707cf4b6cc16c2004cb3a48971636a56c",
+  "source": "Original13November archive; archived results, not newly executed native replay",
+  "files": {
+    "incumbent_A1": {
+      "member": "november_research/runs/A_C1_full/P3_BUY050_A_cost1.json.gz",
+      "compressed_member_sha256": "31f2c49baeeebdad2bb1ab0b98462b9dbdee6177a5186794b8a30f3400cbbc2f",
+      "derived_file_sha256": "c600283436a326c9e93bf22f42ccb978bc4b73ea017deba0477ceef6c0824f44",
+      "rows": 1070
+    },
+    "incumbent_B1": {
+      "member": "november_research/runs/B_C1_full/P3_BUY050_B_cost1.json.gz",
+      "compressed_member_sha256": "0f12486753dce590f3a1a72d9ed726b5cb7155c6443f005b8b6dc2c24b2acea1",
+      "derived_file_sha256": "e2981200f34dd03e92f2b62b0b18466566ece3fe3f78f15fc88c04a737545c76",
+      "rows": 1071
+    },
+    "incumbent_B2": {
+      "member": "november_research/runs/B_C2_full/P3_BUY050_B_cost2.json.gz",
+      "compressed_member_sha256": "1c8f081de945d6c810f5774a2c16f1fe8a9445e7d3faa03f1459f2d3da4f7946",
+      "derived_file_sha256": "10336c09d16aa279a65f31f8ed6e058155a7a7923c0ab9b9fe2dc48f2c4a7e48",
+      "rows": 1070
+    },
+    "btc_retest_candidate_B1": {
+      "member": "november_research/candidate_runs/B_C1_full/P3_BUY050_B_cost1.json.gz",
+      "compressed_member_sha256": "2cc1c3e275bf381065fbc78f763f75fa23bbcca82b6ba8555f79728ebb7dacad",
+      "derived_file_sha256": "fda1c739b0174e2dc2eae8020a606a4fb31b646450a1b67014b4a4323486f48e",
+      "rows": 1258
+    }
+  },
+  "attachment": {
+    "sha256": "473507da3166759c418596bfce663b3657e229ca4c205bcb60dbbbe8de84f99c",
+    "bytes": 179691,
+    "robot": "RizanBuy050Frozen",
+    "assembly": "RizanBuy050Frozen, Version=4.0.1.0, Culture=neutral, PublicKeyToken=null",
+    "framework": "net6.0",
+    "timestamp": "2026-11-08T22:00:32.5418347Z",
+    "metadata_flags": "Robot, SourceIncluded",
+    "archived_replay_binary_identity_proven": false,
+    "note": "Uploaded BUY050 identity differs from Bootstrap125. Metadata only; not executed or decrypted."
+  }
+}
