@@ -201,7 +201,7 @@ def lock():
         "- Existing Frozen V1 cTrader LIVE, R28.1, R29.2 H4 research SHADOW remain untouched.",
         ""
     ]
-    REPORT.write_text("\\n".join(lines))
+    REPORT.write_text(chr(10).join(lines))
     print("R30_LOCK_COMPLETE",str(LOCK),sha(LOCK),flush=True)
     print("R30_REPORT_COMPLETE",str(REPORT),sha(REPORT),flush=True)
     return payload
