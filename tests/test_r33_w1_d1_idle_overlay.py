@@ -40,7 +40,7 @@ def test_overlay_only_flat_and_baseline_prioritized(monkeypatch):
     extra=[
         one(w.index[1]+pd.Timedelta(days=1),"overlay",days=2,gross=20.),
         one(w.index[4],"overlay",days=3,gross=12.),
-        one(w.index[7],"overlay",days=3,gross=10.),
+        one(w.index[6],"overlay",days=3,gross=10.),
     ]
     result=r.schedule([a,b],extra,d,w,permitted,"any")
     assert result["main_trades"]==2
