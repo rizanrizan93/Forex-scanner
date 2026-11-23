@@ -12,7 +12,8 @@ import r32_liquidity_sweep_m5_events as replay
 def synthetic_year(tmp_path,year=2019):
     dates=[]
     for month in range(1,13):
-        start=pd.Timestamp(f"{year}-{month:02d}-04",tz="UTC")
+        first=pd.Timestamp(f"{year}-{month:02d}-01",tz="UTC")
+        start=first+pd.Timedelta(days=(7-first.dayofweek)%7)
         dates.extend(pd.date_range(start,periods=900,freq="5min"))
     dates=pd.DatetimeIndex(dates)
     price=1500+np.sin(np.arange(len(dates))/13.)*1.2
