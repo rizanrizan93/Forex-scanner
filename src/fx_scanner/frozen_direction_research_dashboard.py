@@ -9,6 +9,8 @@ from .manual_r3_feed import fetch_market, read_public, validate_market, stamp, U
 from .r281_shadow_feed import fetch as fetch_r281, blank as blank_r281, reason_text
 from .rbest_side_feed import fetch as fetch_rbest, blank as blank_rbest
 from .rbest_side_dashboard import render_best_candidate_block
+from .r294_frozen_h4_buy_feed import fetch as fetch_r294, blank as blank_r294
+from .r294_frozen_h4_buy_dashboard import render_h4_buy
 
 ROOT=Path(__file__).resolve().parents[2]
 LOCK=ROOT/"research/direction_benchmark_lock_r281_20261122.json"
@@ -129,7 +131,7 @@ def render_frozen_direction_research():
     import streamlit as st
     import altair as alt
     st.subheader("RIZAN XAU · Direction Multitimeframe R1–R28.1")
-    st.caption("Panel arah R28.1 dan delapan kandidat riset terbaik. "
+    st.caption("Panel R28.1, kandidat R25/R11 dan H4 BUY R29.2 Precision frozen. "
                "H1/H4 kandidat R25 BUY × R11 SELL ditampilkan pada panel terpisah "
                "hanya jika reproduksi parity serta candle broker lolos. "
                "Kandidat historis lainnya tidak otomatis menjadi sinyal live.")
@@ -154,6 +156,13 @@ def render_frozen_direction_research():
             return {tf:blank_rbest("SPECIALIST_SNAPSHOT_UNAVAILABLE") for tf in TFS}
 
     @st.cache_data(ttl=30,show_spinner=False)
+    def read_r294(slot):
+        try:
+            return fetch_r294()
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            return blank_r294("FROZEN_R292_H4_SHADOW_NOT_YET_PUBLISHED")
+
+    @st.cache_data(ttl=30,show_spinner=False)
     def read_chart(slot):
         return load_context_sources()
 
@@ -166,6 +175,7 @@ def render_frozen_direction_research():
         if st.button("Perbarui prediksi R28.1 sekarang", key="r281_force_refresh"):
             read_r281.clear()
             read_rbest.clear()
+            read_r294.clear()
         try:
             shadow=read_r281(int(now.timestamp()//30))
             shadow=expire_cached_directions(shadow, now=now)
@@ -202,6 +212,18 @@ def render_frozen_direction_research():
                                    + " SUDAH KEDALUWARSA · bukan sinyal entry saat ini")
                 elif row.get("issued"):
                     st.caption("Penerbitan terakhir: " + wib(row["issued"]))
+        # Independent R29.2 H4 BUY live inference is frozen for research;
+        # never use it as authority to overwrite R28.1 or SMC entry signals.
+        try:
+            r294=read_r294(int(now.timestamp()//30))
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            r294=blank_r294("FROZEN_R292_H4_SHADOW_NOT_YET_PUBLISHED")
+        # The transport validates expiry at fetch time; a cached BUY must
+        # also expire at its exact H4 target during Streamlit reruns.
+        if r294.get("target") and pd.Timestamp(now)>=pd.Timestamp(r294["target"]):
+            r294=blank_r294("TARGET_CANDLE_EXPIRED",
+                            expired_at=r294["target"],issued=r294.get("issued"))
+        render_h4_buy(st,r294,wib)
         st.dataframe([
             {"TF":tf,
              "Arah R28.1":shadow[tf]["direction"],
