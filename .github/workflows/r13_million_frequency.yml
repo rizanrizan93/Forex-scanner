@@ -1,0 +1,156 @@
+name: RIZAN R13 2359296 Configurations Frequency Research Only
+on:
+  push:
+    branches: ['research/r13-million-frequency']
+    paths:
+      - '.github/workflows/r13_million_frequency.yml'
+      - 'research/r13_million_frequency/search.py'
+      - 'research/r13_million_frequency/PROTOCOL.md'
+      - 'research/r13_million_frequency/requirements.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r13-million-frequency
+  cancel-in-progress: false
+env:
+  OMP_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMBA_NUM_THREADS: '1'
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - name: Verify chronology and independent scalar replay
+        run: python research/r13_million_frequency/search.py --selftest
+      - name: Real 2012 subset pilot all 2359296 tuples
+        run: python research/r13_million_frequency/search.py --year 2012 --pilot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r13-pilot
+          path: artifacts/r13/
+          retention-days: 90
+  development:
+    needs: pilot
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - name: Full annual grid retain every failure and zero score
+        run: python research/r13_million_frequency/search.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r13-development-${{ matrix.year }}
+          path: artifacts/r13/
+          retention-days: 90
+  selection:
+    needs: development
+    if: always() && needs.development.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      count: ${{ steps.select.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r13-development-*
+          path: /tmp/r13-development
+          merge-multiple: true
+      - name: Apply fixed development gates and choose at most64
+        id: select
+        run: python research/r13_million_frequency/search.py --select /tmp/r13-development
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r13-development-selection
+          path: artifacts/r13/
+          retention-days: 90
+  detailed:
+    needs: selection
+    if: needs.selection.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: r13-development-selection
+          path: /tmp/r13-selection
+      - name: Reprice four scenarios and retain full finalist ledgers
+        run: python research/r13_million_frequency/search.py --detail ${{ matrix.year }} --selection /tmp/r13-selection/selection.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r13-detailed-${{ matrix.year }}
+          path: artifacts/r13/
+          retention-days: 90
+  final:
+    needs: [selection,detailed]
+    if: always() && needs.selection.result == 'success' && (needs.detailed.result == 'success' || needs.detailed.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: r13-development-selection
+          path: /tmp/r13-selection
+      - uses: actions/download-artifact@v4
+        if: needs.detailed.result == 'success'
+        with:
+          pattern: r13-detailed-*
+          path: /tmp/r13-detailed
+          merge-multiple: true
+      - name: Report all failures and sequential validation
+        run: python research/r13_million_frequency/search.py --final /tmp/r13-detailed --selection /tmp/r13-selection/selection.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r13-final
+          path: artifacts/r13/final.json
+          retention-days: 90
