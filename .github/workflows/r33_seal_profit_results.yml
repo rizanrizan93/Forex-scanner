@@ -1,0 +1,55 @@
+name: R33 Seal W1 Baseline plus D1 Extra Trade Profit and Frequency
+on:
+  push:
+    branches: ['research/r33-d1-w1-profit-frequency-idle-20261124']
+    paths:
+      - 'scripts/r33_seal_w1_d1_profit.py'
+      - '.github/workflows/r33_seal_profit_results.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download all 15 primary W1 + 2012-2026 D1 idle signals receipts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45255941738
+          github-token: ${{ github.token }}
+          pattern: r33-*
+          path: artifacts/r33
+          merge-multiple: true
+      - name: Audit no cross-timeframe overlap, 75 intact frozen W1 trades, 2USD and 5USD profits
+        run: |
+          set -euo pipefail
+          test "$(find artifacts/r33 -maxdepth 1 -name 'r33-*.json' | wc -l)" -eq 15
+          python -m py_compile scripts/r33_seal_w1_d1_profit.py
+          python scripts/r33_seal_w1_d1_profit.py
+      - name: Publish frozen RESEARCH receipts only, no live or dashboard writes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/RIZAN_R33_W1_D1_IDLE_ALPHA_FROZEN_20261124.json
+          git add research/RIZAN_R33_W1_D1_IDLE_ALPHA_FINDINGS_20261124.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Freeze R33 15 XAU W1 plus D1 idle-entry, cost, drawdown and no-overlap receipts"
+            git push origin HEAD:refs/heads/research/r33-d1-w1-profit-frequency-idle-20261124
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r33-frozen-w1-d1-profit-and-extra-trades
+          path: |
+            research/RIZAN_R33_W1_D1_IDLE_ALPHA_FROZEN_20261124.json
+            research/RIZAN_R33_W1_D1_IDLE_ALPHA_FINDINGS_20261124.md
+          retention-days: 90
+          if-no-files-found: warn
