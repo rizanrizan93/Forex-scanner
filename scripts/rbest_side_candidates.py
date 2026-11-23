@@ -187,11 +187,17 @@ def run(tf,now=None):
     direction="WAIT" if buy==sell else ("BUY" if buy else "SELL")
     reason=("SIDE_CONFLICT" if buy and sell else "NO_SIDE_TRIGGER" if not buy and not sell
             else "RESEARCH_CANDIDATE_SIGNAL")
+    # Broker transport is read AFTER run-start 'now'. Its observed_at may be
+    # milliseconds later than run-start; publishing the earlier start time
+    # violates the causal ordering contract (observed <= generated).
+    # Preserve both timestamps without relaxing freshness/expiry checks.
+    observed=utc(source["as_of"])
+    generated=max(now,observed)
     result={
         "contract": CONTRACT, "tf":TFS[tf], "research_only":True,
         "source":"CTRADER_MARKET_DATA_READ_ONLY",
         "execution_authority":False,"execution_influence":False,
-        "generated_at":now.isoformat(),"observed_at":source["as_of"],
+        "generated_at":generated.isoformat(),"observed_at":observed.isoformat(),
         "candle_closed_at":closed.isoformat(),
         "target_close_at":target.isoformat(),
         "last_close":float(d.c.iloc[-1]),
