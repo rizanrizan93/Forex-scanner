@@ -109,6 +109,7 @@ def unexpected():
     raise AssertionError("Other prediction/chart sources must not be fetched")
 dashboard.fetch_r281=model
 dashboard.fetch_rbest=lambda: {tf:blank("SPECIALIST_SNAPSHOT_UNAVAILABLE") for tf in dashboard.TFS}
+dashboard.fetch_r294=lambda: dashboard.blank_r294("FROZEN_R292_TEST_WAIT")
 dashboard.load_context_sources=unexpected
 dashboard.render_frozen_direction_research()
 '''
@@ -127,7 +128,7 @@ dashboard.render_frozen_direction_research()
     assert set(candidate_table["Status"])=={"BENCHMARK · BELUM LIVE"}
     assert "Target close prediksi sudah berakhir" in board.loc[1,"Keterangan"]
     assert [x.value for x in app.metric][:4]==["SELL","WAIT","WAIT","WAIT"]
-    assert len(app.metric)==6  # R25/R11 independent H1/H4 shadow cards
+    assert len(app.metric)==7  # R28.1 four + R29.2 frozen H4 + R25/R11 two
     text="\n".join(str(x.value) for x in app.caption)
     assert "5 indikator" not in text and "skor bukti" not in text
 
