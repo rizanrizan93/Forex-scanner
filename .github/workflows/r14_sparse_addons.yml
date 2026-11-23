@@ -1,0 +1,84 @@
+name: RIZAN R14 User Selected Sparse Anchor And Addon Basket
+on:
+  push:
+    branches: ['research/r14-sparse-addon-basket']
+    paths:
+      - '.github/workflows/r14_sparse_addons.yml'
+      - 'research/r14_sparse_addons/research.py'
+      - 'research/r14_sparse_addons/PROTOCOL.md'
+      - 'research/r14_sparse_addons/candidate_registry.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r14-sparse-addon-basket
+  cancel-in-progress: false
+env:
+  OMP_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMBA_NUM_THREADS: '1'
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - name: Verify exact anchor and causal combined-basket execution
+        run: python research/r14_sparse_addons/research.py --selftest
+  annual:
+    needs: integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025,2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - name: Compare anchor and all registered slots four repriced scenarios
+        run: python research/r14_sparse_addons/research.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r14-year-${{ matrix.year }}
+          path: artifacts/r14/
+          retention-days: 90
+  aggregate:
+    needs: annual
+    if: always() && needs.annual.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/r13_million_frequency/requirements.txt
+      - run: pip install -r research/r13_million_frequency/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r14-year-*
+          path: /tmp/r14-annual
+          merge-multiple: true
+      - name: Fixed individual and basket screens without retrospective pruning
+        run: python research/r14_sparse_addons/research.py --aggregate /tmp/r14-annual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r14-final
+          path: artifacts/r14/final.json
+          retention-days: 90
