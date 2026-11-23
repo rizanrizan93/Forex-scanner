@@ -83,7 +83,7 @@ jobs:
           retention-days: 45
 
   replay:
-    name: ${{ matrix.tf }} direction models ${{ matrix.model_start }} to ${{ matrix.model_start + 15 }}
+    name: ${{ matrix.tf }} direction-model-block-start-${{ matrix.model_start }}
     needs: [audit-synthetic-contract,m1-historical-shards-2012-2018]
     runs-on: ubuntu-latest
     timeout-minutes: 75
