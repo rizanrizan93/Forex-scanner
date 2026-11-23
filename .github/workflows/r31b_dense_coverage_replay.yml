@@ -1,0 +1,101 @@
+name: R31B Dense Coverage Pareto Validation Replay 2012-2026
+on:
+  push:
+    branches: [research/r31b-dense-coverage-audit-20261123]
+    paths:
+      - '.github/workflows/r31b_dense_coverage_replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r31b-dense-coverage-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  causal-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.:scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Validate R31B gate logic without synthetic-market claims
+        run: |
+          python -m py_compile scripts/research_r31b_dense_coverage.py scripts/research_r31b_dense_aggregate.py
+          python -m pytest -q tests/test_r31_high_coverage_precision.py tests/test_r31b_dense_coverage.py
+  sweep:
+    needs: causal-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    name: ${{ matrix.tf }} dense validation block ${{ matrix.model_start }}
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        tf: [H1,H4,D1,W1]
+        model_start: [0,32,64,96,128,160,192,224]
+    env:
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      PYTHONPATH: src:.:scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - name: Restore audited 2012-26 Dukascopy price history with market-session filter
+        if: ${{ matrix.tf == 'H1' || matrix.tf == 'H4' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45190531878
+          github-token: ${{ github.token }}
+          pattern: r30-duka-year-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Restore 2012-26 daily archive for independent D1/W1
+        if: ${{ matrix.tf == 'D1' || matrix.tf == 'W1' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: R31B 1,048,576 complete direction-zone-exit dense screening
+        run: |
+          python scripts/research_r31b_dense_coverage.py \
+            --tf ${{ matrix.tf }} --model-start ${{ matrix.model_start }} \
+            --models 32 --zone-configs 4096
+      - name: Upload validation-gated result, never orders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r31b-result-${{ matrix.tf }}-${{ matrix.model_start }}
+          path: artifacts/r31b/r31b-${{ matrix.tf }}-models-${{ matrix.model_start }}.json
+          if-no-files-found: warn
+          retention-days: 90
+  aggregate:
+    needs: sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r31b-result-*
+          path: /tmp/r31b-results
+          merge-multiple: true
+      - name: Strictly verify 32 shards and 33,554,432 re-screened combos
+        run: python scripts/research_r31b_dense_aggregate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31b-verified-high-frequency-precision-ranking
+          path: artifacts/r31b/r31b-dense-high-coverage-2012-2026.json
+          if-no-files-found: warn
+          retention-days: 90
