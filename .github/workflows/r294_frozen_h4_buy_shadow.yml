@@ -1,0 +1,75 @@
+name: R29.4 Frozen R29.2 H4 BUY Live Shadow (Read Only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/r294_frozen_h4_buy_shadow.yml'
+  schedule:
+    - cron: '3,18,33,48 * * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: r294-frozen-h4-buy-readonly
+  cancel-in-progress: false
+
+jobs:
+  publish-frozen-h4-buy:
+    name: Prove frozen 2025 parity and publish fresh H4 BUY SHADOW
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - name: Checkout pinned R29.2 H4 BUY research-only source
+        uses: actions/checkout@v4
+        with:
+          ref: research/r294-frozen-h4-buy-shadow-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pure research dependencies, no trading SDK
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl pytest==9.0.2
+      - name: Reject forged parity, expired price, wrong side and order authority
+        run: python -m pytest -q tests/test_r294_frozen_h4_buy_shadow.py tests/test_r294_publish_gate.py
+      - name: Restore immutable price archive
+        id: archive-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/r10
+          key: r294-original-r10-2019-2026-v1-${{ runner.os }}
+      - name: Retrieve immutable R10 H1/H4 historical shards on cache miss
+        if: steps.archive-cache.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Verify true closed 2025 validation 41/63 then infer fresh H4
+        run: python scripts/r294_frozen_h4_buy_shadow.py
+      - name: Enforce score/threshold/gate, source timestamp and no-execution publication
+        run: python scripts/r294_publish_gate.py
+      - name: Publish only R29.4 research SHADOW; never edit Frozen V1
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add runtime/r294-h4-buy-shadow.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh read-only frozen H4 BUY R29.2 shadow forecast"
+            git push origin HEAD:refs/heads/research/r294-frozen-h4-buy-shadow-20261123
+          fi
+      - name: Retain frozen model proof and published candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r294-h4-buy-frozen-receipt
+          path: runtime/r294-h4-buy-shadow.json
+          retention-days: 30
+          if-no-files-found: warn
