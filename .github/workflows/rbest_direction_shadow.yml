@@ -99,6 +99,15 @@ jobs:
           pattern: rbest-model-*
           path: artifacts/rbest_inference
           merge-multiple: true
+      - name: Audit H1/H4 source and generation timestamp ordering
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for tf in ("1h", "4h"):
+              report = json.loads(Path(f"artifacts/rbest_inference/rbest-{tf}-shadow.json").read_text())
+              print(f"{tf}: observed={report['observed_at']} generated={report['generated_at']} closed={report['candle_closed_at']}")
+          PY
       - name: Require exact H1/H4 source, parity, side conflict and candle expiry
         run: python scripts/rbest_publish_shadow.py
       - name: Commit read-only research snapshot; never touch Frozen V1
