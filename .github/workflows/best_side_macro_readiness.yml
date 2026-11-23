@@ -1,0 +1,43 @@
+name: RIZAN Best Side D1 W1 Macro Readiness (Read Only)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/best_side_macro_readiness.yml'
+      - 'scripts/best_side_macro_readiness.py'
+      - 'tests/test_best_side_macro_readiness.py'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research-readiness:
+    name: Audit archived R18 R27 R24 before any LIVE inference
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - name: Checkout candidate-only SMC changes (no cBots)
+        uses: actions/checkout@v4
+      - name: Checkout immutable source archive branch separately
+        uses: actions/checkout@v4
+        with:
+          ref: research/r281-direction-inference-parity-20261123
+          path: research_reference
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated validator
+        run: pip install pandas==2.2.3 numpy==2.3.5 pytest==9.0.2
+      - name: Validate original annual heads and macro source timestamps
+        run: python -m pytest -q tests/test_best_side_macro_readiness.py
+      - name: Produce evidence-linked NOT_READY receipt
+        run: python scripts/best_side_macro_readiness.py
+      - name: Archive decision-gate evidence (no orders)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: best-side-macro-readiness-receipt
+          path: artifacts/best_side_macro_readiness.json
+          if-no-files-found: warn
+          retention-days: 14
