@@ -1,5 +1,6 @@
 name: R28.1 XAU Direction Shadow Hourly (Read Only)
-# Allow bounded longer parity replay; do not use expired predictions as live signals.
+# Four independent model/parity jobs compute in parallel; publication remains
+# atomic/fail-closed. No cBot integration or orders.
 on:
   workflow_dispatch:
   push:
@@ -7,17 +8,32 @@ on:
     paths:
       - '.github/workflows/r281_direction_shadow_hourly.yml'
   schedule:
-    - cron: '7,37 * * * 1-5'
+    # More frequent bounded retries, including the first minutes after H1 close.
+    - cron: '7,22,37,52 * * * 1-5'
 permissions:
   contents: write
   actions: read
 concurrency:
   group: r281-xau-shadow-hourly
   cancel-in-progress: false
+
 jobs:
-  train-and-publish:
+  infer:
+    name: Model parity and broker shadow ${{ matrix.tf }}
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tf: 1h
+            label: H1
+          - tf: 4h
+            label: H4
+          - tf: 1D
+            label: D1
+          - tf: 1W
+            label: W1
     env:
       PYTHONPATH: 'scripts:src:.'
       OPENBLAS_NUM_THREADS: '1'
@@ -32,7 +48,7 @@ jobs:
           python-version: '3.12'
       - name: Install research dependencies
         run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl joblib pytest
-      - name: Enforce no-orders, provenance and candle contract tests
+      - name: Enforce provenance, no-orders, and candle contract
         run: python -m pytest -q tests/test_r281_live_shadow_parity.py tests/test_r281_live_market.py tests/test_r281_publish_shadow.py
       - name: Download immutable ECB replay source
         uses: actions/download-artifact@v4
@@ -41,7 +57,8 @@ jobs:
           github-token: ${{ github.token }}
           name: r281-ecb
           path: /tmp/r281
-      - name: Download immutable XAU 2019–2026 H1/H4 data
+      - name: Download immutable XAU H1/H4 data
+        if: matrix.tf == '1h' || matrix.tf == '4h'
         uses: actions/download-artifact@v4
         with:
           run-id: 44901264975
@@ -49,7 +66,8 @@ jobs:
           pattern: r10-shard-*
           path: /tmp/r10
           merge-multiple: true
-      - name: Download immutable XAU 2012–2026 D1/W1 data
+      - name: Download immutable XAU D1/W1 data
+        if: matrix.tf == '1D' || matrix.tf == '1W'
         uses: actions/download-artifact@v4
         with:
           run-id: 44886465487
@@ -57,15 +75,44 @@ jobs:
           pattern: r98-daily-*
           path: /tmp/r98
           merge-multiple: true
-      - name: Require 2025 replay parity before each live-market SHADOW prediction
-        run: |
-          set -euo pipefail
-          for tf in 1h 4h 1D 1W; do
-            python scripts/r281_live_shadow_parity.py --tf "$tf"
-          done
-      - name: Fail closed unless all four reconstructed model proofs match
+      - name: Replay parity and independent model inference
+        run: python scripts/r281_live_shadow_parity.py --tf "${{ matrix.tf }}"
+      - name: Upload one model's proof, even when publication cannot proceed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r281-model-${{ matrix.label }}
+          path: artifacts/r281_inference/r281-${{ matrix.tf }}-shadow.json
+          retention-days: 7
+          if-no-files-found: warn
+
+  publish:
+    name: Atomic fail-closed four-model snapshot
+    needs: [infer]
+    if: ${{ needs.infer.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'scripts:src:.'
+    steps:
+      - name: Checkout isolated R28.1 research branch for snapshot only
+        uses: actions/checkout@v4
+        with:
+          ref: research/r281-direction-inference-parity-20261123
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install publisher dependency
+        run: pip install pandas==2.2.3
+      - name: Download this run's four model proofs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r281-model-*
+          path: artifacts/r281_inference
+          merge-multiple: true
+      - name: Require all four fresh historical parity proofs and fresh broker data
         run: python scripts/r281_publish_shadow.py
-      - name: Commit only published nonexecution JSON to research branch
+      - name: Publish only read-only JSON; no live cBot files
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -75,7 +122,7 @@ jobs:
             git commit -m "Refresh R28.1 reconstructed research-only XAU direction packet"
             git push origin HEAD:refs/heads/research/r281-direction-inference-parity-20261123
           fi
-      - name: Retain compact research proof
+      - name: Archive published feed and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
