@@ -67,6 +67,10 @@ def load_intraday(tf,scope):
     if scope in ("full","spliced"):
         for path in glob.glob(f"/tmp/r30_early/r10-{tf}-*.csv"):
             yr=int(Path(path).stem.rsplit("-",1)[-1])
+            # Backfill artifacts can include 2019+ as an OVERLAP AUDIT.
+            # Never silently replace the original R10 source after 2018.
+            if yr not in range(2012,2019):
+                continue
             if yr in files:raise ValueError("R30_DUPLICATE_SOURCE_YEAR")
             files[yr]=Path(path)
         years=set(range(2012,2027))
