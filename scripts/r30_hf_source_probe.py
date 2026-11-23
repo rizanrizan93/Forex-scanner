@@ -45,7 +45,7 @@ def probe(year,out):
     }
     for k in ("timestamp","time","datetime","Date","date","ts"):
         if k in df.columns:
-            times=pd.to_datetime(df[k],utc=True,errors="coerce",unit="s" if k=="ts" else None)
+            times=pd.to_datetime(df[k],utc=True,errors="coerce",unit="s" if k in ("ts","timestamp") and pd.api.types.is_numeric_dtype(df[k]) else None)
             report["timestamp_field"]=k
             report["timestamp_first"]=str(times.min())
             report["timestamp_last"]=str(times.max())
