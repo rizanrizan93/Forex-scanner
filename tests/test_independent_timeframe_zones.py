@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from fx_scanner.best_candidate_direction import item
-from fx_scanner.independent_timeframe_zones import independent_zones
+from fx_scanner.independent_timeframe_zones import independent_zones, fresh_m1_fallback_packet
 
 NOW=datetime(2026,11,23,13,20,tzinfo=UTC)
 
@@ -171,3 +171,48 @@ def test_scanner_ui_routes_all_four_timeframe_zones_and_preserves_no_orders():
     assert "render_r281_smc_entry()" in main
     assert "evaluate_best_entry(primary,market,now=now)" not in ui
     assert "execute_order" not in ui and "place_order" not in ui
+
+
+def m1_market():
+    import pandas as pd
+    idx=pd.date_range(end=pd.Timestamp(NOW)-pd.Timedelta(minutes=2),
+                      periods=12000,freq="min")
+    values=pd.Series(3600.,index=idx)
+    frame=pd.DataFrame({"open":values,"high":values+.5,"low":values-.5,
+                        "close":values},index=idx)
+    return {"frame":frame,"as_of":NOW-timedelta(seconds=20)}
+
+
+def test_fresh_m1_fallback_rebuilds_only_complete_h1_h4_not_daily_weekly():
+    packet=fresh_m1_fallback_packet(m1_market(),now=NOW)
+    assert packet["fresh"] is True
+    assert packet["source_detail"]=="VALIDATED_FRESH_M1_REAGGREGATED_H1_H4_ONLY"
+    assert packet["execution_authority"] is False
+    assert packet["timeframe_fresh"]["H1"] is True
+    assert packet["timeframe_fresh"]["H4"] is True
+    assert packet["timeframe_fresh"]["D1"] is False
+    assert packet["timeframe_fresh"]["W1"] is False
+    assert packet["timeframe_closed_at"]["D1"] is None
+    assert packet["timeframe_closed_at"]["W1"] is None
+    out=independent_zones(primary(),packet,now=NOW)
+    assert out["D1"]["state"]=="WAIT_DATA"
+    assert out["W1"]["state"]=="WAIT_DIRECTION"
+
+
+def test_fresh_m1_fallback_rejects_stale_market_and_gaps():
+    old=m1_market()
+    old["as_of"]=NOW-timedelta(minutes=8)
+    with pytest.raises(ValueError,match="PUBLISHER_STALE"):
+        fresh_m1_fallback_packet(old,now=NOW)
+    gapped=m1_market()
+    gapped["frame"]=gapped["frame"].iloc[-250:].copy()
+    packet=fresh_m1_fallback_packet(gapped,now=NOW)
+    assert packet["timeframe_fresh"]["H4"] is False
+    assert packet["timeframe_closed_at"]["H4"] is None
+
+
+def test_ui_has_fallback_but_never_uses_archived_d1_w1_prices():
+    root=Path(__file__).resolve().parents[1]
+    source=(root/"src/fx_scanner/r281_smc_entry_dashboard.py").read_text()
+    assert "fresh_m1_fallback_packet(fetch_market(),now=datetime.now(UTC))" in source
+    assert "D1/W1 memerlukan riwayat candle broker native" in source
