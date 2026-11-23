@@ -9,7 +9,7 @@ def run(root):
     basepath=cases/'r15_indexed_baseline_B_cost1.json.gz';b=read(basepath)
     core={key(t) for t in b['Ledger'] if t['Origin']!='SEED'}
     seed=[t for t in b['Ledger'] if t['Origin']=='SEED']
-    fields=('EndingBalance','MaxEquityDDPct','MaxClosedDDPct','Baskets','Orders','PF',
+    fields=('EndingBalance','TotalContributions','TradingPnl','MaxEquityDDPct','MaxClosedDDPct','Baskets','Orders','PF',
             'MaxObservedMarginPct','MaxObservedOpenRiskPct','ErrorCount','OpenPositions','ActualCutoff')
     output={'stage':'R16_COMPLETED_NATIVE_B1_PILOT','initial_balance':100,
         'baseline':{f:b['Summary'][f] for f in fields},'cases':{},'new_pristine_OOS':False,
@@ -24,6 +24,8 @@ def run(root):
         path=cases/f'{name}_B_cost1.json.gz';a=read(path);s=a['Summary']
         assert a['GrowthGuardAudit']['Enabled'] is False
         assert s['ErrorCount']==0 and s['OpenPositions']==0
+        assert not s['AccountingBlock'] and not s['Quarantined'] and s['ClockMonotonic']
+        assert s['TotalContributions']==100
         assert s['ActualCutoff']==b['Summary']['ActualCutoff']
         own={key(t) for t in a['Ledger'] if t['Origin'] not in ('SEED','ADDON')}
         addon=[t for t in a['Ledger'] if t['Origin']=='ADDON']
