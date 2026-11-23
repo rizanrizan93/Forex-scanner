@@ -163,7 +163,7 @@ def render_frozen_direction_research():
     @st.fragment(run_every="30s")
     def panel():
         now=datetime.now(UTC)
-        if st.button("Perbarui R28.1 dan kandidat terbaik", key="r281_force_refresh"):
+        if st.button("Perbarui prediksi R28.1 sekarang", key="r281_force_refresh"):
             read_r281.clear()
             read_rbest.clear()
         try:
