@@ -1,0 +1,113 @@
+name: R31 XAU High Coverage Precision Per-TF Replay 2012-2026
+on:
+  push:
+    branches: [research/r31-high-frequency-zone-precision-20261123]
+    paths:
+      - '.github/workflows/r31_high_coverage_mega.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: r31-high-coverage-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  safety-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:.:scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Pinned runtime for causal research-only tests
+        run: pip install numpy==2.3.5 pandas==2.2.3 pytest==9.0.2
+      - name: Validate direction-at-rejection, stop-first and volume gates
+        run: |
+          python -m py_compile scripts/research_r31_high_coverage_precision.py scripts/research_r31_high_coverage_aggregate.py
+          python -m pytest -q tests/test_r31_high_coverage_precision.py
+
+  replay:
+    needs: safety-audit
+    name: ${{ matrix.tf }} high-coverage precision block ${{ matrix.model_start }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        tf: [H1,H4,D1,W1]
+        model_start: [0,32,64,96,128,160,192,224]
+    env:
+      PYTHONPATH: src:.:scripts
+      OPENBLAS_NUM_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install deterministic replay dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3
+      - name: Restore session-filtered full 2012-2026 H1/H4 Dukascopy BID candle shards
+        if: ${{ matrix.tf == 'H1' || matrix.tf == 'H4' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45190531878
+          github-token: ${{ github.token }}
+          pattern: r30-duka-year-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Restore original 2012-2026 D1/W1 daily source shards
+        if: ${{ matrix.tf == 'D1' || matrix.tf == 'W1' }}
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r30
+          merge-multiple: true
+      - name: Sweep 1,048,576 direction-zone-exit setups per block on real OHLC
+        run: |
+          python scripts/research_r31_high_coverage_precision.py \
+            --tf ${{ matrix.tf }} \
+            --model-start ${{ matrix.model_start }} \
+            --models 32 \
+            --zone-configs 4096
+      - name: Retain exact per-block metrics and source checksums
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r31-result-${{ matrix.tf }}-${{ matrix.model_start }}
+          path: artifacts/r31/r31-${{ matrix.tf }}-models-${{ matrix.model_start }}.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  verify-and-rank:
+    needs: replay
+    name: Verify 33.55M completed searches and report validation-led Pareto candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Retrieve all 32 independently verified model result shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: r31-result-*
+          path: /tmp/r31-results
+          merge-multiple: true
+      - name: Require strict result-source parity, trade-count gates and full completion
+        run: python scripts/research_r31_high_coverage_aggregate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31-verified-high-coverage-precision-2012-2026
+          path: artifacts/r31/r31-high-coverage-precision-2012-2026-aggregate.json
+          if-no-files-found: warn
+          retention-days: 90
