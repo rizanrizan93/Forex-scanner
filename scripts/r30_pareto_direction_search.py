@@ -64,7 +64,7 @@ def load_intraday(tf,scope):
     files={}
     for path in glob.glob(f"/tmp/r10/r10-{tf}-*.csv"):
         files[int(Path(path).stem.rsplit("-",1)[-1])]=Path(path)
-    if scope=="full":
+    if scope in ("full","spliced"):
         for path in glob.glob(f"/tmp/r30_early/r10-{tf}-*.csv"):
             yr=int(Path(path).stem.rsplit("-",1)[-1])
             if yr in files:raise ValueError("R30_DUPLICATE_SOURCE_YEAR")
@@ -72,17 +72,31 @@ def load_intraday(tf,scope):
         years=set(range(2012,2027))
         if set(files)!=years:
             raise ValueError(f"R30_FULL_2012_2026_NOT_AVAILABLE_{tf}:missing={sorted(years-set(files))}")
+        early_commits=set()
         for yr in range(2012,2019):
-            manifest=Path(f"/tmp/r30_early/r30-backfill-provenance-{yr}.json")
+            manifest=(Path(f"/tmp/r30_early/r30-hf-provenance-{yr}.json")
+                      if scope=="spliced" else
+                      Path(f"/tmp/r30_early/r30-backfill-provenance-{yr}.json"))
             if not manifest.is_file():
                 raise ValueError(f"R30_MISSING_EARLY_PROVENANCE_{yr}")
             proof=json.loads(manifest.read_text())
-            ref=proof.get("shards",{}).get(tf,{})
-            if (proof.get("contract")!="R30_XAUUSD_HISTDATA_H1_H4_UTC_2012_2018_SHARD_V1"
+            ref=(proof.get("derivatives",{}).get(tf,{})
+                 if scope=="spliced" else proof.get("shards",{}).get(tf,{}))
+            expected=("R30_HF_XAUUSD_M1_TO_H1_H4_UTC_YEAR_V1"
+                      if scope=="spliced" else
+                      "R30_XAUUSD_HISTDATA_H1_H4_UTC_2012_2018_SHARD_V1")
+            if (proof.get("contract")!=expected
                 or proof.get("year")!=yr
                 or ref.get("sha256")!=sha(files[yr])
                 or proof.get("execution_authority") is not False):
                 raise ValueError("R30_OLD_INTRADAY_SHA_MISMATCH")
+            if scope=="spliced":
+                if (proof.get("source_dataset")!="TheFinanceEngineer/impulse-market-data"
+                    or proof.get("native_timestamp")!="UNIX_SECONDS_UTC"):
+                    raise ValueError("R30_HF_EARLY_SOURCE_MISMATCH")
+                early_commits.add(proof["source_commit"])
+        if scope=="spliced" and len(early_commits)!=1:
+            raise ValueError("R30_EARLY_HF_SOURCE_REVISION_MIXED")
     else:
         years=set(range(2019,2027))
         if set(files)!=years:
@@ -106,6 +120,12 @@ def load_intraday(tf,scope):
     d=pd.concat(a).sort_index()
     if not d.index.is_unique or d.index.tz is None:
         raise ValueError("R30_COMBINED_CANDLE_DUPLICATION")
+    if scope=="spliced":
+        manifest["_provider_boundary"]={
+            "early":"TheFinanceEngineer/impulse-market-data, 2012-2018",
+            "later":"HistData original R10, 2019-2026",
+            "not_same_vendor":True,"cannot_pretend_uniform":True,
+        }
     return d,manifest
 
 
@@ -224,9 +244,11 @@ def read_data(tf,scope):
     cols=["d1_mom","d1_trend","w1_mom","w1_trend"]
     valid &= np.isfinite(z[cols].to_numpy(float)).all(axis=1)
     return d,z,y,valid,times,{
-        "source":"R30_FULL_HISTDATA_2012_2026" if scope=="full"
-                   else "ORIGINAL_R10_2019_2026",
-        "actual_years":sorted(manifest),
+        "source":("R30_FULL_HISTDATA_2012_2026" if scope=="full"
+                  else "R30_HF_2012_2018_PLUS_R10_2019_2026" if scope=="spliced"
+                  else "ORIGINAL_R10_2019_2026"),
+        "actual_years":sorted(y for y in manifest if isinstance(y,int)),
+        "vendor_boundary_2019":scope=="spliced",
         "shard_sha256_rows":manifest,
         "scope":scope,
     }
@@ -422,7 +444,7 @@ def frontier(variants):
 
 
 def run(tf,scope):
-    if tf not in TIMEFRAMES or scope not in ("archived","full","uniform"):
+    if tf not in TIMEFRAMES or scope not in ("archived","full","uniform","spliced"):
         raise ValueError("R30_INVALID_TF_SCOPE")
     d,z,y,valid,times,source=read_data(tf,scope)
     groups=model_source.feature_groups(tf,d,z)
@@ -432,7 +454,7 @@ def run(tf,scope):
     # Full history 2012-26: first six calendar years are for training,
     # and 2018 is a first diagnostic; primary comparison 2019-26.
     years=(list(range(2019,2027))
-           if tf in ("1D","1W") or scope in ("full","uniform")
+           if tf in ("1D","1W") or scope in ("full","uniform","spliced")
            else [2024,2025,2026])
     permode={mode:[] for mode in VERSIONS}
     for year in years:
@@ -464,7 +486,8 @@ def run(tf,scope):
         "variants":reports,"pareto_frontier":frontier(reports),
         "annual_results":permode,
         "limitations":[
-            "2019–2026 H1/H4 is NOT full intraday 2012–2026; full run requires all 2012–2018 SHA-audited shards",
+            "2019–2026 archived H1/H4 is NOT 2012–2026; full or spliced run requires all seven original 2012–2018 hashed shards",
+            "Spliced H1/H4 changes vendor at 2019 and is NOT homogeneous price history; evaluate boundary sensitivity before using any claimed edge",
             "Test years 2019–2026 already examined in earlier studies; NOT an untouched holdout",
             "Yearly selection from previous year reduces direct label leakage but DOES NOT remove research-process multiple testing",
             "Close-to-close signed returns after assumed 0.70 USD/oz cost are NOT executable fills",
