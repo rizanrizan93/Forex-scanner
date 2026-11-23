@@ -1,0 +1,95 @@
+name: R32 XAU 2012-2026 Max Net Profit x Most Profitable Signals ATR Research
+on:
+  push:
+    branches: ['research/r32-profit-frequency-atr-20261123']
+    paths:
+      - 'scripts/r32_profit_frequency_atr.py'
+      - 'tests/test_r32_profit_frequency_atr.py'
+      - '.github/workflows/r32_profit_frequency_atr.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r32-profit-and-signals-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'scripts:src:.'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install historical research libraries, no broker SDK
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl pytest==9.0.2
+      - name: Confirm causal next-bar entry, ATR trail stop, gap risk and research only
+        run: |
+          python -m py_compile scripts/r32_profit_frequency_atr.py
+          python -m pytest -q tests/test_r32_profit_frequency_atr.py
+
+  study:
+    needs: verify
+    name: R32 ${{ matrix.tf }} ${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        tf: ['1W','1D','4h','1h']
+        mode: ['max_net','max_signals','profit_frequency']
+    env:
+      PYTHONPATH: 'scripts:src:.'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install reproducible numerical dependencies
+        run: pip install numpy==2.3.5 pandas==2.2.3 scipy scikit-learn==1.7.2 requests openpyxl
+      - name: Fetch 2012-2018 original SHA-audited early price shards
+        if: matrix.tf == '1h' || matrix.tf == '4h'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 45183311130
+          github-token: ${{ github.token }}
+          pattern: r30-hf-yr-*
+          path: /tmp/r30_early
+          merge-multiple: true
+      - name: Fetch 2019-2026 original archived intraday R10 bars
+        if: matrix.tf == '1h' || matrix.tf == '4h'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44901264975
+          github-token: ${{ github.token }}
+          pattern: r10-shard-*
+          path: /tmp/r10
+          merge-multiple: true
+      - name: Fetch 2012-2026 original R9.8 audited daily historical bars
+        if: matrix.tf == '1D' || matrix.tf == '1W'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44886465487
+          github-token: ${{ github.token }}
+          pattern: r98-daily-*
+          path: /tmp/r98
+          merge-multiple: true
+      - name: Evaluate 2019-2026 strict previous-two-years ATR strategies, profit and signals
+        run: python scripts/r32_profit_frequency_atr.py --tf "${{ matrix.tf }}" --mode "${{ matrix.mode }}"
+      - name: Archive annual selected setup, trades, net/DD, higher assumed costs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r32-${{ matrix.tf }}-${{ matrix.mode }}
+          path: artifacts/r32/r32-${{ matrix.tf }}-${{ matrix.mode }}.json
+          retention-days: 90
+          if-no-files-found: warn
