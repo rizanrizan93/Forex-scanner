@@ -109,7 +109,97 @@ def load_intraday(tf,scope):
     return d,manifest
 
 
+def load_uniform(tf):
+    """Every 2012-26 H1/H4 shard from ONE pinned independent vendor source."""
+    if tf not in ("1h","4h"):raise ValueError("R30_UNIFORM_INTRADAY_TF")
+    frames=[]
+    proven={}
+    source_commits=set()
+    for year in range(2012,2027):
+        root=Path("/tmp/r30_uniform")
+        f=root/f"r10-{tf}-{year}.csv"
+        manifest=root/f"r30-hf-provenance-{year}.json"
+        if not f.is_file() or not manifest.is_file():
+            raise ValueError(f"R30_UNIFORM_2012_2026_YEAR_MISSING:{tf}:{year}")
+        m=json.loads(manifest.read_text())
+        ref=m.get("derivatives",{}).get(tf,{})
+        if (m.get("contract")!="R30_HF_XAUUSD_M1_TO_H1_H4_UTC_YEAR_V1"
+                or m.get("source_dataset")!="TheFinanceEngineer/impulse-market-data"
+                or m.get("year")!=year
+                or m.get("native_timestamp")!="UNIX_SECONDS_UTC"
+                or m.get("execution_authority") is not False
+                or ref.get("sha256")!=sha(f)):
+            raise ValueError(f"R30_UNIFORM_SOURCE_HASH_INVALID:{tf}:{year}")
+        source_commits.add(m["source_commit"])
+        x=pd.read_csv(f,index_col=0,parse_dates=True)
+        if (x.index.tz is None or x.index.year.min()!=year
+                or x.index.year.max()!=year or not x.index.is_unique
+                or not x.index.is_monotonic_increasing
+                or not set(("o","h","l","c")).issubset(x.columns)
+                or (x.h<x[["o","c"]].max(axis=1)).any()
+                or (x.l>x[["o","c"]].min(axis=1)).any()):
+            raise ValueError(f"R30_UNIFORM_CANDLE_SCHEMA_INVALID:{tf}:{year}")
+        frames.append(x)
+        proven[year]={"sha256":ref["sha256"],"rows":len(x),
+                      "source_parquet_sha":m["source_file_sha256"]}
+    if len(source_commits)!=1:
+        raise ValueError("R30_UNIFORM_MIXED_SOURCE_REVISIONS")
+    return pd.concat(frames).sort_index(), {
+        "source":"INDEPENDENT_HUGGINGFACE_UNIFORM_M1_XAUUSD",
+        "source_dataset":"TheFinanceEngineer/impulse-market-data",
+        "source_commit":next(iter(source_commits)),
+        "actual_years":list(range(2012,2027)),
+        "scope":"UNIFORM_INDEPENDENT_SOURCE_2012_2026",
+        "original_parquet_and_derived_shards":proven,
+        "price_quote_kind":"UNVERIFIED_EXTERNAL_OHLC_NOT_FP_MARKETS",
+    }
+
+
+def read_uniform(tf):
+    h1,source=load_uniform("1h")
+    if tf in ("1h","4h"):
+        d=h1 if tf=="1h" else load_uniform("4h")[0]
+    else:
+        daily=h1.resample("1D",closed="left",label="left").agg(
+            o=("o","first"),h=("h","max"),l=("l","min"),
+            c=("c","last"),bars=("c","count"))
+        daily=daily[daily.bars>=16]
+        if tf=="1D":
+            d=daily
+        elif tf=="1W":
+            monday=daily.index.floor("D")-pd.to_timedelta(daily.index.dayofweek,unit="D")
+            d=daily.groupby(monday).agg(
+                o=("o","first"),h=("h","max"),
+                l=("l","min"),c=("c","last"),bars=("c","count"))
+            d=d[d.bars>=3]
+        else:raise ValueError("R30_UNIFORM_INVALID_TF")
+    z=ohlc_indicators(d)
+    hours={"1h":1,"4h":4,"1D":24,"1W":168}[tf]
+    if tf in ("1h","4h"):
+        causal_context(z,h1,hours)
+    old=d.c.to_numpy(float)
+    future=d.c.shift(-1).to_numpy(float)
+    gaps=d.index.to_series().shift(-1)-d.index.to_series()
+    if tf=="1D":
+        good=(gaps>=pd.Timedelta(days=1))&(gaps<=pd.Timedelta(days=4))
+    elif tf=="1W":
+        good=(gaps==pd.Timedelta(days=7))
+    else:
+        good=(gaps==pd.Timedelta(hours=hours))
+    valid=good.fillna(False).to_numpy()&np.isfinite(old)&np.isfinite(future)&(old!=future)
+    if tf in ("1h","4h"):
+        context_fields=("d1_mom","d1_trend","w1_mom","w1_trend")
+        valid &= np.isfinite(z[list(context_fields)].to_numpy(float)).all(axis=1)
+    times=d.index+pd.Timedelta(hours=hours)
+    y=(future>old).astype(np.int8)
+    if not set(range(2012,2027)).issubset(set(d.index.year)):
+        raise ValueError("R30_UNIFORM_ALL_2012_2026_CANDLES_MISSING")
+    return d,z,y,valid,times,source
+
+
 def read_data(tf,scope):
+    if scope=="uniform":
+        return read_uniform(tf)
     if tf in ("1D","1W"):
         d,z,x,y,valid,times=load_tf(tf)
         years=set(d.index.year)
@@ -332,7 +422,7 @@ def frontier(variants):
 
 
 def run(tf,scope):
-    if tf not in TIMEFRAMES or scope not in ("archived","full"):
+    if tf not in TIMEFRAMES or scope not in ("archived","full","uniform"):
         raise ValueError("R30_INVALID_TF_SCOPE")
     d,z,y,valid,times,source=read_data(tf,scope)
     groups=model_source.feature_groups(tf,d,z)
@@ -342,7 +432,7 @@ def run(tf,scope):
     # Full history 2012-26: first six calendar years are for training,
     # and 2018 is a first diagnostic; primary comparison 2019-26.
     years=(list(range(2019,2027))
-           if tf in ("1D","1W") or scope=="full"
+           if tf in ("1D","1W") or scope in ("full","uniform")
            else [2024,2025,2026])
     permode={mode:[] for mode in VERSIONS}
     for year in years:
