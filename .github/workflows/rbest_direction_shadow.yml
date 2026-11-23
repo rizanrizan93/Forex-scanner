@@ -1,6 +1,11 @@
 name: RIZAN Best Side R25 BUY x R11 SELL XAU H1-H4 (Read Only)
 on:
   workflow_dispatch:
+  # Backup trigger when GitHub cron is delayed or dropped.
+  # Runs after the existing read-only XAU closed-candle publisher.
+  workflow_run:
+    workflows: ["XAU Decision Closed Candles Readonly Publisher"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -16,6 +21,8 @@ concurrency:
 
 jobs:
   heads:
+    # Never react to a failed upstream publisher.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Verify original R25/R11 and infer ${{ matrix.label }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
