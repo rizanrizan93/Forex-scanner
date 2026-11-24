@@ -1,0 +1,82 @@
+name: V5 archived native ledger 2M compounding sensitivity
+on:
+  push:
+    branches: ['research/v5-native-growth-optimization-20261124']
+    paths: ['.github/workflows/v5-compound-screen.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 994d68edc9bb87e5c1e57997a65be18873af84b8
+          path: evidence
+          persist-credentials: false
+      - run: python research/v5_native_growth/prepare_compound_tape.py evidence/research/r15_frozen_shared_replay/evidence tape
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-native-tape
+          path: tape/
+          if-no-files-found: error
+  screen:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-native-tape
+          path: tape
+      - run: |
+          g++ -O3 -std=c++20 research/v5_native_growth/compound_screen.cpp -o /tmp/screen
+          mkdir result
+          /tmp/screen tape/tape.bin ${{ matrix.shard }} result
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compound-shard-${{ matrix.shard }}
+          path: result/
+          if-no-files-found: error
+  aggregate:
+    needs: screen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: compound-shard-*
+          path: shards
+      - name: Aggregate actually completed sensitivity cases
+        run: |
+          python - <<'PY'
+          import json,csv
+          from pathlib import Path
+          rows=[json.loads(p.read_text()) for p in Path("shards").rglob("summary.json")]
+          assert len(rows)==16 and {r["shard"] for r in rows}==set(range(16))
+          totals={k:sum(r[k] for r in rows) for k in ("evaluated","eligible_closed_dd","higher_than_archived_balance","at_least_10b_closed_dd","new_native_replays")}
+          assert totals["evaluated"]==2044416 and totals["new_native_replays"]==0
+          top=[]
+          for p in Path("shards").rglob("top.csv"):
+              with p.open() as f:top.extend(csv.DictReader(f))
+          top.sort(key=lambda r:float(r["end"]),reverse=True)
+          report={"scope":"fixed archived basket path, not actual native replay; closed-basket DD only; duplicate economic outcomes possible; retrospective selection","models":256,**totals,"control_end":rows[0]["control_end"],"control_closed_basket_dd":rows[0]["control_closed_basket_dd"],"top_diagnostics":top[:20],"floating_dd":None,"live_changes":False}
+          Path("summary.json").write_text(json.dumps(report,indent=2))
+          print("V5_COMPOUND_SENSITIVITY",json.dumps(report))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5-compound-summary
+          path: summary.json
