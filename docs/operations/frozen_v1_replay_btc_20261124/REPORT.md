@@ -1,27 +1,22 @@
-# Frozen V1 uploaded algo — replay readiness and BTC live audit
-Observation: 24 November 2026, 13:07:53 WIB (06:07:53 UTC).
-Uploaded algo SHA-256: 7f58f6839c21785cdcce2c629acd5a2b009593f47dabb6effd8a1b0225a22619.
-Release reference: 90172c2fba345e4221ca822c8e7d1d760a98c6b1.
-Evidence run: https://github.com/rizanrizan93/Forex-scanner/actions/runs/45338143592
+# Restored Frozen V1 source-model replay
 
-## Results
-- VPS read-only collection succeeded; no live checkpoint, lease, service, order or configuration mutation.
-- Bridge active, four connected peers, all four role leases active at observation.
-- BTC checkpoint present, identity valid, storage version 7, stored client revision 8. These are different counters and unequal values alone are not a persistence failure.
-- BTC fault=false, pending_intent=false, exit_pending=false; retained weekend lock expired 16 November.
-- BTC minute extension: 56,520 rows from 16 October 00:00 UTC through 24 November 05:59 UTC. Expected completed-hour minute count matched; no timestamp gaps.
-- Bridge reports BTC READY. This does not establish native FeedReady, in-memory acked revision, PortfolioReady, broker market hours, or absence of foreign exposure at the instance.
-- Released functional checks PASS 86 assertions, real_orders=0. This uses API stubs and is not a historical profit replay.
-- Source manifest check FAILED: source/GlobalAliases.cs and source/RizanXauEurPortfolio.cs differ from their manifest hashes. The uploaded binary still matches the recorded binary hash. This is a source provenance issue, not evidence the uploaded algo is corrupt.
+Modal awal $100, compounding berkelanjutan, leverage model 1:200, biaya dasar 1x, jalur M1 A/B. Cutoff data: 13 November 2026 09.59 WIB.
 
-## Historical replay status
-| Window | Status |
-|---|---|
-| 2019–24 November 2026 | NOT EXECUTED. Requires isolated point-in-time replay adapter, verified matched historical three-instrument market and macro inputs, broker contract/cost assumptions, and source/binary provenance reconciliation. |
-| 2012–24 November 2026 | NOT EXECUTED. In addition, production BTC validator requires history beginning 2019-01-01 and fixed seed through 2026-10-16; added XAU/BTC setup gates reject pre-2019 timestamps. A date-range change alone is not a valid full-strategy replay. |
+| Rentang awal | Jalur | Saldo akhir USD | DD equity | Basket | Order | Error |
+|---|---|---:|---:|---:|---:|---:|
+| 2019–2026 | A | 1,392,645,692.94 | 57.89% | 1040 | 147586 | 0 |
+| 2019–2026 | B | 1,662,133,293.08 | 56.67% | 1047 | 187560 | 0 |
+| 2012–2026 | A | 1,392,645,692.94 | 57.89% | 1040 | 147586 | 0 |
+| 2012–2026 | B | 1,662,133,293.08 | 56.67% | 1047 | 187560 | 0 |
 
-Production BTC feed cannot accept an early-2019 point-in-time prefix because its pinned production seed includes data through October 2026. A replay must not inject that future history or touch live bridge state. Extending admission to pre-2019 is a separately labelled research variant, not the unchanged binary.
+## Provenance dan batas interpretasi
 
-The limited VPS filename inventory found BTC seed packets but no replay csproj or named original growth ZIP under the inspected roots/depth. This is not proof no historical data exists elsewhere. VPS has Docker but no dotnet executable on PATH; GitHub functional tests used .NET 8 matching the test project.
+Tiga input CSV dipulihkan dari arsip pengguna dan SHA-256 semuanya sama dengan input asli. Sebanyak 34 file sumber runner/strategi cocok dengan manifest arsip lama.
 
-No new ending balance, profit factor, drawdown, win rate or trade count is reported. Archived synthetic results must not be represented as a newly executed replay of this binary.
+Ini menjalankan ulang model C# penelitian lama dengan API stub, jalur M1 sintetis, heartbeat/ACK sintetis, dan snapshot izin XAU sintetis dari runner asli. Biner .algo tidak dijalankan; ini bukan replay tick FP Markets atau bukti eksekusi bridge/live. Flag historis XAU dan snapshot makro tetap tidak tersertifikasi.
+
+Mode makro off menggunakan timeline kosong yang tidak memengaruhi filter makro tambahan. Runner asli tetap menyuntikkan snapshot izin XAU; pembatasan ini tidak dihapus atau disamarkan.
+
+XAU/EUR tersedia mulai 2011 sebagai warmup. BTC mulai 2019. Generator seed asli membatasi kandidat sejak 2019; rentang 2012 tidak berarti tiga aset aktif sejak 2012. Tidak ada perubahan strategi untuk memaksa aktivitas sebelum 2019.
+
+Benchmark lama jalur B berhasil direproduksi: saldo akhir $1.662.133.293,08, DD 56,6721%, dan 1.047 basket. Kedua rentang awal memiliki ledger order identik pada masing-masing jalur; entry pertama 2 Januari 2019, tanpa order sebelum 2019. Hasil ini berbeda dari reset modal $100 per tahun. Margin teramati maksimum A/B adalah 54,44%/54,07%, risiko terbuka teramati maksimum 26,22%/27,21%, dan menit tanpa data instrumen aktif tercatat 6.748/7.045; batas entry nominal bukan batas keras untuk seluruh perjalanan equity. Tidak ada order LIVE dikirim.
