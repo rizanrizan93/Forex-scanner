@@ -1,0 +1,22 @@
+name: V4 three asset bootstrap compile and smoke
+on:
+  push:
+    branches: ['research/v4-705m-three-asset-bootstrap-20261124']
+    paths: ['research/v4_three_asset/**', '.github/workflows/v4-three-asset.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and verify three-asset admission
+        run: |
+          g++ -O3 -std=c++20 -fopenmp research/v4_three_asset/search.cpp -o /tmp/v4search
+          /tmp/v4search --selftest
+          python -m py_compile research/v4_three_asset/run.py research/v4_three_asset/generate_tapes.py
+          echo 'Software checks only, not a historical financial replay.'
