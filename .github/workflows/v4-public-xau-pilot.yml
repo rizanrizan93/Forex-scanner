@@ -1,0 +1,84 @@
+name: V4 public XAU historical wallet pilot
+on:
+  push:
+    branches: ['research/v4-705m-three-asset-bootstrap-20261124']
+    paths: ['.github/workflows/v4-public-xau-pilot.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  annual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2019,2020,2021,2022,2023,2024,2025]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 26bf8396b6e703d650e703fca48d556252782f03
+          path: reference
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - name: Prepare public data and run historical pilot
+        run: |
+          mkdir -p pilot
+          python research/v4_three_asset/public_xau_pilot.py pilot ${{ matrix.year }} reference
+          g++ -O3 -std=c++20 -fopenmp research/v4_three_asset/public_xau_pilot.cpp -o /tmp/pilot
+          /tmp/pilot pilot ${{ matrix.year }}
+          python - <<'PY'
+          import pandas as pd
+          d=pd.read_csv("pilot/results.csv")
+          print("YEAR_DIAGNOSTIC_NOT_SELECTED",d.groupby("cost").agg(cases=("end","size"),best_end=("end","max"),lowest_dd=("dd","min")).to_json())
+          print(d.sort_values("end",ascending=False).head(3).to_json(orient="records"))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-xau-${{ matrix.year }}
+          path: |
+            pilot/results.csv
+            pilot/provenance.json
+          if-no-files-found: error
+  aggregate:
+    needs: annual
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: public-xau-*
+          path: pilot
+      - name: Compare fixed policies across annual resets
+        run: |
+          python - <<'PY'
+          import pandas as pd,json
+          from pathlib import Path
+          d=pd.concat([pd.read_csv(p) for p in Path("pilot").rglob("results.csv")])
+          assert len(d)==72576 and set(d.year)==set(range(2019,2026))
+          keys=["base","sl","tp","hold","trend","dir","seedrisk","growthrisk","daily","loss","win"]
+          train=d[d.year<=2022].copy()
+          train["hit125"]=train.goal125>0;train["hit250"]=train.goal250>0;train["hit1000"]=train.goal1000>0
+          a=train.groupby(keys).agg(n=("end","size"),worst=("end","min"),dd=("dd","max"),g125=("hit125","sum"),g250=("hit250","sum"),g1000=("hit1000","sum"),mean=("end","mean")).reset_index()
+          assert len(a)==5184 and a.n.eq(8).all()
+          good=a[(a.g125>=6)&(a.g250>=4)&(a.g1000>=1)&(a.worst>=60)&(a.dd<.6)]
+          ranked=a.sort_values(["g1000","g250","g125","worst","mean"],ascending=False)
+          top=ranked.head(3).merge(d,on=keys,suffixes=("_train",""))
+          report={"actual_annual_cost_cases":len(d),"unique_policies":len(a),"development_gate_pass":len(good),"top_diagnostic_train_ranked":top.to_dict(orient="records"),"native_replays":0,"exact_frozen":False,"continuous_portfolio_balance":None}
+          print("V4_PUBLIC_XAU_RESULT",json.dumps(report))
+          Path("summary.json").write_text(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-xau-aggregate
+          path: summary.json
