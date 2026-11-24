@@ -12,7 +12,7 @@ for manifest in ["native_control_manifest.json","native_pds_manifest.json"]:
         assert len(b)==p["bytes"] and sha(b)==p["sha256"],p["name"]
         parts.append(b)
     raw=b"".join(parts)
-    assert len(raw)==m["archive_bytes"] and sha(raw)==m["archive_sha256"]
+    assert len(raw)==m.get("archive_bytes",m.get("bytes")) and sha(raw)==m.get("archive_sha256",m.get("sha256"))
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
         for name in z.namelist():
             if not name.endswith(".json.gz"):continue
@@ -24,7 +24,7 @@ for manifest in ["native_control_manifest.json","native_pds_manifest.json"]:
             assert s["TotalContributions"]==100
             l=d["Ledger"];assert len(l)==s["Baskets"]
             assert abs(100+sum(x["Pnl"] for x in l)-s["EndingBalance"])<.05
-            out.append({"manifest":manifest,"archive":m["archive_name"],"sha256":sha(raw),"file":name,"case":s["cfg"]["Name"],"balance":s["EndingBalance"],"floating_dd_pct":s["MaxEquityDDPct"],"closed_dd_pct":s["MaxClosedDDPct"],"baskets":s["Baskets"],"orders":s["Orders"],"peak_open_risk_pct":s["MaxObservedOpenRiskPct"],"peak_margin_pct":s["MaxObservedMarginPct"],"cutoff":s["ActualCutoff"],"errors":s["ErrorCount"],"open_positions":s["OpenPositions"],"quarantined":s["Quarantined"],"addon_audit":d.get("SparseAudit",d.get("AddonAudit"))})
+            out.append({"manifest":manifest,"archive":m.get("archive_name",m.get("filename")),"sha256":sha(raw),"file":name,"case":s["cfg"]["Name"],"balance":s["EndingBalance"],"floating_dd_pct":s["MaxEquityDDPct"],"closed_dd_pct":s["MaxClosedDDPct"],"baskets":s["Baskets"],"orders":s["Orders"],"peak_open_risk_pct":s["MaxObservedOpenRiskPct"],"peak_margin_pct":s["MaxObservedMarginPct"],"cutoff":s["ActualCutoff"],"errors":s["ErrorCount"],"open_positions":s["OpenPositions"],"quarantined":s["Quarantined"],"addon_audit":d.get("SparseAudit",d.get("AddonAudit"))})
 assert any(abs(r["balance"]-1662133293.0811067)<.01 for r in out)
 assert any(r["manifest"]=="native_pds_manifest.json" for r in out)
 r={"scope":"existing native synthetic market replay receipts, not newly executed replays","completed_continuous_receipts":out,"new_native_replays":0}
