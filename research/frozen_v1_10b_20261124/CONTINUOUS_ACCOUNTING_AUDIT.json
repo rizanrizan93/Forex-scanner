@@ -1,0 +1,146 @@
+[
+  {
+    "series": "btc18h72",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1838731373.8353884,
+    "max_floating_dd_pct": 58.90845697509444,
+    "ledger_pnl_residual_usd": 0.00032329559326171875,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "capacity",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1703125878.2158592,
+    "max_floating_dd_pct": 56.67209330213908,
+    "ledger_pnl_residual_usd": 0.0004792213439941406,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "continuous",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1684641828.2668734,
+    "max_floating_dd_pct": 56.530716410932335,
+    "ledger_pnl_residual_usd": 0.0001087188720703125,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "continuous",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1715242916.063192,
+    "max_floating_dd_pct": 56.797636295282274,
+    "ledger_pnl_residual_usd": 0.0002639293670654297,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "filterF1",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1867121354.858519,
+    "max_floating_dd_pct": 60.386929878734485,
+    "ledger_pnl_residual_usd": 0.0002493858337402344,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "filterF1_A",
+    "path": "A",
+    "cost": 1,
+    "ending_balance": 1424481378.105722,
+    "max_floating_dd_pct": 60.85296727925426,
+    "ledger_pnl_residual_usd": -1.4781951904296875e-05,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "filterF1_cost2",
+    "path": "A",
+    "cost": 2,
+    "ending_balance": 987077128.5236708,
+    "max_floating_dd_pct": 61.95513746333897,
+    "ledger_pnl_residual_usd": 0.00017881393432617188,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "filterF1_cost2",
+    "path": "B",
+    "cost": 2,
+    "ending_balance": 998185952.8431439,
+    "max_floating_dd_pct": 60.93205185164593,
+    "ledger_pnl_residual_usd": 0.00026607513427734375,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  },
+  {
+    "series": "filterF7",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1833581787.5527225,
+    "max_floating_dd_pct": 60.45986240948886,
+    "ledger_pnl_residual_usd": 0.00031447410583496094,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true
+  }
+]
