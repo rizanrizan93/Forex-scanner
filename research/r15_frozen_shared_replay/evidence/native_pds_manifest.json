@@ -1,0 +1,266 @@
+{
+  "filename": "R15_NATIVE_PDS_B1.zip",
+  "bytes": 14203678,
+  "sha256": "d0e7a5e962090bea0f6695f48caa3297ae6c1abba3ac7624d25456a4205d717f",
+  "parts": [
+    {
+      "index": 1,
+      "bytes": 393216,
+      "git_blob_sha": "2e33cee5a29ef099d05b0d1d10438be06298d259",
+      "sha256": "da288004112b6eddf499d10e1891c36296d86d954dea83ca80945829a27cdf7e",
+      "name": "R15_NATIVE_PDS_B1.zip.part001"
+    },
+    {
+      "index": 2,
+      "bytes": 393216,
+      "git_blob_sha": "3010c243c47d15db9f4d4b246d0166ebaa6b2bae",
+      "sha256": "a584fb8233f2992a65ae2f13ef0746ba3bae370f97e7061a5270a03873c7b14f",
+      "name": "R15_NATIVE_PDS_B1.zip.part002"
+    },
+    {
+      "index": 3,
+      "bytes": 393216,
+      "git_blob_sha": "3cb3391abfb8e6358559d7bbf2244009d5358263",
+      "sha256": "38d209df008adb5eb5e424543647b62a9ec7da6e5c03e00aabeaecd3f5d0f1c2",
+      "name": "R15_NATIVE_PDS_B1.zip.part003"
+    },
+    {
+      "index": 4,
+      "bytes": 393216,
+      "git_blob_sha": "7e474ad869ad2f90d47f7b0dcfc44263dcca7613",
+      "sha256": "7d853e83193f283964823f437e4aced084623169dca2042ed651af971c5fbaa6",
+      "name": "R15_NATIVE_PDS_B1.zip.part004"
+    },
+    {
+      "index": 5,
+      "bytes": 393216,
+      "git_blob_sha": "37e95ae290a672e942e8a7c7c328fb814682edb0",
+      "sha256": "d95d4e39f49cc3c63e624fce2e907c397375bf93ee3d83347c8b669de9ffc30d",
+      "name": "R15_NATIVE_PDS_B1.zip.part005"
+    },
+    {
+      "index": 6,
+      "bytes": 393216,
+      "git_blob_sha": "e4e8d66f4ac52459f09ddb5bd56f4de8a835a34b",
+      "sha256": "9eafdabbd23b39c6ac00caf4210075a09a047fd36ba3a54026bda64ff90b3c65",
+      "name": "R15_NATIVE_PDS_B1.zip.part006"
+    },
+    {
+      "index": 7,
+      "bytes": 393216,
+      "git_blob_sha": "08416c71839272b3a7229f1ba824e4598a908523",
+      "sha256": "ae0bf67ab7869b501166a03845b2f1d6776a9b9ddf15b43bc004906951787e72",
+      "name": "R15_NATIVE_PDS_B1.zip.part007"
+    },
+    {
+      "index": 8,
+      "bytes": 393216,
+      "git_blob_sha": "137c0c2f8c9eb95a46da8ef1ccf8e1f8414838be",
+      "sha256": "c898d1eebe6ecd91a76774a97d76da715bd652493863d0d1cc32841e96f08758",
+      "name": "R15_NATIVE_PDS_B1.zip.part008"
+    },
+    {
+      "index": 9,
+      "bytes": 393216,
+      "git_blob_sha": "76209a9784188d9c5aa3865ff6233006f6c5593a",
+      "sha256": "aa7736544671a6379c57972ec5fffa8d73b277c8671e790bf5dcf5dc8ff6519f",
+      "name": "R15_NATIVE_PDS_B1.zip.part009"
+    },
+    {
+      "index": 10,
+      "bytes": 393216,
+      "git_blob_sha": "945091aeeec99063d261791a028b3d66957ed0bb",
+      "sha256": "1d3ae6e31a6fb93589dcaec7f751288c90a9e45d342922eb32aa050ffc1dc37c",
+      "name": "R15_NATIVE_PDS_B1.zip.part010"
+    },
+    {
+      "index": 11,
+      "bytes": 393216,
+      "git_blob_sha": "ec5d924f01168f82db78243aa17c5146fb230078",
+      "sha256": "3b7a492f73943240424bab2960c8e7a4dbc6c062472ff4fe689a9e286b584015",
+      "name": "R15_NATIVE_PDS_B1.zip.part011"
+    },
+    {
+      "index": 12,
+      "bytes": 393216,
+      "git_blob_sha": "63498bdc53639fad82775a0ad8f2e643146e4d63",
+      "sha256": "c9a09f517ed450a423607773ef54625f83491ce35a2f33ed6fc7338d37d2fe52",
+      "name": "R15_NATIVE_PDS_B1.zip.part012"
+    },
+    {
+      "index": 13,
+      "bytes": 393216,
+      "git_blob_sha": "92de6d80b7549b2b8204b8e82e83824fae4b27ae",
+      "sha256": "8b00e92b6738fcd51884fab6bb940c4c043ddf1de675328c83cd5b07b6cb5fd2",
+      "name": "R15_NATIVE_PDS_B1.zip.part013"
+    },
+    {
+      "index": 14,
+      "bytes": 393216,
+      "git_blob_sha": "2e49b790824f9b3266cec0b37d3df001bcb67963",
+      "sha256": "c798d9a164ee770b22a3b074325c40687636701269a7e72b4a36cc83b35c0aaf",
+      "name": "R15_NATIVE_PDS_B1.zip.part014"
+    },
+    {
+      "index": 15,
+      "bytes": 393216,
+      "git_blob_sha": "e2f94fcd5e2ceaa657cb43e611f7f38506150c9d",
+      "sha256": "93b4d5065f137a848b2466317c78d8250532234f77e51f51ed4dfd5cd238a4b2",
+      "name": "R15_NATIVE_PDS_B1.zip.part015"
+    },
+    {
+      "index": 16,
+      "bytes": 393216,
+      "git_blob_sha": "e43a2104800217775351f8cc548b2957e8c0a1df",
+      "sha256": "0b1e7fc9fe31f4380c3946942b98f68401e31830fdcb963c9412d5d9edec71fe",
+      "name": "R15_NATIVE_PDS_B1.zip.part016"
+    },
+    {
+      "index": 17,
+      "bytes": 393216,
+      "git_blob_sha": "c3cfff43297fe41675716c34e073603bd12b74b2",
+      "sha256": "1096669e375314fd3c7f37450d0ec0e7b229b93cccd59db2d9e0607fab8267fb",
+      "name": "R15_NATIVE_PDS_B1.zip.part017"
+    },
+    {
+      "index": 18,
+      "bytes": 393216,
+      "git_blob_sha": "d657e3a77a6b18cd087582eb07d4f6a897871107",
+      "sha256": "63393520fe2698ffc81bd1a33c675e929243155d0daa3f257db14b687ec61722",
+      "name": "R15_NATIVE_PDS_B1.zip.part018"
+    },
+    {
+      "index": 19,
+      "bytes": 393216,
+      "git_blob_sha": "cb6a34d5935f5a22e62e38757b0cfc55563d282e",
+      "sha256": "3d0954b7605da8c4f5a9d419adb29801a6d242414b5fa7d74c712fd13f9ae087",
+      "name": "R15_NATIVE_PDS_B1.zip.part019"
+    },
+    {
+      "index": 20,
+      "bytes": 393216,
+      "git_blob_sha": "310a45a0c49d492689f999d39e3fbdd529cc61b4",
+      "sha256": "94323d756fc2a366b125713cda6a551e8f8a4714f9b1dcc0c37d76979c593a6a",
+      "name": "R15_NATIVE_PDS_B1.zip.part020"
+    },
+    {
+      "index": 21,
+      "bytes": 393216,
+      "git_blob_sha": "9f3ace9c0499a7234dce612bf0511c50f0a53da9",
+      "sha256": "76bd58e9fc3e71466e34e968316da2820af3b31b614cf514ec644dba78188bde",
+      "name": "R15_NATIVE_PDS_B1.zip.part021"
+    },
+    {
+      "index": 22,
+      "bytes": 393216,
+      "git_blob_sha": "1d39fcfc0248ec99e8bfb74bc3b4cc4a5c32421c",
+      "sha256": "88d8dc4b2e4894bc5c0e1d6a55df0e9f25063ae9d8d7d525fcb0b6f3fcaa0fd8",
+      "name": "R15_NATIVE_PDS_B1.zip.part022"
+    },
+    {
+      "index": 23,
+      "bytes": 393216,
+      "git_blob_sha": "46fa3cfd7dc7f228453098c322bc3e7895690eb0",
+      "sha256": "5fc5441cc072ce5d23d67b352a3b09beb8033a41adde5cfb7250a6f08c9d5a97",
+      "name": "R15_NATIVE_PDS_B1.zip.part023"
+    },
+    {
+      "index": 24,
+      "bytes": 393216,
+      "git_blob_sha": "9e4e0843415b05848c092bc2a9a9876dcf051bf3",
+      "sha256": "dbafae70724d48a9060730806bb524ba51562e3c667ee5814c6af23e25cd4a7a",
+      "name": "R15_NATIVE_PDS_B1.zip.part024"
+    },
+    {
+      "index": 25,
+      "bytes": 393216,
+      "git_blob_sha": "7519672770e18aa762b073cb7238804304515b4c",
+      "sha256": "edcf554a40aa71c1e5b09e2da6e3a9e136d85f5607ff17934f37f9392f96bf65",
+      "name": "R15_NATIVE_PDS_B1.zip.part025"
+    },
+    {
+      "index": 26,
+      "bytes": 393216,
+      "git_blob_sha": "1b9298936bd477fbd184fe9f902ccd3de881f747",
+      "sha256": "9ee613fd4506a556fc6c8c772fb0ae5c4e1e235543b213e32ed8a7cdd78e9969",
+      "name": "R15_NATIVE_PDS_B1.zip.part026"
+    },
+    {
+      "index": 27,
+      "bytes": 393216,
+      "git_blob_sha": "90fde14c0d2fc1be6fd2ddc28f708b7a760e5a23",
+      "sha256": "a14afdff7915cf8fa7161d7b4af836140d6b4d336578d1c7534fd7dfbec56296",
+      "name": "R15_NATIVE_PDS_B1.zip.part027"
+    },
+    {
+      "index": 28,
+      "bytes": 393216,
+      "git_blob_sha": "7e9a5dc41580973b8f1ccaa898ac0a6839362d65",
+      "sha256": "1d4042a191fa32651ecedf0522bb7b26cb4b1ddc7a899f3e180358d0e4570ee0",
+      "name": "R15_NATIVE_PDS_B1.zip.part028"
+    },
+    {
+      "index": 29,
+      "bytes": 393216,
+      "git_blob_sha": "9323bee8cd3ad6d58b3ba564592496b6dfb46403",
+      "sha256": "ebc4a5d22a55ff3dbb985150634208ffdb207f54a98677403f2502a0c27f87b6",
+      "name": "R15_NATIVE_PDS_B1.zip.part029"
+    },
+    {
+      "index": 30,
+      "bytes": 393216,
+      "git_blob_sha": "456084b64ee26d41acb6780bad7595d1f29c2b31",
+      "sha256": "c17718bc7060e941884ad096e7935b07280be692965ed12d8e612c191631ac61",
+      "name": "R15_NATIVE_PDS_B1.zip.part030"
+    },
+    {
+      "index": 31,
+      "bytes": 393216,
+      "git_blob_sha": "c937d1a0077f2d4cfdeace84d629f0e3621e5e3b",
+      "sha256": "00f948c22071144fc727405b63bd410735131801a01568687d04f6ce0c7f8062",
+      "name": "R15_NATIVE_PDS_B1.zip.part031"
+    },
+    {
+      "index": 32,
+      "bytes": 393216,
+      "git_blob_sha": "f6bf67abd75c98555c8cabc615295064767807bd",
+      "sha256": "cae46d18f9340aca9b03e70b7427eb2675117b3458c0f7f56bac10ce30d2cb8f",
+      "name": "R15_NATIVE_PDS_B1.zip.part032"
+    },
+    {
+      "index": 33,
+      "bytes": 393216,
+      "git_blob_sha": "a40678cfd0d4b7d4082b2741901c58eb4018ac42",
+      "sha256": "b91ffe3c16f73d32808941ad1035457c14ec7d7db78d7a65bf26b9811602e251",
+      "name": "R15_NATIVE_PDS_B1.zip.part033"
+    },
+    {
+      "index": 34,
+      "bytes": 393216,
+      "git_blob_sha": "ce7f542a5aea29687c091d84302968dc8c61a96a",
+      "sha256": "46543eb72caf89b3a98b9694a28571d3eaa0ecf6204af0051961d872fc432c79",
+      "name": "R15_NATIVE_PDS_B1.zip.part034"
+    },
+    {
+      "index": 35,
+      "bytes": 393216,
+      "git_blob_sha": "6c0a0d1654b9018ce37f26bd3d1f062d65350f82",
+      "sha256": "159740452bf71be3622f3697767f32b1b60e876bdc77035ff88cc501b9a12d8e",
+      "name": "R15_NATIVE_PDS_B1.zip.part035"
+    },
+    {
+      "index": 36,
+      "bytes": 393216,
+      "git_blob_sha": "fe445682ba507c170a23533e5ae5347fb6722dd4",
+      "sha256": "05e78ef6ddbb4be700be466a93a39676e6f5a07dac65f729265a3c93751e8af8",
+      "name": "R15_NATIVE_PDS_B1.zip.part036"
+    },
+    {
+      "index": 37,
+      "bytes": 47902,
+      "git_blob_sha": "a445dc9cfa70dfe97c7a690225feac339215ef17",
+      "sha256": "9a9e055134161de27c2f5ef9e2d66b8bae7a0c570796b76107cd8aff384a7223",
+      "name": "R15_NATIVE_PDS_B1.zip.part037"
+    }
+  ]
+}
