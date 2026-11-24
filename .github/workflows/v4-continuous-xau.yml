@@ -1,0 +1,85 @@
+name: V4 continuous XAU public proxy 2012 and 2019 to 2026
+on:
+  push:
+    branches: ['research/v4-705m-three-asset-bootstrap-20261124']
+    paths: ['.github/workflows/v4-continuous-xau.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        year: [2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 26bf8396b6e703d650e703fca48d556252782f03
+          path: reference
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3 requests==2.32.5
+      - run: python research/v4_three_asset/continuous_acquire.py ${{ matrix.year }} chunk reference
+      - uses: actions/upload-artifact@v4
+        with:
+          name: continuous-xau-${{ matrix.year }}
+          path: chunk/
+          if-no-files-found: error
+  continuous:
+    needs: acquire
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.3.5 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: continuous-xau-*
+          path: chunks
+      - name: Construct chronological price stream and test single-wallet compounding
+        run: |
+          python research/v4_three_asset/continuous_prepare.py run chunks
+          g++ -O3 -std=c++20 -fopenmp research/v4_three_asset/continuous_xau.cpp -o /tmp/continuous
+          /tmp/continuous --selftest
+          /tmp/continuous run
+      - name: Report terminal balance and approximate DD without annual resets
+        run: |
+          python - <<'PY'
+          import json,pandas as pd
+          from pathlib import Path
+          d=pd.read_csv("run/continuous_results.csv")
+          assert len(d)==20736 and d.groupby(["start","cost"]).size().eq(5184).all()
+          keys=["base","sl","tp","hold","trend","dir","seedrisk"]
+          q=d.groupby(keys).agg(n=("end","size"),worst=("end","min"),max_dd=("dd","max")).reset_index()
+          assert q.n.eq(4).all()
+          best=[]
+          for (start,cost),g in d.groupby(["start","cost"]):
+              eligible=g[g.dd<.6]
+              best.append({"start":int(start),"cost":int(cost),"highest":g.nlargest(1,"end").to_dict("records"),"highest_dd_under_60":eligible.nlargest(1,"end").to_dict("records")})
+          robust=q[(q.max_dd<.6)&(q.worst>100)].nlargest(10,"worst")
+          summary={"source":json.loads(Path("run/provenance.json").read_text()),"actual_cases":len(d),"unique_policies":len(q),"best_by_horizon":best,"robust_positive_all_four":int(((q.max_dd<.6)&(q.worst>100)).sum()),"robust_top_rows":robust.merge(d,on=keys).to_dict("records"),"native_portfolio":False,"annual_reset":False,"live_changes":False}
+          Path("run/summary.json").write_text(json.dumps(summary,indent=2))
+          print("CONTINUOUS_SUMMARY",json.dumps(summary))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: continuous-xau-results
+          path: |
+            run/continuous_results.csv
+            run/summary.json
+            run/provenance.json
+          if-no-files-found: error
