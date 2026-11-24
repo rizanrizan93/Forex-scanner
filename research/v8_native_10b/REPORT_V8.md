@@ -1,7 +1,7 @@
 # RIZAN V8 — actual native replay evidence
-As of 2026-11-25T01:24:37.431863+07:00. Research in progress; target USD10 billion remains unchanged.
+As of 2026-11-25T02:20:25.624446+07:00. Research in progress; target USD10 billion remains unchanged.
 
-Completed full continuous native replays: 13. Unique B1 challengers: 10. New module screens: 0. New annual-reset simulations: 0.
+Completed full continuous native replays: 17. Unique B1 challengers: 14. New module screens: 0. New annual-reset simulations: 0.
 
 | Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -9,9 +9,13 @@ Completed full continuous native replays: 13. Unique B1 challengers: 10. New mod
 | V7_R1_CAP | 100 | 1,914,512,335.85 | 58.908457% | 2.1299 | 1040 | 215557 | B1 improvement; robustness pending |
 | V7_R1_CAP_LOCK | 100 | 1,914,512,335.85 | 58.908457% | 2.1299 | 1040 | 215557 | B1 improvement; robustness pending |
 | V7_LOCK_BTC18_ALL_CAP | 100 | 1,889,793,789.50 | 58.753694% | 2.1201 | 1058 | 214866 | B1 improvement; robustness pending |
+| V7_SELL3_H8 | 100 | 1,867,387,940.25 | 58.732936% | 2.1227 | 1057 | 210240 | B1 improvement; robustness pending |
+| V7_SELL3_H16 | 100 | 1,858,425,152.09 | 59.456603% | 2.0877 | 1057 | 215562 | B1 improvement; robustness pending |
+| V7_SELL4_H8 | 100 | 1,857,895,601.81 | 58.653026% | 2.1264 | 1057 | 207524 | B1 improvement; robustness pending |
 | V7_LOCK_BTC18_ALL | 100 | 1,839,227,158.78 | 58.753694% | 2.2000 | 1058 | 212816 | B1 improvement; robustness pending |
 | V7_R1_LOCK | 100 | 1,838,731,373.84 | 58.908457% | 2.2023 | 1040 | 212102 | B1 improvement; robustness pending |
 | V7_R1_BEST_DD | 100 | 1,838,731,373.84 | 58.908457% | 2.2023 | 1040 | 212102 | B1 improvement; robustness pending |
+| V7_SELL3_H24 | 100 | 1,727,982,232.40 | 59.967322% | 2.0672 | 1059 | 197975 | B1 improvement; robustness pending |
 | V7_CAP_ONLY | 100 | 1,703,125,878.22 | 56.672093% | 2.1004 | 1047 | 190060 | B1 improvement; robustness pending |
 | V7_LOCK_CAP | 100 | 1,701,362,259.95 | 56.694507% | 2.1004 | 1047 | 189752 | B1 improvement; robustness pending |
 | V7_LOCK | 100 | 1,662,089,374.91 | 56.694507% | 2.1780 | 1047 | 187323 | REJECT: no balance improvement |
@@ -30,9 +34,13 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_R1_CAP | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
 | V7_R1_CAP_LOCK | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
 | V7_LOCK_BTC18_ALL_CAP | 52.765743% | 98.88 | 54.212345% | 27.273177% | 8 |
+| V7_SELL3_H8 | 52.894182% | 98.88 | 54.143991% | 27.232744% | 8 |
+| V7_SELL3_H16 | 53.565307% | 98.88 | 54.131996% | 27.232223% | 8 |
+| V7_SELL4_H8 | 52.649923% | 98.88 | 54.160708% | 27.225451% | 8 |
 | V7_LOCK_BTC18_ALL | 52.765743% | 98.88 | 54.212345% | 27.273177% | 8 |
 | V7_R1_LOCK | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
 | V7_R1_BEST_DD | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
+| V7_SELL3_H24 | 54.160828% | 98.88 | 54.103012% | 27.252440% | 8 |
 | V7_CAP_ONLY | 52.772301% | 98.88 | 54.073858% | 27.209882% | 8 |
 | V7_LOCK_CAP | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
 | V7_LOCK | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
@@ -44,9 +52,13 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_R1_CAP | 1,805,985,550.69 | 13,360,281.45 | 95,166,403.70 |
 | V7_R1_CAP_LOCK | 1,805,985,550.69 | 13,360,281.45 | 95,166,403.70 |
 | V7_LOCK_BTC18_ALL_CAP | 1,780,779,576.96 | 13,411,021.55 | 95,603,090.99 |
+| V7_SELL3_H8 | 1,758,953,530.03 | 13,119,765.29 | 95,314,544.93 |
+| V7_SELL3_H16 | 1,759,346,075.49 | 13,542,440.37 | 85,536,536.23 |
+| V7_SELL4_H8 | 1,740,901,809.07 | 12,797,002.19 | 104,196,690.55 |
 | V7_LOCK_BTC18_ALL | 1,784,606,423.21 | 13,452,806.16 | 41,167,829.41 |
 | V7_R1_LOCK | 1,784,274,096.07 | 13,395,719.66 | 41,061,458.11 |
 | V7_R1_BEST_DD | 1,784,274,096.07 | 13,395,719.66 | 41,061,458.11 |
+| V7_SELL3_H24 | 1,655,693,035.48 | 12,475,753.51 | 59,813,343.41 |
 | V7_CAP_ONLY | 1,619,752,464.88 | 12,465,736.12 | 70,907,577.22 |
 | V7_LOCK_CAP | 1,618,144,132.11 | 12,431,044.99 | 70,786,982.85 |
 | V7_LOCK | 1,615,297,128.70 | 12,419,750.51 | 34,372,395.70 |
