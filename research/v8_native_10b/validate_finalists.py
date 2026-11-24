@@ -1,15 +1,16 @@
 """Run missing same-path controls and finalist A1/A2/B2 cases, then audit gates."""
-import json
+import json,argparse
 import run_fast_batch as fast
 r=fast.r;ROOT=r.ROOT
 def cached(profile,path,cost):
  p=ROOT/'runs'/f'{profile["Id"]}_{path}{cost}'/'verified.json'
  return json.loads(p.read_text()) if p.exists() else None
 def main():
+ parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int,default=1);args=parser.parse_args()
  assert json.loads((ROOT/'INDEXED_BASELINE_PARITY.json').read_text())['passed']
  rows=[json.loads(p.read_text()) for p in (ROOT/'runs').glob('*/verified.json')]
  control=json.loads((ROOT/'v5/v7_priority_profiles.json').read_text())[0]
- choices=sorted([x for x in rows if x['Profile']['Year']==2019 and x['Profile'].get('EndYear')==2026 and x['Path']=='B' and x['Cost']==1 and 'CONTROL' not in x['Profile']['Id'] and x['Summary']['MaxEquityDDPct']<60 and x['Summary']['EndingBalance']>1662133293.0811067],key=lambda x:x['Summary']['EndingBalance'],reverse=True)[:3]
+ choices=sorted([x for x in rows if x['Profile']['Year']==2019 and x['Profile'].get('EndYear')==2026 and x['Path']=='B' and x['Cost']==1 and 'CONTROL' not in x['Profile']['Id'] and x['Summary']['MaxEquityDDPct']<60 and x['Summary']['EndingBalance']>1662133293.0811067],key=lambda x:x['Summary']['EndingBalance'],reverse=True)[:args.limit]
  if not choices:print('No completed B1 improvement eligible for additional stress');return
  for path,cost in [('A',1),('A',2),('B',2)]:
   needed=[]
