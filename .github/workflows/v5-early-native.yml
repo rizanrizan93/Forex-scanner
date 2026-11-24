@@ -1,0 +1,35 @@
+name: V5 early growth native policy build
+on:
+  push:
+    branches: ['research/v5-native-growth-optimization-20261124']
+    paths: ['.github/workflows/v5-early-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 26bf8396b6e703d650e703fca48d556252782f03
+          path: reference
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: |
+          mkdir native
+          cp -a reference/research/r11_profitable_addon_alpha/native_original/. native/
+          patch -p1 -d native < research/frozen_v1_10b_20261124/native_changes.patch
+          cp research/frozen_v1_10b_20261124/BtcResearchFilter.cs native/native_replay/
+          python research/v5_native_growth/extend_native.py native
+          python research/v5_native_growth/extend_early_native.py native
+          dotnet build native/native_replay/NovemberReplay.csproj -c Release -o build --nologo
+          dotnet build/NovemberReplay.dll --early-risk-selftest
+          dotnet build/NovemberReplay.dll --filter-selftest
+          echo 'Software tests only; new native financial replays=0.'
