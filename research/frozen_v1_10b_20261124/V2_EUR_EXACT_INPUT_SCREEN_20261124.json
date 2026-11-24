@@ -1,0 +1,136 @@
+{
+  "status": "PROXY_ONLY_REJECT_NATIVE_PARITY",
+  "date": "2026-11-24",
+  "input": {
+    "file": "eur_2012_2026.csv",
+    "sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+    "exact_match": true,
+    "end": "2026-11-13T02:59:00Z"
+  },
+  "cases": 96,
+  "signals": 10974,
+  "method": "Python independent EUR seed M1 stop-first, completed M5 breakout64 and H4 EMA20/80 alignment, original nominal 1:200 and 50% margin, annual $100 resets, 2019-2026 partial, 1x/2x fees/slip, not native C#; settled DD only",
+  "results": [
+    {
+      "id": "CTRL",
+      "graduated_years_base": 8,
+      "graduated_years_stress": 7,
+      "median_days_success_base": 10.49,
+      "median_days_success_stress": 12.34,
+      "max_settled_dd_base": 17.59,
+      "max_settled_dd_stress": 60.65
+    },
+    {
+      "id": "EUR_BOTH",
+      "graduated_years_base": 8,
+      "graduated_years_stress": 4,
+      "median_days_success_base": 10.52,
+      "median_days_success_stress": 7.06,
+      "max_settled_dd_base": 59.53,
+      "max_settled_dd_stress": 61.71
+    },
+    {
+      "id": "EUR_SELL",
+      "graduated_years_base": 1,
+      "graduated_years_stress": 0,
+      "median_days_success_base": 60.3,
+      "median_days_success_stress": null,
+      "max_settled_dd_base": 61.32,
+      "max_settled_dd_stress": 62.62
+    },
+    {
+      "id": "EUR_BUY_4DAY",
+      "graduated_years_base": 7,
+      "graduated_years_stress": 7,
+      "median_days_success_base": 12.34,
+      "median_days_success_stress": 12.34,
+      "max_settled_dd_base": 60.35,
+      "max_settled_dd_stress": 60.54
+    },
+    {
+      "id": "EUR_BOTH_4DAY",
+      "graduated_years_base": 5,
+      "graduated_years_stress": 3,
+      "median_days_success_base": 6.62,
+      "median_days_success_stress": 5.41,
+      "max_settled_dd_base": 61.79,
+      "max_settled_dd_stress": 62.33
+    },
+    {
+      "id": "EUR_BOTH_R5",
+      "graduated_years_base": 5,
+      "graduated_years_stress": 1,
+      "median_days_success_base": 25.66,
+      "median_days_success_stress": 5.41,
+      "max_settled_dd_base": 60.72,
+      "max_settled_dd_stress": 61.06
+    }
+  ],
+  "control_base_days": [
+    8.634,
+    5.4069,
+    5.3208,
+    12.3444,
+    8.5646,
+    120.4583,
+    21.4375,
+    22.6882
+  ],
+  "reference_days": [
+    2.19,
+    5.5,
+    5.32,
+    12.34,
+    8.56,
+    98.63,
+    21.44,
+    22.69
+  ],
+  "native_parity": false,
+  "portfolio_terminal_balance": null,
+  "accepted_candidates": 0,
+  "decision": "Do not promote. Exact EUR CSV recovered in separate ChatGPT session; actual native model comparison required, especially 2019/2024. Prioritize early-growth tier and complementary BTC rather than indiscriminate SELL.",
+  "monthly_archive_baseline": [
+    {
+      "year": 2019,
+      "ge250": "Feb",
+      "ge1000": "Apr"
+    },
+    {
+      "year": 2020,
+      "ge250": "Feb",
+      "ge1000": "Oct"
+    },
+    {
+      "year": 2021,
+      "ge250": "Jul",
+      "ge1000": null
+    },
+    {
+      "year": 2022,
+      "ge250": "Apr",
+      "ge1000": "Jun"
+    },
+    {
+      "year": 2023,
+      "ge250": "Jan",
+      "ge1000": "Dec"
+    },
+    {
+      "year": 2024,
+      "ge250": "Apr",
+      "ge1000": "Jul"
+    },
+    {
+      "year": 2025,
+      "ge250": "Apr",
+      "ge1000": null
+    },
+    {
+      "year": 2026,
+      "ge250": null,
+      "ge1000": null
+    }
+  ],
+  "production_changes": false
+}
