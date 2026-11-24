@@ -1,0 +1,39 @@
+# RIZAN 10B — research R1 results
+
+Status: VALIDATION_PENDING. Goal USD 10 billion reached: False.
+
+Initial cash USD100, no additional deposits. Continuous shared wallet, model leverage 1:200. Historical cutoff 13 November 2026 03:00 UTC / 10:00 WIB.
+
+| Variant | M1 path | Cost factor | Ending balance USD | Max floating equity DD | Baskets | Errors |
+|---|---|---:|---:|---:|---:|---:|
+| Frozen V1 baseline | A | 1 | 1,392,645,692.94 | 57.8904% | 1,040 | 0 |
+| Frozen V1 baseline | B | 1 | 1,662,133,293.08 | 56.6721% | 1,047 | 0 |
+| R1_FOCUS_EURBTC_TO1000_BTC_BUY18_H72 | B | 1 | 1,838,731,373.84 | 58.9085% | 1,040 | 0 |
+| R1_FOCUS_EURBTC_TO1000 | B | 1 | 1,684,641,828.27 | 56.5307% | 1,028 | 0 |
+| R1_FOCUS_EURBTC_TO1000_BTC_BUY18_H160 | B | 1 | 1,715,242,916.06 | 56.7976% | 1,029 | 0 |
+| R1_FOCUS_EURBTC_BTC18H72_RSI80 | B | 1 | 1,867,121,354.86 | 60.3869% | 1,031 | 0 |
+| R1_FOCUS_EURBTC_BTC18H72_RSI80 | A | 1 | 1,424,481,378.11 | 60.8530% | 1,025 | 0 |
+| R1_FOCUS_EURBTC_BTC18H72_RSI80 | A | 2 | 987,077,128.52 | 61.9551% | 1,022 | 0 |
+| R1_ALL_ASSETS_BTC18H72_RSI80 | B | 1 | 1,833,581,787.55 | 60.4599% | 1,049 | 0 |
+
+## Scope and interpretation
+
+Highest completed cost-1 path-B candidate: USD 1,867,121,354.86, 12.333% above the baseline in the same path/cost. This is a provisional scenario result, not a claim of dominance across paths or costs.
+
+Module screens: 25,344 configurations including the goal parameter, 405,504 annual module simulations. These are not full portfolio replays. Completed annual C# cases: 215, including repeated controls. Completed continuous C# cases: 7.
+
+The synthetic M1 C# model inherits API stubs, synthetic reliable heartbeat/ACK handling, and synthetic XAU admission snapshots from the recovered original research. It does not execute the uploaded .algo binary in cTrader or certify broker tick execution, historical macro vintages, market impact or large-capacity live fills. No LIVE strategy, service, checkpoint or order was changed.
+
+Cost factor 2 stresses modeled fees, slippage and funding; the reported spread multiplier remains 1. It is not a guarantee that all real-world costs have been captured. MaxEquityDDPct is peak-to-trough equity drawdown, including open positions; it is not closed-balance drawdown.
+
+The standalone screen column dd_upper is a module screening statistic. It is not a mathematical bound on the C# portfolio drawdown because entry timing and subsequent position sequences can differ. Candidates were rejected when the portfolio validation contradicted the screen.
+
+The experiment is exploratory. The historical periods were already used in prior research; there is no pristine holdout or live profitability certification.
+
+The early target is recorded only when both balance and equity reach USD1,000. Baseline path B reaches it on 2 April 2019 05:19:25 UTC. The RSI80/BUY18R/72h candidate reaches it on 3 April 2019 20:22:10 UTC, about 1.63 days later. Higher terminal balance therefore has not proved a faster early phase.
+
+Seed 5R/8h and its alternatives improved some reset cases but failed others, including higher-cost cases. A flat-only EUR/BTC add-on did not improve the portfolio consistently. The H1 BTC compression add-on failed to improve its five-year pilot consistently. These variants are not promoted.
+
+The capacity variant changes only BTC maximum batch order count 32→128 and batch window 180→600 seconds. The batch planned risk fraction remains 2.5%, batch margin fraction remains 10%, shared planned risk cap remains 20.75%, shared entry margin cap remains 50%, leverage and per-order broker model limits remain unchanged. Those entry controls are not hard bounds on observed floating risk/margin ratios after equity changes.
+
+Source hashes and exact input restoration hashes are retained in CURRENT_SOURCE_AUDIT.json and the baseline restoration records. All scenario definitions are retained as JSON files. Full local order/equity artifacts remain under results/; compact summaries and source are committed to the research branch.
