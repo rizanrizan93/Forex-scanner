@@ -1,0 +1,27 @@
+name: V5 conditional floating DD suffix audit
+on:
+  push:
+    branches: ['research/v5-native-growth-optimization-20261124']
+    paths: ['.github/workflows/v6-suffix-dd.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 994d68edc9bb87e5c1e57997a65be18873af84b8
+          path: evidence
+          persist-credentials: false
+      - run: python research/v5_native_growth/audit_suffix_dd.py evidence/research/r15_frozen_shared_replay/evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5-suffix-dd-audit
+          path: suffix_dd.json
+          if-no-files-found: error
