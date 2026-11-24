@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "R1_FOCUS_EURBTC_BTC18H72_RSI80",
+    "Mode": "off",
+    "Year": 2019,
+    "EndYear": 2026,
+    "Seed": {
+      "Base": 3,
+      "Sl": 2,
+      "Tp": 3,
+      "Hold": 2,
+      "Trend": 2,
+      "Session": 0,
+      "Risk": 5,
+      "Universe": 1,
+      "Day": 1,
+      "Threshold": 3,
+      "Direction": 1,
+      "SeedOnly": false,
+      "HandoffEquity": 125
+    },
+    "GrowthRisk": 20.75,
+    "EarlyMask": 5,
+    "EarlyThreshold": 1000,
+    "BtcBuyTarget": 18,
+    "BtcSellTarget": 2,
+    "BtcBuyHours": 72,
+    "BtcBuyRsiMax": 80,
+    "BtcBuyEfficiencyMin": 0.2,
+    "BtcSellRsiMin": 30
+  }
+]
