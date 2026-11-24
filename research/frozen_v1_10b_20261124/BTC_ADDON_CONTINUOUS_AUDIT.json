@@ -1,0 +1,19 @@
+{
+  "control": "R1_ALL_ASSETS_BTC18H72_RSI80",
+  "candidate": "R1_ALL_ASSETS_RSI80_BTC_H1_COMPRESSION",
+  "control_balance": 1833581787.5527225,
+  "candidate_balance": 1836312496.680889,
+  "delta_usd": 2730709.128166437,
+  "change_pct": 0.14892758788858096,
+  "control_floating_dd_pct": 60.45986240948886,
+  "candidate_floating_dd_pct": 59.494042036151576,
+  "control_baskets": 1049,
+  "candidate_baskets": 1071,
+  "added_family_executed_baskets": 25,
+  "added_family_net_pnl": 730852.5561817102,
+  "added_family_winners": 8,
+  "common_entry_keys": 1046,
+  "missing_control_entry_keys": 3,
+  "extra_entry_keys": 25,
+  "note": "Paired source-model replay. Added-family dollar PnL is descriptive; shared wallet changes sizes and admission of later trades."
+}
