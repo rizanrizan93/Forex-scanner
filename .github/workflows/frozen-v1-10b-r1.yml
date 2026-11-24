@@ -1,0 +1,39 @@
+name: Frozen V1 10B research causality and accounting guards
+on:
+  push:
+    branches: ['research/frozen-v1-10b-eur-btc-20261124']
+    paths: ['research/frozen_v1_10b_20261124/**', '.github/workflows/frozen-v1-10b-r1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-research-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 26bf8396b6e703d650e703fca48d556252782f03
+          path: reference
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Rebuild original recovered replay with isolated research patch
+        run: |
+          mkdir -p native
+          cp -a reference/research/r11_profitable_addon_alpha/native_original/. native/
+          patch -p1 -d native < research/frozen_v1_10b_20261124/native_changes.patch
+          cp research/frozen_v1_10b_20261124/BtcResearchFilter.cs native/native_replay/
+          dotnet build native/native_replay/NovemberReplay.csproj -c Release -o build --nologo
+      - name: Test completed-bar filter causality and unchanged default control
+        run: dotnet build/NovemberReplay.dll --filter-selftest
+      - name: Test screen minimum lot and admission chronology
+        run: |
+          g++ -O3 -std=c++20 -fopenmp research/frozen_v1_10b_20261124/screen_main.cpp -o screen
+          ./screen --selftest
+      - name: Document execution scope
+        run: echo 'Financial replays executed in restored research workspace; this workflow verifies build and guard tests only. No LIVE access or broker credentials.'
