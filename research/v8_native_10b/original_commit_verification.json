@@ -1,0 +1,206 @@
+[
+  {
+    "path": "native_replay/ApiStubs.cs",
+    "expected_git_blob": "b78cadc82b24d899d8c8dd0f82791fb62a1fe419",
+    "actual_git_blob": "b78cadc82b24d899d8c8dd0f82791fb62a1fe419",
+    "matched": true
+  },
+  {
+    "path": "native_replay/Global.cs",
+    "expected_git_blob": "7a51801823f4639431a0416ccba6e2796f97512a",
+    "actual_git_blob": "7a51801823f4639431a0416ccba6e2796f97512a",
+    "matched": true
+  },
+  {
+    "path": "native_replay/NovemberReplay.csproj",
+    "expected_git_blob": "8367bc823d64e696d05821b213ae96eb60a41509",
+    "actual_git_blob": "8367bc823d64e696d05821b213ae96eb60a41509",
+    "matched": true
+  },
+  {
+    "path": "native_replay/Replay.cs",
+    "expected_git_blob": "5f667b30734292b6da5c43a345773c62e18e433f",
+    "actual_git_blob": "5f667b30734292b6da5c43a345773c62e18e433f",
+    "matched": true
+  },
+  {
+    "path": "native_replay/ReplaySizing.cs",
+    "expected_git_blob": "8ff0269e2b38effc19248e43ee69084a93e20051",
+    "actual_git_blob": "8ff0269e2b38effc19248e43ee69084a93e20051",
+    "matched": true
+  },
+  {
+    "path": "native_replay/ResearchAccounting.cs",
+    "expected_git_blob": "52fe0b435e36d979065d2d8c69030f314ee999ab",
+    "actual_git_blob": "52fe0b435e36d979065d2d8c69030f314ee999ab",
+    "matched": true
+  },
+  {
+    "path": "native_replay/ResearchBtc.cs",
+    "expected_git_blob": "84a2fe3fb6c4fea741986acf6c4c102ecb79ddb0",
+    "actual_git_blob": "84a2fe3fb6c4fea741986acf6c4c102ecb79ddb0",
+    "matched": true
+  },
+  {
+    "path": "native_replay/ResearchXau.cs",
+    "expected_git_blob": "17706d4bcae64b60a19af2babe8cd5eb33303915",
+    "actual_git_blob": "17706d4bcae64b60a19af2babe8cd5eb33303915",
+    "matched": true
+  },
+  {
+    "path": "native_replay/SeedController.cs",
+    "expected_git_blob": "93714548b724e6b368acbe0e732c9be35c9c8611",
+    "actual_git_blob": "93714548b724e6b368acbe0e732c9be35c9c8611",
+    "matched": true
+  },
+  {
+    "path": "native_replay/XauAddonController.cs",
+    "expected_git_blob": "e35a355f65f6cefaa78df9e0d560e5eea75985d1",
+    "actual_git_blob": "e35a355f65f6cefaa78df9e0d560e5eea75985d1",
+    "matched": true
+  },
+  {
+    "path": "source/BtcCore.cs",
+    "expected_git_blob": "8ccbbd82201b9c081538b9df2a40d95f4af4dc62",
+    "actual_git_blob": "8ccbbd82201b9c081538b9df2a40d95f4af4dc62",
+    "matched": true
+  },
+  {
+    "path": "source/BtcEngine.cs",
+    "expected_git_blob": "8d7a62ada1ee5256d1e90b830a28bc771011dcdd",
+    "actual_git_blob": "8d7a62ada1ee5256d1e90b830a28bc771011dcdd",
+    "matched": true
+  },
+  {
+    "path": "source/BtcEntryGate.cs",
+    "expected_git_blob": "9f85e9c0b9843ed5094744d7ce93940322263705",
+    "actual_git_blob": "9f85e9c0b9843ed5094744d7ce93940322263705",
+    "matched": true
+  },
+  {
+    "path": "source/BtcNativeLifecycle.cs",
+    "expected_git_blob": "eefc458b34b19e9b291efdfb220f2220224491db",
+    "actual_git_blob": "eefc458b34b19e9b291efdfb220f2220224491db",
+    "matched": true
+  },
+  {
+    "path": "source/BtcSevenDayFeed.cs",
+    "expected_git_blob": "8f0c8e1d05170fbd36a930d99f59a32324f69160",
+    "actual_git_blob": "8f0c8e1d05170fbd36a930d99f59a32324f69160",
+    "matched": true
+  },
+  {
+    "path": "source/BtcStateLink.cs",
+    "expected_git_blob": "41fb5dfa6e666cc759cb3e5dc8e6ea0b4e5babbb",
+    "actual_git_blob": "41fb5dfa6e666cc759cb3e5dc8e6ea0b4e5babbb",
+    "matched": true
+  },
+  {
+    "path": "source/BtcWeekendPolicy.cs",
+    "expected_git_blob": "bda0defde6898cf939f56d8b33d626489f451a2d",
+    "actual_git_blob": "bda0defde6898cf939f56d8b33d626489f451a2d",
+    "matched": true
+  },
+  {
+    "path": "source/BtcWeekendRecovery.cs",
+    "expected_git_blob": "7ab0058db9670a036870098d244cb15a87240706",
+    "actual_git_blob": "7ab0058db9670a036870098d244cb15a87240706",
+    "matched": true
+  },
+  {
+    "path": "source/CompressionEntry.cs",
+    "expected_git_blob": "64c48c7439949e3097e9409838943b2790e086bb",
+    "actual_git_blob": "64c48c7439949e3097e9409838943b2790e086bb",
+    "matched": true
+  },
+  {
+    "path": "source/EntryFamilies.cs",
+    "expected_git_blob": "7276a0ea171a4b05ed8acfefd2dbe73f49d4aa3c",
+    "actual_git_blob": "7276a0ea171a4b05ed8acfefd2dbe73f49d4aa3c",
+    "matched": true
+  },
+  {
+    "path": "source/FrozenR3.cs",
+    "expected_git_blob": "e820c0ad9949b17300102d68af4e496299de7a55",
+    "actual_git_blob": "e820c0ad9949b17300102d68af4e496299de7a55",
+    "matched": true
+  },
+  {
+    "path": "source/MacroDirection.cs",
+    "expected_git_blob": "ce4dd618b21aea83bd153897f69ee128d523b1a1",
+    "actual_git_blob": "ce4dd618b21aea83bd153897f69ee128d523b1a1",
+    "matched": true
+  },
+  {
+    "path": "source/PortfolioHost.cs",
+    "expected_git_blob": "e0511730327aa0ef0fc145d4b7f20c33b646603d",
+    "actual_git_blob": "e0511730327aa0ef0fc145d4b7f20c33b646603d",
+    "matched": true
+  },
+  {
+    "path": "source/ResearchParams.cs",
+    "expected_git_blob": "9be78d42ff58eedc3c4bf96779a43ae1ebc5cd26",
+    "actual_git_blob": "9be78d42ff58eedc3c4bf96779a43ae1ebc5cd26",
+    "matched": true
+  },
+  {
+    "path": "source/RizanBuy050Frozen.csproj",
+    "expected_git_blob": "d7ed1fa2b068537a731f06264ffc6c7215c588d1",
+    "actual_git_blob": "d7ed1fa2b068537a731f06264ffc6c7215c588d1",
+    "matched": true
+  },
+  {
+    "path": "source/RizanXauEurPortfolio.cs",
+    "expected_git_blob": "1fb5e93f39884f93662094f0f62db206eaec5798",
+    "actual_git_blob": "1fb5e93f39884f93662094f0f62db206eaec5798",
+    "matched": true
+  },
+  {
+    "path": "source/eur/EurBatchExecution.cs",
+    "expected_git_blob": "c4df9f045360887dbc6021f32da4b1863bce5c42",
+    "actual_git_blob": "c4df9f045360887dbc6021f32da4b1863bce5c42",
+    "matched": true
+  },
+  {
+    "path": "source/eur/F0245Policy.cs",
+    "expected_git_blob": "cfcd9c221d949906f9139a6efea67b6ac3593e4c",
+    "actual_git_blob": "cfcd9c221d949906f9139a6efea67b6ac3593e4c",
+    "matched": true
+  },
+  {
+    "path": "source/eur/FrozenCore.cs",
+    "expected_git_blob": "73db1cfb44f137605bf75cd9f4cbfe4ea143e37b",
+    "actual_git_blob": "73db1cfb44f137605bf75cd9f4cbfe4ea143e37b",
+    "matched": true
+  },
+  {
+    "path": "source/eur/RizanRobot.cs",
+    "expected_git_blob": "189a6e192d8c7a1bc2249833bcc5a51d6843fd50",
+    "actual_git_blob": "189a6e192d8c7a1bc2249833bcc5a51d6843fd50",
+    "matched": true
+  },
+  {
+    "path": "source/xau/FrozenCore.cs",
+    "expected_git_blob": "1bb20b6f273921f22e87ed335f14253ada875203",
+    "actual_git_blob": "1bb20b6f273921f22e87ed335f14253ada875203",
+    "matched": true
+  },
+  {
+    "path": "source/xau/RizanRobot.cs",
+    "expected_git_blob": "f3d11bb54801d114355f73cead728746a15e7b9e",
+    "actual_git_blob": "f3d11bb54801d114355f73cead728746a15e7b9e",
+    "matched": true
+  },
+  {
+    "path": "source/xau/XauBatchExecution.cs",
+    "expected_git_blob": "aea60628b788b2a77463ba98f09aea53f02475a7",
+    "actual_git_blob": "aea60628b788b2a77463ba98f09aea53f02475a7",
+    "matched": true
+  },
+  {
+    "path": "source/xau/XauSendReference.cs",
+    "expected_git_blob": "fe319d650ca57bbb15f47f11039d340ddcc92d36",
+    "actual_git_blob": "fe319d650ca57bbb15f47f11039d340ddcc92d36",
+    "matched": true
+  }
+]
