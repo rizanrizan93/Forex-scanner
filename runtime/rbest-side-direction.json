@@ -5,7 +5,7 @@
   "research_only": true,
   "execution_authority": false,
   "execution_influence": false,
-  "as_of": "2026-11-23T12:37:05.824775+00:00",
+  "as_of": "2026-11-24T06:31:51.788936+00:00",
   "candidate_lineage": {
     "H1": {
       "BUY": "R25",
@@ -29,19 +29,19 @@
       "direction": "WAIT",
       "reason": "NO_SIDE_TRIGGER",
       "state": "RESEARCH_SHADOW",
-      "generated_at": "2026-11-23T12:36:42.304059+00:00",
-      "closed_at": "2026-11-23T12:00:00+00:00",
-      "target_close_at": "2026-11-23T13:00:00+00:00",
-      "observed_at": "2026-11-23T12:36:31.083983+00:00",
-      "last_close": 3619.1,
+      "generated_at": "2026-11-24T06:31:25.641184+00:00",
+      "closed_at": "2026-11-24T06:00:00+00:00",
+      "target_close_at": "2026-11-24T07:00:00+00:00",
+      "observed_at": "2026-11-24T06:31:03.408380+00:00",
+      "last_close": 3633.39,
       "sides": {
         "BUY": {
           "version": "R25",
           "active": false,
-          "score": 0.5086086610494768,
+          "score": 0.5141160295389168,
           "threshold": 0.55,
           "gate": "vol_high",
-          "gate_pass": true,
+          "gate_pass": false,
           "parity": {
             "parity": "PASS",
             "n": 325,
@@ -115,19 +115,19 @@
       "execution_authority": false
     },
     "H4": {
-      "direction": "SELL",
-      "reason": "RESEARCH_CANDIDATE_SIGNAL",
+      "direction": "WAIT",
+      "reason": "NO_SIDE_TRIGGER",
       "state": "RESEARCH_SHADOW",
-      "generated_at": "2026-11-23T12:36:43.156665+00:00",
-      "closed_at": "2026-11-23T12:00:00+00:00",
-      "target_close_at": "2026-11-23T16:00:00+00:00",
-      "observed_at": "2026-11-23T12:36:31.083983+00:00",
-      "last_close": 3619.1,
+      "generated_at": "2026-11-24T06:31:21.696074+00:00",
+      "closed_at": "2026-11-24T04:00:00+00:00",
+      "target_close_at": "2026-11-24T08:00:00+00:00",
+      "observed_at": "2026-11-24T06:31:03.408380+00:00",
+      "last_close": 3633.16,
       "sides": {
         "BUY": {
           "version": "R25",
           "active": false,
-          "score": 0.4635345805575604,
+          "score": 0.5425013153041046,
           "threshold": 0.55,
           "gate": "london_open",
           "gate_pass": false,
@@ -194,7 +194,7 @@
         },
         "SELL": {
           "version": "R11",
-          "active": true,
+          "active": false,
           "score": null,
           "threshold": null,
           "parity": {
