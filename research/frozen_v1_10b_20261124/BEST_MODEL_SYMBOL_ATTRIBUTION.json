@@ -1,0 +1,17 @@
+{
+  "scope": "Observed final-wallet basket PnL; not independent causal alpha or an additive counterfactual across strategies.",
+  "by_symbol": {
+    "EURUSD": {
+      "baskets": 272,
+      "net_pnl": 14038527.483303329
+    },
+    "XAUUSD": {
+      "baskets": 616,
+      "net_pnl": 1802620174.1583657
+    },
+    "BTCUSD": {
+      "baskets": 143,
+      "net_pnl": 50462553.21660065
+    }
+  }
+}
