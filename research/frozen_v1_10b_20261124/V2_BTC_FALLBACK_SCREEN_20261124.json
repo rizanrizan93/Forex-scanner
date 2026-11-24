@@ -1,0 +1,58 @@
+{
+  "study": "V2 BTC fallback and EURBTC small-wallet screening",
+  "date": "2026-11-24",
+  "input_sha256": {
+    "EUR": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+    "BTC": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51"
+  },
+  "cutoff": "2026-11-13T03:00:00Z",
+  "period": "2019-2026 annual $100 resets; 2026 partial; rank on 2019-2025",
+  "shared_wallet_standalone": {
+    "policies": 1298,
+    "scenario_years": 20768,
+    "dev_pass": 0,
+    "all_pass": 0,
+    "annual_cases_hit_250": 122,
+    "annual_cases_hit_1000": 1,
+    "stress_cases_hit_1000": 0,
+    "best_annual_diagnostic": {
+      "policy": "EURBTC|15|32|break|1|0.08|5.0|240",
+      "year": 2024,
+      "cost": 1,
+      "ending": 1014.8327746999292,
+      "approx_dd": 56.09182889211346,
+      "days_to_125": 1.040277777777778,
+      "days_to_1000": 317.6201388888889
+    }
+  },
+  "fallback": {
+    "policies": 145,
+    "scenario_years": 2320,
+    "dev_pass": 0,
+    "all_pass": 0,
+    "diagnostic": {
+      "policy": "M15 sweep64 BUY H4 aligned, TP2R, hold120m, EUR idle 30d",
+      "year2024": {
+        "control_days125_base": 120.45833333333333,
+        "challenger_days125_base": 66.69097222222223,
+        "control_days125_stress": 262.375,
+        "challenger_days125_stress": 233.75972222222222,
+        "control_dd_base": 19.7393,
+        "challenger_dd_base": 13.193717
+      },
+      "improved_cases_2019_2025": 2,
+      "worse_cases_2019_2025": 0,
+      "stress_2019_failed": true,
+      "worst_approx_dd": 60.645994047128404
+    }
+  },
+  "limitations": [
+    "Separate screening, not original growth core or full native wallet; control does not reproduce native timing.",
+    "M1 stop-first; synthetic spread, fee, funding, slippage; single position; modeled minimum BTC 0.01/EUR 1000, leverage 200, not broker certification.",
+    "Approximate drawdown from bar adverse excursion against settled peak; not exact floating equity DD.",
+    "Gap/deadline exits may use next available quote including across calendar cut; full seed standalone screen logged 1005 gap exits. Not native A/B paths.",
+    "Retrospective selected diagnostic not out-of-sample proof. BTC begins Jan 2019, no pre-2019 BTC warm-up. No continuous terminal balance claim."
+  ],
+  "decision": "No candidate accepted. Fallback merits native research only, as development gate failed. Preserve original live strategy. Prioritize stage-specific growth after settled 125 and exact replay work, not further blind seed tuning.",
+  "production_changes": false
+}
