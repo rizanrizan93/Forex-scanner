@@ -2,7 +2,7 @@ name: Native floating DD archive audit
 on:
   push:
     branches: ['research/v5-native-growth-optimization-20261124']
-    paths: ['.github/workflows/v6-native-dd-audit.yml']
+    paths: ['.github/workflows/v6-native-dd-audit.yml', 'research/v5_native_growth/audit_native_dd.py']
   workflow_dispatch:
 permissions:
   contents: read
