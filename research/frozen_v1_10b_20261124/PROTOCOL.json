@@ -1,0 +1,48 @@
+{
+  "name": "Frozen V1 10B EUR/BTC acceleration R1",
+  "research_only": true,
+  "production_changes": false,
+  "baseline_B": 1662133293.0811067,
+  "baseline_A": 1392645692.9378428,
+  "start_cash": 100,
+  "model_leverage": 200,
+  "seed_risk_candidates": [
+    0.05,
+    0.08
+  ],
+  "portfolio_planned_risk_cap": 0.2075,
+  "margin_entry_cap": 0.5,
+  "seed_goals": [
+    125,
+    1000
+  ],
+  "module_assets": [
+    "EURUSD",
+    "BTCUSD",
+    "EURUSD+BTCUSD"
+  ],
+  "historical_cutoff": "2026-11-13T03:00:00Z",
+  "development_years": [
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "evaluation_years": [
+    2023,
+    2024,
+    2025
+  ],
+  "partial_exploratory_years": [
+    2026
+  ],
+  "untouched_holdout_available": false,
+  "screening": "Conservative M1 stop-first module screen; not portfolio balance",
+  "promotion": "C# shared-wallet replay A/B, 1x/2x costs, core fill displacement and equity DD, time to settled balance/equity 1000",
+  "limitations": [
+    "Original model uses synthetic M1 paths and XAU admission snapshots",
+    "No binary .algo broker tick replay",
+    "Pre-2019 seed activity disabled in unchanged control",
+    "Target 10B is research objective, not projection"
+  ]
+}
