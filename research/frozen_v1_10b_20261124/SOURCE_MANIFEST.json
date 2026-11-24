@@ -1,26 +1,38 @@
 {
-  "generate_tapes.py": {
-    "sha256": "1526aa319a514b49ef6ad9e8bc370cdf10efec32ef0b5caee2a45f22f16beef7",
-    "bytes": 4467
+  "screen_seed125.cpp": {
+    "sha256": "e430cea4484c3732b9341a59c4a38d5d885c277edcbcd41ebd95388de7a041f7",
+    "bytes": 3477
   },
   "rank_screen.py": {
-    "sha256": "c392e94951b327fecd3a5c05b05a26f1b69e9fb00ecb41e77bf7a3c34c81204c",
-    "bytes": 1690
-  },
-  "screen_main.cpp": {
-    "sha256": "1715a26648f68f061870c710d01298c3dfee0fc54dbc568f1805bd9a38ff64a3",
-    "bytes": 3405
+    "sha256": "92e0c1ee2b13dff737b7cd82ffb62c55ce084f77b542b48302bac7d66f9e88e4",
+    "bytes": 1799
   },
   "screen_prefix.cpp": {
-    "sha256": "25ec106cc6e01caf6abc321b63a0740523175a8689f9613d6397bf4f76ca350a",
-    "bytes": 4894
+    "sha256": "fcce4fbece5de76c7b24a91b579eba88c5a6b668d619d4bd7cd8dc112f0bac55",
+    "bytes": 4913
   },
-  "yearcuts.h": {
-    "sha256": "52f5bee8977b934a7a52bcfecafa8135365e574b9b0731e1db5e9096bf8aa1a2",
-    "bytes": 105
+  "native_changes.patch": {
+    "sha256": "62569561fec56004f43da268e86d28561b38689b0c8ca6f66061cf1fffb04aca",
+    "bytes": 27850
   },
-  "pilot2019.json": {
-    "sha256": "70f254855baf362532a381f53035fb650ed8c5e858d803e56c066f8cec8852d6",
-    "bytes": 4171
+  "focus_pilot2019.json": {
+    "sha256": "735e57a62c50330f625a822d3b0e6dd369c8133e0058a0de6e4d7ad0bae81c76",
+    "bytes": 8060
+  },
+  "btc_pilot2019.json": {
+    "sha256": "50b3c9a9debacf93358545fa4def6c516d930fb895bf8db55543a5ddb49fcacb",
+    "bytes": 8456
+  },
+  "fast_seed_validation.json": {
+    "sha256": "a67e9c3309c392695bbb4bf30704f7a97b56f2c40b5f2bb4a6631197476cbd83",
+    "bytes": 10714
+  },
+  "continuous_R1.json": {
+    "sha256": "b329a30bd51ce939ad316f8e5d78ab52cbfdcc37df79167d8d14742e8d8aa01c",
+    "bytes": 985
+  },
+  "continuous_BTC18H72.json": {
+    "sha256": "4b448a8af59e8c35f2b3ba683dca1e3b2e1c59c5a6bf81abe13ad436d3211bcf",
+    "bytes": 535
   }
 }
