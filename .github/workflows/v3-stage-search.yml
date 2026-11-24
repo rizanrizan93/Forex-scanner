@@ -1,0 +1,22 @@
+name: V3 302M stage search build and smoke
+on:
+  push:
+    branches: ['research/v3-302m-stage-search-20261124']
+    paths: ['research/v3_stage_search/**', '.github/workflows/v3-stage-search.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and test research scanner
+        run: |
+          g++ -O3 -std=c++20 -fopenmp research/v3_stage_search/search.cpp -o /tmp/v3search
+          /tmp/v3search --selftest
+          python -m py_compile research/v3_stage_search/run.py
+          echo 'Software smoke only. Exact private source archives are not staged in this runner. No financial replay claimed.'
