@@ -12,7 +12,7 @@ static class BtcResearchFilter {
  internal static bool Allow(BtcSignal s){
   if(RsiMax>=100&&EfficiencyMin<=.2&&SellRsiMin<=30)return true;
   bool ok;
-  if(s.Side>0){ok=q.TryGetValue(s.At,out var f)&&f.Rsi<=RsiMax&&f.Efficiency>=EfficiencyMin;if(!ok)BuyRejected++;}
+  if(s.Side>0){ok=q.TryGetValue(new DateTime(s.At.Ticks-s.At.Ticks%TimeSpan.FromHours(4).Ticks,DateTimeKind.Utc),out var f)&&f.Rsi<=RsiMax&&f.Efficiency>=EfficiencyMin;if(!ok)BuyRejected++;}
   else {ok=h.TryGetValue(s.At,out var f)&&f.Rsi>=SellRsiMin;if(!ok)SellRejected++;}
   return ok;
  }
