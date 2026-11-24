@@ -13,7 +13,25 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "6d4e7b7833b5f73d11961a4e7d1cb62b70cda089cee300b4ca9e3bdba850069c"
+  },
+  {
+    "series": "btc_addon_continuous",
+    "path": "B",
+    "cost": 1,
+    "ending_balance": 1836312496.680889,
+    "max_floating_dd_pct": 59.494042036151576,
+    "ledger_pnl_residual_usd": 0.0003883838653564453,
+    "raw_errors": 0,
+    "open_positions": 0,
+    "btc_status": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "passed": true,
+    "raw_sha256": "1fca860ee93e97015888df0e52b91e4e68a4e91158b3c6f592621a04ec633367"
   },
   {
     "series": "capacity",
@@ -29,7 +47,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "9176557f7d705002ac7f5c61eae3a736734510014117905b0ff70327401d7853"
   },
   {
     "series": "continuous",
@@ -45,7 +64,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "4252cf2af609fd81857f5ed0b36d1b94c06ce6d805fa95be3935d7fb01fb43f5"
   },
   {
     "series": "continuous",
@@ -61,7 +81,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "024cc18a3a6d9ee45a3117f21ae3e2ae17dc457bc44f2e7d9e3c6329786e32d0"
   },
   {
     "series": "filterF1",
@@ -77,7 +98,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "737408c156dd74f3cad5051574e3a63d173e896da7d70645b708a6732f3a0323"
   },
   {
     "series": "filterF1_A",
@@ -93,7 +115,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "9a0c445d9dc024f21cb93ba1b841f71839c2049e2c5d4648b2957a3240b20ce0"
   },
   {
     "series": "filterF1_cost2",
@@ -109,7 +132,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "f002172bbd357a1451937ccc5d13564d8c5744f8d170be26f51fd88b60d2b7e4"
   },
   {
     "series": "filterF1_cost2",
@@ -125,7 +149,8 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "ca1b334a90bf5fac8abb5b0312f96f6dc75afa9c2b49198022b9fab188db8ffd"
   },
   {
     "series": "filterF7",
@@ -141,6 +166,7 @@
       "QueuedAtEnd": false,
       "ExitPendingAtEnd": false
     },
-    "passed": true
+    "passed": true,
+    "raw_sha256": "231e7cc5e2dc3b07850e2ea7eb92df95bba1529ca7a5e04ef0dd7f507b909ea5"
   }
 ]
