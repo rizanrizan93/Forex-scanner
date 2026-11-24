@@ -1,7 +1,7 @@
 """Execute V5 on a restored, isolated native research workspace.
 No broker, no production I/O. Baseline must pass before challenger execution.
 """
-import argparse, hashlib, json, os, subprocess
+import argparse, gzip, hashlib, json, math, os, subprocess
 from pathlib import Path
 H={"xau_2012_2026.csv":"defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7","eur_2012_2026.csv":"710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5","BTCUSD_M1.csv":"9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51"}
 def sha(p):
@@ -41,7 +41,16 @@ def main():
         assert len(rows)==len(profs)
         for r in rows:
             s=r["Summary"]
-            assert s["ErrorCount"]==0 and s["OpenPositions"]==0 and not s["Quarantined"] and s["TotalContributions"]==100
+            assert s["ErrorCount"]==0 and s["OpenPositions"]==0 and not s["Quarantined"] and not s["AccountingBlock"] and s["TotalContributions"]==100
+            receipt=Path(r["File"])
+            if not receipt.is_absolute():receipt=Path.cwd()/receipt
+            with gzip.open(receipt,"rt") as f:raw=json.load(f)
+            assert len(raw["Ledger"])==s["Baskets"] and raw["Summary"]["EndingBalance"]==s["EndingBalance"]
+            residual=100+math.fsum(t["Pnl"] for t in raw["Ledger"])-s["EndingBalance"]
+            assert abs(residual)<.05,("CASH_CONSERVATION_FAILURE",residual)
+            r["ReceiptSHA256"]=sha(receipt)
+            r["LedgerResidualUSD"]=residual
+        (out/"verified_receipts.json").write_text(json.dumps(rows,indent=2))
         return rows
     base=run([control],"B",1,"control_B1")[0]["Summary"]
     assert abs(base["EndingBalance"]-1662133293.0811067)<.01 and abs(base["MaxEquityDDPct"]-56.67209330213908)<1e-6 and base["Baskets"]==1047 and base["Orders"]==187560,"BASELINE_PARITY_FAILURE"
