@@ -52,6 +52,39 @@ def main():
  configs={json.dumps({k:v for k,v in row['Profile'].items() if k!='Id'},sort_keys=True) for row in rows}
  data={'AsOfWIB':stamp,'TargetUSD':1e10,'FloatingDDLimitExclusivePct':60,'CompletedFullNativeReplays':len(fullreceipts),'UniqueProfilePathCostCases':len(rows),'UniqueCompletedParameterConfigurationsExcludingId':len(configs),'UniqueB1Challengers':len(ranked),'NewModuleScreenConfigurations':0,'NewAnnualResetSimulations':len(annualrows),'Rows':rows,'AnnualRows':annualrows,'Details':details,'BestB1Below60':eligible[0]['Profile']['Id'] if eligible else None,'PreviousNativeBestB1Below60':previous,'TargetReachedB1':bool(eligible and eligible[0]['Summary']['EndingBalance']>=1e10),'ProductionChanges':False}
  (ROOT/'RESULTS_V8.json').write_text(json.dumps(data,indent=2))
+ if eligible:
+  best=eligible[0];s=best['Summary']
+  lock={
+   'Id':f'V8_B1_{round(s["EndingBalance"])}_RESEARCH_LOCK_20261124',
+   'Status':'PROVISIONAL_B1_BENCHMARK_ONLY','NativeReplayed':True,
+   'FullRobustnessValidated':False,'LiveApproved':False,'GoalUSD':1e10,
+   'GoalReached':s['EndingBalance']>=1e10,'InitialBalanceUSD':100,
+   'EndingBalanceUSD':s['EndingBalance'],'MaxFloatingDDPct':s['MaxEquityDDPct'],
+   'MaxClosedDDPct':s['MaxClosedDDPct'],'PF':s['PF'],'Baskets':s['Baskets'],
+   'OrderRequests':s['Orders'],'Parameters':best['Profile'],
+   'NativeSourceCommit':'26bf8396b6e703d650e703fca48d556252782f03',
+   'BuildSHA256':'30e50338cb624a823a1fc35b37648d3b9a73f700e9fbd63288770ad021e3dd63',
+   'DatasetHashes':{'xau_2012_2026.csv':'defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7','eur_2012_2026.csv':'710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5','BTCUSD_M1.csv':'9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51'},
+   'ReceiptFile':best['File'],'ReceiptSHA256':best['ReceiptSHA256'],
+   'ComparedToPreviousB1BestUSD':previous['EndingBalance'],
+   'GainVsPreviousBestUSD':s['EndingBalance']-previous['EndingBalance'],
+   'DDChangeVsPreviousBestPoints':s['MaxEquityDDPct']-previous['MaxEquityDDPct'],
+   'BaselineBalanceUSD':baseline['Summary']['EndingBalance'] if baseline else None,
+   'GainVsBaselinePct':(s['EndingBalance']/baseline['Summary']['EndingBalance']-1)*100 if baseline else None,
+   'AccountingErrors':s['ErrorCount'],'AdditionalCapitalUSD':s['TotalContributions']-100,
+   'RemainingValidation':['A1/A2/B2 with matched controls','explicit spread/slippage/delay','Monte Carlo','walk-forward and start-date','2012-2018 causal strategy gates','broker capacity and impact'],
+   'PreviousBenchmarkPreserved':True}
+  (ROOT/'BEST_B1_RESEARCH_LOCK.json').write_text(json.dumps(lock,indent=2))
+ pipeline={'AsOfWIB':stamp,'CompletedFullNativeReplays':len(fullreceipts),
+  'CompletedPriorityChallengers':len(ranked),'PriorityChallengersTotal':45,
+  'UniqueCompletedParameterConfigurationsExcludingId':len(configs),
+  'CompletedAnnualNativeCases':len(annualrows),'CompletedNewModuleScreens':0,
+  'BestB1':eligible[0]['Profile']['Id'] if eligible else None,
+  'Robustness':'not complete; only actual verified receipts count',
+  'PairedAblation':'not complete; only actual verified receipts count',
+  'FullTargetReached':bool(eligible and eligible[0]['Summary']['EndingBalance']>=1e10),
+  'ArtifactPersistence':'Library quota full; Drive auto-review rejected external private upload; complete ZIPs remain workspace-only','NoLiveChanges':True}
+ (ROOT/'PIPELINE_STATUS.json').write_text(json.dumps(pipeline,indent=2))
  columns=['Candidate','Path','Cost','InitialUSD','EndingUSD','FloatingDDPct','ClosedDDPct','PF','Baskets','OrderRequests','MinEquity','MaxMarginPct','MaxOpenRiskPct','Status']
  table=[]
  for r in rows:
@@ -95,7 +128,7 @@ def main():
   lines+=['',f'Interrupted startup attempts: {len(failures)}; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway now preserves the exact parity-verified DLL bytes, serializes input loading and limits gated native children to2 with3GiB heaps and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.']
  if (ROOT/'BEST_B1_RESEARCH_LOCK.json').exists():
   lock=json.loads((ROOT/'BEST_B1_RESEARCH_LOCK.json').read_text())
-  lines+=['',f'Provisional B1 research lock: {lock["Id"]}; cash USD{lock["EndingBalanceUSD"]:,.2f}, floating DD{lock["MaxFloatingDDPct"]:.6f}%. Prior-best gain USD{lock["GainVsPreviousBestUSD"]:,.2f}, DD change {lock["DDChangeVsPreviousBestPoints"]:.6f}points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation have been submitted; their pending outcomes are not financial results. No LIVE approval.']
+  lines+=['',f'Provisional B1 research lock: {lock["Id"]}; cash USD{lock["EndingBalanceUSD"]:,.2f}, floating DD{lock["MaxFloatingDDPct"]:.6f}%. Prior-best gain USD{lock["GainVsPreviousBestUSD"]:,.2f}, DD change {lock["DDChangeVsPreviousBestPoints"]:.6f}points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation are incomplete; only completed receipts are financial results. No LIVE approval.']
  lines+=['','Complete private input/runtime and full native receipts are available as workspace ZIPs. Durable Library save failed because account storage quota is full. Google Drive upload was rejected by automatic approval review because that external destination has not been authorized for private archives. No private CSV or archive was uploaded to GitHub.']
  lines+=['','Baseline parity, exact dataset hashes and original commit verification are retained. Receipts include full order/basket ledgers, equity curve and accounting. Total contributions include the original USD100; additional deposits are zero. Each accepted receipt has no open positions, BTC fault/pending state, quarantines or accounting errors. Cash residual tolerance is USD0.05.','', 'Floating DD is the full synthetic native equity peak-to-trough metric, not closed-balance DD or scaled ledger sensitivity. Milestone and recovery data are available in instrumented receipts; absent diagnostic fields are unknown, not zero. Minimum equity and observed risk/margin are included in CSV/JSON.','', 'The inherited model uses original C# strategy sources with synthetic M1 price paths and API stubs. It is not execution of the original .algo on broker ticks. Synthetic admission macro snapshots and heartbeats are not certified historical vintages. Cost factor 2 changes modeled fees, slippage and funding; spread multiplier stays 1. Broker stop-out and nonlinear market impact are not implemented. Results do not certify broker capacity or LIVE profitability.','', '2012–2018 trading remains unvalidated because inherited entry/seed gates exclude earlier activity. Full A1/B1/A2/B2, explicit spread/slippage/delay stress, walk-forward, Monte Carlo, start-date and capacity validation remain pending until actual receipts exist. No production, main, VPS or cTrader instance changes.','', 'Code and evidence branch: research/v8-native-10b-accelerated-growth. This execution uses Work, not GitHub Actions; no new Actions run is claimed.']
  (ROOT/'REPORT_V8.md').write_text('\n'.join(lines)+'\n')

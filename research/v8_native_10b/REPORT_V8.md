@@ -1,20 +1,21 @@
 # RIZAN V8 — actual native replay evidence
-As of 2026-11-24T22:04:29.179561+07:00. Research in progress; target USD10 billion remains unchanged.
+As of 2026-11-24T22:55:02.223054+07:00. Research in progress; target USD10 billion remains unchanged.
 
-Completed full continuous native replays: 8. Unique B1 challengers: 5. New module screens: 0. New annual-reset simulations: 0.
+Completed full continuous native replays: 9. Unique B1 challengers: 6. New module screens: 0. New annual-reset simulations: 0.
 
 | Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
 | V7_CONTROL | 100 | 1,662,133,293.08 | 56.672093% | 2.1768 | 1047 | 187560 | CONTROL |
+| V7_LOCK_BTC18_ALL_CAP | 100 | 1,889,793,789.50 | 58.753694% | 2.1201 | 1058 | 214866 | B1 improvement; robustness pending |
 | V7_LOCK_BTC18_ALL | 100 | 1,839,227,158.78 | 58.753694% | 2.2000 | 1058 | 212816 | B1 improvement; robustness pending |
 | V7_CAP_ONLY | 100 | 1,703,125,878.22 | 56.672093% | 2.1004 | 1047 | 190060 | B1 improvement; robustness pending |
 | V7_LOCK_CAP | 100 | 1,701,362,259.95 | 56.694507% | 2.1004 | 1047 | 189752 | B1 improvement; robustness pending |
 | V7_LOCK | 100 | 1,662,089,374.91 | 56.694507% | 2.1780 | 1047 | 187323 | REJECT: no balance improvement |
 | V7_BTC_T30_H96 | 100 | 1,469,716,521.55 | 58.805905% | 2.0718 | 1051 | 165232 | REJECT: no balance improvement |
 
-Highest completed B1 ending balance: USD1,839,227,158.78, floating DD 58.753694%.
-Change against same-path/same-cost baseline: 10.654613%.
-Best ending balance below 60% floating DD: V7_LOCK_BTC18_ALL, USD1,839,227,158.78.
+Highest completed B1 ending balance: USD1,889,793,789.50, floating DD 58.753694%.
+Change against same-path/same-cost baseline: 13.696886%.
+Best ending balance below 60% floating DD: V7_LOCK_BTC18_ALL_CAP, USD1,889,793,789.50.
 Target reached in B1: False. Four-scenario validation is separate and is not inferred from B1.
 
 Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating DD58.908457%. It is not counted as a newly completed V8 replay. The prior highest balance USD1,867,121,354.86 failed DD60.386930%.
@@ -22,6 +23,7 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | Candidate | Closed DD | Minimum equity USD | Max margin | Max open risk | Worst losing basket streak |
 |---|---:|---:|---:|---:|---:|
 | V7_CONTROL | 52.772301% | 98.88 | 54.073858% | 27.209882% | 8 |
+| V7_LOCK_BTC18_ALL_CAP | 52.765743% | 98.88 | 54.212345% | 27.273177% | 8 |
 | V7_LOCK_BTC18_ALL | 52.765743% | 98.88 | 54.212345% | 27.273177% | 8 |
 | V7_CAP_ONLY | 52.772301% | 98.88 | 54.073858% | 27.209882% | 8 |
 | V7_LOCK_CAP | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
@@ -31,6 +33,7 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | Candidate | XAU net PnL USD | EUR net PnL USD | BTC net PnL USD |
 |---|---:|---:|---:|
 | V7_CONTROL | 1,615,224,606.39 | 12,454,083.19 | 34,454,503.51 |
+| V7_LOCK_BTC18_ALL_CAP | 1,780,779,576.96 | 13,411,021.55 | 95,603,090.99 |
 | V7_LOCK_BTC18_ALL | 1,784,606,423.21 | 13,452,806.16 | 41,167,829.41 |
 | V7_CAP_ONLY | 1,619,752,464.88 | 12,465,736.12 | 70,907,577.22 |
 | V7_LOCK_CAP | 1,618,144,132.11 | 12,431,044.99 | 70,786,982.85 |
@@ -84,7 +87,7 @@ P0 actual comparison: USD-43,918.17 /-0.002642% against control; all1047 core en
 
 Interrupted startup attempts: 4; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway now preserves the exact parity-verified DLL bytes, serializes input loading and limits gated native children to2 with3GiB heaps and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.
 
-Provisional B1 research lock: V8_B1_1839227159_RESEARCH_LOCK_20261124; cash USD1,839,227,158.78, floating DD58.753694%. Prior-best gain USD495,784.94, DD change -0.154763points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation have been submitted; their pending outcomes are not financial results. No LIVE approval.
+Provisional B1 research lock: V8_B1_1889793789_RESEARCH_LOCK_20261124; cash USD1,889,793,789.50, floating DD58.753694%. Prior-best gain USD51,062,415.66, DD change -0.154763points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation are incomplete; only completed receipts are financial results. No LIVE approval.
 
 Complete private input/runtime and full native receipts are available as workspace ZIPs. Durable Library save failed because account storage quota is full. Google Drive upload was rejected by automatic approval review because that external destination has not been authorized for private archives. No private CSV or archive was uploaded to GitHub.
 
