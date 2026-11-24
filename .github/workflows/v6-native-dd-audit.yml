@@ -1,0 +1,27 @@
+name: Native floating DD archive audit
+on:
+  push:
+    branches: ['research/v5-native-growth-optimization-20261124']
+    paths: ['.github/workflows/v6-native-dd-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 994d68edc9bb87e5c1e57997a65be18873af84b8
+          path: evidence
+          persist-credentials: false
+      - run: python research/v5_native_growth/audit_native_dd.py evidence/research/r15_frozen_shared_replay/evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-floating-dd-audit
+          path: native_dd_audit.json
+          if-no-files-found: error
