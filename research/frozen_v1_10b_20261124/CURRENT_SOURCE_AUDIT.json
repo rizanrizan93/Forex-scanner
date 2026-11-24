@@ -9,7 +9,7 @@
     "native_replay/XauAddonController.cs"
   ],
   "new_filter_sha256": "fef4f540afe1773ff01ae112aeb417fb8927209ca54f4f0767fad07f719f8278",
-  "patch_sha256": "4c1182000ba5f800a03efedaf912f9f18b61daaede79ad5a686821933a1bb31f",
+  "patch_sha256": "0c019ae21b14eb8aa86708f37092666a912576b80135d14986687bd08b85b768",
   "input_manifest": {
     "XAUUSD": {
       "rows": 5271503,
@@ -38,5 +38,7 @@
       "first": "2019-01-01 00:00:00+00:00",
       "last": "2026-11-13 02:59:00+00:00"
     }
-  }
+  },
+  "source_version": "v8",
+  "build_dll_sha256": "fa61045578e8308b1ee952f9062ad4bed63ec0155e277d87ecd9c9c408d5cac2"
 }
