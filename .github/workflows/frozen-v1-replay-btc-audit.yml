@@ -17,7 +17,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
       - name: Verify release manifest and historical admission constraints
         shell: bash
         run: |
@@ -31,6 +31,7 @@ jobs:
           assert not mismatches, 'SOURCE_MANIFEST_MISMATCH'
           PY
       - name: Run released functional checks (not historical performance replay)
+        if: always()
         run: dotnet run --project repairs/bootstrap125_v1_20261114/tests/BootstrapTests.csproj -c Release
   btc-readonly:
     runs-on: ubuntu-latest
