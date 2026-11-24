@@ -1,0 +1,12 @@
+{
+  "workflow_run_id": 45396147840,
+  "workflow_url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/45396147840",
+  "head_commit": "d1f674818a7c8b4113a8671f5f615ccaa9ad55e4",
+  "status": "completed",
+  "conclusion": "success",
+  "scope": "Reconstruct original research source with isolated patch, build C#, filter causality/default-control identity/missing-feature tests, C++ screen minimum-lot and chronology selftest.",
+  "financial_replay_location": "Restored research workspace",
+  "native_algo_binary_execution": false,
+  "broker_tick_execution": false,
+  "live_changes": false
+}
