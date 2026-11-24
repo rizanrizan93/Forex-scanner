@@ -1,0 +1,42 @@
+{
+  "changed_files": [
+    "source/BtcEngine.cs",
+    "source/BtcNativeLifecycle.cs",
+    "source/EntryFamilies.cs",
+    "native_replay/Replay.cs",
+    "native_replay/ResearchBtc.cs",
+    "native_replay/SeedController.cs",
+    "native_replay/XauAddonController.cs"
+  ],
+  "new_filter_sha256": "fef4f540afe1773ff01ae112aeb417fb8927209ca54f4f0767fad07f719f8278",
+  "patch_sha256": "4c1182000ba5f800a03efedaf912f9f18b61daaede79ad5a686821933a1bb31f",
+  "input_manifest": {
+    "XAUUSD": {
+      "rows": 5271503,
+      "bytes": 407682982,
+      "sha256": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "expected": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+      "matched": true,
+      "first": "2011-11-01 05:00:00+00:00",
+      "last": "2026-11-13 02:59:00+00:00"
+    },
+    "EURUSD": {
+      "rows": 5534545,
+      "bytes": 318406782,
+      "sha256": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "expected": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+      "matched": true,
+      "first": "2011-11-01 05:00:00+00:00",
+      "last": "2026-11-13 02:59:00+00:00"
+    },
+    "BTCUSD": {
+      "rows": 4137300,
+      "bytes": 245702202,
+      "sha256": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "expected": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51",
+      "matched": true,
+      "first": "2019-01-01 00:00:00+00:00",
+      "last": "2026-11-13 02:59:00+00:00"
+    }
+  }
+}
