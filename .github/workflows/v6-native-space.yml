@@ -1,0 +1,25 @@
+name: V6 201M native search space verification
+on:
+  push:
+    branches: ['research/v5-native-growth-optimization-20261124']
+    paths: ['.github/workflows/v6-native-space.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify indexing and emit first native pilot
+        run: |
+          python research/v5_native_growth/v6_search_space.py --pilot 256 --out v6_pilot.json
+          python -m py_compile research/v5_native_growth/run_v6_native.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v6-native-pilot-profiles
+          path: v6_pilot.json
+          if-no-files-found: error
