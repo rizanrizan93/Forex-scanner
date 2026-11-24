@@ -1,7 +1,7 @@
 # RIZAN V8 — actual native replay evidence
-As of 2026-11-25T02:20:25.624446+07:00. Research in progress; target USD10 billion remains unchanged.
+As of 2026-11-25T02:35:15.358729+07:00. Research in progress; target USD10 billion remains unchanged.
 
-Completed full continuous native replays: 17. Unique B1 challengers: 14. New module screens: 0. New annual-reset simulations: 0.
+Completed full continuous native replays: 19. Unique B1 challengers: 16. New module screens: 0. New annual-reset simulations: 0.
 
 | Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -15,9 +15,11 @@ Completed full continuous native replays: 17. Unique B1 challengers: 14. New mod
 | V7_LOCK_BTC18_ALL | 100 | 1,839,227,158.78 | 58.753694% | 2.2000 | 1058 | 212816 | B1 improvement; robustness pending |
 | V7_R1_LOCK | 100 | 1,838,731,373.84 | 58.908457% | 2.2023 | 1040 | 212102 | B1 improvement; robustness pending |
 | V7_R1_BEST_DD | 100 | 1,838,731,373.84 | 58.908457% | 2.2023 | 1040 | 212102 | B1 improvement; robustness pending |
+| V7_SELL4_H16 | 100 | 1,826,840,492.54 | 59.167688% | 2.1002 | 1057 | 206020 | B1 improvement; robustness pending |
 | V7_SELL3_H24 | 100 | 1,727,982,232.40 | 59.967322% | 2.0672 | 1059 | 197975 | B1 improvement; robustness pending |
 | V7_CAP_ONLY | 100 | 1,703,125,878.22 | 56.672093% | 2.1004 | 1047 | 190060 | B1 improvement; robustness pending |
 | V7_LOCK_CAP | 100 | 1,701,362,259.95 | 56.694507% | 2.1004 | 1047 | 189752 | B1 improvement; robustness pending |
+| V7_SELL4_H24 | 100 | 1,684,924,734.34 | 59.847253% | 2.0556 | 1055 | 193973 | B1 improvement; robustness pending |
 | V7_LOCK | 100 | 1,662,089,374.91 | 56.694507% | 2.1780 | 1047 | 187323 | REJECT: no balance improvement |
 | V7_BTC_T30_H96 | 100 | 1,469,716,521.55 | 58.805905% | 2.0718 | 1051 | 165232 | REJECT: no balance improvement |
 
@@ -40,9 +42,11 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_LOCK_BTC18_ALL | 52.765743% | 98.88 | 54.212345% | 27.273177% | 8 |
 | V7_R1_LOCK | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
 | V7_R1_BEST_DD | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
+| V7_SELL4_H16 | 53.272942% | 98.88 | 54.080092% | 27.223524% | 8 |
 | V7_SELL3_H24 | 54.160828% | 98.88 | 54.103012% | 27.252440% | 8 |
 | V7_CAP_ONLY | 52.772301% | 98.88 | 54.073858% | 27.209882% | 8 |
 | V7_LOCK_CAP | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
+| V7_SELL4_H24 | 54.020229% | 98.88 | 54.080594% | 27.247543% | 8 |
 | V7_LOCK | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
 | V7_BTC_T30_H96 | 54.450413% | 98.88 | 54.094862% | 27.218648% | 8 |
 
@@ -58,9 +62,11 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_LOCK_BTC18_ALL | 1,784,606,423.21 | 13,452,806.16 | 41,167,829.41 |
 | V7_R1_LOCK | 1,784,274,096.07 | 13,395,719.66 | 41,061,458.11 |
 | V7_R1_BEST_DD | 1,784,274,096.07 | 13,395,719.66 | 41,061,458.11 |
+| V7_SELL4_H16 | 1,700,398,145.17 | 12,966,306.85 | 113,475,940.52 |
 | V7_SELL3_H24 | 1,655,693,035.48 | 12,475,753.51 | 59,813,343.41 |
 | V7_CAP_ONLY | 1,619,752,464.88 | 12,465,736.12 | 70,907,577.22 |
 | V7_LOCK_CAP | 1,618,144,132.11 | 12,431,044.99 | 70,786,982.85 |
+| V7_SELL4_H24 | 1,632,240,549.77 | 12,331,182.72 | 40,352,901.85 |
 | V7_LOCK | 1,615,297,128.70 | 12,419,750.51 | 34,372,395.70 |
 | V7_BTC_T30_H96 | 1,356,501,495.43 | 11,774,139.12 | 101,440,787.00 |
 
