@@ -1,0 +1,31 @@
+[
+  {
+    "Id": "R1_ORIGINAL_STRATEGY_BTC_CAP128_W600",
+    "Mode": "off",
+    "Year": 2019,
+    "EndYear": 2026,
+    "Seed": {
+      "Base": 3,
+      "Sl": 2,
+      "Tp": 3,
+      "Hold": 2,
+      "Trend": 2,
+      "Session": 0,
+      "Risk": 5,
+      "Universe": 1,
+      "Day": 1,
+      "Threshold": 3,
+      "Direction": 1,
+      "SeedOnly": false,
+      "HandoffEquity": 125
+    },
+    "GrowthRisk": 20.75,
+    "EarlyMask": 7,
+    "EarlyThreshold": 1000,
+    "BtcBuyTarget": 12,
+    "BtcSellTarget": 2,
+    "BtcBuyHours": 128,
+    "BtcBatchOrders": 128,
+    "BtcBatchSeconds": 600
+  }
+]
