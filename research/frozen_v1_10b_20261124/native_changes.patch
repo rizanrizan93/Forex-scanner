@@ -57,7 +57,7 @@
  Console.WriteLine($"INPUT XAU={xdata.Rows.Length} EUR={edata.Rows.Length}");
  var xtape=TapeCache.LoadOrBuild(Path.Combine(Path.GetDirectoryName(args[2])!,"../fresh_xau_tape.json"),true,()=>Data.XauTape(xdata));xtape=ResearchXau.Attach(xtape,ResearchXau.Generate(xdata),args[2]);GC.Collect();var etape=TapeCache.LoadOrBuild(Path.Combine(Path.GetDirectoryName(args[2])!,"../fresh_eur_tape.json"),false,()=>Data.EurTape(edata));GC.Collect();
  Console.WriteLine($"TAPES XAU={xtape.Signals.Count} EUR={etape.Signals.Count}");
-+var btcCompression=ResearchBtc.Compression(bdata);Console.WriteLine("BTC_BULL_COMPRESSION_CANDIDATES "+btcCompression.Count);
++var btcCompression=ResearchBtc.Compression(bdata);Console.WriteLine("BTC_BULL_COMPRESSION_CANDIDATES "+btcCompression.Count);File.WriteAllText(args[2]+".btc_compression_signals.json",JsonSerializer.Serialize(btcCompression));
  var requested=args.Length>3?args[3]:"smoke";
  double cost=double.Parse(Environment.GetEnvironmentVariable("RESEARCH_COST")??"1",CultureInfo.InvariantCulture);
  string path=Environment.GetEnvironmentVariable("RESEARCH_PATH")??"A";
@@ -91,7 +91,7 @@
   public object? Summary;
   public Simulation(Scenario c,Data x,Data e,Tape tx,Tape te,Data b,Dictionary<DateTime,BtcSignal> tb){bd=b;bt=tb;cfg=c;xd=x;ed=e;xt=tx;et=te;host.EnableBtc=c.Btc;host.Symbols.GetSymbol("BTCUSD").Leverage=double.Parse(Environment.GetEnvironmentVariable("RESEARCH_BTC_LEVERAGE")??"200",CultureInfo.InvariantCulture);host.Symbols.GetSymbol("BTCUSD").MarketHours.Calendar=BrokerCalendar.Open;host.EnableXau=c.Xau;host.EnableEur=c.Eur;host.EnableTrading=true;host.ExpectedAccount=host.Account.Number.ToString();host.BridgeUrl="wss://example.invalid:25345";host.BridgeToken="synthetic-only";host.PortfolioRiskPercent=c.Risk;host.FeeFactor=c.Cost;host.Account.PreciseLeverage=c.Leverage;host.Symbols.GetSymbol("XAUUSD").Leverage=c.Leverage;host.Symbols.GetSymbol("EURUSD").Leverage=c.Leverage;host.BeforeMarketFill=WaitForBroker;host.CreateEngines();host.Btc?.ReplayStart();if(c.Eur)legs.Add(new(host.Eur!,false,host));if(c.Xau)legs.Add(new(host.Xau!,true,host));seed=new(host,c.Cost,h=>{ReplaySizing.Settle(h.NetProfit);trades.Add(new(h.EntryTime,h.ClosingTime,h.SymbolName,h.NetProfit,host.Account.Balance,1,0,1,"SEED"));});addon=new(host,c.Cost,h=>{ReplaySizing.Settle(h.NetProfit);trades.Add(new(h.EntryTime,h.ClosingTime,h.SymbolName,h.NetProfit,host.Account.Balance,1,0,1,"ADDON"));});}
   void ApplyFlows(DateTime at){
-@@ -100,11 +104,11 @@
+@@ -100,12 +104,12 @@
     cashFlows.Add(new(new DateTime(nextDepositYear,1,1,0,0,0,DateTimeKind.Utc),50,host.Account.Balance,before,host.Account.Equity,nav));nextDepositYear++;
    }
   }
@@ -101,11 +101,13 @@
   void RecordBtc(){
 -  if(RP.C.BtcBatchOrders<=1){while(historyCursor<host.History.Count){var h=host.History[historyCursor++];if(h.Label.StartsWith("RZSEED|")||h.SymbolName!="BTCUSD"||!btcClosed.Add(h.PositionId))continue;var entry=new DateTime(long.Parse(h.Label.Split('|')[1]),DateTimeKind.Utc);ReplaySizing.Settle(h.NetProfit);trades.Add(new(entry,host.Server.TimeInUtc,"BTCUSD",h.NetProfit,host.Account.Balance,1,0,1));}return;}
 -  while(historyCursor<host.History.Count){var h=host.History[historyCursor++];if(h.Label.StartsWith("RZSEED|")||h.SymbolName!="BTCUSD")continue;long signal=long.Parse(h.Label.Split('|')[1]);if(!btcGroups.TryGetValue(signal,out var g))btcGroups[signal]=g=new();g.Add(h);}
-+  if(RP.C.BtcBatchOrders<=1){while(historyCursor<host.History.Count){var h=host.History[historyCursor++];if(h.Label.StartsWith("RZSEED|")||h.Label.StartsWith("RZADDON|")||h.SymbolName!="BTCUSD"||!btcClosed.Add(h.PositionId))continue;var entry=new DateTime(long.Parse(h.Label.Split('|')[1]),DateTimeKind.Utc);ReplaySizing.Settle(h.NetProfit);trades.Add(new(entry,host.Server.TimeInUtc,"BTCUSD",h.NetProfit,host.Account.Balance,1,0,1));}return;}
+-  foreach(var kv in btcGroups){if(btcRecorded.Contains(kv.Key)||host.Btc?.ResearchBatchQueued==true||host.Positions.Any(p=>p.SymbolName=="BTCUSD"&&long.Parse(p.Label.Split('|')[1])==kv.Key))continue;btcRecorded.Add(kv.Key);var g=kv.Value;ReplaySizing.Settle(g.Sum(t=>t.NetProfit));trades.Add(new(new DateTime(kv.Key,DateTimeKind.Utc),g.Max(t=>t.ClosingTime),"BTCUSD",g.Sum(t=>t.NetProfit),host.Account.Balance,g.Count,0,g.Count));}
++  if(RP.C.BtcBatchOrders<=1){while(historyCursor<host.History.Count){var h=host.History[historyCursor++];if(h.Label.StartsWith("RZSEED|")||h.Label.StartsWith("RZADDON|")||h.SymbolName!="BTCUSD"||!btcClosed.Add(h.PositionId))continue;var entry=new DateTime(long.Parse(h.Label.Split('|')[1]),DateTimeKind.Utc);ReplaySizing.Settle(h.NetProfit);trades.Add(new(entry,host.Server.TimeInUtc,"BTCUSD",h.NetProfit,host.Account.Balance,1,0,1,bt.TryGetValue(entry,out var src)?src.Origin:"BTC_SOURCE_UNKNOWN"));}return;}
 +  while(historyCursor<host.History.Count){var h=host.History[historyCursor++];if(h.Label.StartsWith("RZSEED|")||h.Label.StartsWith("RZADDON|")||h.SymbolName!="BTCUSD")continue;long signal=long.Parse(h.Label.Split('|')[1]);if(!btcGroups.TryGetValue(signal,out var g))btcGroups[signal]=g=new();g.Add(h);}
-   foreach(var kv in btcGroups){if(btcRecorded.Contains(kv.Key)||host.Btc?.ResearchBatchQueued==true||host.Positions.Any(p=>p.SymbolName=="BTCUSD"&&long.Parse(p.Label.Split('|')[1])==kv.Key))continue;btcRecorded.Add(kv.Key);var g=kv.Value;ReplaySizing.Settle(g.Sum(t=>t.NetProfit));trades.Add(new(new DateTime(kv.Key,DateTimeKind.Utc),g.Max(t=>t.ClosingTime),"BTCUSD",g.Sum(t=>t.NetProfit),host.Account.Balance,g.Count,0,g.Count));}
++  foreach(var kv in btcGroups){if(btcRecorded.Contains(kv.Key)||host.Btc?.ResearchBatchQueued==true||host.Positions.Any(p=>p.SymbolName=="BTCUSD"&&long.Parse(p.Label.Split('|')[1])==kv.Key))continue;btcRecorded.Add(kv.Key);var g=kv.Value;ReplaySizing.Settle(g.Sum(t=>t.NetProfit));trades.Add(new(new DateTime(kv.Key,DateTimeKind.Utc),g.Max(t=>t.ClosingTime),"BTCUSD",g.Sum(t=>t.NetProfit),host.Account.Balance,g.Count,0,g.Count,bt.TryGetValue(new DateTime(kv.Key,DateTimeKind.Utc),out var src)?src.Origin:"BTC_SOURCE_UNKNOWN"));}
   }
  
+  void BtcMinute(DateTime at,Row row){foreach(var p in host.Positions.Where(p=>p.SymbolName=="BTCUSD")){var last=btcFunding.GetValueOrDefault(p.Id,ResearchAccounting.FundingStart(p));if(at>last){double fee=p.VolumeInUnits*row.Open*.0003*(at-last).TotalDays*cfg.Cost;p.Swap-=fee;host.Account.Balance-=fee;}btcFunding[p.Id]=at;}}
 @@ -139,14 +143,14 @@
      l.State.LastBarUtc=at.AddMinutes(-1);l.Call("Changed");var tape=l.IsXau?xt:et;
      SignalPoint? point=null;bool hasSignal=tape.Signals.TryGetValue(at,out point);
