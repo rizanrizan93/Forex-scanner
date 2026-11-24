@@ -1,0 +1,84 @@
+{
+  "archive_sha256": "3c61e8348d151689746f4a700bee3b89ff5dc8f9ba5ae020c176f2d2c78b30bc",
+  "baseline": {
+    "balance": 1662133293.0811067,
+    "floating_dd": 56.67209330213908,
+    "baskets": 1047,
+    "orders": 187560,
+    "observed_margin": 54.07385767743372,
+    "observed_open_risk": 27.209882157452796
+  },
+  "per_symbol": {
+    "EURUSD": {
+      "baskets": 266,
+      "wins": 143,
+      "net_pnl": 12454083.1878306,
+      "pf": 1.4924313166787317,
+      "median_relative_pnl": 0.00017538885018410875,
+      "relative_sample_count": 264,
+      "children": 56811641,
+      "max_children": 1886400
+    },
+    "XAUUSD": {
+      "baskets": 626,
+      "wins": 303,
+      "net_pnl": 1615224606.3862004,
+      "pf": 2.2693894927676665,
+      "median_relative_pnl": -0.0018493283682628754,
+      "relative_sample_count": 626,
+      "children": 273256171,
+      "max_children": 3240000
+    },
+    "BTCUSD": {
+      "baskets": 155,
+      "wins": 81,
+      "net_pnl": 34454503.50686313,
+      "pf": 1.3004192492374433,
+      "median_relative_pnl": null,
+      "relative_sample_count": 0,
+      "children": 1802,
+      "max_children": 32
+    }
+  },
+  "seed_audit": {
+    "Enabled": true,
+    "c": {
+      "Base": 3,
+      "Sl": 2,
+      "Tp": 3,
+      "Hold": 2,
+      "Trend": 2,
+      "Session": 0,
+      "Risk": 5,
+      "Universe": 1,
+      "Day": 1,
+      "Threshold": 3,
+      "Direction": 1,
+      "SeedOnly": false,
+      "HandoffEquity": 125
+    },
+    "HandoffEquity": 125,
+    "Entries": 2,
+    "Requests": 2,
+    "UnaffordableMinLot": 0,
+    "PostfillBudgetCloses": 0,
+    "GraduatedUtc": "2019-01-03T04:30:00Z",
+    "GraduationBalance": 127.83599999999929,
+    "GrowthEnabled": true,
+    "Halted": false,
+    "SeedMaxEquityDDPct": 8.233114763739087,
+    "SignalTimes": 5128
+  },
+  "btc_order_groups": 155,
+  "btc_order_groups_ge32": 35,
+  "btc_cap_sides": {
+    "Sell": 13,
+    "Buy": 22
+  },
+  "btc_cap_group_pnl": 39794315.96813439,
+  "btc_cap_group_winners": 16,
+  "native_replays_new": 0,
+  "note": "Archived ledger descriptive audit only. Child fills grouped by label second segment; group count is not a counterfactual. Dollar PnL depends on chronological balance and cannot be added to infer new ending cash.",
+  "github_run": 45381061666,
+  "github_job": 138399882709
+}
