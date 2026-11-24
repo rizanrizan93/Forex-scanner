@@ -1,0 +1,26 @@
+{
+  "generate_tapes.py": {
+    "sha256": "1526aa319a514b49ef6ad9e8bc370cdf10efec32ef0b5caee2a45f22f16beef7",
+    "bytes": 4467
+  },
+  "rank_screen.py": {
+    "sha256": "c392e94951b327fecd3a5c05b05a26f1b69e9fb00ecb41e77bf7a3c34c81204c",
+    "bytes": 1690
+  },
+  "screen_main.cpp": {
+    "sha256": "1715a26648f68f061870c710d01298c3dfee0fc54dbc568f1805bd9a38ff64a3",
+    "bytes": 3405
+  },
+  "screen_prefix.cpp": {
+    "sha256": "25ec106cc6e01caf6abc321b63a0740523175a8689f9613d6397bf4f76ca350a",
+    "bytes": 4894
+  },
+  "yearcuts.h": {
+    "sha256": "52f5bee8977b934a7a52bcfecafa8135365e574b9b0731e1db5e9096bf8aa1a2",
+    "bytes": 105
+  },
+  "pilot2019.json": {
+    "sha256": "70f254855baf362532a381f53035fb650ed8c5e858d803e56c066f8cec8852d6",
+    "bytes": 4171
+  }
+}
