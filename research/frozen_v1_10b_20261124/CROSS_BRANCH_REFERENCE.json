@@ -1,0 +1,29 @@
+{
+  "observed_utc": "2026-11-24",
+  "source": "https://github.com/rizanrizan93/Forex-scanner/blob/research/v5-native-growth-optimization-20261124/research/v5_native_growth/V5_EARLY_2091M_LOCK.json",
+  "reference": {
+    "id": "V5_EARLY_XAU_2091M_RESEARCH_LOCK_20261124",
+    "status": "FROZEN_RESEARCH_REFERENCE_ONLY",
+    "native_approved": false,
+    "production_change": false,
+    "source_run": 45385002300,
+    "source_evidence": "research/v5_native_growth/evidence/early_refinement_20261124.json",
+    "baseline_native_usd": 1662133293.0811067,
+    "baseline_native_floating_dd_pct": 56.67209330213908,
+    "locked_hypothetical_usd": 2091130955.0952506,
+    "closed_basket_dd_pct": 52.76345972530119,
+    "floating_dd_pct": null,
+    "affected_baskets": 24,
+    "parameters": {
+      "EarlyRiskMask": 2,
+      "EarlyRiskLook": 8,
+      "EarlyRiskThreshold": 0.6,
+      "EarlyRiskFactor": 0.25,
+      "EarlyRiskLimit": 1500
+    },
+    "next_gate": "exact native replay from $100, 2019-2026, A/B 1x/2x costs; no reset; same shared wallet; verify baseline parity",
+    "target_usd": 10000000000,
+    "target_floating_dd_pct_lt": 60
+  },
+  "interpretation": "Fixed-ledger exploratory lock; no recomputed native challenger fills and no full challenger floating DD. Not included among R1 replay-validated results."
+}
