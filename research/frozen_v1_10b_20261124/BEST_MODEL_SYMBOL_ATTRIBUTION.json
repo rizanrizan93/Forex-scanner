@@ -1,6 +1,11 @@
 {
-  "scope": "Observed final-wallet basket PnL; not independent causal alpha or an additive counterfactual across strategies.",
+  "profile": "R1_FOCUS_EURBTC_BTC18H72_RSI80",
+  "scope": "Observed shared-wallet basket PnL, not independent causal alpha.",
   "by_symbol": {
+    "BTCUSD": {
+      "baskets": 143,
+      "net_pnl": 50462553.21660065
+    },
     "EURUSD": {
       "baskets": 272,
       "net_pnl": 14038527.483303329
@@ -8,10 +13,6 @@
     "XAUUSD": {
       "baskets": 616,
       "net_pnl": 1802620174.1583657
-    },
-    "BTCUSD": {
-      "baskets": 143,
-      "net_pnl": 50462553.21660065
     }
   }
 }
