@@ -1,19 +1,31 @@
 {
-  "screen_seed125.cpp": {
-    "sha256": "e430cea4484c3732b9341a59c4a38d5d885c277edcbcd41ebd95388de7a041f7",
-    "bytes": 3477
+  "generate_tapes.py": {
+    "sha256": "1526aa319a514b49ef6ad9e8bc370cdf10efec32ef0b5caee2a45f22f16beef7",
+    "bytes": 4467
   },
   "rank_screen.py": {
     "sha256": "92e0c1ee2b13dff737b7cd82ffb62c55ce084f77b542b48302bac7d66f9e88e4",
     "bytes": 1799
   },
+  "screen_main.cpp": {
+    "sha256": "1715a26648f68f061870c710d01298c3dfee0fc54dbc568f1805bd9a38ff64a3",
+    "bytes": 3405
+  },
   "screen_prefix.cpp": {
     "sha256": "fcce4fbece5de76c7b24a91b579eba88c5a6b668d619d4bd7cd8dc112f0bac55",
     "bytes": 4913
   },
-  "native_changes.patch": {
-    "sha256": "62569561fec56004f43da268e86d28561b38689b0c8ca6f66061cf1fffb04aca",
-    "bytes": 27850
+  "screen_seed125.cpp": {
+    "sha256": "e430cea4484c3732b9341a59c4a38d5d885c277edcbcd41ebd95388de7a041f7",
+    "bytes": 3477
+  },
+  "yearcuts.h": {
+    "sha256": "52f5bee8977b934a7a52bcfecafa8135365e574b9b0731e1db5e9096bf8aa1a2",
+    "bytes": 105
+  },
+  "pilot2019.json": {
+    "sha256": "70f254855baf362532a381f53035fb650ed8c5e858d803e56c066f8cec8852d6",
+    "bytes": 4171
   },
   "focus_pilot2019.json": {
     "sha256": "735e57a62c50330f625a822d3b0e6dd369c8133e0058a0de6e4d7ad0bae81c76",
@@ -34,5 +46,45 @@
   "continuous_BTC18H72.json": {
     "sha256": "4b448a8af59e8c35f2b3ba683dca1e3b2e1c59c5a6bf81abe13ad436d3211bcf",
     "bytes": 535
+  },
+  "filter_validation.json": {
+    "sha256": "8d36320c7a6c3f24135518a4d1783c4efeac9112fac8198f18c96c141c976a10",
+    "bytes": 17777
+  },
+  "continuous_F1.json": {
+    "sha256": "50c0877025ae8986fc2eddee4f4ff1c336e8d6d1b36e27274c468c16cb6d9bed",
+    "bytes": 610
+  },
+  "continuous_F7.json": {
+    "sha256": "c7220937fb53b642ae53e9751b95639e07e9fc154e5a5a5a292c9cffeacb742b",
+    "bytes": 608
+  },
+  "continuous_capacity.json": {
+    "sha256": "88c383a5ff680eaa5d4eeac98b42aa4a18330cccaf642e0533a9b04f4ddbf04d",
+    "bytes": 591
+  },
+  "seed_alternatives.json": {
+    "sha256": "ca135e1d505b19622597d78cf80f3aa14e7aff047d6abfda0052aee549a9ce4d",
+    "bytes": 3779
+  },
+  "btc_addon_validation.json": {
+    "sha256": "6393ee7154c2e2585bbcb8c6a66ab5341ccf54d948d2ad8183fa59830513b72a",
+    "bytes": 5767
+  },
+  "continuous_btc_addon.json": {
+    "sha256": "49ac59966025ab244fa242006e5c84175d4a9d2d0ce62fa06d57fd38a1a50b90",
+    "bytes": 653
+  },
+  "native_changes.patch": {
+    "sha256": "0c019ae21b14eb8aa86708f37092666a912576b80135d14986687bd08b85b768",
+    "bytes": 38822
+  },
+  "finalize_r1.py": {
+    "sha256": "a3263bb18f13289ea0562cf459f5626b6b04b3511b27a9350529f7c7f291e340",
+    "bytes": 7557
+  },
+  "BtcResearchFilter.cs": {
+    "sha256": "fef4f540afe1773ff01ae112aeb417fb8927209ca54f4f0767fad07f719f8278",
+    "bytes": 2251
   }
 }
