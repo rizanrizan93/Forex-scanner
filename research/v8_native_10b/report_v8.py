@@ -29,7 +29,9 @@ def main():
  annualrows=[r for r in allrows if r['Profile']['Year']==r['Profile'].get('EndYear')]
  fullreceipts=[r for r in receipts.values() if r['Profile']['Year']==2019 and r['Profile'].get('EndYear')==2026]
  baseline=next((r for r in rows if r['Profile']['Id']=='V7_CONTROL' and r['Path']=='B' and r['Cost']==1),None)
- ranked=sorted([r for r in rows if r['Path']=='B' and r['Cost']==1 and 'CONTROL' not in r['Profile']['Id']],key=lambda r:r['Summary']['EndingBalance'],reverse=True)
+ # Prefer the simpler identifier when two native receipts are financially exact.
+ # This keeps a proven no-op policy from being promoted as part of the lock.
+ ranked=sorted([r for r in rows if r['Path']=='B' and r['Cost']==1 and 'CONTROL' not in r['Profile']['Id']],key=lambda r:(r['Summary']['EndingBalance'],-len(r['Profile']['Id'])),reverse=True)
  eligible=[r for r in ranked if r['Summary']['MaxEquityDDPct']<60 and baseline is not None and r['Summary']['EndingBalance']>baseline['Summary']['EndingBalance']]
  selected=([baseline] if baseline else [])+ranked
  details={}
