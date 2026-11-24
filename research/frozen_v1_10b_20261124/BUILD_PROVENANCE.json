@@ -1,0 +1,25 @@
+{
+  "scope": "Known build provenance. Historical model cash results remain associated with their own recorded parameters; source v8 additionally records BTC origin in the ledger.",
+  "builds": {
+    "v3": {
+      "dll_sha256": "43bd1c254c6791423ae83a509e68c498215e50ac4a13889fae9431d703a0128f"
+    },
+    "v5": {
+      "dll_sha256": "f0b097500dda59b48b97f25edf170771192ad6373723d65b238c19af80c552c0"
+    },
+    "v7": {
+      "dll_sha256": "b14788ecac20e61e04f685a65cf2f8979896722fbe250e47f4cb517a5cd82b4a"
+    },
+    "v8": {
+      "dll_sha256": "fa61045578e8308b1ee952f9062ad4bed63ec0155e277d87ecd9c9c408d5cac2"
+    }
+  },
+  "known_series": {
+    "filterF1": "v5",
+    "filterF1_A": "v7",
+    "filterF1_cost2": "v7",
+    "capacity": "v7",
+    "btc_addon_continuous": "v8"
+  },
+  "best_B_source_commit": "b1e178f4e6334755613c4bc1b6cf58700c61b42e"
+}
