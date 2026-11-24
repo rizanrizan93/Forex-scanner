@@ -1,0 +1,19 @@
+{
+  "scope": "conditional fixed-path suffix only; no changed fills, costs, min lots, margin, or order admission recomputed; prefix floating DD and native challenger DD remain unknown",
+  "control_balance": 1662133293.0808935,
+  "control_floating_dd_pct": 56.67209330213908,
+  "locked_balance": 2091130955.0952506,
+  "proportional_multiplier": 1.2581006371752392,
+  "last_nonproportional_basket_exit": "2019-06-20T19:59:00+00:00",
+  "modified_baskets": 24,
+  "nonproportional_baskets": 52,
+  "late_hourly_marks": 9378,
+  "early_hourly_marks": 389,
+  "late_path_hourly_floating_dd_pct": 55.219707747679095,
+  "late_dd_trough_at": "2023-09-13T14:00:00Z",
+  "original_cumulative_floating_dd_before_cut_pct": 25.56231435809807,
+  "original_cumulative_floating_dd_after_cut_pct": 56.67209330213908,
+  "candidate_full_floating_dd_pct": null,
+  "new_native_replays": 0,
+  "run": 45394157715
+}
