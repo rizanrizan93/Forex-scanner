@@ -1,0 +1,112 @@
+{
+  "scope": "verified archived native executions; no new market replay",
+  "control": {
+    "EndingBalance": 1662133293.0811067,
+    "MaxEquityDDPct": 56.67209330213908,
+    "MaxClosedDDPct": 52.77230081046095,
+    "Baskets": 1047,
+    "Orders": 187560,
+    "TotalContributions": 100,
+    "ActualCutoff": "2026-11-13T03:00:00Z",
+    "MaxObservedOpenRiskPct": 27.209882157452796,
+    "MaxObservedMarginPct": 54.07385767743372,
+    "ErrorCount": 0
+  },
+  "pds": {
+    "EndingBalance": 1671468104.9086576,
+    "MaxEquityDDPct": 56.75870337622146,
+    "MaxClosedDDPct": 52.84982266037789,
+    "Baskets": 1062,
+    "Orders": 188772,
+    "TotalContributions": 100,
+    "ActualCutoff": "2026-11-13T03:00:00Z",
+    "MaxObservedOpenRiskPct": 27.209882157452796,
+    "MaxObservedMarginPct": 54.07385767743372,
+    "ErrorCount": 0
+  },
+  "common_entry_keys": 1047,
+  "missing_original_keys": [],
+  "extra_keys": 15,
+  "extra_stats": {
+    "count": 15,
+    "wins": 9,
+    "pnl": 142246.7679999897,
+    "pf": 3.2848518988792974
+  },
+  "common_pnl_change_by_symbol": {
+    "XAUUSD": 9055868.515207076,
+    "EURUSD": -86665.61042112097,
+    "BTCUSD": 223362.15475890716
+  },
+  "total_delta": 9334811.827544853,
+  "baseline_order_groups": {
+    "EURUSD": [
+      {
+        "side": "Buy",
+        "groups": 186,
+        "wins": 102,
+        "net": 7013647.814834745,
+        "max_orders_in_group": 949,
+        "median_orders": 11,
+        "cap_32_groups": null,
+        "cap_32_net": null
+      },
+      {
+        "side": "Sell",
+        "groups": 78,
+        "wins": 39,
+        "net": 5440407.536995854,
+        "max_orders_in_group": 1048,
+        "median_orders": 39.5,
+        "cap_32_groups": null,
+        "cap_32_net": null
+      }
+    ],
+    "XAUUSD": [
+      {
+        "side": "Buy",
+        "groups": 338,
+        "wins": 158,
+        "net": 515052035.67321014,
+        "max_orders_in_group": 1800,
+        "median_orders": 14,
+        "cap_32_groups": null,
+        "cap_32_net": null
+      },
+      {
+        "side": "Sell",
+        "groups": 288,
+        "wins": 145,
+        "net": 1100172570.7129872,
+        "max_orders_in_group": 1800,
+        "median_orders": 13,
+        "cap_32_groups": null,
+        "cap_32_net": null
+      }
+    ],
+    "BTCUSD": [
+      {
+        "side": "Buy",
+        "groups": 122,
+        "wins": 59,
+        "net": 11220304.283972668,
+        "max_orders_in_group": 32,
+        "median_orders": 5.5,
+        "cap_32_groups": 22,
+        "cap_32_net": 23007561.139878947
+      },
+      {
+        "side": "Sell",
+        "groups": 33,
+        "wins": 22,
+        "net": 23234199.222890474,
+        "max_orders_in_group": 32,
+        "median_orders": 14,
+        "cap_32_groups": 13,
+        "cap_32_net": 16786754.828255437
+      }
+    ]
+  },
+  "new_native_replays": 0,
+  "run": 45394700194
+}
