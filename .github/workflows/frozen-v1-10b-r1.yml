@@ -2,8 +2,11 @@ name: Frozen V1 10B research causality and accounting guards
 on:
   push:
     branches: ['research/frozen-v1-10b-eur-btc-20261124']
-    paths: ['research/frozen_v1_10b_20261124/**', '.github/workflows/frozen-v1-10b-r1.yml']
+    paths: ['research/frozen_v1_10b_20261124/*.cs', 'research/frozen_v1_10b_20261124/*.cpp', 'research/frozen_v1_10b_20261124/*.h', 'research/frozen_v1_10b_20261124/*.patch', '.github/workflows/frozen-v1-10b-r1.yml']
   workflow_dispatch:
+concurrency:
+  group: frozen-v1-10b-r1-build
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
