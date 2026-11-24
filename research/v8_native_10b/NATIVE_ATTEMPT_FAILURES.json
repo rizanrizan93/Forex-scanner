@@ -1,0 +1,28 @@
+[
+  {
+    "Profile": "V7_R1_BEST_DD",
+    "Attempt": "legacy direct",
+    "Exit": "SIGKILL -9",
+    "FinancialReplayCompleted": false,
+    "Cause": "not certified; concurrent memory pressure suspected",
+    "Retry": "included in gated priority queue"
+  },
+  {
+    "Profile": "priority_worker_0 startup",
+    "Attempt": "1.5GiB indexed heap limit",
+    "Exit": "Out of memory, -6",
+    "FinancialReplayCompleted": false
+  },
+  {
+    "Profile": "priority_worker_1 startup",
+    "Attempt": "1.5GiB indexed heap limit",
+    "Exit": "Out of memory, -6",
+    "FinancialReplayCompleted": false
+  },
+  {
+    "Profile": "priority_worker_0 startup",
+    "Attempt": "2GiB indexed heap limit",
+    "Exit": "Out of memory, -6",
+    "FinancialReplayCompleted": false
+  }
+]

@@ -39,7 +39,7 @@
     "source/xau/XauSendReference.cs": "6bcc42367a41a8291685dbaa0276c1d2de1ea0add4f1246927242b9a3e85c201",
     "source/xau/FrozenCore.cs": "a520553b5d49029eea5ceb1148846eca9dde8237c2a78101e8b2813c85f58191"
   },
-  "FinancialParity": "PENDING_FULL_NATIVE_CONTROL",
+  "FinancialParity": "PASS_FULL_NATIVE_AND_FOUR_STREAM_EQUALITY",
   "EconomicChangesVersusV5Adapter": false,
   "NewDiagnosticsOnly": [
     "milestones",

@@ -1,0 +1,102 @@
+{
+  "Ledger": {
+    "exact_equality": true,
+    "rows": 1047,
+    "canonical_sha256": "6d8b23bbfe090005fc0bf50aa24f3c05d115de37428c5cce6ac0cc57ac70073d"
+  },
+  "OrderLedger": {
+    "exact_equality": true,
+    "rows": 187323,
+    "canonical_sha256": "6cf5c738747cb27f571ffe4fb0a266e775f7651ef90ca63e97d7c1c3f2ef7641"
+  },
+  "CashLedger": {
+    "exact_equality": true,
+    "rows": 544026,
+    "canonical_sha256": "15c50110e4faa17ec9a6998cff6d59702c346cd6a50dd87c406dec071f5ea46d"
+  },
+  "EquityCurve": {
+    "exact_equality": true,
+    "rows": 9767,
+    "canonical_sha256": "252a14b7e7eda24e6f6f9b9a299a487178fb4dcdd51e0c44574cb7d57f23c967"
+  },
+  "Diagnostics": {
+    "Milestones": {
+      "125": {
+        "At": "2019-01-03T04:30:00Z",
+        "Balance": 127.83599999999929,
+        "Equity": 127.83599999999929,
+        "MaxFloatingDDPct": 8.233114763739087
+      },
+      "250": {
+        "At": "2019-02-28T11:15:00Z",
+        "Balance": 311.74691898078777,
+        "Equity": 311.74691898078777,
+        "MaxFloatingDDPct": 23.011900816082033
+      },
+      "500": {
+        "At": "2019-03-07T15:30:00Z",
+        "Balance": 523.2139189807787,
+        "Equity": 523.2139189807787,
+        "MaxFloatingDDPct": 23.011900816082033
+      },
+      "1000": {
+        "At": "2019-04-02T05:19:25Z",
+        "Balance": 1525.613855087504,
+        "Equity": 1525.613855087504,
+        "MaxFloatingDDPct": 23.011900816082033
+      },
+      "10000": {
+        "At": "2020-03-16T10:06:30Z",
+        "Balance": 12499.77841861426,
+        "Equity": 12499.77841861426,
+        "MaxFloatingDDPct": 51.90429705307288
+      },
+      "100000": {
+        "At": "2021-01-08T19:59:00Z",
+        "Balance": 115720.09092315316,
+        "Equity": 117824.00192179315,
+        "MaxFloatingDDPct": 56.12244045734921
+      },
+      "1000000": {
+        "At": "2022-07-18T19:00:00Z",
+        "Balance": 1125940.1846901416,
+        "Equity": 1116353.6400581237,
+        "MaxFloatingDDPct": 56.12244045734921
+      },
+      "10000000": {
+        "At": "2023-12-11T15:28:13Z",
+        "Balance": 10604220.659607166,
+        "Equity": 10604220.659607166,
+        "MaxFloatingDDPct": 56.6945066586242
+      },
+      "100000000": {
+        "At": "2024-11-25T19:59:00Z",
+        "Balance": 100684812.39349125,
+        "Equity": 100684812.39349125,
+        "MaxFloatingDDPct": 56.6945066586242
+      },
+      "1000000000": {
+        "At": "2026-03-26T19:59:00Z",
+        "Balance": 1044689616.1528072,
+        "Equity": 1044689616.1528072,
+        "MaxFloatingDDPct": 56.6945066586242
+      }
+    },
+    "PeakEquity": 1753053787.993819,
+    "PeakEquityAt": "2026-09-28T14:57:20Z",
+    "MaximumFloatingDDPct": 56.6945066586242,
+    "MaxDDPeakAt": "2023-05-16T17:10:20Z",
+    "MaxDDTroughAt": "2023-09-13T13:36:20Z",
+    "MaxDDRecoveredAt": "2023-12-01T17:52:40Z",
+    "MaxDDRecoveryDays": 199.02939814814815,
+    "LongestObservedUnderwaterDays": 265.11319444444445,
+    "UnrecoveredAtEnd": true,
+    "MinimumMarginLevelPct": 184.91569949805424,
+    "EquityBelowRequiredMarginObserved": false,
+    "MaximumSimultaneousPositions": 1832,
+    "MaximumSimultaneousSymbols": 3,
+    "MaximumGrossEntryNotionalUSD": 16516844313.29998,
+    "StopOutPolicyImplemented": false
+  },
+  "SameFinancialSummary": true
+}

@@ -27,6 +27,8 @@ def verify(r):
  assert abs(residual)<.05 and len(raw['Ledger'])==s['Baskets']
  assert not any(raw['BtcResearchStatus'].values()),raw['BtcResearchStatus']
  r.update(ReceiptSHA256=sha(receipt),LedgerResidualUSD=residual,Verified=True)
+ r['BootstrapAudit']=raw['SeedAudit']
+ r['ObservedDiagnostics']=raw.get('Diagnostics')
  return r
 def run(profile,path='B',cost=1):
  name=f'{profile["Id"]}_{path}{cost}';out=RUNS/name

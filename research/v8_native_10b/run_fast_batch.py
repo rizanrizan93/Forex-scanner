@@ -6,7 +6,9 @@ from pathlib import Path
 import run_v8 as r
 r.DLL=r.ROOT/'build_diagnostics/NovemberReplay.dll'
 FAST=r.ROOT/'diagnostic_runs';FAST.mkdir(exist_ok=True)
-HASH=r.sha(r.DLL)
+engine_map=r.DLL.parent/'engine_path.txt'
+ECONOMIC_DLL=Path(engine_map.read_text().strip()) if engine_map.exists() else r.DLL
+HASH=r.sha(ECONOMIC_DLL)
 def record(row):
  row=r.verify(row);row['EngineBuildSHA256']=HASH
  dst=r.RUNS/f'{row["Profile"]["Id"]}_{row["Path"]}{row["Cost"]}'
@@ -48,8 +50,8 @@ def main():
  # Reverse the remainder so the legacy runner can execute the leading cases
  # concurrently and reuse verified receipts for cases already completed here.
  remaining=[p for p in profiles[2:] if not (r.RUNS/f'{p["Id"]}_B1/verified.json').exists()][::-1]
- chunks=[remaining[i::2] for i in range(2)]
- with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+ chunks=[remaining]
+ with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
   futures=[pool.submit(batch,chunk,f'priority_worker_{i}') for i,chunk in enumerate(chunks) if chunk]
   for f in concurrent.futures.as_completed(futures):f.result()
  r.save(r.ROOT/'FAST_BATCH_COMPLETE.json',{'BuildSHA256':HASH,'PriorityProfiles':len(profiles),'CompletedAtUnix':time.time()})

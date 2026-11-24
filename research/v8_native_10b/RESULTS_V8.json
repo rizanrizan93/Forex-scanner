@@ -1,13 +1,147 @@
 {
-  "AsOfWIB": "2026-11-24T21:13:08.477134+07:00",
+  "AsOfWIB": "2026-11-24T21:41:11.457184+07:00",
   "TargetUSD": 10000000000.0,
   "FloatingDDLimitExclusivePct": 60,
-  "CompletedFullNativeReplays": 1,
-  "UniqueProfilePathCostCases": 1,
-  "UniqueB1Challengers": 0,
+  "CompletedFullNativeReplays": 4,
+  "UniqueProfilePathCostCases": 3,
+  "UniqueB1Challengers": 1,
   "NewModuleScreenConfigurations": 0,
   "NewAnnualResetSimulations": 0,
   "Rows": [
+    {
+      "Profile": {
+        "Id": "V7_LOCK",
+        "Mode": "off",
+        "Year": 2019,
+        "Seed": {
+          "Base": 3,
+          "Sl": 2,
+          "Tp": 3,
+          "Hold": 2,
+          "Trend": 2,
+          "Session": 0,
+          "Risk": 5,
+          "Universe": 1,
+          "Day": 1,
+          "Threshold": 3,
+          "Direction": 1,
+          "SeedOnly": false,
+          "HandoffEquity": 125
+        },
+        "GrowthRisk": 20.75,
+        "EndYear": 2026,
+        "Addon": null,
+        "EarlyXauOff": false,
+        "EarlyMask": 7,
+        "EarlyThreshold": 1000,
+        "BtcBuyTarget": 12,
+        "BtcSellTarget": 2,
+        "BtcBuyHours": 128,
+        "EurTarget": 10,
+        "BtcBuyRsiMax": 100,
+        "BtcBuyEfficiencyMin": 0.2,
+        "BtcSellRsiMin": 30,
+        "AddBtcBullCompression": false,
+        "BtcBatchOrders": 32,
+        "BtcBatchSeconds": 180,
+        "BtcBatchRisk": 0.025,
+        "BtcBatchMargin": 0.1,
+        "BtcBatchZone": 0.5,
+        "BtcBuyStop": 2,
+        "BtcSellStop": 1.5,
+        "BtcSellHours": 8,
+        "XauTarget": 4.5,
+        "XauStop": 2.4,
+        "XauRisk": 1.65,
+        "EurRisk": 0.8,
+        "EurBE": 3,
+        "EurStop": 0.845,
+        "EarlyRiskMask": 2,
+        "EarlyRiskLook": 8,
+        "EarlyRiskThreshold": 0.6,
+        "EarlyRiskFactor": 0.25,
+        "EarlyRiskLimit": 1500
+      },
+      "Path": "B",
+      "Cost": 1,
+      "File": "/workspace/scratch/fb2f958312ec/diagnostic_runs/p0_lock/V7_LOCK_B_cost1.json.gz",
+      "Summary": {
+        "cfg": {
+          "Name": "V7_LOCK_B",
+          "Leverage": 200,
+          "Cost": 1,
+          "Delay": 2,
+          "Adverse": false,
+          "Risk": 20.75,
+          "Xau": true,
+          "Eur": true,
+          "Bypass": false,
+          "LastYear": 2026,
+          "Btc": true
+        },
+        "TerminalForcedCloses": 0,
+        "AccountingBlock": false,
+        "BtcFridayCloseHourUTC": 22,
+        "HistoricalBrokerSessionCertified": false,
+        "BtcWeekendBarsFiltered": false,
+        "BtcIndicatorSource": "Bitstamp OHLC all seven days",
+        "NativeSevenDayFeedIntegrated": true,
+        "NativeBridgeIOExercisedInReplay": false,
+        "NativeBridgeProtocolTestedSeparately": true,
+        "SyntheticReliableHeartbeats": true,
+        "BrokerEntryDelaySeconds": 2,
+        "DelayPolicy": "broker 2 seconds",
+        "SpreadStressMultiplier": 1,
+        "BtcLeverage": 200,
+        "BrokerRequestsWithDelay": 187323,
+        "BrokerMarketEvents": 374646,
+        "ClockMonotonic": true,
+        "SyntheticSeconds": 8984121,
+        "AckWaitingSeconds": 6879224,
+        "MovingQuotesWhileAckPending": 6252360,
+        "PathDependsOnPosition": false,
+        "RealTicks": false,
+        "MacroVintageCertified": false,
+        "BtcBuyFilterRejected": 0,
+        "BtcSellFilterRejected": 0,
+        "EarlyGrowthMask": 7,
+        "EarlyGrowthThreshold": 1000,
+        "EarlyGrowthCompleted": true,
+        "FirstBalanceEquity1000": "2019-04-02T05:19:25Z",
+        "EndingBalance": 1662089374.9145918,
+        "TotalContributions": 100,
+        "TradingPnl": 1662089274.9145918,
+        "CashFlowAdjustedMaxDDPct": 56.6945066586242,
+        "EndingNav": 1662089374.9145918,
+        "MinimumEquity": 98.87999999999957,
+        "MaxEquityDDPct": 56.6945066586242,
+        "MaxClosedDDPct": 52.78449470394294,
+        "PF": 2.1779937737917905,
+        "Baskets": 1047,
+        "AcceptedBaskets": 1047,
+        "RejectedFillBaskets": 0,
+        "XauBaskets": 626,
+        "EurBaskets": 266,
+        "BtcBaskets": 155,
+        "BtcBuys": 1263,
+        "BtcSells": 539,
+        "EndingEquity": 1662089374.9145918,
+        "OpenPositions": 0,
+        "ActualCutoff": "2026-11-13T03:00:00Z",
+        "PortfolioBudgetBlocks": 753,
+        "MaxObservedMarginPct": 54.078696547370356,
+        "MaxObservedOpenRiskPct": 27.177479951372245,
+        "OverlapMinutes": 2284,
+        "MissingActiveInstrumentMinutes": 7045,
+        "Orders": 187323,
+        "Quarantined": false,
+        "ErrorCount": 0
+      },
+      "ReceiptSHA256": "7ebbf428fb655241d7341e50157750a89c22d71d81424be72e8182d76a1e14ef",
+      "LedgerResidualUSD": -0.00021147727966308594,
+      "Verified": true,
+      "EngineBuildSHA256": "7bf764cf7cf7d77174be338fdd1758ecf30e5d2b4172eec98662449bae532f3d"
+    },
     {
       "Profile": {
         "Id": "V7_CONTROL",
@@ -141,8 +275,143 @@
       "LedgerResidualUSD": -0.0002124309539794922,
       "Verified": true,
       "WallSeconds": 1007.3697922229767
+    },
+    {
+      "Profile": {
+        "Id": "V8_INDEXED_CONTROL",
+        "Mode": "off",
+        "Year": 2019,
+        "Seed": {
+          "Base": 3,
+          "Sl": 2,
+          "Tp": 3,
+          "Hold": 2,
+          "Trend": 2,
+          "Session": 0,
+          "Risk": 5,
+          "Universe": 1,
+          "Day": 1,
+          "Threshold": 3,
+          "Direction": 1,
+          "SeedOnly": false,
+          "HandoffEquity": 125
+        },
+        "GrowthRisk": 20.75,
+        "EndYear": 2026,
+        "Addon": null,
+        "EarlyXauOff": false,
+        "EarlyMask": 7,
+        "EarlyThreshold": 1000,
+        "BtcBuyTarget": 12,
+        "BtcSellTarget": 2,
+        "BtcBuyHours": 128,
+        "EurTarget": 10,
+        "BtcBuyRsiMax": 100,
+        "BtcBuyEfficiencyMin": 0.2,
+        "BtcSellRsiMin": 30,
+        "AddBtcBullCompression": false,
+        "BtcBatchOrders": 32,
+        "BtcBatchSeconds": 180,
+        "BtcBatchRisk": 0.025,
+        "BtcBatchMargin": 0.1,
+        "BtcBatchZone": 0.5,
+        "BtcBuyStop": 2,
+        "BtcSellStop": 1.5,
+        "BtcSellHours": 8,
+        "XauTarget": 4.5,
+        "XauStop": 2.4,
+        "XauRisk": 1.65,
+        "EurRisk": 0.8,
+        "EurBE": 3,
+        "EurStop": 0.845,
+        "EarlyRiskMask": 0,
+        "EarlyRiskLook": 8,
+        "EarlyRiskThreshold": 0.5,
+        "EarlyRiskFactor": 0.25,
+        "EarlyRiskLimit": 1000
+      },
+      "Path": "B",
+      "Cost": 1,
+      "File": "/workspace/scratch/fb2f958312ec/diagnostic_runs/V8_INDEXED_CONTROL_B1/V8_INDEXED_CONTROL_B_cost1.json.gz",
+      "Summary": {
+        "cfg": {
+          "Name": "V8_INDEXED_CONTROL_B",
+          "Leverage": 200,
+          "Cost": 1,
+          "Delay": 2,
+          "Adverse": false,
+          "Risk": 20.75,
+          "Xau": true,
+          "Eur": true,
+          "Bypass": false,
+          "LastYear": 2026,
+          "Btc": true
+        },
+        "TerminalForcedCloses": 0,
+        "AccountingBlock": false,
+        "BtcFridayCloseHourUTC": 22,
+        "HistoricalBrokerSessionCertified": false,
+        "BtcWeekendBarsFiltered": false,
+        "BtcIndicatorSource": "Bitstamp OHLC all seven days",
+        "NativeSevenDayFeedIntegrated": true,
+        "NativeBridgeIOExercisedInReplay": false,
+        "NativeBridgeProtocolTestedSeparately": true,
+        "SyntheticReliableHeartbeats": true,
+        "BrokerEntryDelaySeconds": 2,
+        "DelayPolicy": "broker 2 seconds",
+        "SpreadStressMultiplier": 1,
+        "BtcLeverage": 200,
+        "BrokerRequestsWithDelay": 187560,
+        "BrokerMarketEvents": 375120,
+        "ClockMonotonic": true,
+        "SyntheticSeconds": 8985074,
+        "AckWaitingSeconds": 6880257,
+        "MovingQuotesWhileAckPending": 6253133,
+        "PathDependsOnPosition": false,
+        "RealTicks": false,
+        "MacroVintageCertified": false,
+        "BtcBuyFilterRejected": 0,
+        "BtcSellFilterRejected": 0,
+        "EarlyGrowthMask": 7,
+        "EarlyGrowthThreshold": 1000,
+        "EarlyGrowthCompleted": true,
+        "FirstBalanceEquity1000": "2019-04-02T05:19:25Z",
+        "EndingBalance": 1662133293.0811067,
+        "TotalContributions": 100,
+        "TradingPnl": 1662133193.0811067,
+        "CashFlowAdjustedMaxDDPct": 56.67209330213908,
+        "EndingNav": 1662133293.0811067,
+        "MinimumEquity": 98.87999999999957,
+        "MaxEquityDDPct": 56.67209330213908,
+        "MaxClosedDDPct": 52.77230081046095,
+        "PF": 2.176797152950957,
+        "Baskets": 1047,
+        "AcceptedBaskets": 1047,
+        "RejectedFillBaskets": 0,
+        "XauBaskets": 626,
+        "EurBaskets": 266,
+        "BtcBaskets": 155,
+        "BtcBuys": 1263,
+        "BtcSells": 539,
+        "EndingEquity": 1662133293.0811067,
+        "OpenPositions": 0,
+        "ActualCutoff": "2026-11-13T03:00:00Z",
+        "PortfolioBudgetBlocks": 788,
+        "MaxObservedMarginPct": 54.07385767743372,
+        "MaxObservedOpenRiskPct": 27.209882157452796,
+        "OverlapMinutes": 2284,
+        "MissingActiveInstrumentMinutes": 7045,
+        "Orders": 187560,
+        "Quarantined": false,
+        "ErrorCount": 0
+      },
+      "ReceiptSHA256": "cce61c47ce5b02a5777b22b775d5e4d11c171aa8f390a0d8947b9938442db1ef",
+      "LedgerResidualUSD": -0.0002124309539794922,
+      "Verified": true,
+      "WallSeconds": 1044.410888671875
     }
   ],
+  "AnnualRows": [],
   "Details": {
     "V7_CONTROL": {
       "BySymbol": {
@@ -192,12 +461,257 @@
         "SeedMaxEquityDDPct": 8.233114763739087,
         "SignalTimes": 5128
       },
-      "Diagnostics": null,
+      "Diagnostics": {
+        "Milestones": {
+          "125": {
+            "At": "2019-01-03T04:30:00Z",
+            "Balance": 127.83599999999929,
+            "Equity": 127.83599999999929,
+            "MaxFloatingDDPct": 8.233114763739087
+          },
+          "250": {
+            "At": "2019-02-28T11:15:00Z",
+            "Balance": 311.74691898078777,
+            "Equity": 311.74691898078777,
+            "MaxFloatingDDPct": 23.011900816082033
+          },
+          "500": {
+            "At": "2019-03-07T15:30:00Z",
+            "Balance": 516.3829189807783,
+            "Equity": 516.3829189807783,
+            "MaxFloatingDDPct": 23.011900816082033
+          },
+          "1000": {
+            "At": "2019-04-02T05:19:25Z",
+            "Balance": 1340.2011839525035,
+            "Equity": 1340.2011839525035,
+            "MaxFloatingDDPct": 23.546730463932185
+          },
+          "10000": {
+            "At": "2020-03-16T10:06:30Z",
+            "Balance": 12798.628959962156,
+            "Equity": 12798.628959962156,
+            "MaxFloatingDDPct": 53.22138071820699
+          },
+          "100000": {
+            "At": "2021-01-08T19:59:00Z",
+            "Balance": 117946.40534690648,
+            "Equity": 120119.29703402649,
+            "MaxFloatingDDPct": 56.18880644656661
+          },
+          "1000000": {
+            "At": "2022-07-12T19:59:00Z",
+            "Balance": 1008614.9959063294,
+            "Equity": 1008614.9959063294,
+            "MaxFloatingDDPct": 56.18880644656661
+          },
+          "10000000": {
+            "At": "2023-12-11T15:28:13Z",
+            "Balance": 10705746.303799534,
+            "Equity": 10705746.303799534,
+            "MaxFloatingDDPct": 56.67209330213908
+          },
+          "100000000": {
+            "At": "2024-11-25T19:59:00Z",
+            "Balance": 100867031.77645314,
+            "Equity": 100867031.77645314,
+            "MaxFloatingDDPct": 56.67209330213908
+          },
+          "1000000000": {
+            "At": "2026-03-26T19:59:00Z",
+            "Balance": 1044730890.957449,
+            "Equity": 1044730890.957449,
+            "MaxFloatingDDPct": 56.67209330213908
+          }
+        },
+        "PeakEquity": 1753097706.1603339,
+        "PeakEquityAt": "2026-09-28T14:57:20Z",
+        "MaximumFloatingDDPct": 56.67209330213908,
+        "MaxDDPeakAt": "2023-05-16T17:10:20Z",
+        "MaxDDTroughAt": "2023-09-13T13:36:20Z",
+        "MaxDDRecoveredAt": "2023-12-01T17:52:40Z",
+        "MaxDDRecoveryDays": 199.02939814814815,
+        "LongestObservedUnderwaterDays": 265.11319444444445,
+        "UnrecoveredAtEnd": true,
+        "MinimumMarginLevelPct": 184.9322469214774,
+        "EquityBelowRequiredMarginObserved": false,
+        "MaximumSimultaneousPositions": 1832,
+        "MaximumSimultaneousSymbols": 3,
+        "MaximumGrossEntryNotionalUSD": 16516844313.29998,
+        "StopOutPolicyImplemented": false
+      },
       "LedgerCashResidualUSD": -0.0002124309539794922,
       "ReceiptSHA256": "01caa7ccf5eb95d5aaa5b4320ebca7b8f720ef0013a70a76cc0270f658fd551d"
+    },
+    "V7_LOCK": {
+      "BySymbol": {
+        "EURUSD": {
+          "Baskets": 266,
+          "Wins": 143,
+          "NetPnlUSD": 12419750.514383245
+        },
+        "XAUUSD": {
+          "Baskets": 626,
+          "Wins": 303,
+          "NetPnlUSD": 1615297128.700153
+        },
+        "BTCUSD": {
+          "Baskets": 155,
+          "Wins": 81,
+          "NetPnlUSD": 34372395.69984384
+        }
+      },
+      "WorstLosingBasketStreak": 8,
+      "SeedAudit": {
+        "Enabled": true,
+        "c": {
+          "Base": 3,
+          "Sl": 2,
+          "Tp": 3,
+          "Hold": 2,
+          "Trend": 2,
+          "Session": 0,
+          "Risk": 5,
+          "Universe": 1,
+          "Day": 1,
+          "Threshold": 3,
+          "Direction": 1,
+          "SeedOnly": false,
+          "HandoffEquity": 125
+        },
+        "HandoffEquity": 125,
+        "Entries": 2,
+        "Requests": 2,
+        "UnaffordableMinLot": 0,
+        "PostfillBudgetCloses": 0,
+        "GraduatedUtc": "2019-01-03T04:30:00Z",
+        "GraduationBalance": 127.83599999999929,
+        "GrowthEnabled": true,
+        "Halted": false,
+        "SeedMaxEquityDDPct": 8.233114763739087,
+        "SignalTimes": 5128
+      },
+      "Diagnostics": {
+        "Milestones": {
+          "125": {
+            "At": "2019-01-03T04:30:00Z",
+            "Balance": 127.83599999999929,
+            "Equity": 127.83599999999929,
+            "MaxFloatingDDPct": 8.233114763739087
+          },
+          "250": {
+            "At": "2019-02-28T11:15:00Z",
+            "Balance": 311.74691898078777,
+            "Equity": 311.74691898078777,
+            "MaxFloatingDDPct": 23.011900816082033
+          },
+          "500": {
+            "At": "2019-03-07T15:30:00Z",
+            "Balance": 523.2139189807787,
+            "Equity": 523.2139189807787,
+            "MaxFloatingDDPct": 23.011900816082033
+          },
+          "1000": {
+            "At": "2019-04-02T05:19:25Z",
+            "Balance": 1525.613855087504,
+            "Equity": 1525.613855087504,
+            "MaxFloatingDDPct": 23.011900816082033
+          },
+          "10000": {
+            "At": "2020-03-16T10:06:30Z",
+            "Balance": 12499.77841861426,
+            "Equity": 12499.77841861426,
+            "MaxFloatingDDPct": 51.90429705307288
+          },
+          "100000": {
+            "At": "2021-01-08T19:59:00Z",
+            "Balance": 115720.09092315316,
+            "Equity": 117824.00192179315,
+            "MaxFloatingDDPct": 56.12244045734921
+          },
+          "1000000": {
+            "At": "2022-07-18T19:00:00Z",
+            "Balance": 1125940.1846901416,
+            "Equity": 1116353.6400581237,
+            "MaxFloatingDDPct": 56.12244045734921
+          },
+          "10000000": {
+            "At": "2023-12-11T15:28:13Z",
+            "Balance": 10604220.659607166,
+            "Equity": 10604220.659607166,
+            "MaxFloatingDDPct": 56.6945066586242
+          },
+          "100000000": {
+            "At": "2024-11-25T19:59:00Z",
+            "Balance": 100684812.39349125,
+            "Equity": 100684812.39349125,
+            "MaxFloatingDDPct": 56.6945066586242
+          },
+          "1000000000": {
+            "At": "2026-03-26T19:59:00Z",
+            "Balance": 1044689616.1528072,
+            "Equity": 1044689616.1528072,
+            "MaxFloatingDDPct": 56.6945066586242
+          }
+        },
+        "PeakEquity": 1753053787.993819,
+        "PeakEquityAt": "2026-09-28T14:57:20Z",
+        "MaximumFloatingDDPct": 56.6945066586242,
+        "MaxDDPeakAt": "2023-05-16T17:10:20Z",
+        "MaxDDTroughAt": "2023-09-13T13:36:20Z",
+        "MaxDDRecoveredAt": "2023-12-01T17:52:40Z",
+        "MaxDDRecoveryDays": 199.02939814814815,
+        "LongestObservedUnderwaterDays": 265.11319444444445,
+        "UnrecoveredAtEnd": true,
+        "MinimumMarginLevelPct": 184.91569949805424,
+        "EquityBelowRequiredMarginObserved": false,
+        "MaximumSimultaneousPositions": 1832,
+        "MaximumSimultaneousSymbols": 3,
+        "MaximumGrossEntryNotionalUSD": 16516844313.29998,
+        "StopOutPolicyImplemented": false
+      },
+      "LedgerCashResidualUSD": -0.00021147727966308594,
+      "ReceiptSHA256": "7ebbf428fb655241d7341e50157750a89c22d71d81424be72e8182d76a1e14ef"
     }
   },
   "BestB1Below60": null,
+  "PreviousNativeBestB1Below60": {
+    "Id": "R1_FOCUS_EURBTC_TO1000_BTC_BUY18_H72",
+    "EndingBalance": 1838731373.8353884,
+    "MaxEquityDDPct": 58.90845697509444,
+    "PF": 2.2022752933425127,
+    "Baskets": 1040,
+    "Orders": 212102,
+    "Status": "previous B1 native benchmark; robustness incomplete"
+  },
   "TargetReachedB1": false,
-  "ProductionChanges": false
+  "ProductionChanges": false,
+  "InterruptedNativeAttempts": [
+    {
+      "Profile": "V7_R1_BEST_DD",
+      "Attempt": "legacy direct",
+      "Exit": "SIGKILL -9",
+      "FinancialReplayCompleted": false,
+      "Cause": "not certified; concurrent memory pressure suspected",
+      "Retry": "included in gated priority queue"
+    },
+    {
+      "Profile": "priority_worker_0 startup",
+      "Attempt": "1.5GiB indexed heap limit",
+      "Exit": "Out of memory, -6",
+      "FinancialReplayCompleted": false
+    },
+    {
+      "Profile": "priority_worker_1 startup",
+      "Attempt": "1.5GiB indexed heap limit",
+      "Exit": "Out of memory, -6",
+      "FinancialReplayCompleted": false
+    },
+    {
+      "Profile": "priority_worker_0 startup",
+      "Attempt": "2GiB indexed heap limit",
+      "Exit": "Out of memory, -6",
+      "FinancialReplayCompleted": false
+    }
+  ]
 }

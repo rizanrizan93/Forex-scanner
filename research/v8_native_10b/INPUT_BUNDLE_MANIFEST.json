@@ -1,0 +1,13 @@
+{
+  "filename": "RIZAN_V8_NATIVE_INPUTS_RUNTIME_20261124.zip",
+  "bytes": 204318372,
+  "sha256": "382c8ee10b31ad7e7835993a5c67c5d0ee48fdb0dc87170f9d157287e6690477",
+  "ContainsPrivatePriceCSVs": true,
+  "PublishToGitHub": false,
+  "Runtime": "Linux-x64 .NET8.0.21, no SDK",
+  "DatasetHashes": {
+    "xau_2012_2026.csv": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+    "eur_2012_2026.csv": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+    "BTCUSD_M1.csv": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51"
+  }
+}

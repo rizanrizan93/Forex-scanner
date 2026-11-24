@@ -1,0 +1,21 @@
+{
+  "Engines": {
+    "build": {
+      "FinancialEngineDLL": "/workspace/scratch/fb2f958312ec/build_engine/NovemberReplay.dll",
+      "FinancialEngineSHA256": "30e50338cb624a823a1fc35b37648d3b9a73f700e9fbd63288770ad021e3dd63",
+      "GatewaySHA256": "e4a65d1a1745d5b0990270ab5235c77cbfe3448fab08f652c81a41e0e8c7c1c8",
+      "FinancialBytesUnchanged": true
+    },
+    "build_diagnostics": {
+      "FinancialEngineDLL": "/workspace/scratch/fb2f958312ec/build_diagnostics_engine/NovemberReplay.dll",
+      "FinancialEngineSHA256": "7bf764cf7cf7d77174be338fdd1758ecf30e5d2b4172eec98662449bae532f3d",
+      "GatewaySHA256": "e4a65d1a1745d5b0990270ab5235c77cbfe3448fab08f652c81a41e0e8c7c1c8",
+      "FinancialBytesUnchanged": true
+    }
+  },
+  "MaximumGatewayNativeProcesses": 2,
+  "InputLoading": "serialized until compression features prepared",
+  "MinimumAvailableRAMBeforeLoadBytes": 4294967296,
+  "ManagedHeapLimitPerNativeChildBytes": 3221225472,
+  "FinancialModelChanges": false
+}

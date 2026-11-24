@@ -1,11 +1,64 @@
 # RIZAN V8 — actual native replay evidence
-As of 2026-11-24T21:13:08.477134+07:00. Research in progress; target USD10 billion remains unchanged.
+As of 2026-11-24T21:41:11.457184+07:00. Research in progress; target USD10 billion remains unchanged.
 
-Completed full continuous native replays: 1. Unique B1 challengers: 0. New module screens: 0. New annual-reset simulations: 0.
+Completed full continuous native replays: 4. Unique B1 challengers: 1. New module screens: 0. New annual-reset simulations: 0.
 
 | Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
 | V7_CONTROL | 100 | 1,662,133,293.08 | 56.672093% | 2.1768 | 1047 | 187560 | CONTROL |
+| V7_LOCK | 100 | 1,662,089,374.91 | 56.694507% | 2.1780 | 1047 | 187323 | REJECT: no balance improvement |
+
+Highest completed B1 ending balance: USD1,662,089,374.91, floating DD 56.694507%.
+Change against same-path/same-cost baseline: -0.002642%.
+Target reached in B1: False. Four-scenario validation is separate and is not inferred from B1.
+
+Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating DD58.908457%. It is not counted as a newly completed V8 replay. The prior highest balance USD1,867,121,354.86 failed DD60.386930%.
+
+| Candidate | Closed DD | Minimum equity USD | Max margin | Max open risk | Worst losing basket streak |
+|---|---:|---:|---:|---:|---:|
+| V7_CONTROL | 52.772301% | 98.88 | 54.073858% | 27.209882% | 8 |
+| V7_LOCK | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
+
+| Candidate | XAU net PnL USD | EUR net PnL USD | BTC net PnL USD |
+|---|---:|---:|---:|
+| V7_CONTROL | 1,615,224,606.39 | 12,454,083.19 | 34,454,503.51 |
+| V7_LOCK | 1,615,297,128.70 | 12,419,750.51 | 34,372,395.70 |
+
+Contributions describe the executed shared wallet, not additive standalone alpha.
+
+| Candidate | Peak equity USD | Max-DD recovery days | Longest underwater days | Max simultaneous positions | Minimum margin level |
+|---|---:|---:|---:|---:|---:|
+| V7_CONTROL | 1,753,097,706.16 | 199.029398 | 265.113194 | 1832 | 184.932247% |
+| V7_LOCK | 1,753,053,787.99 | 199.029398 | 265.113194 | 1832 | 184.915699% |
+
+Milestones require both balance and floating equity to reach the level. Times below are WIB.
+
+| Candidate | Milestone USD | First reached WIB | Floating DD before milestone |
+|---|---:|---|---:|
+| V7_CONTROL | 125 | 2019-01-03T11:30:00+07:00 | 8.233115% |
+| V7_CONTROL | 250 | 2019-02-28T18:15:00+07:00 | 23.011901% |
+| V7_CONTROL | 500 | 2019-03-07T22:30:00+07:00 | 23.011901% |
+| V7_CONTROL | 1,000 | 2019-04-02T12:19:25+07:00 | 23.546730% |
+| V7_CONTROL | 10,000 | 2020-03-16T17:06:30+07:00 | 53.221381% |
+| V7_CONTROL | 100,000 | 2021-01-09T02:59:00+07:00 | 56.188806% |
+| V7_CONTROL | 1,000,000 | 2022-07-13T02:59:00+07:00 | 56.188806% |
+| V7_CONTROL | 10,000,000 | 2023-12-11T22:28:13+07:00 | 56.672093% |
+| V7_CONTROL | 100,000,000 | 2024-11-26T02:59:00+07:00 | 56.672093% |
+| V7_CONTROL | 1,000,000,000 | 2026-03-27T02:59:00+07:00 | 56.672093% |
+| V7_LOCK | 125 | 2019-01-03T11:30:00+07:00 | 8.233115% |
+| V7_LOCK | 250 | 2019-02-28T18:15:00+07:00 | 23.011901% |
+| V7_LOCK | 500 | 2019-03-07T22:30:00+07:00 | 23.011901% |
+| V7_LOCK | 1,000 | 2019-04-02T12:19:25+07:00 | 23.011901% |
+| V7_LOCK | 10,000 | 2020-03-16T17:06:30+07:00 | 51.904297% |
+| V7_LOCK | 100,000 | 2021-01-09T02:59:00+07:00 | 56.122440% |
+| V7_LOCK | 1,000,000 | 2022-07-19T02:00:00+07:00 | 56.122440% |
+| V7_LOCK | 10,000,000 | 2023-12-11T22:28:13+07:00 | 56.694507% |
+| V7_LOCK | 100,000,000 | 2024-11-26T02:59:00+07:00 | 56.694507% |
+| V7_LOCK | 1,000,000,000 | 2026-03-27T02:59:00+07:00 | 56.694507% |
+
+P0 actual comparison: USD-43,918.17 /-0.002642% against control; all1047 core entry keys retained, 618 common baskets have changed integer units and 736 changed PnL. Native-minus-fixed-ledger reference: USD-429,041,580.18. The cash gate rejects this upgrade. No V5 estimate is promoted as native.
+
+Interrupted startup attempts: 4; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway now preserves the exact parity-verified DLL bytes, serializes input loading and limits gated native children to2 with3GiB heaps and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.
 
 Baseline parity, exact dataset hashes and original commit verification are retained. Receipts include full order/basket ledgers, equity curve and accounting. Total contributions include the original USD100; additional deposits are zero. Each accepted receipt has no open positions, BTC fault/pending state, quarantines or accounting errors. Cash residual tolerance is USD0.05.
 

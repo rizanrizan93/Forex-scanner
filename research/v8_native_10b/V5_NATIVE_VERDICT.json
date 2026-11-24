@@ -1,0 +1,30 @@
+{
+  "Id": "V8_P0_V5_NATIVE_VERDICT_20261124",
+  "Status": "REJECTED_AS_BALANCE_UPGRADE",
+  "NativeReplayed": true,
+  "FourScenarioRobustnessComplete": false,
+  "ProductionApproved": false,
+  "LockedParameters": {
+    "EarlyRiskMask": 2,
+    "EarlyRiskLook": 8,
+    "EarlyRiskThreshold": 0.6,
+    "EarlyRiskFactor": 0.25,
+    "EarlyRiskLimit": 1500
+  },
+  "EndingBalanceUSD": 1662089374.9145918,
+  "MaxFloatingDDPct": 56.6945066586242,
+  "BaselineBalanceUSD": 1662133293.0811067,
+  "ChangeUSD": -43918.166514873505,
+  "ChangePct": -0.0026422770482814606,
+  "RejectedReason": "Ending balance below exact same-path/same-cost baseline; floating DD is also slightly higher. Fixed-ledger reference USD2.091B not reproduced.",
+  "SourceCommit": "26bf8396b6e703d650e703fca48d556252782f03",
+  "BuildManifest": "BUILD_AND_INPUT_MANIFEST.json",
+  "DatasetHashes": {
+    "xau_2012_2026.csv": "defcbd64ab625156f7594f8a357591bc3d2fea2a0e8deb4c9144ae88e4e8fea7",
+    "eur_2012_2026.csv": "710f10ed97e709f48e284e79511981e4e85638deca6958a668908d6f418285c5",
+    "BTCUSD_M1.csv": "9257332636450a0c93d20c45757016ae359feb208d7b91ac82fac173a64f8c51"
+  },
+  "ReceiptSHA256": "ce7218aad8b2152dd21ae62e80fe4659cee781bedc911b5c072138acad68d4b4",
+  "PreviousNativeB1BestBelow60RetainedUSD": 1838731373.8353884,
+  "PreviousNativeB1BestFloatingDDPct": 58.90845697509444
+}

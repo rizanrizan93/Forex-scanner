@@ -1,0 +1,15 @@
+{
+  "AppliesTo": "subsequent legacy and indexed worker starts",
+  "ManagedHeapHardLimitBytes": 3221225472,
+  "Reason": "bound memory when legacy and batch workers overlap on the research host",
+  "EconomicModelChange": false,
+  "NoNewInfrastructure": true,
+  "InterruptedAttempt": "V7_R1_BEST_DD: process SIGKILL -9 during concurrent input initialization; financial replay incomplete",
+  "Mitigation": "resource-only .NET gateway launches the exact parity-verified financial DLL; original financial bytes unchanged",
+  "MemoryCause": "suspected concurrent allocation pressure; OS OOM log not yet available",
+  "IndexedBatchWorkers": 1,
+  "FailedMitigation": "1.5GiB managed cap was too small for native input initialization; both initial indexed batch starts aborted before replay",
+  "MaximumGatedNativeChildren": 2,
+  "InputLoading": "serialized globally with 4GiB pre-load RAM reserve",
+  "FinancialModelChange": false
+}

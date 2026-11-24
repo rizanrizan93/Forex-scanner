@@ -1,0 +1,486 @@
+{
+  "Policy": {
+    "EarlyRiskMask": 2,
+    "EarlyRiskLook": 8,
+    "EarlyRiskThreshold": 0.6,
+    "EarlyRiskFactor": 0.25,
+    "EarlyRiskLimit": 1500
+  },
+  "ControlEndingUSD": 1662133293.0811067,
+  "NativeEndingUSD": 1662089374.9145918,
+  "NativeFloatingDDPct": 56.6945066586242,
+  "NativeClosedDDPct": 52.78449470394294,
+  "ChangeUSD": -43918.166514873505,
+  "ChangePct": -0.0026422770482814606,
+  "FixedLedgerReferenceUSD": 2091130955.0952506,
+  "NativeMinusFixedLedgerUSD": -429041580.1806588,
+  "CoreEntryKeysRetained": 1047,
+  "MissingControlKeys": [],
+  "ExtraKeys": [],
+  "CommonKeysWithChangedChildren": 618,
+  "CommonKeysWithChangedPnl": 736,
+  "BySymbol": {
+    "EURUSD": {
+      "BasketCount": 266,
+      "Wins": 143,
+      "NetPnlUSD": 12419750.514383245
+    },
+    "XAUUSD": {
+      "BasketCount": 626,
+      "Wins": 303,
+      "NetPnlUSD": 1615297128.700153
+    },
+    "BTCUSD": {
+      "BasketCount": 155,
+      "Wins": 81,
+      "NetPnlUSD": 34372395.69984384
+    }
+  },
+  "EarlyXauNativeAudit": [
+    {
+      "Entry": "2019-01-03T13:25:00Z",
+      "NativeEntryBalance": 127.83599999999929,
+      "ClosedXauBasketsBeforeNominalSignal": 0,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": 5.2990000000001505,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-01-07T14:25:00Z",
+      "NativeEntryBalance": 133.13499999999945,
+      "ClosedXauBasketsBeforeNominalSignal": 1,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": -2.449099999999871,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-01-18T12:40:00Z",
+      "NativeEntryBalance": 118.44281177089006,
+      "ClosedXauBasketsBeforeNominalSignal": 2,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": 3.278400000000093,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-01-21T14:20:00Z",
+      "NativeEntryBalance": 121.72121177089015,
+      "ClosedXauBasketsBeforeNominalSignal": 3,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": -1.2089999999998873,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-01-28T15:00:00Z",
+      "NativeEntryBalance": 131.432211770888,
+      "ClosedXauBasketsBeforeNominalSignal": 4,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": -0.041999999999970894,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-01-31T14:55:00Z",
+      "NativeEntryBalance": 131.39021177088802,
+      "ClosedXauBasketsBeforeNominalSignal": 5,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": -2.3175499999995823,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-02-08T14:50:00Z",
+      "NativeEntryBalance": 129.07266177088843,
+      "ClosedXauBasketsBeforeNominalSignal": 6,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": 0.5220000000003346,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-02-15T13:45:00Z",
+      "NativeEntryBalance": 129.59466177088876,
+      "ClosedXauBasketsBeforeNominalSignal": 7,
+      "Prior8WinRate": null,
+      "NativeChildren": 1,
+      "NativePnl": -2.224599999999609,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-01T13:00:00Z",
+      "NativeEntryBalance": 311.74691898078777,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 3,
+      "NativePnl": -10.183500000000258,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-01T16:50:00Z",
+      "NativeEntryBalance": 301.56341898078756,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 4,
+      "NativePnl": 35.760000000000005,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-04T12:35:00Z",
+      "NativeEntryBalance": 337.32341898078766,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 5,
+      "NativePnl": -10.795500000000445,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-15T16:15:00Z",
+      "NativeEntryBalance": 523.1239189807787,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 9,
+      "NativePnl": -5.9129999999977745,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-19T14:30:00Z",
+      "NativeEntryBalance": 518.8929189807805,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 9,
+      "NativePnl": -17.20349999999784,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-22T15:15:00Z",
+      "NativeEntryBalance": 541.0564189807733,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 8,
+      "NativePnl": 5.9430000000006835,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-03-26T13:00:00Z",
+      "NativeEntryBalance": 546.999418980774,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 1,
+      "NativePnl": -2.8109999999997486,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-04-01T12:00:00Z",
+      "NativeEntryBalance": 520.8274445404546,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 10,
+      "NativePnl": -16.211999999999627,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-04-09T16:00:00Z",
+      "NativeEntryBalance": 1414.4558550875113,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 5,
+      "NativePnl": -13.23799999999919,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-04-16T13:00:00Z",
+      "NativeEntryBalance": 1401.2178550875124,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.125,
+      "NativeChildren": 18,
+      "NativePnl": 42.15600000000215,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-04-25T14:00:00Z",
+      "NativeEntryBalance": 1443.3738550875146,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 5,
+      "NativePnl": -13.89139999999911,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-04-26T13:30:00Z",
+      "NativeEntryBalance": 1429.4824550875157,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 14,
+      "NativePnl": 8.082000000003207,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-05-07T15:00:00Z",
+      "NativeEntryBalance": 1465.10696945393,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 19,
+      "NativePnl": -5.851999999997943,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-05-13T14:00:00Z",
+      "NativeEntryBalance": 1480.6371433224135,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 4,
+      "NativePnl": 6.78730000000065,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-05-14T16:30:00Z",
+      "NativeEntryBalance": 1471.4329433224111,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 25,
+      "NativePnl": 25.93000000000393,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-05-15T13:10:00Z",
+      "NativeEntryBalance": 1497.362943322415,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 18,
+      "NativePnl": -59.6609999999974,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-05-24T16:40:00Z",
+      "NativeEntryBalance": 1417.7919433224165,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 32,
+      "NativePnl": -16.870699999998962,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-05-29T13:05:00Z",
+      "NativeEntryBalance": 1400.921243322418,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 24,
+      "NativePnl": -58.315199999997,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-06-03T13:20:00Z",
+      "NativeEntryBalance": 1342.6060433224209,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 21,
+      "NativePnl": -52.5581999999979,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-06-07T15:00:00Z",
+      "NativeEntryBalance": 1348.760843322421,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 2,
+      "NativePnl": -8.35209999999972,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-06-07T16:10:00Z",
+      "NativeEntryBalance": 1340.4087433224213,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 12,
+      "NativePnl": -23.77799999999999,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-06-17T13:00:00Z",
+      "NativeEntryBalance": 1316.6307433224215,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 3,
+      "NativePnl": -0.2282999999999265,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-06-20T12:45:00Z",
+      "NativeEntryBalance": 1316.4024433224217,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.125,
+      "NativeChildren": 13,
+      "NativePnl": 108.66550000000322,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-06-24T12:55:00Z",
+      "NativeEntryBalance": 1438.0739972227084,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.125,
+      "NativeChildren": 20,
+      "NativePnl": 259.16500000000207,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-07-03T12:00:00Z",
+      "NativeEntryBalance": 1382.0404007639972,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.25,
+      "NativeChildren": 7,
+      "NativePnl": 7.778000000000775,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-07-19T14:00:00Z",
+      "NativeEntryBalance": 1356.0290887090473,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 1,
+      "NativePnl": -5.5195999999996825,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-07-24T15:00:00Z",
+      "NativeEntryBalance": 1268.4602156405094,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 10,
+      "NativePnl": -8.49099999999894,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-07-25T16:10:00Z",
+      "NativeEntryBalance": 1259.9692156405106,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 13,
+      "NativePnl": 25.253600000002027,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-07-26T14:25:00Z",
+      "NativeEntryBalance": 1325.1076117844214,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 12,
+      "NativePnl": -31.52999999999699,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-08-01T13:05:00Z",
+      "NativeEntryBalance": 1293.5776117844246,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 11,
+      "NativePnl": -51.43599999999735,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-08-12T13:10:00Z",
+      "NativeEntryBalance": 1263.661644670477,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 8,
+      "NativePnl": 69.79300000000059,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-08-13T14:00:00Z",
+      "NativeEntryBalance": 1262.1486446704703,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 4,
+      "NativePnl": -43.56039999999916,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-08-14T11:00:00Z",
+      "NativeEntryBalance": 1218.5882446704713,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 1,
+      "NativePnl": 1.3720000000002437,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-08-14T14:30:00Z",
+      "NativeEntryBalance": 1219.9602446704716,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.375,
+      "NativeChildren": 4,
+      "NativePnl": 8.363000000000522,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-08-27T15:00:00Z",
+      "NativeEntryBalance": 1220.4932446704713,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.5,
+      "NativeChildren": 2,
+      "NativePnl": 7.561100000000243,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-09-03T14:00:00Z",
+      "NativeEntryBalance": 1218.5533446704692,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.625,
+      "NativeChildren": 6,
+      "NativePnl": 42.47040000000028,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-09-06T14:55:00Z",
+      "NativeEntryBalance": 1261.0237446704693,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.625,
+      "NativeChildren": 9,
+      "NativePnl": -49.40999999999899,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-09-09T16:45:00Z",
+      "NativeEntryBalance": 1202.5532446704674,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.625,
+      "NativeChildren": 10,
+      "NativePnl": 30.973700000001287,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-09-12T15:00:00Z",
+      "NativeEntryBalance": 1218.469418354676,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.75,
+      "NativeChildren": 4,
+      "NativePnl": 45.8810000000001,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-09-23T12:20:00Z",
+      "NativeEntryBalance": 1291.7940286755727,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.75,
+      "NativeChildren": 2,
+      "NativePnl": 12.035000000000199,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    },
+    {
+      "Entry": "2019-09-24T15:15:00Z",
+      "NativeEntryBalance": 1400.8238241350728,
+      "ClosedXauBasketsBeforeNominalSignal": 8,
+      "Prior8WinRate": 0.875,
+      "NativeChildren": 24,
+      "NativePnl": 178.96200000000414,
+      "Note": "descriptive audit at nominal signal timestamp; actual policy uses native PrepareBasket time"
+    }
+  ],
+  "MeetsB1ImprovementGate": false,
+  "ReceiptSHA256": "ce7218aad8b2152dd21ae62e80fe4659cee781bedc911b5c072138acad68d4b4",
+  "AccountingResidualUSD": -0.00021147727966308594,
+  "Explanation": "Native sizing uses current balance/equity, integer units, balance-step sizing, staged allocation, margin, broker min/max volume and order-capacity constraints. A proportional fixed-ledger multiplier cannot preserve these nonlinear decisions. All downstream fills and settlements were replayed."
+}
