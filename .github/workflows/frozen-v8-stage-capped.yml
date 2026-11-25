@@ -1,0 +1,80 @@
+name: Frozen V8 capped memory VPS bridge stage
+on:
+  push:
+    branches: ['release/frozen-v8-ctrader-20261125']
+    paths: ['.github/workflows/frozen-v8-stage-capped.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: frozen-v8-stage
+  cancel-in-progress: false
+jobs:
+  vps-stage:
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: d8b9fecfee74fb614ce027b7865effd6eab6aa23
+          path: frozen-reference
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/download-artifact@v4
+        with:
+          name: RizanFrozenV8-cTrader-validated-build
+          run-id: 45529381245
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: verified
+      - name: Regenerate protocol fixture from pinned exact source
+        run: |
+          python repairs/frozen_v8_20261125/build_frozen_v8.py frozen-reference/research/v8_native_10b/FROZEN_V8_1914512336_PROFILE.json
+          dotnet run --project dist/RizanFrozenV8/tests/BootstrapTests.csproj -c Release
+          mkdir stage
+          cp -r dist/RizanFrozenV8/bridge stage/
+          cp dist/RizanFrozenV8/tests/bin/Release/net8.0/native_startup_wires.json stage/
+          cp repairs/bootstrap125_v1_20261114/bridge/deploy/provision.py stage/v1_provision.py
+          cp operations/frozen_v8_stage/*.py stage/
+          cp verified/RizanFrozenV8.algo stage/
+      - name: Offline native metadata and isolated staging WSS
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
+          d=$(mktemp -d); remote=''
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=15)
+          host='Rizanrizan@202.74.74.172'
+          cleanup() {
+            if [[ -n "$remote" ]]; then ssh "${opts[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          remote=$(ssh "${opts[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-v8-stage.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-v8-stage\.[a-zA-Z0-9]+$ ]]
+          scp -qr "${opts[@]}" stage/. "$host:$remote/"
+          ssh "${opts[@]}" "$host" "sudo -n python3 '$remote/probe_metadata.py' '$remote'" | tee metadata-result.json
+          ssh "${opts[@]}" "$host" "sudo -n python3 '$remote/install_v8_staging.py' '$remote'" | tee staging-result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: V8-native-metadata-and-staging-receipt
+          path: |
+            metadata-result.json
+            staging-result.json
+          if-no-files-found: warn
