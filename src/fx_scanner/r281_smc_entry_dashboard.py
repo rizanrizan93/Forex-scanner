@@ -12,6 +12,7 @@ from .rbest_side_feed import fetch as fetch_rbest
 from .r294_frozen_h4_buy_feed import fetch as fetch_r294
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market
+from .manual_precision_shadow import render_precision
 from .best_candidate_direction import select as select_best_candidate_direction
 from .independent_timeframe_zones import independent_zones, fresh_m1_fallback_packet, TFS
 
@@ -82,14 +83,25 @@ def render_r281_smc_entry():
                 snapshot=None
         return best,h4buy,r281,snapshot
 
+    @st.cache_data(ttl=10, show_spinner=False)
+    def load_precision_market(slot):
+        try:
+            return fetch_market()
+        except (OSError,ValueError,TypeError,KeyError,TimeoutError,OverflowError):
+            return None
+
     @st.fragment(run_every="30s")
     def panel():
         now=datetime.now(UTC)
         if st.button("Perbarui semua zona timeframe",key="independent_tf_zones_refresh"):
             load.clear()
+            load_precision_market.clear()
         best,h4buy,r281,snapshot=load(int(now.timestamp()//20))
         primary=select_best_candidate_direction(best,h4buy,r281,now=now)
         zones=independent_zones(primary,snapshot,now=now)
+        precision_market = (load_precision_market(int(now.timestamp()//10))
+                            if any(zones[tf].get('zones') for tf in ('H1','H4')) else None)
+        precision_now = datetime.now(UTC)
         if isinstance(snapshot,dict) and snapshot.get("source_detail")=="VALIDATED_FRESH_M1_REAGGREGATED_H1_H4_ONLY":
             st.info(
                 "Sumber zona: cTrader M1 segar, diagregasi menjadi H1/H4 tertutup "
@@ -149,6 +161,8 @@ def render_r281_smc_entry():
                 else:
                     st.info("Belum ada area harga yang lolos untuk timeframe ini. "
                             "Zona dari timeframe lain tidak menggantikannya.")
+                if tf in ('H1','H4'):
+                    render_precision(st,row,model,precision_market,now=precision_now)
 
         st.caption(
             "Evaluasi "+_wib(now)+" · zona tidak mengubah Frozen V1/cBot LIVE. "
