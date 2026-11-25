@@ -45,7 +45,7 @@ def install():
  if not active(V1UNIT):raise RuntimeError("V1_BRIDGE_NOT_ACTIVE")
  before=services()
  avail=int(re.search(r"MemAvailable:\s+(\d+)",Path("/proc/meminfo").read_text()).group(1))
- if avail<900*1024:raise RuntimeError("INSUFFICIENT_RAM_FOR_ISOLATED_STAGE")
+ if avail<400*1024:raise RuntimeError("INSUFFICIENT_RAM_FOR_CAPPED_STAGE")
  if shutil.disk_usage("/var/lib").free<1024**3:raise RuntimeError("INSUFFICIENT_FREE_DISK")
  if any(p.exists() for p in (APP,STATE,ENV,UNITPATH,SNIPPET)):raise RuntimeError("V8_STAGE_EXISTS_REVIEW_REQUIRED")
  portfree()
@@ -74,7 +74,7 @@ def install():
   (STATE/"btc-m1.sqlite").chmod(0o600)
   with ENV.open("x") as f:f.write("BOOT125_HOST=127.0.0.1\nBOOT125_PORT="+str(PORT)+"\nBOOT125_STATE_DIR="+str(STATE)+"\nBOOT125_BTC_SEED="+str(APP/"BTC_SEED_PACKET.json")+"\nBOOT125_ALLOWED_ACCOUNTS="+ACCOUNT+"\nBOOT125_BRIDGE_TOKEN="+token+"\n")
   ENV.chmod(0o600)
-  UNITPATH.write_text("[Unit]\nDescription=RIZAN Frozen V8 staging bridge (synthetic account only)\nAfter=network-online.target\n[Service]\nType=simple\nUser="+USER+"\nGroup="+USER+"\nWorkingDirectory="+str(APP)+"\nEnvironmentFile="+str(ENV)+"\nExecStart="+str(py)+" "+str(APP/"server.py")+"\nRestart=on-failure\nRestartSec=5\nUMask=0077\nNoNewPrivileges=true\nPrivateTmp=true\nProtectSystem=strict\nProtectHome=true\nReadWritePaths="+str(STATE)+"\nMemoryMax=450M\nNice=10\n[Install]\nWantedBy=multi-user.target\n")
+  UNITPATH.write_text("[Unit]\nDescription=RIZAN Frozen V8 staging bridge (synthetic account only)\nAfter=network-online.target\n[Service]\nType=simple\nUser="+USER+"\nGroup="+USER+"\nWorkingDirectory="+str(APP)+"\nEnvironmentFile="+str(ENV)+"\nExecStart="+str(py)+" "+str(APP/"server.py")+"\nRestart=no\nUMask=0077\nNoNewPrivileges=true\nPrivateTmp=true\nProtectSystem=strict\nProtectHome=true\nReadWritePaths="+str(STATE)+"\nMemoryHigh=192M\nMemoryMax=256M\nMemorySwapMax=128M\nCPUQuota=40%\nOOMScoreAdjust=500\nNice=10\n[Install]\nWantedBy=multi-user.target\n")
   run(["systemctl","daemon-reload"]);run(["systemctl","start",UNIT]);started=True
   for _ in range(30):
    try:
@@ -94,7 +94,18 @@ def install():
   if not report["all_four_roles"] or not report["durable_reconnect"] or not report["btc_feed_fresh"]:raise RuntimeError("V8_PUBLIC_PROBE_INCOMPLETE")
   after=services()
   if any(after.get(k)!=v for k,v in before.items()):raise RuntimeError("LEGACY_SERVICE_RESTART_DETECTED")
-  run(["systemctl","enable",UNIT])
+  if not active(V1UNIT):raise RuntimeError("V1_NOT_ACTIVE_AFTER_STAGE")
+  health=json.loads((Path(old["BOOT125_STATE_DIR"])/"health.json").read_text())
+  age=time.time()-datetime.fromisoformat(health["observed_utc"].replace("Z","+00:00")).timestamp()
+  if not 0<=age<60 or health["btc"]!="ready":raise RuntimeError("V1_HEALTH_AFTER_STAGE_FAILED")
+  with sqlite3.connect((Path(old["BOOT125_STATE_DIR"])/"checkpoints.sqlite").resolve().as_uri()+"?mode=ro",uri=True,timeout=4) as db:
+   roles={k.split(":")[-1] for k,e,t in db.execute("SELECT key,expires_at,touched_at FROM bridge_leases") if e>time.time() and time.time()-t<30}
+  if not {"BOOTSTRAP","XAUUSD","EURUSD","BTCUSD"}<=roles:raise RuntimeError("V1_LEASES_AFTER_STAGE_FAILED")
+  remaining=int(re.search(r"MemAvailable:\s+(\d+)",Path("/proc/meminfo").read_text()).group(1))
+  if remaining<128*1024:raise RuntimeError("POST_STAGE_RAM_RESERVE_INSUFFICIENT")
+  stage_mem=run(["systemctl","show",UNIT,"--value","-p","MemoryCurrent"])
+  report.update(memory_before_MiB=round(avail/1024,1),memory_after_MiB=round(remaining/1024,1),stage_memory_MiB=round(int(stage_mem)/1048576,1) if stage_mem.isdigit() else None,memory_high_MiB=192,memory_max_MiB=256,v1_fresh_leases=True)
+  pass # temporary synthetic staging only, no autostart
   report.update(service=UNIT,stage_active=True,old_services_unchanged=True,production_account_allowed=False,execution_authority="NONE",observed_utc=datetime.now(timezone.utc).isoformat())
   print(json.dumps(report))
  except BaseException:
