@@ -1,0 +1,87 @@
+{
+  "status": "RESEARCH_ONLY_NO_PROMOTION",
+  "date": "2026-11-26",
+  "asset": "XAUUSD",
+  "archive": "RIZAN_R15_Manual_Research_20261126.zip",
+  "archiveSha256": "19a216861750869f5debc94a283c0203e182aab164248d68d369a4a1f0b45d4f",
+  "input": "RIZAN_FROZEN_TICK_AUDIT.zip",
+  "bars": {
+    "XAUUSD": 2557244,
+    "EURUSD": 2696972
+  },
+  "period": "2019-01 to 2026-03-31",
+  "split": [
+    "2019–2022",
+    "2023–2024",
+    "2025–March 2026"
+  ],
+  "counts": {
+    "technical": 13446,
+    "ml": 1620,
+    "crossAsset": 7335,
+    "passiveLimit": 5184,
+    "total": 27585,
+    "passedTrainValidation": 36,
+    "passedAll": 0,
+    "positiveFixedOzPnLAllSplitsMin50Each": 3
+  },
+  "gate": "minimum 100 train, 50 validation, PF>=1.1 and mean R positive in both, then eval net and mean R positive",
+  "exploratoryCost2EvalLeadersMin100Trades": [
+    {
+      "tf": "H1",
+      "side": "BUY",
+      "netPerOz": 118.74186727618114,
+      "win": 0.4166666666666667,
+      "pf": 1.3197610268986961,
+      "n": 120
+    },
+    {
+      "tf": "H1",
+      "side": "SELL",
+      "netPerOz": 857.1562611604039,
+      "win": 0.6074074074074074,
+      "pf": 1.9914737466734267,
+      "n": 135
+    },
+    {
+      "tf": "H4",
+      "side": "BUY",
+      "netPerOz": 542.862661281874,
+      "win": 0.5462555066079295,
+      "pf": 1.4230844530340065,
+      "n": 227
+    },
+    {
+      "tf": "H4",
+      "side": "SELL",
+      "netPerOz": 535.2196397215977,
+      "win": 0.5280898876404494,
+      "pf": 1.4225007615471246,
+      "n": 178
+    }
+  ],
+  "passiveLimitBest": {
+    "tf": "H4",
+    "side": "BUY",
+    "model": "M5 breakout retest",
+    "lookback": 48,
+    "session": "NY fixed UTC 13–21",
+    "alignedEMA40": true,
+    "depthATR": 0,
+    "slATR": 1,
+    "tpUSD": 30,
+    "waitMinutes": 30,
+    "holdMinutes": 240,
+    "evalCost2": {
+      "net": 278.84776182757116,
+      "pf": 1.2216766349555617,
+      "win": 0.5025125628140703,
+      "n": 199,
+      "orders": 263
+    },
+    "trainNet": -540.7139897857464,
+    "validationNet": -69.5693333543072
+  },
+  "limitations": "OHLC M1 proxy, fixed 1 oz, 2x modeled fee and funding not real bid/ask, no macro beyond EUR proxy, reused evaluation not pristine OOS, no exact R28 or R13 replay, no independently measured directional accuracy or early warning. High-frequency signals not robust. No production changes.",
+  "decision": "Keep R13 shadow. Do not promote R15. Next research: cost-aware volatility-normalized filters and independently verified timestamped macro data, exact specialist direction replay, forward holdout."
+}
