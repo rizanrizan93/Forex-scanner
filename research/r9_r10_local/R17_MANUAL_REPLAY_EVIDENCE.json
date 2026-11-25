@@ -1,0 +1,169 @@
+{
+  "status": "RESEARCH_ONLY_NO_PROMOTION",
+  "asset": "XAUUSD",
+  "version": "R17",
+  "date": "2026-11-26",
+  "archive": "RIZAN_R17_Manual_Research_20261126.zip",
+  "sha256": "49b72b3dceeac1d4e4e188997c76f23422c59d96db4e3bf30bdb28871a566b60",
+  "data": {
+    "source": "RIZAN_FROZEN_TICK_AUDIT.zip",
+    "xauM1": 2557244,
+    "eurM1": 2696972,
+    "period": "2019 to 2026-03-31"
+  },
+  "counts": {
+    "H1": 663552,
+    "H4": 663552,
+    "total": 1327104,
+    "nonempty": 1163484,
+    "trainValidationEligible": 104,
+    "evaluationPassed": 11,
+    "strict80PF15": 0,
+    "ensemble": 60,
+    "ensemblePassedBasicGate": 60
+  },
+  "models": {
+    "signalFamilies": 8,
+    "windows": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "eurLagM15": [
+      1,
+      4
+    ],
+    "sideSpecific": true,
+    "contextTF": [
+      "H1",
+      "H4"
+    ],
+    "exitModes": [
+      "fixed",
+      "breakeven at 0.6R closed progress",
+      "trailing by 0.8R after 0.8R closed progress"
+    ]
+  },
+  "method": "M15 closed signal with completed H1/H4 ATR and EMA40, synchronous EUR close returns normalized by prior rolling stdev, enter next contiguous M1 open, M1 stop-first, dynamic stops effective next minute, modeled 2x fee/funding, fixed ounce, nonoverlapping positions. All candidate data through March 2026. Gates: train 2019–22 >=100 trades and validation 2023–24 >=50, PF>=1.1 and mean R>0 each; eval 2025–March2026 >=50 trades same gate.",
+  "profiles": {
+    "buy": {
+      "tf": "H4",
+      "side": "BUY",
+      "m15EMA": 4,
+      "eurLagM15": 4,
+      "eurReturnZ": "<=-0.5",
+      "sessionUTC": "13–21",
+      "trend": "EMA40 H4 aligned",
+      "atrRegime": "ATR14 / prior rolling median60 >=1.15",
+      "slATR": 1,
+      "tpUSD": 10,
+      "maxHold": 120,
+      "exitMode": 2,
+      "netAll": 287.48726654052734,
+      "trades": 332,
+      "eval": {
+        "n": 91,
+        "net": 195.6875762939453,
+        "pf": 1.494952917098999,
+        "win": 0.6153846383094788
+      }
+    },
+    "sell": {
+      "tf": "H4",
+      "side": "SELL",
+      "m15EMA": 8,
+      "eurLagM15": 4,
+      "eurReturnZ": "<=-0.5",
+      "sessionUTC": "all",
+      "trend": "EMA40 H4 aligned",
+      "atrRegime": "ATR14 / prior rolling median60 >=1.15",
+      "slATR": 1,
+      "tpUSD": 30,
+      "maxHold": 240,
+      "exitMode": 1,
+      "netAll": 414.3820114135742,
+      "trades": 321,
+      "eval": {
+        "n": 80,
+        "net": 266.2343444824219,
+        "pf": 1.3101247549057007,
+        "win": 0.574999988079071
+      }
+    }
+  },
+  "ensemble": {
+    "bestConditionalTrainValidation": {
+      "buyExit": [
+        1,
+        30,
+        240,
+        2
+      ],
+      "sellExit": [
+        1,
+        30,
+        240,
+        1
+      ],
+      "buyTiePriority": true,
+      "split": [
+        {
+          "n": 305,
+          "net": 169.02530603436753,
+          "pf": 1.223480615246625,
+          "win": 0.46557377049180326
+        },
+        {
+          "n": 133,
+          "net": 89.61084565334022,
+          "pf": 1.210154646432994,
+          "win": 0.5488721804511278
+        },
+        {
+          "n": 148,
+          "net": 407.2036373913288,
+          "pf": 1.2787574558919255,
+          "win": 0.5405405405405406
+        }
+      ]
+    },
+    "exploratoryProfitMax": {
+      "buyExit": [
+        1,
+        10,
+        120,
+        2
+      ],
+      "sellExit": [
+        1,
+        30,
+        240,
+        1
+      ],
+      "buyTiePriority": true,
+      "split": [
+        {
+          "n": 336,
+          "net": 164.24724637623876,
+          "pf": 1.2128235131737626,
+          "win": 0.47023809523809523
+        },
+        {
+          "n": 146,
+          "net": 75.70011740457267,
+          "pf": 1.1773558429895505,
+          "win": 0.5342465753424658
+        },
+        {
+          "n": 171,
+          "net": 461.92192293703556,
+          "pf": 1.3684055104987274,
+          "win": 0.5964912280701754,
+          "targetHit": 0.4502923976608187
+        }
+      ]
+    }
+  },
+  "limitations": "11 survivors from two distinct signal profiles, correlated exit variants. Ensemble from already inspected evaluation survivors, not independent holdout. No verified bid/ask, DXY/yields or macro, directional bias prediction/early warning test, or actual R28/R13 replay. No account profit or production promotion."
+}
