@@ -1,0 +1,36 @@
+name: Frozen V8 guarded VPS memory and retired instance cleanup
+on:
+  push:
+    branches: ['release/frozen-v8-ctrader-20261125']
+    paths: ['.github/workflows/frozen-v8-memory-cleanup.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory-and-retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventory and guarded retirement, no checkpoint deletion
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh -i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20 'Rizanrizan@202.74.74.172' 'sudo -n python3 -' < operations/frozen_v8_stage/retire_unused.py | tee memory-cleanup.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v8-vps-memory-cleanup
+          path: memory-cleanup.txt
