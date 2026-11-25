@@ -1,0 +1,276 @@
+{
+  "status": "RESEARCH_ONLY_NO_NATIVE_APPROVAL",
+  "r10FrozenLockCommit": "932f13f38033d4707eab8743006e5744e9e71883",
+  "R10ArchiveSHA256": "3ff65710cebc796d9dea4226a944055e6c0f8e8ff3df8e6b5bdfa633f06849fb",
+  "R11Archive": "RIZAN_R11_Bootstrap_Research_20261125.zip",
+  "R11ArchiveSHA256": "bfcd6c18e97aedf2a390f23dde889af1c9f313fd1bc16cddc6023cf6407d7d6a",
+  "counts": {
+    "moduleTests": {
+      "EUR": 3168,
+      "BTCInitial": 2376,
+      "BTCLowerRiskRetry": 2376,
+      "XAU": 3168
+    },
+    "continuousConfig": 20004,
+    "continuousCostRuns": 40008,
+    "startDateCostRuns": 320064,
+    "eligible100BClosedDD": 7458
+  },
+  "parameterOrder": [
+    "R10 first 15 parameters exactly as frozen",
+    "Phase100to125Factor",
+    "Phase125to250Factor",
+    "Phase250to500Factor",
+    "Phase500to1000Factor",
+    "EarlyXauFactor",
+    "EarlyEurFactor",
+    "EarlyBtcFactor"
+  ],
+  "metricOrder": [
+    "terminalUSD",
+    "closedDDPct",
+    "acceptedBaskets",
+    "entriesWhileCashBelow1000IncludingRevisits"
+  ],
+  "rows": [
+    {
+      "id": "R11_FAST_2019_REJECT_ROBUST",
+      "btcModule": "R10 H4 breakout V2",
+      "params": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.03,
+        0.05,
+        0.04,
+        250,
+        0.5,
+        1.2,
+        1.2,
+        1.5,
+        1,
+        0.65,
+        1.4,
+        1.1
+      ],
+      "normal": [
+        3247520767937.98,
+        55.6723,
+        2840,
+        41
+      ],
+      "stress": [
+        662700861954.57,
+        58.8997,
+        2730,
+        42
+      ],
+      "first1000UTC": [
+        "2019-02-28T11:15:00Z",
+        "2019-02-28T11:15:00Z"
+      ],
+      "max90DayClosedDD": [
+        73.54,
+        68.84
+      ],
+      "hitWithin90Days": [
+        3,
+        3
+      ],
+      "status": "REJECT as robust bootstrap"
+    },
+    {
+      "id": "R11_BTC_STRESS_REJECT_ROBUST",
+      "btcModule": [
+        "4h",
+        40,
+        150,
+        "displacement",
+        0,
+        1,
+        6,
+        36
+      ],
+      "params": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.05,
+        0.01,
+        0.05,
+        125,
+        1,
+        1.2,
+        1.35,
+        1.35,
+        1.5,
+        1,
+        1.25,
+        1.25
+      ],
+      "normal": [
+        24027414670416,
+        50.038,
+        2873,
+        45
+      ],
+      "stress": [
+        5576477206755.26,
+        58.9086,
+        2788,
+        43
+      ],
+      "btcAddonPnl": [
+        152014876.43950784,
+        108894697.78296733
+      ],
+      "first1000UTC": [
+        "2019-03-07T15:30:00Z",
+        "2019-03-07T15:30:00Z"
+      ],
+      "max90DayClosedDD": [
+        64.02,
+        68.37
+      ],
+      "hitWithin90Days": [
+        3,
+        3
+      ],
+      "status": "REJECT as robust bootstrap"
+    },
+    {
+      "id": "R11_FREQUENCY_RESEARCH",
+      "btcModule": [
+        "4h",
+        8,
+        50,
+        "displacement",
+        1,
+        1,
+        6,
+        12
+      ],
+      "params": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.04,
+        0.025,
+        0.02,
+        125,
+        0.5,
+        1.1,
+        0.65,
+        0.65,
+        1.5,
+        0.65,
+        0.8,
+        1.1
+      ],
+      "normal": [
+        1210567898749.04,
+        54.5058,
+        2900,
+        75
+      ],
+      "stress": [
+        104790140499.41,
+        58.9227,
+        2808,
+        74
+      ],
+      "first1000UTC": [
+        "2019-04-02T05:19:25Z",
+        "2019-04-02T05:19:25Z"
+      ],
+      "max90DayClosedDD": [
+        33.24,
+        34.9
+      ],
+      "hitWithin90Days": [
+        1,
+        1
+      ],
+      "status": "NOT faster; frequency diagnostic only"
+    },
+    {
+      "id": "R11_START_DIAGNOSTIC_4119",
+      "btcModule": "R10 H4 breakout V2",
+      "params": [
+        0.8688,
+        1.9035,
+        1.5,
+        1.2486,
+        1.2,
+        1.0419,
+        0.424,
+        0.6,
+        0.0193,
+        0.1018,
+        0.005,
+        0.03,
+        0.05,
+        250,
+        1,
+        1.5,
+        1,
+        1,
+        1.35,
+        0.8,
+        1,
+        1.25
+      ],
+      "normal": [
+        2392941613496.2144,
+        57.72810413249584,
+        2740,
+        23
+      ],
+      "stress": [
+        382946145088.687,
+        59.56478605609215,
+        2570,
+        25
+      ],
+      "first1000UTC": [
+        "2019-03-07T15:30:00Z",
+        "2019-03-07T15:30:00Z"
+      ],
+      "terminal90DayBalanceCost2": [
+        1068.094,
+        2069.6489,
+        325.7533,
+        368.5327,
+        1339.6506,
+        67.3392,
+        195.9931,
+        184.9445
+      ],
+      "trainMaxDD49_3709": 49.37090312526159,
+      "testMaxDD50_8396": 50.839559725023165,
+      "status": "PROVISIONAL, not superior bootstrap; no promotion"
+    }
+  ],
+  "method": "R10 phase screen uses historical incumbent basket returns and times, causal cash-at-entry rescaling, and historical add-on trade tapes. New phase factor multiplies R10 per-asset and phase factors while cash below 1000. No change to live. Jan1-90day independent $100 start diagnostics (2019-2026) omit baskets crossing boundary; they are NOT continuous portfolio resets, not true OOS since parent engine and tapes were previously selected on full history. Selection of new module variants based on 2019-22, evaluation 2023-26; no EUR final candidate succeeded out of period at cost2. BTC .01 unit floor frequently yields no orders from $100. BTC new displacement BUY/SELL 4h look40 EMA150, SL1ATR TP6ATR max36 bars positive PnL in best screen but fails start stress. Addon source only through 2026-03-31; original basket archive Oct2026. All DD closed, actual floating DD and executable lot, capacity and core interaction unverified. Do not deploy or call result native. Preserve R10 locks."
+}
