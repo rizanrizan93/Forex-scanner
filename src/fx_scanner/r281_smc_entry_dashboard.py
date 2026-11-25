@@ -13,6 +13,7 @@ from .r294_frozen_h4_buy_feed import fetch as fetch_r294
 from .manual_reversal_dashboard import fetch_manual_map
 from .manual_r3_feed import fetch_market
 from .manual_precision_shadow import render_precision
+from .r17_manual_reference_dashboard import render_r17_reference
 from .best_candidate_direction import select as select_best_candidate_direction
 from .independent_timeframe_zones import independent_zones, fresh_m1_fallback_packet, TFS
 
@@ -163,6 +164,8 @@ def render_r281_smc_entry():
                             "Zona dari timeframe lain tidak menggantikannya.")
                 if tf in ('H1','H4'):
                     render_precision(st,row,model,precision_market,now=precision_now)
+                if tf == 'H4':
+                    render_r17_reference(st)
 
         st.caption(
             "Evaluasi "+_wib(now)+" · zona tidak mengubah Frozen V1/cBot LIVE. "
