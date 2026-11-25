@@ -1,0 +1,70 @@
+{
+  "status": "RESEARCH_ONLY_NO_PROMOTION",
+  "date": "2026-11-26",
+  "asset": "XAUUSD",
+  "source": "RIZAN_FROZEN_TICK_AUDIT.zip data_audit/XAUUSD_m1.csv",
+  "bars": 2557244,
+  "coverage": [
+    "2019-01-01T23:00:00Z",
+    "2026-03-31T23:59:00Z"
+  ],
+  "counts": {
+    "phase1": 3168,
+    "phase2": 4776,
+    "total": 7944,
+    "positiveFixedOzNetAllThreeWithAtLeast50TrainAndValidation": 4,
+    "positiveMeanRTrainAndValidation": 0
+  },
+  "splits": [
+    "2019-2022",
+    "2023-2024",
+    "2025-2026-03-31"
+  ],
+  "candidate": {
+    "tf": "H4",
+    "direction": "SELL",
+    "lookback": 20,
+    "family": "breakout",
+    "trend": "aligned",
+    "displacementM5ATR": 0.75,
+    "minH4ATR": 10,
+    "slATR": 1,
+    "tpUSD": 30,
+    "maxHoldingMinutes": 240,
+    "train2": {
+      "n": 117,
+      "net": 2.735273250425805,
+      "pf": 1.0056416470188037,
+      "meanR": -0.009288982331234735
+    },
+    "validation2": {
+      "n": 59,
+      "net": 31.692568470303513,
+      "pf": 1.1186500559173487,
+      "meanR": 0.023046619227925936
+    },
+    "evaluation2": {
+      "n": 47,
+      "net": 163.86526634876478,
+      "pf": 1.585791340547261,
+      "win": 0.574468085106383,
+      "targetHit": 0.2553191489361702
+    },
+    "evaluation1": {
+      "n": 47,
+      "net": 207.40803808266315,
+      "pf": 1.7877484878503074,
+      "win": 0.6382978723404256
+    }
+  },
+  "method": "M5 close signal using prior fully closed H1/H4 bars, next contiguous M1 open entry, stop first on ambiguous OHLC, gap exit at next open, fixed 1oz and no overlap per profile. Cost side .00012*price + modeled daily funding .00005, both multiplied by 2 in stress. No verified bid/ask or slippage.",
+  "limitations": [
+    "not exact R13 structural sequence nor R28 side inference replay",
+    "no macro data joined",
+    "evaluation reused after prior exploration, not pristine OOS",
+    "no validated early-warning lead times",
+    "no account profit or actual entry advice"
+  ],
+  "archive": "RIZAN_R14_Manual_Research_20261126.zip",
+  "decision": "Keep existing ForexScanner R13 shadow and existing bias heads unchanged. Candidate rejected for promotion."
+}
