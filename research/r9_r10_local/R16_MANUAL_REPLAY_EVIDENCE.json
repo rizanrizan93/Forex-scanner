@@ -1,0 +1,107 @@
+{
+  "status": "RESEARCH_ONLY_NO_PROMOTION",
+  "date": "2026-11-26",
+  "asset": "XAUUSD",
+  "archive": "RIZAN_R16_Manual_Research_20261126.zip",
+  "archiveSHA256": "7db807817dbaa07e059bbe1d38639e3b2778f2ba30efd622fd2f42de476070f6",
+  "data": "RIZAN_FROZEN_TICK_AUDIT.zip/data_audit/XAUUSD_m1.csv",
+  "bars": 2557244,
+  "period": "2019-01-01 23:00 UTC to 2026-03-31 23:59 UTC",
+  "families": 16,
+  "signalTemplates": 256,
+  "profilesPerEntryMethod": 9216,
+  "exitCombinationsPerProfile": 147,
+  "counts": {
+    "market": {
+      "configs": 1354752,
+      "filledConfigs": 1129107,
+      "eligible": 47,
+      "passed": 2
+    },
+    "limit025": {
+      "configs": 1354752,
+      "filledConfigs": 1114554,
+      "eligible": 48,
+      "passed": 0
+    },
+    "limit05": {
+      "configs": 1354752,
+      "filledConfigs": 1073247,
+      "eligible": 2,
+      "passed": 0
+    },
+    "total": 4064256,
+    "filled": 3316908,
+    "eligible": 97,
+    "passed": 2,
+    "strict80PF15": 0
+  },
+  "survivors": [
+    {
+      "tf": "H4",
+      "side": "SELL",
+      "model": "ema_trend",
+      "lookback": 5,
+      "trendFilter": "all",
+      "session": "London fixed UTC 07–13",
+      "relativeVolatility": ">=1.15",
+      "slATR": 0.6,
+      "tpUSD": 50,
+      "maxHoldMinutes": 240,
+      "splitMetrics": [
+        {
+          "n": 165,
+          "net": 69.35731506347656,
+          "pf": 1.110437996696433,
+          "win": 0.4484848484848485
+        },
+        {
+          "n": 84,
+          "net": 50.19196319580078,
+          "pf": 1.1487929351921269,
+          "win": 0.4523809523809524
+        },
+        {
+          "n": 58,
+          "net": 136.60841369628906,
+          "pf": 1.1865251086428055,
+          "win": 0.5172413793103449
+        }
+      ]
+    },
+    {
+      "tf": "H4",
+      "side": "BUY",
+      "model": "ema_trend",
+      "lookback": 5,
+      "trendFilter": "aligned",
+      "session": "London fixed UTC 07–13",
+      "relativeVolatility": "<0.85",
+      "slATR": 2,
+      "tpUSD": 30,
+      "maxHoldMinutes": 240,
+      "splitMetrics": [
+        {
+          "n": 141,
+          "net": 46.86007308959961,
+          "pf": 1.114827646470382,
+          "win": 0.5177304964539007
+        },
+        {
+          "n": 52,
+          "net": 27.15001106262207,
+          "pf": 1.1673227252427811,
+          "win": 0.4230769230769231
+        },
+        {
+          "n": 70,
+          "net": 59.96381759643555,
+          "pf": 1.1201611579537278,
+          "win": 0.5142857142857142
+        }
+      ]
+    }
+  ],
+  "method": "Precompute M1 OHLC exit paths for eligible closed parent candle boundaries; aggregate exact per-profile metrics with no overlap within each profile, fixed one oz; market or passive limit at prior close +/- .25/.5 ATR, wait quarter horizon. Stop first, no same minute TP credit for limit, modeled double fee/funding. Counts include duplicate effective signals and unfilled variants; no independent native replay count. Train 2019–22 >=100 trades, validation 2023–24 >=50, each PF>=1.1 mean R>0. Evaluation 2025–Mar 2026 >=50, PF>=1.1 mean R>0. Reused evaluation, not pristine OOS.",
+  "limitations": "No verified broker tick bid/ask, actual R28 prediction replay, macro or lead time. Two survivors selected with knowledge of evaluation; not robust enough for promotion. No ForexScanner production modification."
+}
