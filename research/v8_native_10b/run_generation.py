@@ -6,7 +6,7 @@ from pathlib import Path
 import run_fast_batch as fast
 r=fast.r;ROOT=r.ROOT
 SPACE={
- 'EarlyMask':[5,7], 'EarlyRiskLook':[4,6,8,12,16],
+ 'EarlyMask':[5,7], 'EarlyRiskMask':[0,1,2,3,4,5,6,7], 'EarlyThreshold':[500,1000,1500,2500,5000], 'EarlyRiskLook':[4,6,8,12,16],
  'EarlyRiskThreshold':[.4,.5,.6,.7], 'EarlyRiskFactor':[.125,.25,.5,.75],
  'EarlyRiskLimit':[500,1000,1500,2500,5000],
  'BtcBuyTarget':[12,18,24,30,40], 'BtcBuyHours':[24,48,72,96,160,240],
