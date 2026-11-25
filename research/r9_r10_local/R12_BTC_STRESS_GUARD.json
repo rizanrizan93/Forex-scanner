@@ -1,0 +1,141 @@
+{
+  "status": "R12_SCREENING_ONLY_NOT_NATIVE_NOT_LIVE",
+  "parent": "R11_BTC_STRESS_REJECT_ROBUST",
+  "parameterOrder": [
+    "XauScale",
+    "EurScale",
+    "BtcScale",
+    "PhaseBelow1000",
+    "Phase1000To100000",
+    "PhaseAbove100000",
+    "ClosedDrawdownGuardThreshold",
+    "GuardScale",
+    "ExtraBtcRisk",
+    "ExtraBtcAdmissionDrawdown",
+    "XauExtraRisk",
+    "EurExtraRisk",
+    "BtcExtraRisk",
+    "EarlyLimitUSD",
+    "LateRiskMultiplier",
+    "Phase100to125Factor",
+    "Phase125to250Factor",
+    "Phase250to500Factor",
+    "Phase500to1000Factor",
+    "EarlyXauFactor",
+    "EarlyEurFactor",
+    "EarlyBtcFactor",
+    "BootstrapScale",
+    "BootstrapClosedDDThreshold",
+    "BootstrapGuardScale"
+  ],
+  "counts": {
+    "unique": 4996,
+    "startDateRuns": 79936,
+    "startEligible": 3392,
+    "continuousRuns": 6784,
+    "bothEligible": 62
+  },
+  "method": "Same fixed basket model and R11 BTC displacement tape. Under $1000 multiply incumbent scale and all addon risk by BootstrapScale; if closed DD >= BootstrapClosedDDThreshold multiply by BootstrapGuardScale too. Does not reduce existing open risk. No actual native orders or floating equity. Search on all eight starts, not OOS.",
+  "profiles": [
+    {
+      "id": "R12_BTC_STRESS_GUARD",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.05,
+        0.005,
+        0.05,
+        125,
+        1,
+        1.2,
+        1.35,
+        1.62,
+        1.5,
+        1,
+        1.5,
+        1.5,
+        0.75,
+        0.25,
+        0.5
+      ],
+      "cost1": {
+        "balance": 23331572862852.293,
+        "closedDD": 50.03805731977635
+      },
+      "cost2": {
+        "balance": 5921329086261.527,
+        "closedDD": 58.90861600187212
+      },
+      "worst90dClosedDD": 58.00069636023106,
+      "hit1000Both": 3,
+      "earlyBasketCounts": [
+        42,
+        41
+      ],
+      "annualCost2Balances": [
+        2758.598776715673,
+        1952.8828380774928,
+        115.49172552085618,
+        78.6715052646698,
+        1995.3327861099274,
+        86.99350864165288,
+        210.40178366223805,
+        174.50322010825016
+      ]
+    },
+    {
+      "id": "R12_BOOTSTRAP_UNDER50",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.05,
+        0.005,
+        0.0625,
+        125,
+        1,
+        0.96,
+        1.62,
+        1.08,
+        1.7999999999999998,
+        0.8,
+        1,
+        1.25,
+        0.75,
+        0.25,
+        0.5
+      ],
+      "cost1": {
+        "balance": 12533467039824.746,
+        "closedDD": 50.61676296740145
+      },
+      "cost2": {
+        "balance": 4514897016187.117,
+        "closedDD": 58.908629954087786
+      },
+      "worst90dClosedDD": 46.16122711834294,
+      "hit1000Both": 2
+    }
+  ],
+  "constraints": [
+    "annual tests start Jan 1 2019–2026 for 90 days; excludes crossing baskets",
+    "R11 add-on data ends March 2026, incumbent archive October 2026",
+    "native floating drawdown and broker capacity unverified",
+    "no LIVE promotion; $10B or larger balance not verified as achievable"
+  ]
+}
