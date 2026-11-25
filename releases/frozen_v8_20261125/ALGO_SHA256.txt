@@ -1,0 +1,1 @@
+c2472244c9f444f0d62b8125ef3e28b2118b6098e8157e1fba5772333098e8c9  source/bin/Release/net6.0/RizanFrozenV8.algo
