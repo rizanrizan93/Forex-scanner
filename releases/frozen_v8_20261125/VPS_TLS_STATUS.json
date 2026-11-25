@@ -1,0 +1,6 @@
+{
+  "tls_verified": true,
+  "tls_version": "TLSv1.3",
+  "v8_route_authenticated": false,
+  "scope": "existing VPS TLS listener only, no lease or checkpoint access"
+}
