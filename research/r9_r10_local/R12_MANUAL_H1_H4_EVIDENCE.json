@@ -1,0 +1,97 @@
+{
+  "status": "REJECT_FOR_EXECUTION_RESEARCH_ONLY",
+  "asset": "XAUUSD",
+  "dataset": "RIZAN_FROZEN_TICK_AUDIT.zip data_audit/XAUUSD_m1.csv",
+  "coverage": "2019–2026-03-31",
+  "directionLabel": "sign of next completed H1 or H4 candle close minus open, excluding flat and noncontiguous next bar",
+  "splits": {
+    "fit": "2019–2022",
+    "selection": "2023–2024",
+    "evaluation": "2025–March 2026, already observed in preceding rule screen, exploratory not pristine future holdout"
+  },
+  "ruleScreen": {
+    "configsPerTF": 210,
+    "entryConfigsPerTF": 144,
+    "h1": {
+      "accuracy": 0.49747474747474746,
+      "n": 792,
+      "coverage": 0.11545189504373178,
+      "entryPF2": 0.6232762516889201
+    },
+    "h4": {
+      "accuracy": 0.4357142857142857,
+      "n": 280,
+      "coverage": 0.14869888475836432,
+      "entryPF2": 0.7157162502945753
+    }
+  },
+  "mlScreen": {
+    "modelsPerTF": 11,
+    "thresholdPairsPerTF": 891,
+    "entryConfigsPerTF": 144,
+    "strictCompletedBars": true,
+    "h1": {
+      "model": "RF max_depth8, min_samples_leaf50, 100 trees, seed9",
+      "buyProbability": 0.52,
+      "sellProbabilityAtMost": 0.44,
+      "validationAccuracy": 0.5288904643743353,
+      "evalAccuracy": 0.5560344827586207,
+      "evalCoverage": 0.23871821255328532,
+      "n": 1624,
+      "buy": {
+        "n": 1533,
+        "accuracy": 0.5557729941291585
+      },
+      "sell": {
+        "n": 91,
+        "accuracy": 0.5604395604395604
+      },
+      "entry": {
+        "depthATR": 0.25,
+        "widthATR": 0.1,
+        "stopATR": 1.5,
+        "targetATR": 3,
+        "targetFloorUSD": 10,
+        "holdingM15": 16,
+        "n": 615,
+        "PF1": 0.9805476757356565,
+        "PF2": 0.8669840408355963,
+        "expectancyR2": -0.03538625659175724,
+        "targetHit": 0.04715447154471545
+      }
+    },
+    "h4": {
+      "model": "HistGradientBoosting depth4, min_samples_leaf30, iterations100, lr.05, seed9",
+      "buyProbability": 0.6,
+      "sellProbabilityAtMost": 0.4,
+      "validationAccuracy": 0.5409090909090909,
+      "evalAccuracy": 0.49635036496350365,
+      "evalCoverage": 0.1122031122031122,
+      "n": 137,
+      "buy": {
+        "n": 81,
+        "accuracy": 0.5802469135802469
+      },
+      "sell": {
+        "n": 56,
+        "accuracy": 0.375
+      },
+      "entry": {
+        "depthATR": 0.25,
+        "widthATR": 0.1,
+        "stopATR": 0.5,
+        "targetATR": 3,
+        "targetFloorUSD": 10,
+        "holdingM15": 64,
+        "n": 84,
+        "PF1": 0.7802514121774928,
+        "PF2": 0.718423327449841,
+        "expectancyR2": -0.07234639038095855,
+        "targetHit": 0.023809523809523808
+      }
+    }
+  },
+  "entryMethod": "Zone anchor prior closed TF close minus side*depthATR*ATR, bounds anchor +/- widthATR*ATR. During next TF wait for touch then completed M15 rejection closing beyond zone in bias direction; enter next contiguous M15 open within same forecast interval. One open position at a time. Exit stop-first on ambiguous OHLC, gap handling, hold up to configured M15 bars. Fees .00012 per side and funding .00005 daily times cost multiplier. Not broker bid/ask replay.",
+  "decision": "Do not replace existing R28.1/best-candidate forecasts or deploy rejected zone model. Existing production routes Frozen Direction and Zona Entry TF already use matched-timeframe direction and fresh structural zones; maintain independent H1 and H4. Next research: replay exact archived existing specialist inference with predeclared SMC zones and M5/M1 confirmation, evaluate conditional win rate, target $10 before invalidation, coverage, lead time, net expectancy, chronological OOS and current forward shadow. No fabricated BUY/SELL or stale price.",
+  "sourceArchive": "RIZAN_R12_Guard_Manual_Research_20261125.zip"
+}
