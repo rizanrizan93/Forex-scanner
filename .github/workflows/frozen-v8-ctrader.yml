@@ -1,0 +1,74 @@
+name: Frozen V8 native cTrader package and bridge validation
+on:
+  push:
+    branches: ['release/frozen-v8-ctrader-20261125']
+    paths: ['.github/workflows/frozen-v8-ctrader.yml','repairs/frozen_v8_20261125/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frozen-v8-native-package
+  cancel-in-progress: false
+jobs:
+  native-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: d8b9fecfee74fb614ce027b7865effd6eab6aa23
+          path: frozen-reference
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate from pinned production source and frozen profile
+        run: python repairs/frozen_v8_20261125/build_frozen_v8.py frozen-reference/research/v8_native_10b/FROZEN_V8_1914512336_PROFILE.json
+      - name: Compile actual cTrader Automate package
+        working-directory: dist/RizanFrozenV8
+        run: |
+          dotnet build source/RizanFrozenV8.csproj -c Release
+          dotnet run --project tests/BootstrapTests.csproj -c Release
+          python -m pip install -r bridge/requirements.txt
+          python -m unittest discover -s bridge -p 'test_*.py' -v
+      - name: Verify artifact and VPS TLS endpoint (read only)
+        working-directory: dist/RizanFrozenV8
+        run: |
+          set -euo pipefail
+          find source/bin/Release -name '*.algo' -type f -print
+          test -s source/bin/Release/net6.0/RizanFrozenV8.algo
+          sha256sum source/bin/Release/net6.0/RizanFrozenV8.algo | tee ALGO_SHA256.txt
+          cp source/bin/Release/net6.0/RizanFrozenV8.algo .
+          python - <<'PY'
+          import socket,ssl,json
+          from pathlib import Path
+          host='rizan-bridge.duckdns.org'
+          try:
+              with socket.create_connection((host,25345),timeout=10) as s:
+                  with ssl.create_default_context().wrap_socket(s,server_hostname=host) as t:
+                      r=dict(tls_verified=True,tls_version=t.version(),v8_route_authenticated=False,scope='existing VPS TLS listener only, no lease or checkpoint access')
+          except Exception as e:
+              r=dict(tls_verified=False,error=type(e).__name__,v8_route_authenticated=False)
+          Path('VPS_TLS_STATUS.json').write_text(json.dumps(r,indent=2))
+          print(json.dumps(r))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RizanFrozenV8-cTrader-validated-build
+          path: |
+            dist/RizanFrozenV8/RizanFrozenV8.algo
+            dist/RizanFrozenV8/ALGO_SHA256.txt
+            dist/RizanFrozenV8/BUILD_MANIFEST.json
+            dist/RizanFrozenV8/FROZEN_PROFILE.json
+            dist/RizanFrozenV8/VPS_TLS_STATUS.json
+            dist/RizanFrozenV8/source/**/*.cs
+            dist/RizanFrozenV8/source/*.csproj
+            dist/RizanFrozenV8/bridge/*.py
+            dist/RizanFrozenV8/bridge/requirements.txt
+          if-no-files-found: error
