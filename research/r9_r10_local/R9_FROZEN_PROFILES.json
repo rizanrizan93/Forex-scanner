@@ -1,0 +1,226 @@
+{
+  "status": "FROZEN_SCREENING_ONLY_NOT_NATIVE_NOT_LIVE",
+  "created": "2026-11-25",
+  "initialUSD": 100,
+  "additionalCapitalUSD": 0,
+  "leverageModel": 200,
+  "sourceArchive": "RIZAN_BTC2325_REPLAY_REPRODUCIBLE_2019_2026.zip",
+  "sourceInputs": [
+    "replay_source/inputs/P3_BUY050_B_cost1.json.gz",
+    "replay_source/inputs/P3_BUY050_B_cost2.json.gz",
+    "BTC_extra_269_baskets_cost1.csv",
+    "BTC_extra_269_baskets_cost2.csv"
+  ],
+  "screenArchive": "RIZAN_Combined_Compounding_Screen_20261125.zip",
+  "screenCounts": {
+    "initial": 119720,
+    "refinement": 159683,
+    "total": 279403,
+    "scenarioRuns": 558806
+  },
+  "cutoff": "2026-10-09T21:59:00Z",
+  "baseNative": {
+    "cost1EndingUSD": 2130037987.0146687,
+    "cost1FloatingDDPct": 59.96640612031923
+  },
+  "parametersOrder": [
+    "XauScale",
+    "EurScale",
+    "BtcScale",
+    "PhaseBelow1000",
+    "Phase1000To100000",
+    "PhaseAbove100000",
+    "ClosedDrawdownGuardThreshold",
+    "GuardScale",
+    "ExtraBtcRisk",
+    "ExtraBtcAdmissionDrawdown"
+  ],
+  "profiles": [
+    {
+      "id": "R9_DEFENSIVE",
+      "source": "refinement",
+      "parameters": {
+        "XauScale": 0.7502,
+        "EurScale": 1.5,
+        "BtcScale": 1.5,
+        "PhaseBelow1000": 1.3,
+        "Phase1000To100000": 1.1313,
+        "PhaseAbove100000": 0.9853,
+        "ClosedDrawdownGuardThreshold": 0.4,
+        "GuardScale": 0.4821,
+        "ExtraBtcRisk": 0.025,
+        "ExtraBtcAdmissionDrawdown": 0.4571
+      },
+      "vector": [
+        0.7502,
+        1.5,
+        1.5,
+        1.3,
+        1.1313,
+        0.9853,
+        0.4,
+        0.4821,
+        0.025,
+        0.4571
+      ],
+      "cost1": {
+        "endingBalanceUSD": 19834124349.457973,
+        "closedBalanceDDPct": 49.37746866338362,
+        "profitFactor": 2.1678392151193497,
+        "settledBaskets": 1320,
+        "extraBtcAccepted": 269,
+        "floatingDDPct": null
+      },
+      "cost2": {
+        "endingBalanceUSD": 10164244141.887169,
+        "closedBalanceDDPct": 50.85211273607657,
+        "profitFactor": 1.99681248191955,
+        "settledBaskets": 1319,
+        "extraBtcAccepted": 269,
+        "floatingDDPct": null
+      }
+    },
+    {
+      "id": "R9_BALANCED",
+      "source": "all_results:13632",
+      "parameters": {
+        "XauScale": 0.8,
+        "EurScale": 1.25,
+        "BtcScale": 1.5,
+        "PhaseBelow1000": 1.3,
+        "Phase1000To100000": 1.2,
+        "PhaseAbove100000": 1.1,
+        "ClosedDrawdownGuardThreshold": 0.4,
+        "GuardScale": 0.8,
+        "ExtraBtcRisk": 0.02,
+        "ExtraBtcAdmissionDrawdown": 0.5
+      },
+      "vector": [
+        0.8,
+        1.25,
+        1.5,
+        1.3,
+        1.2,
+        1.1,
+        0.4,
+        0.8,
+        0.02,
+        0.5
+      ],
+      "cost1": {
+        "endingBalanceUSD": 79905620743.48389,
+        "closedBalanceDDPct": 57.11386542980137,
+        "profitFactor": 2.209308662543118,
+        "settledBaskets": 1320,
+        "extraBtcAccepted": 269,
+        "floatingDDPct": null
+      },
+      "cost2": {
+        "endingBalanceUSD": 35583981985.40277,
+        "closedBalanceDDPct": 59.97937771205009,
+        "profitFactor": 2.0486539135829145,
+        "settledBaskets": 1319,
+        "extraBtcAccepted": 269,
+        "floatingDDPct": null
+      }
+    },
+    {
+      "id": "R9_GROWTH",
+      "source": "refinement:52624",
+      "parameters": {
+        "XauScale": 0.827,
+        "EurScale": 1.5,
+        "BtcScale": 1.5,
+        "PhaseBelow1000": 1.3,
+        "Phase1000To100000": 1.1863,
+        "PhaseAbove100000": 1,
+        "ClosedDrawdownGuardThreshold": 0.4518,
+        "GuardScale": 0.7168,
+        "ExtraBtcRisk": 0.025,
+        "ExtraBtcAdmissionDrawdown": 0.41
+      },
+      "vector": [
+        0.827,
+        1.5,
+        1.5,
+        1.3,
+        1.1863,
+        1,
+        0.4518,
+        0.7168,
+        0.025,
+        0.41
+      ],
+      "cost1": {
+        "endingBalanceUSD": 91727608297.55418,
+        "closedBalanceDDPct": 56.6963147053916,
+        "profitFactor": 2.205124632463366,
+        "settledBaskets": 1320,
+        "extraBtcAccepted": 269,
+        "floatingDDPct": null
+      },
+      "cost2": {
+        "endingBalanceUSD": 48447118957.962395,
+        "closedBalanceDDPct": 58.37882608696789,
+        "profitFactor": 2.050569128581281,
+        "settledBaskets": 1316,
+        "extraBtcAccepted": 266,
+        "floatingDDPct": null
+      }
+    },
+    {
+      "id": "R9_AGGRESSIVE",
+      "source": "all_results:34185",
+      "parameters": {
+        "XauScale": 0.9,
+        "EurScale": 1.5,
+        "BtcScale": 1.5,
+        "PhaseBelow1000": 1.3,
+        "Phase1000To100000": 1.1,
+        "PhaseAbove100000": 1.1,
+        "ClosedDrawdownGuardThreshold": 0.4,
+        "GuardScale": 0.6,
+        "ExtraBtcRisk": 0.02,
+        "ExtraBtcAdmissionDrawdown": 0.4
+      },
+      "vector": [
+        0.9,
+        1.5,
+        1.5,
+        1.3,
+        1.1,
+        1.1,
+        0.4,
+        0.6,
+        0.02,
+        0.4
+      ],
+      "cost1": {
+        "endingBalanceUSD": 102720206210.24275,
+        "closedBalanceDDPct": 53.444339062743204,
+        "profitFactor": 2.227185318112489,
+        "settledBaskets": 1320,
+        "extraBtcAccepted": 269,
+        "floatingDDPct": null
+      },
+      "cost2": {
+        "endingBalanceUSD": 28915077365.888878,
+        "closedBalanceDDPct": 59.83793626988852,
+        "profitFactor": 2.0687476144133954,
+        "settledBaskets": 1316,
+        "extraBtcAccepted": 266,
+        "floatingDDPct": null
+      }
+    }
+  ],
+  "method": "Sort historical entries and exits by timestamp, exits first on ties; incumbent PnL divided by historical cash at entry and rescaled by current cash at entry, per-asset scale, phase scale, and closed-DD guard. Extra BTC accepts at most one concurrent extra position, only when closed DD below admission threshold, floor qty 0.01 BTC, min(cash*risk/stopCost,cash*0.1*200/entry,3200), historical net pnl per BTC. StopCost = abs(entry-stop)+entry*(0.0005+0.0012*cost). No full margin, no floating equity, no re-generated incumbent admission. Costs are archive scenarios, not full doubled spread.",
+  "validationRequired": [
+    "native baseline parity",
+    "native actual entry/exit/margin/volume admission",
+    "full floating equity DD <60%",
+    "matched A1/B1/A2/B2",
+    "separate start dates and walk-forward",
+    "capacity, stopout, impact, spread, delays"
+  ],
+  "liveApproved": false
+}
