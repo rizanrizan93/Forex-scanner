@@ -1,0 +1,173 @@
+{
+  "status": "RESEARCH_ONLY_FIXED_BASKET_SCREENING_NOT_NATIVE",
+  "version": "ALGO_R13_QUARTERLY",
+  "date": "2026-11-26",
+  "archive": "RIZAN_ALGO_R13_Quarterly_20261126.zip",
+  "archiveSHA256": "79c9e510688eb45839fb57ecd5b618737243b87cc35fc9401edf1fcdbfb9151c",
+  "parent": "R12_BTC_STRESS_GUARD",
+  "counts": {
+    "uniqueIncluding3Controls": 3003,
+    "new": 3000,
+    "startDates": 29,
+    "windowRuns": 174174,
+    "continuousRuns": 6006,
+    "eligible": 22
+  },
+  "method": "Use exact archived R12 guard_model with inputdata cost1/cost2 [2,2,2], BTC displacement index 0. $100 independent 90-day diagnostic from each quarter start 2019-01-01 through 2026-01-01, exclude crossing baskets. Continuous shared wallet $100 separately, no reset/deposits, same parameters. Eligibility: all 29 windows both closed DD <60%, continuous both closed DD <60%, both continuous ending balances >=100B. Selection uses all 29 windows; not OOS. Metric hit1000 is both costs reaching threshold within same window, not necessarily ending there.",
+  "parameterOrder": "Identical 25-vector to R12_BTC_STRESS_GUARD.json",
+  "controls": [
+    {
+      "id": "R11_BTC_STRESS",
+      "cost1": 24027414670415.996,
+      "cost2": 5576477206755.256,
+      "worst90dClosedDD": 86.44882832778582,
+      "hit1000Both": 4,
+      "median90dCost2": 199.60900456135727
+    },
+    {
+      "id": "R12_BTC_STRESS_GUARD",
+      "cost1": 23331572862852.293,
+      "cost2": 5921329086261.527,
+      "worst90dClosedDD": 75.01481598506471,
+      "hit1000Both": 4,
+      "median90dCost2": 174.50322010825016
+    },
+    {
+      "id": "R12_BOOTSTRAP_UNDER50",
+      "cost1": 12533467039824.746,
+      "cost2": 4514897016187.117,
+      "worst90dClosedDD": 57.02266797069737,
+      "hit1000Both": 4,
+      "median90dCost2": 152.39619734118702
+    }
+  ],
+  "profiles": [
+    {
+      "id": "ALGO_R13_QUARTERLY_STRESS",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.05,
+        0.005,
+        0.05,
+        125,
+        1,
+        1.32,
+        1.35,
+        1.0530000000000002,
+        1.7999999999999998,
+        0.65,
+        1.5,
+        1.7999999999999998,
+        0.65,
+        0.35,
+        0.5
+      ],
+      "cost1": {
+        "balance": 20300333723153.62,
+        "closedDD": 50.038268349022545
+      },
+      "cost2": {
+        "balance": 5476820864119.29,
+        "closedDD": 58.908619636938234
+      },
+      "worst90dClosedDD": 58.3486012322751,
+      "hit1000Both": 4,
+      "median90dCost2": 151.35862800875378,
+      "profitableWindowsCost2": 23
+    },
+    {
+      "id": "ALGO_R13_BOOTSTRAP",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.05,
+        0.0025,
+        0.0625,
+        125,
+        1,
+        1.2,
+        1.62,
+        1.62,
+        1.5,
+        1,
+        1.5,
+        0.9750000000000001,
+        0.65,
+        0.35,
+        0.35
+      ],
+      "cost1": {
+        "balance": 18383072942208.81,
+        "closedDD": 50.03843775931605
+      },
+      "cost2": {
+        "balance": 4849119985371.849,
+        "closedDD": 58.908625905274526
+      },
+      "worst90dClosedDD": 59.12146429885981,
+      "hit1000Both": 4,
+      "median90dCost2": 168.7181485919831,
+      "profitableWindowsCost2": 21
+    },
+    {
+      "id": "ALGO_R13_LOWEST_DD",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5,
+        0.05,
+        0.0025,
+        0.0625,
+        125,
+        1,
+        1.2,
+        1.35,
+        1.7820000000000003,
+        1.2000000000000002,
+        0.65,
+        1.7999999999999998,
+        1.2000000000000002,
+        0.45,
+        0.2,
+        0.5
+      ],
+      "cost1": {
+        "balance": 15127596941424.361,
+        "closedDD": 50.0388237895367
+      },
+      "cost2": {
+        "balance": 2379198624775.9385,
+        "closedDD": 59.62579813284101
+      },
+      "worst90dClosedDD": 43.87080854695616,
+      "hit1000Both": 2,
+      "median90dCost2": 133.4123249170637,
+      "profitableWindowsCost2": 24
+    }
+  ],
+  "limitations": "Fixed historical incumbent basket PnL rescaling; no full portfolio floating equity, true executable admission, capacity, actual margin, impact or native replay. Core tape ends Oct 2026; add-on through Mar 2026. No LIVE or Frozen modifications. R12 retained."
+}
