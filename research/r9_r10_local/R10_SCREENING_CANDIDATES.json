@@ -1,0 +1,257 @@
+{
+  "status": "SCREENING_ONLY_NOT_NATIVE",
+  "initialBalanceUSD": 100,
+  "leverage": 200,
+  "base": "BUY050 B cost1/cost2 ledger + BTC269 archive, not V8 native",
+  "counts": {
+    "R10Sizing": 60000,
+    "normal100b": 1593,
+    "bothCost100b": 3,
+    "addonModuleConfigTests": 6804,
+    "addonPortfolioCasesByVariant": [
+      2785,
+      2822,
+      2828
+    ],
+    "addonCasesAbove100bBoth": [
+      962,
+      1200,
+      553
+    ],
+    "addonUniqueAcrossVariantsNotAsserted": true
+  },
+  "parameterOrder": [
+    "XauScale",
+    "EurScale",
+    "BtcScale",
+    "PhaseBelow1000",
+    "Phase1000To100000",
+    "PhaseAbove100000",
+    "ClosedDrawdownGuardThreshold",
+    "GuardScale",
+    "ExtraBtcRisk",
+    "ExtraBtcAdmissionDrawdown"
+  ],
+  "profiles": [
+    {
+      "id": "R10_DEFENSIVE",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5
+      ],
+      "normal": [
+        239224960717.18762,
+        52.06529167733449
+      ],
+      "stress": [
+        107623539374.28827,
+        58.858940823340475
+      ]
+    },
+    {
+      "id": "R10_GROWTH",
+      "vector": [
+        0.8419,
+        1.8213,
+        1.7096,
+        1.3961,
+        1.1056,
+        1.0538,
+        0.3994,
+        0.6,
+        0.0233,
+        0.1
+      ],
+      "normal": [
+        302588319922.22015,
+        55.10702979273232
+      ],
+      "stress": [
+        108068409449.65976,
+        59.05673642184293
+      ]
+    },
+    {
+      "id": "R10_MAX",
+      "vector": [
+        0.8688,
+        1.9035,
+        1.5,
+        1.2486,
+        1.2,
+        1.0419,
+        0.424,
+        0.6,
+        0.0193,
+        0.1018
+      ],
+      "normal": [
+        349005934574.7915,
+        53.668346986480906
+      ],
+      "stress": [
+        72973227761.19905,
+        59.42647856843814
+      ]
+    },
+    {
+      "id": "R10_ADDON_MAX_STRESS",
+      "vector": [
+        0.7934,
+        2,
+        1.5,
+        1.3,
+        1.1306,
+        1.0401,
+        0.3944,
+        0.6485,
+        0.017,
+        0.5
+      ],
+      "extraRisk": [
+        0.02,
+        0.005,
+        0.02
+      ],
+      "extraRiskPhaseLimitUSD": 1000,
+      "postPhaseRiskMultiplier": 1,
+      "variant": [
+        2,
+        2,
+        2
+      ],
+      "newModules": [
+        {
+          "asset": "XAUUSD",
+          "tf": "H1",
+          "lookback": 10,
+          "EMA": 50,
+          "kind": "breakout",
+          "direction": "BUY",
+          "SL_ATR": 1,
+          "TP_ATR": 6,
+          "maxBars": 36
+        },
+        {
+          "asset": "EURUSD",
+          "tf": "H4",
+          "lookback": 10,
+          "EMA": 300,
+          "kind": "pullback",
+          "direction": "BOTH",
+          "SL_ATR": 2,
+          "TP_ATR": 4,
+          "maxBars": 72
+        },
+        {
+          "asset": "BTCUSD",
+          "tf": "H4",
+          "lookback": 10,
+          "EMA": 300,
+          "kind": "breakout",
+          "direction": "BUY",
+          "SL_ATR": 1.25,
+          "TP_ATR": 8,
+          "maxBars": 72
+        }
+      ],
+      "normal": [
+        2825797286656.5884,
+        54.17440152420001
+      ],
+      "stress": [
+        319151426669.02545,
+        58.89003212141386
+      ],
+      "basketOrder": [
+        "coreXAU",
+        "coreEUR",
+        "coreBTC",
+        "oldBTCExtra",
+        "newXAU",
+        "newEUR",
+        "newBTC"
+      ],
+      "countsNormal": [
+        617,
+        280,
+        154,
+        220,
+        1187,
+        171,
+        186
+      ],
+      "countsStress": [
+        616,
+        280,
+        154,
+        220,
+        1120,
+        159,
+        176
+      ],
+      "earlyCountsNormal": [
+        12,
+        5,
+        2,
+        1,
+        11,
+        0,
+        3
+      ],
+      "earlyCountsStress": [
+        12,
+        6,
+        3,
+        1,
+        3,
+        0,
+        3
+      ],
+      "controlEarlyNormal": 20,
+      "controlEarlyStress": 21,
+      "ablation": {
+        "noXau": [
+          301567684161.9667,
+          114652609322.10767
+        ],
+        "noEur": [
+          2697169350197.53,
+          311291539036.68036
+        ],
+        "noBtc": [
+          2035879815599.8293,
+          192390088355.9841
+        ],
+        "noNew": [
+          239224960717.18762,
+          107623539374.28827
+        ]
+      },
+      "addonStandalonePnlNormal": [
+        86664428.82596977,
+        -128830.80851574655,
+        -2204338.909206016
+      ],
+      "addonStandalonePnlStress": [
+        12785010.271083964,
+        -217818.12545047374,
+        -66416649.78062193
+      ]
+    }
+  ],
+  "metricOrder": [
+    "endingBalanceUSD",
+    "closedDDPct"
+  ],
+  "newModuleMethod": "OHLC M30/H1/H4 from archive through 2026-03-31. ATR Wilder EWM alpha 1/14. Donchian prior highs/lows excluding signal bar; trend EMA; pullback cross EMA max(3,trend/4) aligned with trend; use signal at completed bar, next open entry only contiguous bar. Warmup 301 bars, stop-first on ambiguous OHLC. Fees per side XAU .00012 EUR .000055 BTC .0004; daily funding .00005/.00002/.0003. Risk sizing floor units 1/1000/.01; volume caps 100000/10000000/3200; at most one each extra module, no entry if same-asset core open, old/new BTC mutually excluded on admission, total addon open risk <=5% cash and margin <=15% cash at admission; individual margin <=10%, drawdown guard closed DD only. Existing core baskets retained regardless of later overlap. Early counts are accepted entries while closed cash <1000, not verified floating equity. No OOS validation: both 2019-2022 and 2023-2026 used to select. Added EUR/BTC PnL negative in final model despite positive terminal ablation; must not claim independent alpha.",
+  "limitations": "No floating DD, full portfolio margin, real native C# replay, nonlinear market impact or capacity. New module coverage ends March 2026, incumbent October 2026. Simulated extreme balances may not be executable. Research only. No deployment."
+}
