@@ -1,0 +1,29 @@
+name: Frozen V8 LIVE handoff preflight
+on:
+  push:
+    branches: ['release/frozen-v8-ctrader-20261125']
+    paths: ['.github/workflows/frozen-v8-live-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect current LIVE account state without orders
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh -i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=15 'Rizanrizan@202.74.74.172' 'sudo -n python3 -' < operations/frozen_v8_stage/live_handoff_preflight.py
