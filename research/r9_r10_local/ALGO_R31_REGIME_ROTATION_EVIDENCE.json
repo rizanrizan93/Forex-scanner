@@ -1,0 +1,222 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_OLD_FIRST_SELECTION_NOT_NATIVE",
+  "parent": "ALGO_R30_ADAPTIVE_REGIME_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R31_Regime_Rotation_20261126.zip",
+  "sha256": "7f00f8590c37cb963ff4f0b734e851a1de707ec06a0c077300f39ada1751a0c5",
+  "counts": {
+    "fixedRegimeCases": 3912,
+    "fixedRegimeOldPass": 3367,
+    "fixedRegimeSelected": 199,
+    "fixedRegimeFullPass2": 0,
+    "rankCases": 2304,
+    "rankOldPass": 407,
+    "rankSelected": 158,
+    "rankEURXAUFullPass2": 2,
+    "rankEURXAUFullPass3": 0,
+    "rankBTCExploratoryPass2": 22,
+    "rankBTCExploratoryPass3": 10,
+    "rotationCases": 1296,
+    "rotationOldPass": 527,
+    "rotationSelected": 150,
+    "rotationEURXAUFullPass2": 1,
+    "rotationEURXAUFullPass3": 0,
+    "rotationBTCExploratoryPass2": 40,
+    "rotationBTCExploratoryPass3": 5,
+    "neutralParityChecks": 48
+  },
+  "regime": "Previous completed UTC D1 EMA20-EMA60 / ATR14 >0.5 or <-0.5 otherwise neutral; ATR14 / prior median60 >1.15 expansion otherwise non-expansion; six labels. Shadow scores strictly previous closed exits.",
+  "metricOrder": [
+    "endBalance",
+    "closedDDPct",
+    "excursionDDProxyPct",
+    "end2018"
+  ],
+  "profiles": {
+    "oldBest": {
+      "parent": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        1000,
+        [
+          0.05,
+          0.04
+        ],
+        0.5,
+        2
+      ],
+      "gate": [
+        48,
+        -0.2,
+        0.75,
+        0.5,
+        0.3,
+        0.75
+      ],
+      "oldCutoffBalance": [
+        6301.3054002426525,
+        5477.85200671279
+      ],
+      "full": [
+        [
+          2805.1937578522047,
+          64.82143395689907,
+          65.62663405016673,
+          6151.18313712838
+        ],
+        [
+          1443.7260835629093,
+          81.2642787495754,
+          81.37473511731042,
+          5332.1529658499385
+        ],
+        [
+          295.24491896083185,
+          69.7356828929518,
+          69.92291878181693,
+          768.1533165677215
+        ]
+      ]
+    },
+    "dailyEURXAU": {
+      "config": [
+        730,
+        0.5,
+        1,
+        0,
+        0.035,
+        1.5,
+        2
+      ],
+      "full": [
+        [
+          304.1663005986424,
+          42.47740331693137,
+          43.088819840615535,
+          167.80672170390423
+        ],
+        [
+          340.0436651828711,
+          44.2198349972604,
+          44.66051888681677,
+          306.99680547478647
+        ],
+        [
+          123.34967342002253,
+          33.882441305225576,
+          33.903661751320044,
+          161.7132509479667
+        ]
+      ]
+    },
+    "dailyBTCExploratory": {
+      "config": [
+        730,
+        0,
+        1,
+        1,
+        0.05,
+        1.5,
+        1
+      ],
+      "full": [
+        [
+          2863.5788578787183,
+          43.40224783957056,
+          47.36712587097306,
+          293.9987313991099
+        ],
+        [
+          379.0648960539566,
+          42.79789543513094,
+          45.87821194527807,
+          123.5832499448041
+        ],
+        [
+          124.23517704174623,
+          46.135164762196965,
+          46.19502312249188,
+          100.48112037369754
+        ]
+      ]
+    },
+    "rankBTCThreeCost": {
+      "ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "config": [
+        48,
+        0.5,
+        0.1,
+        0,
+        0.035,
+        1.5,
+        2
+      ],
+      "full": [
+        [
+          763.4987487705895,
+          42.095770145007094,
+          47.18926684726258,
+          127.5149542000969
+        ],
+        [
+          169.58984851283515,
+          38.99999593672864,
+          41.65714601329098,
+          111.28351186741114
+        ],
+        [
+          205.60971419221164,
+          38.856145816697165,
+          41.5870261702587,
+          103.8316296608569
+        ]
+      ]
+    }
+  },
+  "limitations": "7512 configuration cases, existing 60 tapes only (44 EUR/XAU available old, 16 BTC previously selected using 2019–22). Training entry cutoff Nov30 2018; full continuous starts 2012, December trades retained, no reset. Selection parameters only old metrics this turn, but earlier research and pool selection informed by full historical data; not independent holdout. BTC extension exploratory. OHLC proxy, planned risk max5% aggregate, margin 50% closed balance at admission, assumed lot caps, no native or actual cBot implementation, no new future stress performed. $100T not met. Preserve R18–R30, no LIVE changes."
+}
