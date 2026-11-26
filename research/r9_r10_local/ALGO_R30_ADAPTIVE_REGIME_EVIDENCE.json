@@ -1,0 +1,340 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_OHLC_CONDITIONAL_STRESS",
+  "parent": "ALGO_R29_REGIME_STRESS_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R30_Adaptive_Regime_20261126.zip",
+  "sha256": "24b0a8b946d02b5670b5c3337871bcd9f2cacf905fbcb214924429d45c3aebd9",
+  "coverage": "2012-01 through 2026-03-31, BTC available from 2019, continuous $100 shared wallet",
+  "counts": {
+    "stage1Parents": 43,
+    "stage1Cases": 4644,
+    "stage1Cost12Runs": 9288,
+    "stage1Pass2": 708,
+    "stage1Cost3Tested": 271,
+    "stage1Pass3": 2,
+    "stage2Parents": 6,
+    "stage2Cases": 5124,
+    "stage2CostRuns": 15372,
+    "stage2Pass2": 1678,
+    "stage2Pass3": 462,
+    "stage2NonneutralPass3": 459,
+    "stage2NonneutralPass3AllBalancesAtLeast1000": 130,
+    "neutralControls": 104,
+    "traceParity": 6,
+    "futurePathInstances": 1500000,
+    "futurePolicyEvaluations": 3000000
+  },
+  "configOrder": [
+    "bootstrapIds",
+    "midIds",
+    "growthIds",
+    "balanceThresholds",
+    "phaseRisks",
+    "guard",
+    "maxPositions"
+  ],
+  "gateOrder": [
+    "shadowLookback",
+    "meanNetRThreshold",
+    "riskFactorIfWeak",
+    "closedDDThreshold",
+    "riskFactorAtDD",
+    "globalRiskScale"
+  ],
+  "metricOrder": [
+    "endBalance",
+    "closedDDPct",
+    "excursionDDProxyPct",
+    "end2018"
+  ],
+  "profiles": {
+    "balanced": {
+      "parent": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        [
+          5,
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        [
+          1000,
+          4000
+        ],
+        [
+          0.05,
+          0.04,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "gate": [
+        48,
+        -0.2,
+        0.75,
+        0.25,
+        1,
+        1
+      ],
+      "metrics": [
+        [
+          909271.1547322854,
+          37.70409645193201,
+          37.96110126646932,
+          5962.405129662298
+        ],
+        [
+          445752.55743353255,
+          40.47877344398496,
+          40.86396041177475,
+          5647.689203993942
+        ],
+        [
+          204.31067432137064,
+          86.10486052590507,
+          86.38981878657317,
+          664.9152203649849
+        ]
+      ]
+    },
+    "robust": {
+      "parent": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37
+        ],
+        [
+          1000,
+          1e+30
+        ],
+        [
+          0.05,
+          0.05,
+          0.05
+        ],
+        1.5,
+        1
+      ],
+      "gate": [
+        24,
+        -0.1,
+        0.5,
+        0.2,
+        1,
+        1
+      ],
+      "metrics": [
+        [
+          194572.55971504227,
+          38.88769319351503,
+          39.2230424796866,
+          2302.647631959778
+        ],
+        [
+          69579.5646883886,
+          40.62540607703868,
+          40.996736965913925,
+          1730.6555345083666
+        ],
+        [
+          21945.80731099243,
+          41.86043450489133,
+          42.43568703125923,
+          1390.624606320749
+        ]
+      ]
+    },
+    "robustLowDD": {
+      "parent": [
+        [
+          3,
+          6,
+          22,
+          26
+        ],
+        [
+          7,
+          19,
+          25,
+          50
+        ],
+        [
+          7,
+          15,
+          19,
+          34,
+          37
+        ],
+        [
+          1500,
+          3000
+        ],
+        [
+          0.05,
+          0.045,
+          0.035
+        ],
+        1,
+        1
+      ],
+      "gate": [
+        24,
+        -0.1,
+        0.5,
+        0.3,
+        0.75,
+        1
+      ],
+      "metrics": [
+        [
+          108896.91650167637,
+          32.8195519830489,
+          33.83078590641588,
+          3628.744897090709
+        ],
+        [
+          54587.361278758865,
+          33.21235895240417,
+          34.21589899955894,
+          3603.8052741486354
+        ],
+        [
+          19368.7125258427,
+          32.39652765196905,
+          33.85895885499119,
+          2589.5627328185055
+        ]
+      ],
+      "neutralParentMetrics": [
+        [
+          129821.26385380702,
+          29.64580450420593,
+          30.570070018541585,
+          3209.6402051201803
+        ],
+        [
+          48458.65221620605,
+          32.04983139561436,
+          35.07094518479848,
+          2622.7530382302516
+        ],
+        [
+          149.500118885731,
+          48.16083447839483,
+          48.34650753335136,
+          224.00435194717872
+        ]
+      ]
+    }
+  },
+  "future": {
+    "method": "3 profiles x 5 conditions x 100000 paths, shared seed, 132 months, 3-month historical return blocks; two policy evaluations per path. Adverse mixes 50% bottom quartile blocks plus 0.01 monthly log haircut. Monthly overlay uses 25% exposure if prior 3 shadow returns sum negative, multiplies by .25 if realized month-end DD >=30%; cash mix of simple returns, not actual execution",
+    "metricOrder": [
+      "medianEndMultiple",
+      "lossPct",
+      "monthEndDDOver60Pct"
+    ],
+    "adverse": {
+      "R27Robust": {
+        "noOverlay": [
+          0.13371083747671503,
+          92.999,
+          98.603
+        ],
+        "overlay": [
+          0.6453332539119437,
+          82.531,
+          2.48
+        ]
+      },
+      "R30Robust": {
+        "noOverlay": [
+          0.4000661467270931,
+          78.944,
+          88.149
+        ],
+        "overlay": [
+          0.7535104396892343,
+          71.073,
+          0.068
+        ]
+      },
+      "R30LowDD": {
+        "noOverlay": [
+          0.6178948480926154,
+          69.092,
+          72.047
+        ],
+        "overlay": [
+          0.77715609437716,
+          70.075,
+          0.002
+        ]
+      }
+    },
+    "R30LowDDOther": [
+      [
+        "2012-18 cost2",
+        336.5861627318673,
+        129.5908287926833,
+        0.008,
+        0
+      ],
+      [
+        "all cost2",
+        134.2895252092833,
+        43.816339623132855,
+        0.053,
+        0
+      ],
+      [
+        "2019-26 cost2",
+        54.40676584208679,
+        16.05053382549548,
+        0.166,
+        0
+      ],
+      [
+        "all cost3",
+        59.81589093181342,
+        22.790908897959866,
+        0.093,
+        0
+      ]
+    ]
+  },
+  "limitations": "No new alpha tapes or price regime classifier; expectancy computed from shadow signals whose exits strictly precede entry, minimum 8 observations. All history reused for selection, not independent OOS. 9768 configuration cases, not unique across stages; no million parameter search. OHLC stop-first assumed lot/caps, entry margin and stop risk budget, excursion DD proxy not native. Future paths conditional on resampled historical return distributions, monthly overlay not implemented in cBot. No future prediction or guaranteed profitability. No $100T qualification or live changes; preserve R18-R29."
+}
