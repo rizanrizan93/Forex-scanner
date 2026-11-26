@@ -1,0 +1,223 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_EARLY_BOOTSTRAP_NOT_NATIVE",
+  "parent": "ALGO_R32_ALPHA_EXPANSION_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R33_Bootstrap_20261126.zip",
+  "sha256": "4c4263cd839b9980bf639af757bc9e84f03d05dd1856a49e511af38650845dcf",
+  "counts": {
+    "newSessionCases": 840,
+    "newSessionPass": 0,
+    "originalCapCases": 22389,
+    "originalCapOldPass": 10505,
+    "originalCapFinalists": 340,
+    "highCapCases": 46601,
+    "highCapOldPass": 23268,
+    "highCapFinalists": 296,
+    "fullPass2": 0,
+    "totalConfigurationCases": 69830,
+    "totalModelEvaluations": 144880
+  },
+  "metricOrder": [
+    "balance",
+    "closedDDPct",
+    "excursionDDProxyPct",
+    "trades"
+  ],
+  "configOrder": [
+    "bootstrapIds",
+    "midIds",
+    "growthIds",
+    "balanceThresholds",
+    "phaseRisks",
+    "guard",
+    "maxPositions"
+  ],
+  "profiles": {
+    "originalCapBalanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          0,
+          7,
+          11,
+          25,
+          55,
+          73,
+          77
+        ],
+        [
+          7,
+          8,
+          15,
+          23,
+          25
+        ],
+        [
+          1000,
+          7500
+        ],
+        [
+          0.05,
+          0.0425,
+          0.035
+        ],
+        0.5,
+        3
+      ],
+      "old": [
+        [
+          14394.572526247604,
+          32.53797876365604,
+          37.21359181748992,
+          365
+        ],
+        [
+          12530.560305661103,
+          31.428690010852534,
+          36.70212660897565,
+          382
+        ]
+      ],
+      "full": [
+        [
+          20689.631677983678,
+          61.13153340649953,
+          62.35271590667977,
+          1160
+        ],
+        [
+          4166.865070055693,
+          83.76122393443022,
+          84.0587450574319,
+          1176
+        ],
+        [
+          91.09422032502796,
+          61.30749794945771,
+          61.36275126631239,
+          198
+        ]
+      ]
+    },
+    "highCapBalanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        [
+          7,
+          19,
+          23,
+          91
+        ],
+        [
+          1000,
+          5000
+        ],
+        [
+          0.0475,
+          0.045,
+          0.0475
+        ],
+        0.25,
+        3
+      ],
+      "old": [
+        [
+          32412.18110786109,
+          36.45153640800485,
+          39.212463821588,
+          307
+        ],
+        [
+          22307.496693514317,
+          37.05447837511729,
+          39.41734942755271,
+          297
+        ]
+      ],
+      "originalCapOld": [
+        [
+          10603.917020127563,
+          33.46837524466459,
+          36.7347100560137,
+          307
+        ],
+        [
+          10399.083713985314,
+          32.1251867479258,
+          37.512505667822595,
+          297
+        ]
+      ]
+    },
+    "highCapNormal": {
+      "config": [
+        [
+          0,
+          13,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          19,
+          20,
+          25,
+          89
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          58
+        ],
+        [
+          2500,
+          25000
+        ],
+        [
+          0.045,
+          0.045,
+          0.05
+        ],
+        1.5,
+        2
+      ],
+      "old": [
+        [
+          57550.862599402906,
+          37.87987597462633,
+          39.630858934422854,
+          563
+        ],
+        [
+          1279.8242807461472,
+          28.048296137960172,
+          36.43783398432402,
+          283
+        ]
+      ]
+    }
+  },
+  "oldFiniteTapeGrossUpperBoundUSD": 9928706.017623467,
+  "limitations": "Old selection stops new entries Dec1 2018 and closes before 2019, full replay includes December and runs through 2026-03-31. Existing 92 tapes, 76 old EUR/XAU tapes. Cap multiplier 1e6 hypothetical, not broker capacity. OHLC model, aggregate planned stop risk5%, margin cap50% closed balance at entry, excursion DD proxy. Parent/tape selection previously used later history; not independent OOS. Cases across stages not necessarily distinct. All 636 continuation finalist cases fail two-cost strict gates. No million config search, no future verification, no native, no live changes. Upper bound ignores losses/costs and overlap only for finite old tapes at original cap."
+}
