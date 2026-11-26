@@ -1,0 +1,406 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_OHLC_NOT_NATIVE",
+  "parent": "ALGO_R33_BOOTSTRAP_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R34_Liquidity_Trailing_20261126.zip",
+  "sha256": "03e856a5e154434b6477398cb2214045212e6b3dea203600168fcad00ef7028e",
+  "coverage": "2012-01 through 2026-03-31; BTC from 2019; continuous USD100 wallet, no deposit/reset",
+  "counts": {
+    "standaloneCases": 960,
+    "standalonePassEUR": 0,
+    "standalonePassXAU": 16,
+    "newTapes": 12,
+    "oldPortfolioCases": 26709,
+    "oldPass": 15631,
+    "oldFinalists": 652,
+    "oldFullPass2": 25,
+    "fullHistoryCases": 20267,
+    "fullPass2": 1637,
+    "fullStrict45": 766,
+    "fullCost3Tested": 511,
+    "fullPass3": 1,
+    "robustRefinementCases": 10151,
+    "robustPass3": 584,
+    "robustStrict45": 331,
+    "traceParity": 15
+  },
+  "metricOrder": [
+    "endBalance",
+    "closedDDPct",
+    "excursionDDProxyPct",
+    "trades",
+    "end2018"
+  ],
+  "configOrder": [
+    "bootstrapIds",
+    "midIds",
+    "growthIds",
+    "thresholds",
+    "risks",
+    "guard",
+    "maxPositions"
+  ],
+  "profiles": {
+    "oldBalanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          0,
+          7,
+          11,
+          25,
+          55,
+          73,
+          77
+        ],
+        [
+          7,
+          8,
+          15,
+          23,
+          25
+        ],
+        [
+          1000,
+          7500
+        ],
+        [
+          0.045,
+          0.045,
+          0.035
+        ],
+        0.5,
+        3
+      ],
+      "old": [
+        [
+          15085.894167736438,
+          40.07327392251641,
+          41.81675237173511,
+          387
+        ],
+        [
+          13461.1263,
+          28.4065,
+          34.012,
+          357
+        ]
+      ]
+    },
+    "oldMax": {
+      "old": [
+        [
+          19880.4428,
+          53.2502,
+          55.7486,
+          691
+        ],
+        [
+          1225.3472,
+          51.1608,
+          53.7195,
+          503
+        ]
+      ]
+    },
+    "growth": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        [
+          5,
+          7,
+          15,
+          25,
+          34,
+          37,
+          41
+        ],
+        [
+          1000,
+          4000
+        ],
+        [
+          0.05,
+          0.05,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          1130702.3563,
+          49.4969,
+          51.4282,
+          938,
+          6330.2036
+        ],
+        [
+          377220.3075,
+          50.0961,
+          56.0061,
+          952,
+          5876.6509
+        ],
+        [
+          91.8829,
+          64.3311,
+          64.3479,
+          194,
+          226.4304
+        ]
+      ]
+    },
+    "balanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          51,
+          94
+        ],
+        [
+          5,
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        [
+          1000,
+          6000
+        ],
+        [
+          0.05,
+          0.045,
+          0.05
+        ],
+        0,
+        1
+      ],
+      "metrics": [
+        [
+          953821.6497,
+          39.1668,
+          41.0175,
+          896,
+          6830.469
+        ],
+        [
+          690930.496,
+          41.378,
+          41.7349,
+          879,
+          7210.6435
+        ],
+        [
+          50.8167,
+          95.8524,
+          96.0098,
+          419,
+          648.4766
+        ]
+      ]
+    },
+    "robustBalanced": {
+      "config": [
+        [
+          0,
+          13,
+          18,
+          22
+        ],
+        [
+          11,
+          15,
+          51,
+          68,
+          89
+        ],
+        [
+          5,
+          7,
+          15,
+          34,
+          37
+        ],
+        [
+          900,
+          3000
+        ],
+        [
+          0.05,
+          0.045,
+          0.05
+        ],
+        0.25,
+        1
+      ],
+      "metrics": [
+        [
+          866309.2039332795,
+          34.568452380818385,
+          39.61151449693011,
+          814,
+          5653.719259395342
+        ],
+        [
+          421666.1568059386,
+          42.24036262714813,
+          44.00010386622532,
+          827,
+          4968.285212552987
+        ],
+        [
+          108132.92925011876,
+          49.273217199606265,
+          51.06981302173907,
+          821,
+          4914.7159799464935
+        ]
+      ]
+    },
+    "robustGrowth": {
+      "config": [
+        [
+          0,
+          13,
+          18,
+          19,
+          22
+        ],
+        [
+          4,
+          7,
+          19,
+          20,
+          25
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37,
+          40
+        ],
+        [
+          750,
+          2500
+        ],
+        [
+          0.0475,
+          0.04,
+          0.05
+        ],
+        0,
+        1
+      ],
+      "metrics": [
+        [
+          968154.6685887842,
+          40.75396365347957,
+          46.847787841425294,
+          1053,
+          5447.847062881752
+        ],
+        [
+          536202.528071224,
+          44.635904543756176,
+          47.611237141456044,
+          1044,
+          4835.103384183154
+        ],
+        [
+          81824.12449606085,
+          51.08071409445801,
+          52.38807258596867,
+          1036,
+          3109.9899492587006
+        ]
+      ]
+    },
+    "robustStrict": {
+      "config": [
+        [
+          0,
+          18,
+          22,
+          92
+        ],
+        [
+          11,
+          15,
+          51,
+          68
+        ],
+        [
+          5,
+          7,
+          15,
+          34,
+          37
+        ],
+        [
+          900,
+          2500
+        ],
+        [
+          0.05,
+          0.05,
+          0.0475
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          815831.4875173052,
+          40.04893539572023,
+          44.19949265367421,
+          803,
+          5269.58454250594
+        ],
+        [
+          278809.3839178796,
+          41.246242634658756,
+          45.790340261450964,
+          794,
+          4786.096261452102
+        ],
+        [
+          74212.29928769538,
+          44.98707432388635,
+          46.71385307314926,
+          769,
+          4293.970484226992
+        ]
+      ]
+    }
+  },
+  "limitations": "Configuration cases, not necessarily unique across stages; 58087 completed cases, 128792 cost model evaluations excluding trace runs. Partial interrupted full-history attempt not counted; resumed with new seed. Old entries cutoff Dec1 2018, full replay includes December. Earlier model selection used later history; full-history refinement is exploratory, not independent OOS. New trailing stops updated only after bar close, stop first; new tapes use conservative full exit-bar excursions, earlier tape convention unchanged. Planned aggregate risk 5%, margin admission 50% closed balance, assumed volume limits; no actual synchronous floating DD/stopout or native replay. No future test in R34. $1T 2018 and $100T continuous not reached. No LIVE changes."
+}
