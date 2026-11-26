@@ -1,0 +1,413 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_OHLC_AND_CONDITIONAL_STRESS",
+  "parent": "ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R29_Regime_Stress_20261126.zip",
+  "sha256": "9366ed38ba8f9ff1e9aadc68df921a10cc49e4fa54c5b738db46823670316e68",
+  "coverage": "2012-01 through 2026-03-31, BTC starts 2019, shared $100 wallet no deposit or reset",
+  "counts": {
+    "standaloneConfigurations": 576,
+    "standaloneModelRiskPassEUR": 0,
+    "standaloneModelRiskPassXAU": 12,
+    "newUniqueTapes": 10,
+    "bootstrapConfigs": 23983,
+    "bootstrapPass": 11501,
+    "twoPhaseFullFinalists": 153,
+    "twoPhaseFullPass": 0,
+    "threePhaseConfigs": 6751,
+    "threePhaseTwoCostPass": 608,
+    "threePhaseCost3Tested": 97,
+    "threePhaseThreeCostPass": 0,
+    "historicalCostRuns": 63206,
+    "stressPaths": 1000000
+  },
+  "boot": {
+    "config": [
+      [
+        18,
+        19,
+        22,
+        51
+      ],
+      [
+        7,
+        11,
+        17,
+        19,
+        25,
+        57
+      ],
+      3000,
+      [
+        0.05,
+        0.045
+      ],
+      0.5,
+      3
+    ],
+    "balance2018": [
+      8309.003516291838,
+      4967.889280347327
+    ],
+    "closedDD": [
+      39.092294781344336,
+      36.454407180892204
+    ],
+    "fullNoThirdSwitchBalance": [
+      305.9993040493561,
+      138.50663230096185
+    ],
+    "fullNoThirdSwitchClosedDD": [
+      96.90284432562665,
+      97.79989795488757
+    ]
+  },
+  "newXAUModelIDs": {
+    "50": [
+      "1h",
+      10,
+      50,
+      "pullback",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "51": [
+      "1h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "52": [
+      "1h",
+      10,
+      50,
+      "breakout",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "53": [
+      "1h",
+      10,
+      150,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "54": [
+      "1h",
+      10,
+      50,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "55": [
+      "1h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      1,
+      3,
+      12
+    ],
+    "56": [
+      "1h",
+      10,
+      50,
+      "breakout",
+      "compression",
+      0,
+      1,
+      3,
+      12
+    ],
+    "57": [
+      "30min",
+      10,
+      150,
+      "counter_sweep",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "58": [
+      "30min",
+      10,
+      50,
+      "counter_sweep",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "59": [
+      "1h",
+      10,
+      50,
+      "sweep",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ]
+  },
+  "profiles": {
+    "growth": {
+      "config": [
+        [
+          18,
+          19,
+          22,
+          51
+        ],
+        [
+          7,
+          11,
+          17,
+          19,
+          25,
+          57
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37,
+          40
+        ],
+        [
+          3000,
+          4000
+        ],
+        [
+          0.05,
+          0.045,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          1004067.2818224713,
+          36.49993218066736,
+          38.40507430750794,
+          1085,
+          8025.345194621384
+        ],
+        [
+          273655.62599712616,
+          43.71019122697037,
+          45.04847171952314,
+          1132,
+          3567.350066373338
+        ],
+        [
+          122.89402696813505,
+          70.63411521133311,
+          72.00379642263202,
+          371,
+          210.3229122302559
+        ]
+      ]
+    },
+    "balanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        [
+          5,
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        [
+          1000,
+          4000
+        ],
+        [
+          0.05,
+          0.04,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          922784.8642779986,
+          37.63488816314781,
+          37.887599204353194,
+          839,
+          6067.543882685473
+        ],
+        [
+          416569.2148021525,
+          41.09425921317048,
+          41.51790307350951,
+          850,
+          5118.750075180561
+        ],
+        [
+          91.88290726603144,
+          64.33114636971801,
+          64.34790832994258,
+          194,
+          226.4303529043443
+        ]
+      ]
+    },
+    "bootstrap": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37
+        ],
+        [
+          1000,
+          4000
+        ],
+        [
+          0.05,
+          0.04,
+          0.045
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          826121.7315432153,
+          36.9145328195889,
+          38.559555534667076,
+          905,
+          6897.804290480357
+        ],
+        [
+          285348.1355871937,
+          40.98769936086356,
+          42.53393026611483,
+          916,
+          5878.384000468992
+        ],
+        [
+          91.88290726603144,
+          64.33114636971801,
+          64.34790832994258,
+          194,
+          226.4303529043443
+        ]
+      ]
+    }
+  },
+  "metricOrder": [
+    "endBalance",
+    "closedDDPct",
+    "excursionDDProxyPct",
+    "trades",
+    "end2018"
+  ],
+  "future": {
+    "profile": "R27_ROBUST",
+    "horizonMonths": 132,
+    "method": "200k paths each, overlapping 3-month blocks of observed monthly log balance returns; adverse mix 50% bottom quartile and 0.01 monthly log haircut; no future price prediction or sizing dynamics",
+    "order": [
+      "p05Multiple",
+      "medianMultiple",
+      "p95Multiple",
+      "lossPct",
+      "monthEndDDOver60Pct"
+    ],
+    "scenarios": {
+      "oldCost2": [
+        18.725703934978643,
+        126.90748175922546,
+        911.3944420247902,
+        0.001,
+        0.554
+      ],
+      "allCost2": [
+        19.525589551879378,
+        194.17373755319343,
+        2202.9760923011527,
+        0.005,
+        3.9445
+      ],
+      "newCost2": [
+        21.18568588973648,
+        283.6610407460707,
+        4512.67671917309,
+        0.0095,
+        8.8985
+      ],
+      "allCost3": [
+        8.294081008334828,
+        74.14730506522092,
+        728.3986006356708,
+        0.0495,
+        8.1215
+      ],
+      "adverseCost3": [
+        0.016176283232672544,
+        0.13356240215367302,
+        1.255996416555257,
+        93.095,
+        98.583
+      ]
+    }
+  },
+  "limitations": "No million-config search; one million stress paths are not configurations. OHLC stop-first, assumed caps and min volumes, admission margin 50% of closed balance and stop risk 5%, not actual broker constraints or native mark-to-market. Bootstrap flat cutoff Dec 1 2018 is diagnostic; full three-phase switches based on closed balance. Reused historical data; not independent OOS. Future stress uses resampled monthly balance returns, month-end DD only, not future execution or probability forecasts. All R29 cost3 finalists fail strict gates. $1T early and $100T continuous not met; prior frozen and LIVE unchanged."
+}
