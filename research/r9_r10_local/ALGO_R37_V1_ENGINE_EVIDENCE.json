@@ -1,0 +1,389 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_V1_INSPIRED_NOT_NATIVE",
+  "parent": "ALGO_R36_ADAPTIVE_COMPOUNDING_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R37_V1_Engine_20261126.zip",
+  "sha256": "28170a2f2aebc963ea49dc04c7c01689ae4ebdcbfdc331574399976f4bd183e6",
+  "source": "RIZAN_BOOTSTRAP125_V1_FROZEN_20261114.zip; BootstrapRules.cs, EurBatchExecution.cs, XauBatchExecution.cs, FrozenCore.cs, RizanXauEurPortfolio.cs",
+  "counts": {
+    "oldEURM1RowsIncluding2011Warmup": 2956749,
+    "existingTapes": 104,
+    "basketCases": 9100,
+    "neutralParity": 100,
+    "seedCases": 324,
+    "seedStrictGraduates": 21,
+    "seedPortfolioCases": 4200,
+    "seedPortfolioOldPass": 1630,
+    "eligibleContinuationReplayed": 1630,
+    "eligibleThirdCostGraduates": 240,
+    "strictOriginalCapContinuationPass2": 88,
+    "strictExpandedCapContinuationPass2": 80,
+    "strictOriginalCapContinuationPass3": 3,
+    "strictExpandedCapContinuationPass3": 3,
+    "strictStagedPass2": 80,
+    "strictStagedPass3": 0,
+    "guard47Cases": 5040,
+    "totalCases": 18664
+  },
+  "seedParameterOrder": [
+    "lookbackM5",
+    "side",
+    "SL_ATR",
+    "TP_R",
+    "risk"
+  ],
+  "seedV1Approx": {
+    "params": [
+      64,
+      1,
+      1.25,
+      4,
+      0.08
+    ],
+    "balance": [
+      130.65463853732177,
+      125.33925296808385,
+      46.52581626592247
+    ],
+    "handoffUTC": [
+      "2012-01-31T04:41:00Z",
+      "2012-02-01T11:06:00Z",
+      null
+    ],
+    "equityDDProxy": [
+      22.022319443926953,
+      24.87810873506199,
+      63.21729708150872
+    ]
+  },
+  "seedFast": {
+    "params": [
+      16,
+      -1,
+      0.75,
+      2,
+      0.05
+    ],
+    "balance": [
+      129.29396944128928,
+      125.6147509489298,
+      45.42727706465168
+    ],
+    "handoffUTC": [
+      "2012-01-04T15:38:00Z",
+      "2012-01-12T01:44:00Z",
+      null
+    ],
+    "equityDDProxy": [
+      7.095456736255601,
+      21.60969176597153,
+      62.288915515100825
+    ]
+  },
+  "oldExpandedBalanced": {
+    "growth": [
+      [
+        0,
+        18,
+        21,
+        22,
+        75
+      ],
+      [
+        7,
+        11,
+        15,
+        25,
+        51,
+        55,
+        73,
+        77
+      ],
+      [
+        7,
+        15,
+        25,
+        50,
+        91,
+        94
+      ],
+      [
+        3000,
+        15000
+      ],
+      [
+        0.0425,
+        0.05,
+        0.045
+      ],
+      0.5,
+      1,
+      [
+        0.8,
+        2,
+        1
+      ],
+      [
+        1.25,
+        1,
+        0.9,
+        1,
+        1.5,
+        0.9,
+        0.9
+      ],
+      0.15,
+      0.65
+    ],
+    "seed": [
+      16,
+      -1,
+      0.75,
+      2,
+      0.05
+    ],
+    "basket": [
+      1,
+      0,
+      0.05,
+      40
+    ],
+    "oldBalance": [
+      106085.40228474392,
+      98200.82403829231
+    ],
+    "oldDDProxy": [
+      56.55601467739954,
+      44.266590789829316
+    ],
+    "fullBalance": [
+      44284.91764265854,
+      9937.769049111816
+    ],
+    "fullDDProxy": [
+      92.30585658515955,
+      97.55516912602826
+    ]
+  },
+  "oldExpandedMax": {
+    "balance": [
+      204748.69138964565,
+      1412.073780128086
+    ],
+    "DDProxy": [
+      44.944117933050535,
+      47.686027757057204
+    ]
+  },
+  "robustExpanded": {
+    "growth": [
+      [
+        0,
+        13,
+        18,
+        22
+      ],
+      [
+        11,
+        15,
+        51,
+        68,
+        89
+      ],
+      [
+        5,
+        7,
+        15,
+        34,
+        37
+      ],
+      [
+        900,
+        3000
+      ],
+      [
+        0.075,
+        0.0675,
+        0.075
+      ],
+      0.25,
+      1,
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      1,
+      1
+    ],
+    "seed": [
+      64,
+      1,
+      1.25,
+      6,
+      0.05
+    ],
+    "basket": [
+      1,
+      0,
+      0.05,
+      40
+    ],
+    "end2018": [
+      5705.2471573152325,
+      5453.577968048797,
+      5501.578133269842
+    ],
+    "end2026": [
+      1241570.0082728588,
+      876697.3169610674,
+      374523.98673108313
+    ],
+    "DDProxy": [
+      44.641692897675135,
+      45.270635895208834,
+      54.13819197603122
+    ]
+  },
+  "robustOriginalCap": {
+    "end2026": [
+      868648.9944118673,
+      472591.8052232123,
+      134323.10214487478
+    ],
+    "DDProxy": [
+      44.641692897675135,
+      45.743387442931,
+      53.226860988816085
+    ]
+  },
+  "stagedExpanded": {
+    "seed": [
+      64,
+      1,
+      1.75,
+      6,
+      0.05
+    ],
+    "basket": [
+      0.75,
+      0,
+      0.05,
+      40
+    ],
+    "end2018": [
+      6073.77753612367,
+      6179.453174440887
+    ],
+    "end2026": [
+      1183711.838623912,
+      839324.1182063778,
+      null
+    ],
+    "DDProxy": [
+      40.63082007579002,
+      45.540943785034635,
+      null
+    ],
+    "adds": [
+      349,
+      377
+    ]
+  },
+  "guard47Sensitivity": {
+    "riskCap": 0.2075,
+    "seed": [
+      64,
+      1,
+      1.75,
+      2,
+      0.05
+    ],
+    "basket": [
+      0.75,
+      0,
+      0.2075,
+      1
+    ],
+    "growth": [
+      [
+        0,
+        13,
+        18,
+        22
+      ],
+      [
+        11,
+        15,
+        51,
+        68,
+        89
+      ],
+      [
+        5,
+        7,
+        15,
+        34,
+        37
+      ],
+      [
+        900,
+        3000
+      ],
+      [
+        0.1875,
+        0.16875,
+        0.1875
+      ],
+      0.25,
+      1,
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      1,
+      1
+    ],
+    "end2026": [
+      1129874.2836334587,
+      862949.0924316326,
+      601607.1734419275
+    ],
+    "DDProxy": [
+      59.31003711030138,
+      57.50536503600281,
+      56.3179940710546
+    ],
+    "adds": [
+      331,
+      313,
+      256
+    ],
+    "maxPlannedRiskPct": [
+      19.867835099085948,
+      20.31216063648297,
+      19.404060301075592
+    ],
+    "decision": "NONQUALIFYING against 5% aggregate planned risk"
+  },
+  "limitations": "One basket at a time, M1 seed and M15 historical tape basket, modeled fees, no native execution or independent holdout. Seed has no post2018 replay if not graduated; null cost3 is untested, not zero balance. Risk sensitivities above 5% are nonqualifying. Cap40 EUR/XAU only hypothetical (2M EUR / 2000oz), BTC unchanged. Guard47 adapts source cushion and margin scaling using proxy equity peak, not full V1 engine. Corrected future funding at stage add before counted results. No synchronized native floating DD; 2012 to 2026-03-31 cutoff. No target attainment or live changes. Exact configs and completed case records archived."
+}
