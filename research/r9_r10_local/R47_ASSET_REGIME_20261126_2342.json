@@ -1,0 +1,94 @@
+{
+  "parent": "R46_INCREMENTAL_REGIME_20261126_2252.json",
+  "archive_sha256": "dd7fbb543be76ce9c7ae250bf63e993f8515655502f09b54a1f3e795c9ea507c",
+  "parity": "six R38 portable profiles and both R46 controls reproduced",
+  "cases": 4818,
+  "old_evaluations": 9636,
+  "old_pass": 3045,
+  "continuation_finalists": 59,
+  "continuation_evaluations": 118,
+  "continuation_pass": 0,
+  "method": "R46 causal H4 classifier unchanged; independent EUR and XAU multipliers, random seed 471126, 4000 attempts per parent alternating two mutations and full matrix random draws from .5,.75,1,1.25,1.5; dedup per parent, exclude shared matrices; BTC unchanged; old-first top 15 each normal and min cost balance",
+  "max": {
+    "weights": [
+      [
+        1,
+        1,
+        1,
+        0.75
+      ],
+      [
+        1,
+        0.75,
+        1,
+        0.75
+      ],
+      [
+        1,
+        1,
+        1,
+        0.75
+      ]
+    ],
+    "old_balance": [
+      405919.65174369584,
+      2977.9991083343953
+    ],
+    "old_proxy_dd": [
+      48.11285138969292,
+      47.96305453937656
+    ],
+    "full_balance": [
+      415351.9523897305,
+      914.7579796554417
+    ],
+    "full_proxy_dd": [
+      85.19419868594686,
+      81.41120931353869
+    ]
+  },
+  "balanced": {
+    "weights": [
+      [
+        1.5,
+        1.5,
+        0.5,
+        1.5
+      ],
+      [
+        1,
+        1.5,
+        1.5,
+        1.25
+      ],
+      [
+        1,
+        1,
+        1.25,
+        1
+      ]
+    ],
+    "old_balance": [
+      269128.94880617096,
+      133101.39879545363
+    ],
+    "old_proxy_dd": [
+      39.03153614274119,
+      41.88235496449879
+    ],
+    "full_balance": [
+      96380.15171236602,
+      7523.209904708766
+    ],
+    "full_proxy_dd": [
+      91.96525698228142,
+      98.20319020354495
+    ]
+  },
+  "local_hashes": {
+    "code": "de8ca65bd8bbd342eaf1c76aef3d03a474559040ce9d0a2b933f627b85f3b55e",
+    "results": "cfdfa81803501ef400465522ec516e39fcdeb7df527c8c96ddc49f02ed36c32b",
+    "rows": "18f1b2455611b528b3835b6547eed7ce8f2d36dd0dd0db3cf48f4e85ae94fe32"
+  },
+  "limitations": "OHLC proxy, cached seed, hypothetical unchanged Cap40, no new alpha or native floating DD, no independent holdout. No live changes. Incumbents retained."
+}
