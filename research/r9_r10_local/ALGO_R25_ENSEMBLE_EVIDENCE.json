@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_EUR_NOT_NATIVE",
+  "parent": "ALGO_R24_CONTINUOUS_BOOTSTRAP_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R25_Ensemble_20261126.zip",
+  "sha256": "cd5c01f6bb99dde89ccc17a5369dd1f26d7cfb3ff41f200f10fc9f20b695891d",
+  "coverage": "2012-01 to 2026-03-31",
+  "counts": {
+    "ensembleConfigs": 3280,
+    "trainingBothCosts": 6560,
+    "trainingPass": 2249,
+    "fullThreeCostRuns": 6747,
+    "fullPassBoth": 86,
+    "fullPassThree": 25,
+    "initialTop60BothGrowthPass": 0,
+    "interruptedIntradayCost2": 1700
+  },
+  "best": {
+    "ids": [
+      4,
+      14
+    ],
+    "params": [
+      [
+        "4h",
+        10,
+        50,
+        "counter_sweep",
+        "compression",
+        1.5,
+        4,
+        36,
+        0.05,
+        1.5
+      ],
+      [
+        "4h",
+        20,
+        150,
+        "breakout",
+        "expansion",
+        1.5,
+        4,
+        12,
+        0.05,
+        1.5
+      ]
+    ],
+    "metrics": [
+      [
+        350.0306928607077,
+        43.77747995165774,
+        45.87163395478048,
+        284,
+        297,
+        1.2204570188631316,
+        138.76051095333034,
+        69,
+        215,
+        13.302702016234393,
+        87.24368847367988
+      ],
+      [
+        253.8975995298346,
+        44.815912761345686,
+        46.16148301300037,
+        327,
+        228,
+        1.1300238843242794,
+        179.63306126277448,
+        123,
+        204,
+        11.426787185755003,
+        100
+      ],
+      [
+        88.70224664144241,
+        31.09106161065388,
+        35.38041257141189,
+        20,
+        792,
+        0.7926956607250901,
+        94.14175712680708,
+        18,
+        2,
+        7.074485517444787,
+        88.70224664144241
+      ]
+    ]
+  },
+  "metricOrder": [
+    "balance",
+    "closedDD",
+    "equityExcursionDDProxy",
+    "trades",
+    "minSizeSkips",
+    "PF",
+    "end2018",
+    "oldTrades",
+    "newTrades",
+    "maxMarginPctAtEntry",
+    "minBalance"
+  ],
+  "limitations": "R24 top 30 training selected strategies combined in one-position EUR wallet, risk 3.5/5% max, guard1.5, assumed min and step 1000 units, max 50000 units, leverage200, entry margin50%, M15 stop-first, worst/best within-trade excursion DD proxy, not native. Same dataset reused, final choice after all-period evaluation. 1700 partial intraday runs timed out, not included in ensemble counts. No BTC or XAU integration, not a $100T qualification. Preserve R18–R21 and R24; no LIVE changes."
+}
