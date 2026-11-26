@@ -1,0 +1,190 @@
+{
+  "status": "RESEARCH_ONLY_NO_NATIVE_PROMOTION",
+  "date": "2026-11-26",
+  "parent": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R22_Regime_Protection_20261126.zip",
+  "sha256": "b611e6b1e7a7e286af37d1d857b6c80cd7d65e5297e3190da79fc5c455a860a2",
+  "counts": {
+    "shadowGateConfigs": 128,
+    "shadowGateAllSplitPass": 0,
+    "newStrategyConfigsXAU": 4536,
+    "newStrategyConfigsEUR": 4536,
+    "allAvailableSplitPassXAU": 1,
+    "allAvailableSplitPassEUR": 0,
+    "portfolioConfigs": 198,
+    "controlsParents": 22,
+    "continuousRuns": 396,
+    "monthlyRuns": 33660,
+    "capRuns": 792,
+    "activeReplacementFixedPass": 32,
+    "activeReplacementCap2AndPerturbedPass": 32,
+    "bothR19BalancesPass": 0
+  },
+  "xauReplacement": {
+    "params": [
+      "4h",
+      10,
+      300,
+      "breakout",
+      0,
+      "expansion",
+      2,
+      6,
+      12
+    ],
+    "filter": "ATR14 / prior rolling median60 >=1.15",
+    "cost2SplitMetrics": [
+      [
+        81,
+        3.947848708605508,
+        1.1343408511262703
+      ],
+      [
+        47,
+        5.791514215270353,
+        1.3095449522391291
+      ],
+      [
+        81,
+        21.464214595713837,
+        1.8129917540118488
+      ],
+      [
+        38,
+        5.434363467942372,
+        1.3720683905936502
+      ],
+      [
+        24,
+        2.808134762521088,
+        1.2421810103199913
+      ]
+    ],
+    "splitMetricOrder": [
+      "trades",
+      "sumR",
+      "pf"
+    ],
+    "old2012to2018": {
+      "trades": 128,
+      "sumR": 9.739362923875863,
+      "pf": 1.202495975534656,
+      "balance1PctRisk": 109.50447017147286,
+      "closedDD1PctRisk": 7.075650291525326,
+      "annualEndBalance": [
+        100.73663001802137,
+        107.92324331715383,
+        103.70031483393365,
+        103.63070551328374,
+        109.05923048437481,
+        110.88235801467033,
+        109.50447017147286
+      ]
+    },
+    "selection": "Joint selection uses all available historical splits; not independent OOS."
+  },
+  "shadowGate": {
+    "XAU": {
+      "lookback": 60,
+      "thresholdR": 0.1,
+      "oldBalance": 93.73811176523068,
+      "oldDD": 20.843761036326093,
+      "oldPF": 0.9572480347892776
+    },
+    "decision": "fails positive profit across all splits"
+  },
+  "portfolio": {
+    "metricOrder": [
+      "balance1",
+      "closedDD1",
+      "balance2",
+      "closedDD2"
+    ],
+    "bestNormal": {
+      "parent": "R18_allDD50",
+      "risk": 0.075,
+      "fixed": [
+        570265888347.1549,
+        49.021558039105486,
+        3509031377.5128427,
+        52.46779707665099
+      ],
+      "worst85": 46.79810119274467,
+      "cap2": [
+        3196473083.070564,
+        47.09705232523858,
+        2124689140.435815,
+        50.2681470125512
+      ]
+    },
+    "bestStress": {
+      "parent": "R18_bootstrap",
+      "risk": 0.005,
+      "fixed": [
+        79965773305.93088,
+        48.09354599546511,
+        27346091240.188847,
+        49.11954936656704
+      ],
+      "worst85": 57.86861129714458
+    },
+    "bestJoint": {
+      "parent": "R18_allDD50",
+      "risk": 0.01,
+      "params": [
+        0.79839346125,
+        2.05,
+        1.4625,
+        1.2349999999999999,
+        1.18713,
+        1.064802375,
+        0.42,
+        0.6149999999999999,
+        0.025876125000000003,
+        0.24375,
+        0.01,
+        0.003125,
+        0.04218750000000001,
+        1000,
+        1.4716406249999998,
+        1.3320450000000001,
+        1.5795000000000001,
+        1.743525,
+        1.5750000000000002,
+        0.524875,
+        1.89,
+        1.8646031250000001,
+        0.43890000000000007,
+        0.2925,
+        0.42,
+        0.042,
+        0.15,
+        2,
+        0.2,
+        1,
+        1.05,
+        0.9
+      ],
+      "fixed": [
+        360506838701.82886,
+        48.85767732650035,
+        5241202201.857706,
+        51.10952436771918
+      ],
+      "worst85": 46.79810119274467,
+      "cap2": [
+        3312496207.4833536,
+        46.55761711603057,
+        2500627673.2206244,
+        47.674846605017095
+      ],
+      "perturbed": [
+        2352796097.5559187,
+        48.422870535606954,
+        812795740.6192849,
+        49.83403660131539
+      ]
+    }
+  },
+  "limitations": "H1/H4 OHLC aggregated from M1, theoretical 1% risk standalone, not minimum broker lot or floating equity. EUR old 2016-18 still missing decoder, BTC and identical core pre2019 unavailable. Portfolio replacement XAU only; core historical archived returns rescaled, 2019–Oct2026 core, March2026 addons. Exposure cap2 and perturbed continuous only, not native. No live changes. Preserve R18–R21 benchmarks."
+}
