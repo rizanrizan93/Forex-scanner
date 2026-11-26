@@ -1,0 +1,54 @@
+{
+  "parent": "ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+  "archive_sha256": "dd7fbb543be76ce9c7ae250bf63e993f8515655502f09b54a1f3e795c9ea507c",
+  "parity": "six portable profiles and four neutral old controls passed",
+  "cases": 510,
+  "old_evaluations": 1020,
+  "continuation_evaluations": 40,
+  "old_proxy_dd_pass": 339,
+  "continuation_pass": 0,
+  "method": "R38 unchanged tapes, seed, caps and masks; closed H4 EMA20/80 normalized by 20-return volatility, EMA20 three-bar slope; bull z>.5 slope>0, bear z<-.5 slope<0, sideways abs(z)<.25, else transition. BTC transition default. Risk multiplier grid .5,.75,1,1.25 shared across assets, 255 nonneutral cases per parent. Existing aggregate admission gates unchanged.",
+  "max": {
+    "parent": "expanded_cap_max",
+    "weights": [
+      1,
+      1,
+      1,
+      0.75
+    ],
+    "old_balance": [
+      396295.28953056515,
+      3190.809508612695
+    ],
+    "old_proxy_dd": [
+      48.03264996541926,
+      48.0897356493486
+    ]
+  },
+  "balanced": {
+    "parent": "expanded_cap_balanced",
+    "weights": [
+      1,
+      1,
+      1.25,
+      1
+    ],
+    "old_balance": [
+      253500.58903525936,
+      116792.9196535502
+    ],
+    "old_proxy_dd": [
+      43.41011237369887,
+      43.63540625633158
+    ],
+    "full_balance": [
+      141675.04039609668,
+      19109.90368907895
+    ],
+    "full_proxy_dd": [
+      86.0642734675525,
+      95.73463900043483
+    ]
+  },
+  "limitations": "OHLC tape only, cached seed, no new alpha or native DD, no independent holdout, hypothetical Cap40 unchanged; top ten by minimum old balance per parent continued, max normal candidate not necessarily continued. No LIVE changes."
+}
