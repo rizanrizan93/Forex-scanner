@@ -1,0 +1,349 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_OHLC_NOT_NATIVE",
+  "parent": "ALGO_R25_ENSEMBLE_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R26_Multi_Asset_20261126.zip",
+  "sha256": "229bd4adee016d2337e2f2fbe5e8071a1723874019a858ffe0cd8be41a00154a",
+  "coverage": "2012-01-01 to 2026-03-31 UTC, BTC begins 2019; one wallet $100 no resets or deposits",
+  "counts": {
+    "standaloneConfigs": 1790,
+    "standaloneCostRuns": 3580,
+    "portfolioConfigs": 4820,
+    "portfolioPass": 263,
+    "portfolioThreeCostPass": 97,
+    "portfolioBoth1000": 1,
+    "refinementConfigs": 3828,
+    "refinementPass": 1223,
+    "refinementThreeCostPass": 912,
+    "refinementBothImproved": 60,
+    "portfolioAndRefinementCostRuns": 25944,
+    "traceScenarios": 12
+  },
+  "riskPhase": "<250, 250–999.99, >=1000 USD",
+  "metricsOrder": [
+    "balance",
+    "closedDDPct",
+    "equityExcursionDDProxyPct",
+    "trades",
+    "end2018"
+  ],
+  "modelOrder": [
+    "symbol(0 EUR,1 XAU,2 BTC)",
+    "tf",
+    "look",
+    "ema",
+    "family",
+    "regime",
+    "side",
+    "slATR",
+    "tpATR",
+    "holdSignalBars"
+  ],
+  "models": {
+    "3": [
+      0,
+      "4h",
+      15,
+      50,
+      "counter_sweep",
+      "compression",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "6": [
+      0,
+      "4h",
+      10,
+      150,
+      "sweep",
+      "expansion",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "7": [
+      0,
+      "4h",
+      20,
+      80,
+      "breakout",
+      "expansion",
+      0,
+      1,
+      6,
+      36
+    ],
+    "15": [
+      0,
+      "4h",
+      10,
+      50,
+      "breakout",
+      "compression",
+      0,
+      1,
+      3,
+      12
+    ],
+    "19": [
+      1,
+      "4h",
+      10,
+      50,
+      "pullback",
+      "compression",
+      0,
+      0.6,
+      2,
+      12
+    ],
+    "22": [
+      1,
+      "4h",
+      10,
+      50,
+      "sweep",
+      "expansion",
+      0,
+      0.6,
+      2,
+      12
+    ],
+    "25": [
+      1,
+      "4h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      0.6,
+      2,
+      12
+    ],
+    "26": [
+      1,
+      "4h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      1,
+      5,
+      24
+    ],
+    "34": [
+      2,
+      "4h",
+      10,
+      150,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "37": [
+      2,
+      "4h",
+      10,
+      50,
+      "sweep",
+      "all",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "38": [
+      2,
+      "4h",
+      10,
+      50,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "40": [
+      2,
+      "4h",
+      12,
+      120,
+      "sweep",
+      "all",
+      -1,
+      0.75,
+      4,
+      6
+    ]
+  },
+  "profiles": [
+    {
+      "id": "R26_GROWTH",
+      "ids": [
+        7,
+        19,
+        25,
+        34,
+        37,
+        40
+      ],
+      "risk": [
+        0.035,
+        0.05,
+        0.05
+      ],
+      "guard": 2,
+      "metrics": [
+        [
+          53769.24524115961,
+          38.6869578715202,
+          43.83651456403677,
+          866,
+          224.43444738453425
+        ],
+        [
+          4329.016487787431,
+          44.21778347957373,
+          46.535049216016134,
+          791,
+          178.14970225876905
+        ],
+        [
+          481.9096531759267,
+          50.282401656724886,
+          53.905693770773325,
+          649,
+          154.56863138776615
+        ]
+      ]
+    },
+    {
+      "id": "R26_COST2",
+      "ids": [
+        7,
+        15,
+        19,
+        25,
+        34,
+        37
+      ],
+      "risk": [
+        0.035,
+        0.05,
+        0.05
+      ],
+      "guard": 2,
+      "metrics": [
+        [
+          46535.965650653474,
+          40.900312586547095,
+          46.977830720301014,
+          795,
+          171.8791961611093
+        ],
+        [
+          6000.733897577901,
+          44.141041130517,
+          48.5162563074503,
+          779,
+          165.83858253875172
+        ],
+        [
+          330.28022466457793,
+          62.58713294896352,
+          64.84227530775964,
+          508,
+          99.11272777302862
+        ]
+      ]
+    },
+    {
+      "id": "R26_ROBUST",
+      "ids": [
+        7,
+        15,
+        25,
+        34,
+        37
+      ],
+      "risk": [
+        0.035,
+        0.04,
+        0.05
+      ],
+      "guard": 1.5,
+      "metrics": [
+        [
+          45088.8873804249,
+          38.41346430075949,
+          44.247474854397076,
+          714,
+          162.4986714579872
+        ],
+        [
+          4925.8822871175835,
+          44.24428932239714,
+          45.51200983924263,
+          706,
+          140.2094710021827
+        ],
+        [
+          1676.8589615073345,
+          50.06592606219564,
+          52.04106840439341,
+          691,
+          142.91278412353824
+        ]
+      ]
+    },
+    {
+      "id": "R26_BOOTSTRAP",
+      "ids": [
+        3,
+        6,
+        22,
+        26,
+        38
+      ],
+      "risk": [
+        0.05,
+        0.04,
+        0.035
+      ],
+      "guard": 1.5,
+      "metrics": [
+        [
+          2571.3320135383533,
+          36.731559979558746,
+          38.73266035589344,
+          612,
+          1117.50456974191
+        ],
+        [
+          1660.6521005320626,
+          37.44149688336373,
+          41.038067310872336,
+          622,
+          1059.9233734274562
+        ],
+        [
+          530.618272155753,
+          38.2613072611952,
+          40.000666887938365,
+          472,
+          565.124265353216
+        ]
+      ]
+    }
+  ],
+  "limitations": "One position total, assumed volume min/step 1000 EUR,1 oz,.01 BTC, maxima 50000/50/10; leverage200; planned risk <=5%; entry margin <=50%; M15 or BTC M30 OHLC stop-first with synthetic costs; nonchronological trade excursion DD proxy, not native. BTC standalone training $500 solely for selection, portfolio starts $100 in 2012. EUR/XAU training 2012–2018, BTC 2019–2022, full-period portfolio selection not independent OOS. R25 control and all 12 finalist traces reconciled. No overlapping-position engine tested. No original core or full broker specifications. Target $100T not met, prior fixed-screening benchmarks retained, no LIVE changes."
+}
