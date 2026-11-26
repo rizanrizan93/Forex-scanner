@@ -1,0 +1,270 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_NO_NATIVE_PROMOTION",
+  "parent": [
+    "ALGO_R27_SWITCHING_EVIDENCE.json",
+    "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json"
+  ],
+  "archive": "RIZAN_ALGO_R28_Bootstrap_Hybrid_20261126.zip",
+  "sha256": "eb3d272de4fae722e5e8b4e0d4ead28bb48f237fb37d39d0fc9caf684419b1fb",
+  "counts": {
+    "bootstrapConfigs": 6483,
+    "bootstrapPass": 3019,
+    "hybridPairs": 4230,
+    "hybridR21Parity": 141,
+    "hybridFixedPass": 4200,
+    "hybridBoth100T": 380,
+    "hybridBoth100Tunder45": 0,
+    "hybridAllCapPass": 0,
+    "continuousConfigs": 7616,
+    "continuousBothCostPass": 656,
+    "continuousCost3Tested": 656,
+    "continuousCost3StrictPass": 0
+  },
+  "hybrid": {
+    "metricOrder": [
+      "balanceNormal",
+      "closedDDNormal",
+      "balanceCost2",
+      "closedDDCost2"
+    ],
+    "balanced": {
+      "boot": [
+        [
+          3,
+          6,
+          22,
+          26
+        ],
+        [
+          7,
+          19,
+          23,
+          25
+        ],
+        1000,
+        [
+          0.045,
+          0.05
+        ],
+        1.25,
+        3
+      ],
+      "seed": [
+        3450.1305981681467,
+        3294.784308942294
+      ],
+      "peak": [
+        4959.270394431626,
+        4904.653126774042
+      ],
+      "priorDD": [
+        42.39599698105828,
+        32.82329608680428
+      ],
+      "params": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        0.988,
+        0.8854505887499999,
+        1.0401,
+        0.504,
+        0.6,
+        0.0263925,
+        0.19474999999999998,
+        0.0475,
+        0.002671875,
+        0.044923828125,
+        500,
+        1.25,
+        1.9828875000000001,
+        1.7820000000000003,
+        2.3388750000000007,
+        1.4625,
+        0.49725,
+        1.5299999999999998,
+        1.3754812500000002,
+        0.7260000000000001,
+        0.36196875,
+        0.5775,
+        0.02,
+        0.15,
+        2,
+        0.7101249999999999,
+        1,
+        1.365,
+        0.8
+      ],
+      "fixed": [
+        468751669458472.4,
+        57.50191810975171,
+        138595134457147.42,
+        59.93113940836954
+      ],
+      "cap2": [
+        1514485465.7394514,
+        63.86072574387233,
+        75188594.95385134,
+        68.643921115913
+      ],
+      "perturbed": [
+        1002101919.2870284,
+        65.9341789739552,
+        21772831.581359476,
+        70.3811325259475
+      ]
+    },
+    "growth": [
+      1071467984116123.6,
+      56.46402900334506,
+      83164348247496.9,
+      59.984134949144384
+    ],
+    "lowerDD": [
+      621003593704994.1,
+      56.563474454752125,
+      100306932370870.38,
+      59.03693557800994
+    ]
+  },
+  "continuous": {
+    "metricOrder": [
+      "balance",
+      "closedDD",
+      "equityExcursionDDProxy",
+      "trades",
+      "end2018"
+    ],
+    "configOrder": [
+      "bootstrapIds",
+      "midIds",
+      "growthIds",
+      "balanceThresholds",
+      "phaseRisks",
+      "guard",
+      "maxPositions"
+    ],
+    "growth": {
+      "config": [
+        [
+          0,
+          6,
+          18,
+          19,
+          22
+        ],
+        [
+          5,
+          7,
+          15,
+          19
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37,
+          40
+        ],
+        [
+          2000,
+          3500
+        ],
+        [
+          0.05,
+          0.05,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          924540.0981577706,
+          32.650518942681806,
+          36.2854288221906,
+          956,
+          4911.873809760975
+        ],
+        [
+          282328.68552582874,
+          43.75152723833454,
+          45.08830728136202,
+          967,
+          3682.3409931342694
+        ],
+        [
+          178.94161956361793,
+          87.80789060652594,
+          88.21982215654205,
+          445,
+          958.7215269926846
+        ]
+      ]
+    },
+    "balanced": {
+      "config": [
+        [
+          0,
+          13,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          15,
+          19,
+          20,
+          25
+        ],
+        [
+          5,
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        [
+          750,
+          3500
+        ],
+        [
+          0.045,
+          0.045,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          875672.4607613954,
+          39.24696985476908,
+          41.764862292095565,
+          922,
+          4506.15955733575
+        ],
+        [
+          292247.37270236237,
+          44.57354195319909,
+          45.2036351858468,
+          918,
+          3376.3798021356406
+        ],
+        [
+          116.76813714544545,
+          79.13798674885501,
+          79.97186223345285,
+          430,
+          447.2775541512636
+        ]
+      ]
+    }
+  },
+  "limitations": "Hybrid stops entries on 2018-12-01 for flat handoff; calendar switch, not deployable causal regime trigger. R21 fixed basket core remains rescaled and incomplete margin, no native. Cap2 uses archived child counts as proxy. Continuous OHLC through 2026-03-31, BTC from 2019 only, same 50 tapes, no new signal families. No independent holdout, aggregate stop-risk budget 5%, entry margin 50% closed balance, assumed volume caps, excursion DD not actual mark-to-market. Bootstrap first compile failed missing globals corrected before completed runs. Prior frozen benchmarks and LIVE unchanged. Exact vectors, outputs and code in archive, upstream inputs required."
+}
