@@ -9,11 +9,11 @@
   "execution_authority": false,
   "execution_influence": false,
   "forward_validated": false,
-  "generated_at": "2026-11-25T14:00:36.176649+00:00",
-  "observed_at": "2026-11-25T14:00:11.814872+00:00",
-  "candle_closed_at": "2026-11-25T12:00:00+00:00",
-  "target_close_at": "2026-11-25T16:00:00+00:00",
-  "latest_broker_close": 3490.63,
+  "generated_at": "2026-11-26T04:56:22.135076+00:00",
+  "observed_at": "2026-11-26T04:55:57.336619+00:00",
+  "candle_closed_at": "2026-11-26T04:00:00+00:00",
+  "target_close_at": "2026-11-26T08:00:00+00:00",
+  "latest_broker_close": 3575.23,
   "direction": "WAIT",
   "reason": "BELOW_THRESHOLD_OR_GATE",
   "buy_head": {
@@ -21,8 +21,8 @@
     "feature_group": "broad_context",
     "threshold": 0.54,
     "gate": "trend_impulse",
-    "probability": 0.5731248263489628,
-    "gate_pass": false,
+    "probability": 0.4277824961670291,
+    "gate_pass": true,
     "triggered": false
   },
   "provenance": {
