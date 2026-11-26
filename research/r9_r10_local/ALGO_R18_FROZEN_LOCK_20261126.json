@@ -1,0 +1,28 @@
+{
+  "status": "FROZEN_RESEARCH_ONLY",
+  "date": "2026-11-26",
+  "sourcePath": "research/r9_r10_local/ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+  "sourceCommit": "c4afc398d94a7e7c7b240dedad33f286ebb32727",
+  "sourceBlobSha": "6ceba6ce8186b28d2a851a8733fdf80b40442221",
+  "profiles": [
+    "R18_MAX_GROWTH",
+    "R18_BALANCED_MAX_STRESS",
+    "R18_ALL_DD_UNDER50",
+    "R18_CAP_STRESS",
+    "R18_CAP_MAX"
+  ],
+  "preservePrior": [
+    "R14_BALANCED",
+    "R16_BALANCED",
+    "R17 finalists"
+  ],
+  "next": "R19 deferred until user resumes; native replay comparison prioritized; no execution or LIVE authorization",
+  "nativeAcceptanceTargets": {
+    "balanceRelativeDifferenceMax": 0.1,
+    "basketCountRelativeDifferenceMax": 0.05,
+    "closedDDDifferenceMaxPercentagePoints": 3,
+    "floatingDDMaxPct": 60,
+    "aggregateMarginMaxPct": 50
+  },
+  "nativeCaveat": "Fixed basket screening is not native evidence; exposure cap stress indicates potential very large divergence. Compare same initial $100 continuous shared wallet, leverage 1:200, no deposits, matching datasets and cutoffs, fees, instrument specifications, child admission, portfolio margin, and mark-to-market equity. Do not fit native to target balance using future data or bypass broker limits. Preserve raw native results even if they fail."
+}
