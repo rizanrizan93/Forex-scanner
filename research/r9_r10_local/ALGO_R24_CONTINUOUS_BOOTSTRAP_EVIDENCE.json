@@ -1,0 +1,241 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_NOT_NATIVE",
+  "parent": "ALGO_R23_CONTINUOUS_SURVIVAL_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R24_Continuous_Bootstrap_20261126.zip",
+  "sha256": "784a39dde154adb5626ce90ee406c67eb05c17f22c65a7858b75733f913334f0",
+  "data": {
+    "coverage": "2012-01 to 2026-03-31; warmup November 2011",
+    "recoveredEUR2016to2018Rows": 1116921,
+    "validation": "Custom restricted Parquet V1 Snappy decoder; row counts, page min/max and nonnull verified, OHLC bounds; first 2019 row matches frozen UTC data after fixed EST +5 conversion."
+  },
+  "counts": {
+    "initialConfigs": 2016,
+    "initialCost2Pass": 13,
+    "initialBothPass": 9,
+    "refineConfigs": 4608,
+    "refineTrainingPass": 302,
+    "refineForwardTested": 30,
+    "refineBothPass": 6,
+    "combinedConfigsIncluding24Controls": 120,
+    "combinedBothPass": 14,
+    "combinedThreeCostPass": 2
+  },
+  "metricOrder": [
+    "balance",
+    "closedDD",
+    "modeledEquityDD",
+    "trades",
+    "skips",
+    "PF",
+    "end2018",
+    "oldTrades",
+    "newTrades",
+    "maxMarginPctAtEntry",
+    "minClosedBalance"
+  ],
+  "EURBest": {
+    "params": [
+      "4h",
+      10,
+      50,
+      "counter_sweep",
+      "compression",
+      1.5,
+      4,
+      36,
+      0.05,
+      1.5
+    ],
+    "cost1": [
+      206.27986858245853,
+      32.10348477719081,
+      32.49718667532342,
+      142,
+      58,
+      1.199946321637308,
+      172.78102524191036,
+      54,
+      88,
+      13.380469344433592,
+      87.24368847367988
+    ],
+    "cost2": [
+      212.78218985140666,
+      32.71880310774614,
+      33.13894631176536,
+      150,
+      42,
+      1.1890261870966838,
+      189.13286420282995,
+      62,
+      88,
+      11.270825557691213,
+      100
+    ],
+    "cost3": [
+      88.19764219900942,
+      31.483066974116237,
+      35.214999589097715,
+      19,
+      277,
+      0.7835261451238531,
+      96.89299023718337,
+      16,
+      3,
+      7.074485517444787,
+      88.19764219900942
+    ]
+  },
+  "combined": {
+    "extraMetrics": [
+      "EURTrades",
+      "XAUTrades"
+    ],
+    "growth": {
+      "eur": [
+        "4h",
+        10,
+        50,
+        "counter_sweep",
+        "compression",
+        1.5,
+        4,
+        36,
+        0.05,
+        1.5
+      ],
+      "xau": [
+        "4h",
+        10,
+        300,
+        "breakout",
+        "expansion",
+        2,
+        6,
+        12,
+        0.05,
+        1.5
+      ],
+      "threshold": 125,
+      "cost1": [
+        221.00426147648136,
+        32.92425349251521,
+        33.28359229515087,
+        143,
+        430,
+        1.21212215550241,
+        178.8278698288044,
+        55,
+        88,
+        13.380469344433592,
+        87.24368847367988,
+        142,
+        1
+      ],
+      "cost2": [
+        218.25679544160198,
+        32.07871800978276,
+        32.490641860452826,
+        153,
+        437,
+        1.1951036383366722,
+        200.71953735594855,
+        65,
+        88,
+        11.270825557691213,
+        100,
+        150,
+        3
+      ],
+      "cost3": [
+        88.19764219900942,
+        31.483066974116237,
+        35.214999589097715,
+        19,
+        291,
+        0.7835261451238531,
+        96.89299023718337,
+        16,
+        3,
+        7.074485517444787,
+        88.19764219900942,
+        19,
+        0
+      ]
+    },
+    "stress": {
+      "eur": [
+        "4h",
+        20,
+        80,
+        "breakout",
+        "expansion",
+        1,
+        6,
+        12,
+        0.035,
+        1.5
+      ],
+      "xau": [
+        "1h",
+        20,
+        150,
+        "breakout",
+        "compression",
+        1,
+        4,
+        36,
+        0.05,
+        1.5
+      ],
+      "threshold": 200,
+      "cost1": [
+        169.47138855915443,
+        40.06321489826761,
+        43.32932949613079,
+        149,
+        337,
+        1.1702581125161489,
+        144.1896276668057,
+        31,
+        118,
+        12.620779099290697,
+        93.41940152439892,
+        120,
+        29
+      ],
+      "cost2": [
+        167.83380209512512,
+        38.795472666747024,
+        42.23176741449907,
+        133,
+        342,
+        1.2065577779818595,
+        144.97853873059236,
+        29,
+        104,
+        9.760104942612562,
+        96.51427666090034,
+        116,
+        17
+      ],
+      "cost3": [
+        158.28683817125633,
+        39.306702811654034,
+        42.01493867197536,
+        116,
+        369,
+        1.2057347945400478,
+        147.39909718125728,
+        27,
+        89,
+        10.264888776770047,
+        96.55151231629395,
+        101,
+        15
+      ]
+    }
+  },
+  "limitations": "Continuous wallet $100, no deposits, one position, model minimum/maximum EUR 1000/50000 units and XAU 1/50 oz, leverage 200, entry margin cap50%; M15 OHLC execution stop first, modeled costs and funding, not broker specifications, may miss intrabar peak DD, holding counts available bars not wall-clock hours. Initial grid uses full history; refinement ranks only 2012–2018 but design informed by prior whole-period work; not independent OOS. No BTC or original native core. No $100T qualification. Preserve R18–R21; no LIVE changes."
+}
