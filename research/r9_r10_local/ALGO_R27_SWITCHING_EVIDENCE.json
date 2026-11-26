@@ -1,0 +1,258 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_OHLC_NOT_NATIVE",
+  "parent": "ALGO_R26_MULTI_ASSET_EVIDENCE.json",
+  "coverage": "2012-01-01 to 2026-03-31; BTC starts 2019; continuous shared USD100 wallet, no reset or deposits",
+  "archive": "RIZAN_ALGO_R27_Switching_20261126.zip",
+  "sha256": "5e85b021b485ceab54d7350650aa254fafb45d2bdcbd3e23175f1ecfefe28592",
+  "counts": {
+    "existingModelTapes": 50,
+    "potentialSignals": 59001,
+    "stage1Configs": 23040,
+    "stage2Configs": 39684,
+    "distinctAcrossStages": 62535,
+    "cost1and2Runs": 125448,
+    "cost3Runs": 792,
+    "stage1Pass": 7904,
+    "stage2Pass": 10830,
+    "stage2Both100k": 5,
+    "stage2BothOld1000": 1307,
+    "stage1ThreeCostPass": 200,
+    "stage2ThreeCostPass": 215,
+    "traceParity": 12
+  },
+  "metricOrder": [
+    "balance",
+    "closedDD",
+    "excursionDDProxy",
+    "trades",
+    "end2018"
+  ],
+  "configOrder": [
+    "bootstrapModuleIds",
+    "growthModuleIds",
+    "closedBalanceSwitchUSD",
+    "phaseRisk",
+    "guard",
+    "maxPositions"
+  ],
+  "profiles": [
+    {
+      "id": "R27_GROWTH",
+      "config": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          19,
+          34,
+          37
+        ],
+        1000,
+        [
+          0.05,
+          0.05
+        ],
+        1,
+        1
+      ],
+      "metrics": [
+        [
+          538507.7272491,
+          40.573427206619314,
+          42.131444595826395,
+          831,
+          3645.3948554615167
+        ],
+        [
+          83939.1205621911,
+          41.31651355844612,
+          42.84633178217656,
+          818,
+          2201.1420720691026
+        ],
+        [
+          19577.7332917475,
+          44.86294153445461,
+          47.91888603517809,
+          805,
+          1374.8683705304838
+        ]
+      ],
+      "capSensitivityNormal": [
+        538507.7272491,
+        821090.376228361,
+        1577679.4821968984,
+        1174134.537939353
+      ],
+      "capSensitivityCost2": [
+        83939.1205621911,
+        162803.2144161825,
+        100497.32626148139,
+        100497.32626148139
+      ]
+    },
+    {
+      "id": "R27_COST2",
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22,
+          39
+        ],
+        [
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        1250,
+        [
+          0.05,
+          0.04
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          331508.66150342947,
+          42.24873974914979,
+          44.425821479389604,
+          805,
+          2009.9109765852284
+        ],
+        [
+          140211.9700018707,
+          43.18358273083499,
+          44.19628218095005,
+          815,
+          2552.2561001475324
+        ],
+        [
+          265.3881110205003,
+          56.22371238935112,
+          56.43610259253191,
+          466,
+          226.4303529043443
+        ]
+      ]
+    },
+    {
+      "id": "R27_ROBUST",
+      "config": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37
+        ],
+        1000,
+        [
+          0.05,
+          0.05
+        ],
+        1.5,
+        1
+      ],
+      "metrics": [
+        [
+          357025.79553173314,
+          41.46192960724747,
+          42.03455546621837,
+          845,
+          2494.2162926013375
+        ],
+        [
+          89913.55880841667,
+          44.91463405641911,
+          45.59343016937063,
+          868,
+          1914.4746424924012
+        ],
+        [
+          26981.035808703007,
+          47.39508930114393,
+          50.070263706295925,
+          835,
+          1418.0779876404856
+        ]
+      ]
+    },
+    {
+      "id": "R27_BOOTSTRAP",
+      "config": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        1250,
+        [
+          0.05,
+          0.03
+        ],
+        2.5,
+        3
+      ],
+      "metrics": [
+        [
+          34927.18014870099,
+          34.00379588174185,
+          36.222425083482854,
+          1133,
+          2503.8763677236157
+        ],
+        [
+          5845.759668443041,
+          41.32921551647046,
+          43.31193192584968,
+          1128,
+          1890.786237349655
+        ],
+        [
+          205.91978051325992,
+          39.06948387148871,
+          41.86367707835104,
+          278,
+          240.31174195119124
+        ]
+      ]
+    }
+  ],
+  "capSensitivityMultipliers": [
+    1,
+    10,
+    100,
+    1000
+  ],
+  "finiteTapeGrossPositiveUpperBoundUSD": 53737574.721218094,
+  "limitations": "50 R26 tapes, no new signal family; model caps EUR50000 units XAU50 oz BTC10. Upper bound only for finite tapes and original caps, ignores all losses and costs. Permanent switch based on closed balance, up to 3 simultaneous positions with aggregate planned stop risk 5%, admission margin 50% of closed balance, one per symbol. Actual floating equity margin and stopout not modeled. OHLC excursion DD proxy not synchronous. Whole-period selection not independent holdout. First 100k-attempt refinement interrupted; completed 40k-attempt rerun only counted. 100T not achieved and not realistic retail capacity expectation. No LIVE change. Prior R21 fixed screening preserved."
+}
