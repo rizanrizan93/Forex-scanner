@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_PORTFOLIO_NOT_VALIDATED",
+  "parent": "ALGO_R22_REGIME_PROTECTION_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R23_Continuous_Survival_20261126.zip",
+  "sha256": "a9307122b02ff7a01b32759c600a9e713fd82d2e471ca7b80483c81a77b0d0fa",
+  "acceptance": {
+    "start": "2012-01-01",
+    "end": "2026 available data cutoff; no future data",
+    "initialUSD": 100,
+    "deposits": 0,
+    "reset": false,
+    "sharedWallet": true,
+    "targetBalance": 100000000000000,
+    "maxFloatingDDPct": 60,
+    "targetClosedDDPct": 45,
+    "maxAggregateMarginPct": 50,
+    "leverage": 200,
+    "oldPeriodMustProfitAndRemainTradable": true,
+    "stressCosts": [
+      1,
+      2
+    ]
+  },
+  "results": {
+    "xauH4Runs": 30,
+    "xauH4ExecutedTrades": 0,
+    "xauH4SkippedSignalsEach": 527,
+    "xauBootstrapConfigsCost2": 960,
+    "oldProfitable": 45,
+    "fullProfitable": 44,
+    "bothProfitable": 28,
+    "min20TradesEachPeriod": 1,
+    "eligible": 0,
+    "best": {
+      "params": [
+        "1h",
+        20,
+        150,
+        "breakout",
+        "compression",
+        1,
+        4,
+        36,
+        0.025
+      ],
+      "balance2018": 159.7427067764604,
+      "balanceFinal": 135.0969410564233,
+      "closedDD": 26.050006386894598,
+      "modeledEquityDD": 27.69819283319369,
+      "trades": 101,
+      "skips": 563,
+      "pf": 1.195324916986834,
+      "tradesOld": 88,
+      "tradesNew": 13,
+      "annualEnd": [
+        100,
+        100,
+        100.34730823447053,
+        133.73361483472272,
+        136.5093208856386,
+        168.59289309744236,
+        159.7427067764604,
+        135.0969410564233,
+        135.0969410564233,
+        135.0969410564233,
+        135.0969410564233,
+        135.0969410564233,
+        135.0969410564233,
+        135.0969410564233,
+        135.0969410564233
+      ],
+      "decision": "FAIL; inactive after 2019"
+    }
+  },
+  "limitations": "XAU only; source price warmup 2011-11 through 2026-03-31. Assumed minimum 1 oz and step 1 oz, risk capped 5%, margin 50%, H4/H1/M30 OHLC stop-first, modeled equity DD excludes intrabar peak, broker spec not verified, no actual native replay. Cost2-only bootstrap grid, no eligible normal finalist. No identical core or full shared-wallet multiasset replay. Preserve R18/R19/R21. No LIVE changes. $100T screening target not executable return estimate."
+}
