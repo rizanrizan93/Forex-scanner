@@ -1,0 +1,210 @@
+{
+  "status": "RESEARCH_ONLY_CAPACITY_SENSITIVITY_NOT_NATIVE",
+  "date": "2026-11-26",
+  "parent": "ALGO_R14_BALANCE_DD",
+  "archive": "RIZAN_ALGO_R15_Native_Alignment_20261126.zip",
+  "archiveSHA256": "d09714849ca1b9d8d781a7b7666e359dd5c614ed97644290453d306b8d3425d7",
+  "counts": {
+    "stage1": 6005,
+    "stage2": 8007,
+    "uniqueIncludingControls": 14001,
+    "continuousScenarioRuns": 140120,
+    "monthlyScenarioRuns": 66130,
+    "stage1Joint": 103,
+    "stage2Joint": 4546,
+    "stage1MonthlyTested": 111,
+    "stage2MonthlyTested": 278,
+    "stage1MonthlyEligible": 76,
+    "stage2MonthlyEligible": 217
+  },
+  "baseline": {
+    "nativeBalances": [
+      2130037987.0146687,
+      1748619781.6713579
+    ],
+    "ledgerBalances": [
+      2130037987.0145948,
+      1748619781.6713874
+    ],
+    "nativeFloatingDD": [
+      59.96640612031923,
+      67.69513039807372
+    ],
+    "ledgerClosedDD": [
+      53.39922605243223,
+      64.17698752071192
+    ]
+  },
+  "parameterOrder": "Same 25-vector as R12",
+  "metricOrder": [
+    "cost1Balance",
+    "cost1ClosedDD",
+    "cost2Balance",
+    "cost2ClosedDD"
+  ],
+  "profiles": [
+    {
+      "id": "R15_CAP_STRESS",
+      "vector": [
+        0.83307,
+        2.149875,
+        1.35375,
+        1.235,
+        1.057111,
+        0.9828945,
+        0.19125,
+        0.735,
+        0.017765,
+        0.6,
+        0.0249375,
+        0.002025,
+        0.0435703125,
+        250,
+        0.7,
+        0.9639,
+        1.03275,
+        1.6929,
+        1.122,
+        0.6175,
+        1.9173375,
+        0.84,
+        0.342,
+        0.45,
+        0.65
+      ],
+      "cap2": [
+        2127654613.7466125,
+        54.037047011707706,
+        713153819.9177876,
+        58.65277125603885
+      ],
+      "cap1": [
+        1357648348.5,
+        54.04,
+        424811502.93,
+        58.64
+      ],
+      "cap4": [
+        3411148222.7,
+        53.18,
+        1527175968.39,
+        58.89
+      ],
+      "stress3": [
+        928499945.91,
+        55.43,
+        219304797.09,
+        59.68
+      ],
+      "unlimited": [
+        30020531831.28,
+        52.11,
+        6322245795.11,
+        56.72
+      ],
+      "worst85DD": 29.25189904486144,
+      "hit1000Both": 1
+    },
+    {
+      "id": "R15_CAP_GROWTH",
+      "vector": [
+        0.8747235,
+        2,
+        1.5,
+        1.19925,
+        1.181477,
+        1.0869045,
+        0.3528,
+        0.385,
+        0.0248625,
+        0.45,
+        0.023765625,
+        0.0025,
+        0.05,
+        500,
+        0.6175,
+        1.2474,
+        1.38375,
+        1.48716,
+        1.14075,
+        1.20175,
+        2.07,
+        0.6995625,
+        0.369,
+        0.3,
+        0.3075
+      ],
+      "cap2": [
+        2677651685.602617,
+        46.170140378360124,
+        701038894.3986619,
+        55.16215530841171
+      ],
+      "cap1": [
+        1304825871.82,
+        46.17,
+        433861001.92,
+        55.16
+      ],
+      "cap4": [
+        4131839282.65,
+        47.16,
+        1405343995.7,
+        55.16
+      ],
+      "stress3": [
+        598775343.05,
+        52.03,
+        91529517.45,
+        57.92
+      ],
+      "worst85DD": 42.36382175647544,
+      "hit1000Both": 2
+    },
+    {
+      "id": "R15_CAP_DEFENSIVE",
+      "vector": [
+        0.5414955,
+        2.0475,
+        1.35375,
+        1.154725,
+        1.24366,
+        0.9828945,
+        0.225,
+        0.3185,
+        0.02244,
+        0.575,
+        0.03028125,
+        0.0016875,
+        0.03046875,
+        125,
+        0.7,
+        0.918,
+        1.03275,
+        1.782,
+        1.122,
+        0.65,
+        1.755,
+        1.14,
+        0.4104,
+        0.35,
+        0.65
+      ],
+      "cap2": [
+        457855778.2128502,
+        39.23210926551195,
+        31698054.021823548,
+        43.033441721987245
+      ],
+      "stress3": [
+        51888967.27,
+        42.38,
+        3380771.35,
+        47.85
+      ],
+      "worst85DD": 33.792180457135856,
+      "hit1000Both": 1
+    }
+  ],
+  "method": "Fixed archived PnL and timing. Cap core PnL exposure ratio versus archived realized basket at 1/2/4x, round XAU/EUR virtual child counts down, BTC actual sizes unavailable; 25% overlap haircut; add-ons retain existing caps. Stress3 reduces winners and increases losers by 3% in both cost tapes at cap2. Continuous gate all capped scenarios closed DD<60%; monthly gate 85 90-day starts ONLY cap2+3% perturbation both costs. Realized archived counts are not causal live admission inputs. No actual broker capacity, floating equity or aggregate margin modeled. Initial corecap shadowing bug corrected and published runs repeated; eight original R14 profiles reproduced with constraints off. Exact floating point vectors and full metrics in local archive; rounded decimal values here. Native C# runtime unavailable, no new native replay. No changes to LIVE."
+}
