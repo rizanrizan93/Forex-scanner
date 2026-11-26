@@ -1,0 +1,253 @@
+{
+  "date": "2026-11-26",
+  "status": "RESEARCH_ONLY_CONTINUOUS_OHLC_NOT_NATIVE",
+  "parent": "ALGO_R31_REGIME_ROTATION_EVIDENCE.json",
+  "archive": "RIZAN_ALGO_R32_Alpha_Expansion_20261126.zip",
+  "sha256": "bef3117883ce455258b83d19ba5e41d1b7cbfae744eba21533fb2d08736ee894",
+  "coverage": "2012-01 through 2026-03-31, BTC from 2019, continuous shared $100 wallet",
+  "counts": {
+    "standaloneCases": 2592,
+    "standalonePass": 103,
+    "selectedNewTapes": 32,
+    "totalTapes": 92,
+    "signalOpportunities": 135132,
+    "oldFirstPortfolioCases": 14094,
+    "oldFirstEligible": 5932,
+    "fullTested": 5932,
+    "fullPass2": 27,
+    "fullPass3": 0,
+    "refineCases": 52896,
+    "refineParents": 114,
+    "refinePass2": 5508,
+    "refineCost3Tested": 542,
+    "refinePass3": 0,
+    "capProfiles": 396,
+    "capRuns": 3168,
+    "cap1Parity": 396
+  },
+  "metricOrder": [
+    "endBalance",
+    "closedDDPct",
+    "excursionDDProxyPct",
+    "trades",
+    "end2018"
+  ],
+  "configOrder": [
+    "bootstrapIds",
+    "midIds",
+    "growthIds",
+    "balanceThresholds",
+    "phaseRisks",
+    "guard",
+    "maxPositions"
+  ],
+  "profiles": {
+    "growth": {
+      "config": [
+        [
+          18,
+          19,
+          22,
+          51
+        ],
+        [
+          7,
+          11,
+          17,
+          19,
+          25,
+          57
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37,
+          40
+        ],
+        [
+          3000,
+          4500
+        ],
+        [
+          0.05,
+          0.0475,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          1016511.9559974658,
+          36.49993218066736,
+          38.40507430750794,
+          1094,
+          8853.513551915867
+        ],
+        [
+          302218.2832959349,
+          43.72264624945799,
+          45.06059156182324,
+          1162,
+          4015.9451410446586
+        ],
+        [
+          122.89402696813505,
+          70.63411521133311,
+          72.00379642263202,
+          371,
+          210.3229122302559
+        ]
+      ]
+    },
+    "balanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          17,
+          19,
+          25,
+          51
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37,
+          40
+        ],
+        [
+          1000,
+          6000
+        ],
+        [
+          0.0475,
+          0.05,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          988028.7692927601,
+          41.90101940707716,
+          43.96439308801388,
+          991,
+          7175.889355506346
+        ],
+        [
+          594288.4960576843,
+          40.738966549461765,
+          42.15402855964518,
+          988,
+          7219.603924073057
+        ],
+        [
+          93.9107017527966,
+          91.02285698722902,
+          91.18476061339732,
+          435,
+          602.2769396771255
+        ]
+      ]
+    },
+    "boot": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          11,
+          15,
+          51
+        ],
+        [
+          7,
+          19,
+          23,
+          34,
+          37
+        ],
+        [
+          1000,
+          5000
+        ],
+        [
+          0.0475,
+          0.045,
+          0.04
+        ],
+        0.5,
+        2
+      ],
+      "metrics": [
+        [
+          452286.20832795155,
+          38.35300065235161,
+          39.01716748127883,
+          1407,
+          9372.867865705759
+        ],
+        [
+          114620.9592633842,
+          44.3525143983982,
+          45.23527574654101,
+          1408,
+          9814.474404094679
+        ],
+        [
+          111.10845981989495,
+          90.76256307071561,
+          91.19552972102166,
+          566,
+          799.186073075727
+        ]
+      ]
+    }
+  },
+  "cap": {
+    "originalFiniteTapeUpperBoundUSD": 71652057.2226846,
+    "normalGrowthByCap": [
+      1016511.9559974658,
+      1592077.8550850113,
+      1661158.4295537802,
+      1454868.0144413789
+    ],
+    "pairedCost2": [
+      302218.2832959349,
+      286769.2436445544,
+      257144.95002212742,
+      256675.11677485847
+    ],
+    "multipliers": [
+      1,
+      10,
+      100,
+      1000
+    ],
+    "passCounts": [
+      396,
+      63,
+      16,
+      16
+    ]
+  },
+  "limitations": "69,582 configuration cases across three stages (not unique across all). Old-first entry cutoff Dec1 2018 and exit before 2019; continuous full includes December, no reset. Refinement selected with full history, old signal pools already influenced by later history; not independent holdout. Best refinement profiles use earlier tapes, not new R32 signals. Assumed caps EUR50000/XAU50/BTC10, cap multipliers hypothetical only, aggregate stop risk <=5%, margin <=50% closed balance admission, OHLC stop-first with excursion DD proxy. No future stress rerun, no native floating DD, no cBot changes. $100T not achieved; not realistic executable target."
+}
