@@ -1,0 +1,69 @@
+{
+  "parent": "R38",
+  "archiveSha": "dd7fbb543be76ce9c7ae250bf63e993f8515655502f09b54a1f3e795c9ea507c",
+  "parity": 6,
+  "additionalBaselineControls": 4,
+  "uniqueGates": 128,
+  "oldEvaluations": 256,
+  "oldPassDD": 119,
+  "continuousFinalists": 19,
+  "continuousEvaluations": 38,
+  "continuousPass": 0,
+  "method": "R38 original kernel unchanged; H4 resample left closed right labeled, EMA20/80 spread normalized by close, threshold rolling20 absolute returns, EMA20 four-bar slope; bull spread>threshold and slope>0, bear spread<-threshold and slope<0, sideways abs spread<=threshold, else transition. Single module/asset/regime exclusion, dedup identical old masks within profile. Select top five by minimum two-cost balance and top five normal per profile among DD proxy passes.",
+  "max": {
+    "gate": [
+      7,
+      0,
+      0
+    ],
+    "old": [
+      [
+        412449.0555496919,
+        48.05769811717289
+      ],
+      [
+        2881.1086846060125,
+        49.278604531973855
+      ]
+    ],
+    "full": [
+      [
+        428353.6961168633,
+        83.96400582092703
+      ],
+      [
+        783.8889262921441,
+        83.91200866905706
+      ]
+    ]
+  },
+  "balanced": {
+    "gate": [
+      77,
+      1,
+      3
+    ],
+    "old": [
+      [
+        267078.1343226293,
+        41.61725670306724
+      ],
+      [
+        132639.4963174915,
+        41.94812106335205
+      ]
+    ],
+    "full": [
+      [
+        168614.48613786974,
+        85.417694328287
+      ],
+      [
+        21159.38039833993,
+        95.56777193488954
+      ]
+    ]
+  },
+  "codeSha": "dcc25e55c853ae8d131993aa912327a0990f6899e814b29fe88aa38987d03ab0",
+  "limitations": "OHLC proxy, cached seed, hypothetical Cap40, no native gate, no live changes; R47 balanced remains incumbent. Local code and full results r38_algo/r48.py and r48_results.json."
+}
