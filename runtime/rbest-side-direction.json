@@ -5,7 +5,7 @@
   "research_only": true,
   "execution_authority": false,
   "execution_influence": false,
-  "as_of": "2026-11-27T04:20:45.306103+00:00",
+  "as_of": "2026-11-27T14:02:58.277580+00:00",
   "candidate_lineage": {
     "H1": {
       "BUY": "R25",
@@ -26,19 +26,19 @@
   },
   "rows": {
     "H1": {
-      "direction": "SELL",
-      "reason": "RESEARCH_CANDIDATE_SIGNAL",
+      "direction": "WAIT",
+      "reason": "NO_SIDE_TRIGGER",
       "state": "RESEARCH_SHADOW",
-      "generated_at": "2026-11-27T04:20:14.898331+00:00",
-      "closed_at": "2026-11-27T04:00:00+00:00",
-      "target_close_at": "2026-11-27T05:00:00+00:00",
-      "observed_at": "2026-11-27T04:19:46.600236+00:00",
-      "last_close": 3629.47,
+      "generated_at": "2026-11-27T14:02:24.912038+00:00",
+      "closed_at": "2026-11-27T14:00:00+00:00",
+      "target_close_at": "2026-11-27T15:00:00+00:00",
+      "observed_at": "2026-11-27T14:02:06.827538+00:00",
+      "last_close": 3644.13,
       "sides": {
         "BUY": {
           "version": "R25",
           "active": false,
-          "score": 0.36385509049937503,
+          "score": 0.5800794428426125,
           "threshold": 0.55,
           "gate": "vol_high",
           "gate_pass": false,
@@ -101,7 +101,7 @@
         },
         "SELL": {
           "version": "R11",
-          "active": true,
+          "active": false,
           "score": null,
           "threshold": null,
           "parity": {
@@ -115,19 +115,19 @@
       "execution_authority": false
     },
     "H4": {
-      "direction": "WAIT",
-      "reason": "NO_SIDE_TRIGGER",
+      "direction": "SELL",
+      "reason": "RESEARCH_CANDIDATE_SIGNAL",
       "state": "RESEARCH_SHADOW",
-      "generated_at": "2026-11-27T04:20:20.242249+00:00",
-      "closed_at": "2026-11-27T04:00:00+00:00",
-      "target_close_at": "2026-11-27T08:00:00+00:00",
-      "observed_at": "2026-11-27T04:20:16.985212+00:00",
-      "last_close": 3629.47,
+      "generated_at": "2026-11-27T14:02:20.360217+00:00",
+      "closed_at": "2026-11-27T12:00:00+00:00",
+      "target_close_at": "2026-11-27T16:00:00+00:00",
+      "observed_at": "2026-11-27T14:02:06.827538+00:00",
+      "last_close": 3673.53,
       "sides": {
         "BUY": {
           "version": "R25",
           "active": false,
-          "score": 0.5640771452501794,
+          "score": 0.48513718048931226,
           "threshold": 0.55,
           "gate": "london_open",
           "gate_pass": false,
@@ -194,7 +194,7 @@
         },
         "SELL": {
           "version": "R11",
-          "active": false,
+          "active": true,
           "score": null,
           "threshold": null,
           "parity": {
