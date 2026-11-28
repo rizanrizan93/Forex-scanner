@@ -1,7 +1,7 @@
 # RIZAN V8 — actual native replay evidence
-As of 2026-11-29T02:08:43.928205+07:00. Research in progress; target USD10 billion remains unchanged.
+As of 2026-11-29T02:22:20.871143+07:00. Research in progress; target USD10 billion remains unchanged.
 
-Completed full continuous native replays: 23. Unique B1 challengers: 20. New module screens: 0. New annual-reset simulations: 0.
+Completed full continuous native replays: 24. Unique B1 challengers: 21. New module screens: 0. New annual-reset simulations: 0.
 
 | Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -21,6 +21,7 @@ Completed full continuous native replays: 23. Unique B1 challengers: 20. New mod
 | V7_SELL8_H16 | 100 | 1,800,988,134.03 | 59.167688% | 2.0823 | 1057 | 207278 | REJECT: terminal forced close |
 | V7_SELL6_H16 | 100 | 1,793,990,004.49 | 59.167688% | 2.0816 | 1057 | 206080 | REJECT: terminal forced close |
 | V7_SELL3_H24 | 100 | 1,727,982,232.40 | 59.967322% | 2.0672 | 1059 | 197975 | B1 improvement; robustness pending |
+| V7_SELL8_H24 | 100 | 1,712,453,832.48 | 59.847253% | 2.0457 | 1054 | 199903 | REJECT: terminal forced close |
 | V7_CAP_ONLY | 100 | 1,703,125,878.22 | 56.672093% | 2.1004 | 1047 | 190060 | B1 improvement; robustness pending |
 | V7_LOCK_CAP | 100 | 1,701,362,259.95 | 56.694507% | 2.1004 | 1047 | 189752 | B1 improvement; robustness pending |
 | V7_SELL4_H24 | 100 | 1,684,924,734.34 | 59.847253% | 2.0556 | 1055 | 193973 | B1 improvement; robustness pending |
@@ -52,6 +53,7 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_SELL8_H16 | 53.233215% | 98.88 | 54.080092% | 27.223524% | 8 |
 | V7_SELL6_H16 | 53.233215% | 98.88 | 54.080092% | 27.223524% | 8 |
 | V7_SELL3_H24 | 54.160828% | 98.88 | 54.103012% | 27.252440% | 8 |
+| V7_SELL8_H24 | 54.020229% | 98.88 | 54.080594% | 27.247543% | 8 |
 | V7_CAP_ONLY | 52.772301% | 98.88 | 54.073858% | 27.209882% | 8 |
 | V7_LOCK_CAP | 52.784495% | 98.88 | 54.078697% | 27.177480% | 8 |
 | V7_SELL4_H24 | 54.020229% | 98.88 | 54.080594% | 27.247543% | 8 |
@@ -76,6 +78,7 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_SELL8_H16 | 1,700,956,418.79 | 13,180,063.23 | 86,851,552.01 |
 | V7_SELL6_H16 | 1,695,108,932.12 | 13,076,686.40 | 85,804,285.97 |
 | V7_SELL3_H24 | 1,655,693,035.48 | 12,475,753.51 | 59,813,343.41 |
+| V7_SELL8_H24 | 1,659,267,450.04 | 12,535,195.27 | 40,651,087.16 |
 | V7_CAP_ONLY | 1,619,752,464.88 | 12,465,736.12 | 70,907,577.22 |
 | V7_LOCK_CAP | 1,618,144,132.11 | 12,431,044.99 | 70,786,982.85 |
 | V7_SELL4_H24 | 1,632,240,549.77 | 12,331,182.72 | 40,352,901.85 |
