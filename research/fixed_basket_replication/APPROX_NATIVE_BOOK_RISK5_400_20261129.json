@@ -1,0 +1,267 @@
+{
+  "status": "RESEARCH_ONLY_REPLAY_COMPLETED_TARGET_NOT_REACHED",
+  "dateWIB": "2026-11-29",
+  "originalFrozenCommit": "c9c166cb408b13b01b8e37fecf5ee4e6b32f7948",
+  "sourceBaselineCommit": "6db7ed505a",
+  "scope": "C# synthetic M1 replay, continuous 2012 to 2026-11-13T03:00:00Z; one wallet, USD100, leverage 1:200; XAUUSD EURUSD BTCUSD, BTC history begins 2019.",
+  "replaySource": "Existing research native C# NovemberReplay engine and historical data restored from V8 inputs. Profile from Book_Risk5_400 B2 historical research; cost1 executed in this turn and cost2 independently completed in prior research. Source and original references remain distinct from R28 Fixed Basket.",
+  "profileSHA256": "4bf90201bbc829666ca9d0c7a483a97446b0efc7cde7ead58219df09b5671d0e",
+  "profile": {
+    "Id": "Book_Risk5_400",
+    "Mode": "off",
+    "Year": 2012,
+    "Seed": {
+      "Base": 30,
+      "Sl": 1,
+      "Tp": 3,
+      "Hold": 3,
+      "Trend": 1,
+      "Session": 1,
+      "Risk": 3,
+      "Universe": 2,
+      "Day": 1,
+      "Threshold": 0,
+      "Direction": 1,
+      "HandoffEquity": 400,
+      "SeedOnly": false,
+      "Rules": [
+        {
+          "Base": 30,
+          "Sl": 1,
+          "Tp": 3,
+          "Hold": 3,
+          "Trend": 1,
+          "Session": 1,
+          "Risk": 3,
+          "Day": 1,
+          "Direction": 1,
+          "Id": "XAU_H1_SWEEP",
+          "Regimes": [
+            "Range",
+            "Uptrend",
+            "Transition"
+          ],
+          "Priority": 4,
+          "Symbol": 1
+        },
+        {
+          "Base": 35,
+          "Sl": 2,
+          "Tp": 4,
+          "Hold": 3,
+          "Trend": 1,
+          "Session": 2,
+          "Risk": 3,
+          "Day": 1,
+          "Direction": 0,
+          "Id": "XAU_H1_PULLBACK",
+          "Regimes": [
+            "Downtrend",
+            "Uptrend"
+          ],
+          "Priority": 3,
+          "Symbol": 1
+        },
+        {
+          "Base": 31,
+          "Sl": 2,
+          "Tp": 4,
+          "Hold": 3,
+          "Trend": 1,
+          "Session": 0,
+          "Risk": 3,
+          "Day": 1,
+          "Direction": 2,
+          "Id": "EUR_H1_SWEEP_SHORT",
+          "Regimes": [
+            "Range",
+            "Downtrend"
+          ],
+          "Priority": 2,
+          "Symbol": 0
+        },
+        {
+          "Base": 36,
+          "Sl": 2,
+          "Tp": 2,
+          "Hold": 3,
+          "Trend": 1,
+          "Session": 3,
+          "Risk": 3,
+          "Day": 0,
+          "Direction": 1,
+          "Id": "EUR_ASIAN_SWEEP",
+          "Regimes": [
+            "Range",
+            "Uptrend",
+            "Transition"
+          ],
+          "Priority": 3,
+          "Symbol": 0
+        },
+        {
+          "Base": 25,
+          "Sl": 2,
+          "Tp": 4,
+          "Hold": 3,
+          "Trend": 1,
+          "Session": 3,
+          "Risk": 1,
+          "Day": 0,
+          "Direction": 1,
+          "Id": "BTC_H1_BREAKOUT",
+          "Regimes": [
+            "Uptrend",
+            "Transition"
+          ],
+          "Priority": 1,
+          "Symbol": 2
+        }
+      ],
+      "RegimeChoice": "book",
+      "SatelliteUntil": 0
+    },
+    "GrowthRisk": 20.75,
+    "EndYear": 2026,
+    "Addon": null,
+    "EarlyXauOff": false,
+    "EarlyMask": 7,
+    "EarlyThreshold": 1000,
+    "BtcBuyTarget": 18,
+    "BtcSellTarget": 2,
+    "BtcBuyHours": 72,
+    "EurTarget": 10,
+    "BtcBuyRsiMax": 100,
+    "BtcBuyEfficiencyMin": 0.2,
+    "BtcSellRsiMin": 30,
+    "AddBtcBullCompression": false,
+    "BtcBatchOrders": 128,
+    "BtcBatchSeconds": 600,
+    "BtcBatchRisk": 0.025,
+    "BtcBatchMargin": 0.1,
+    "BtcBatchZone": 0.5,
+    "BtcBuyStop": 2,
+    "BtcSellStop": 1.5,
+    "BtcSellHours": 8,
+    "XauTarget": 4.5,
+    "XauStop": 2.4,
+    "XauRisk": 1.65,
+    "EurRisk": 0.8,
+    "EurBE": 3,
+    "EurStop": 0.845,
+    "EarlyRiskMask": 0,
+    "EarlyRiskLook": 8,
+    "EarlyRiskThreshold": 0.5,
+    "EarlyRiskFactor": 0.25,
+    "EarlyRiskLimit": 1000,
+    "RegimePolicy": "drawdown"
+  },
+  "results": {
+    "cost1": {
+      "balanceUSD": 1137561369.64685,
+      "floatingDDPct": 54.79784567499175,
+      "closedDDPct": 50.69023985531486,
+      "basketCount": 1034,
+      "orderCount": 118343,
+      "initialContributionsUSD": 100,
+      "errorCount": 0,
+      "openPositions": 0,
+      "cashResidualUSD": 0.00004601478576660156,
+      "receiptSHA256": "62f0b39cc3e77c1000960066d4375890d21ecb9cb330c76031be98bc6bbe89ef",
+      "monteCarlo": [
+        {
+          "paths": 1000,
+          "calendarDaysPerBlock": 20,
+          "seed": 28011220,
+          "endingUsdP05P50P95": [
+            4383310.452310634,
+            1103751085.4994211,
+            148087656645.57095
+          ],
+          "equityDDPctP05P50P95": [
+            51.424728031067964,
+            63.52894530238281,
+            78.52815353929381
+          ],
+          "ddAtLeast60Pct": 66,
+          "equityAtOrBelowTenUsdPct": 0
+        },
+        {
+          "paths": 1000,
+          "calendarDaysPerBlock": 60,
+          "seed": 28011260,
+          "endingUsdP05P50P95": [
+            6441526.601033779,
+            1138224411.4361005,
+            517244408662.8465
+          ],
+          "equityDDPctP05P50P95": [
+            51.54938092319609,
+            62.96718336198728,
+            77.41281619959499
+          ],
+          "ddAtLeast60Pct": 63.3,
+          "equityAtOrBelowTenUsdPct": 0
+        }
+      ]
+    },
+    "cost2": {
+      "balanceUSD": 874220880.2019938,
+      "floatingDDPct": 56.405752739520985,
+      "closedDDPct": 52.404105169528705,
+      "basketCount": 1020,
+      "orderCount": 96914,
+      "initialContributionsUSD": 100,
+      "errorCount": 0,
+      "openPositions": 0,
+      "cashResidualUSD": -0.00013339519500732422,
+      "receiptSHA256": "c1957be5f0a5baddd07d31bb659ca4572bbf442b1b44aa34100e2085db687039",
+      "monteCarlo": [
+        {
+          "paths": 1000,
+          "calendarDaysPerBlock": 20,
+          "seed": 28011220,
+          "endingUsdP05P50P95": [
+            2952231.5902770776,
+            732339676.7909119,
+            150455690320.71652
+          ],
+          "equityDDPctP05P50P95": [
+            53.68175621286754,
+            66.01859900338575,
+            80.57486854397403
+          ],
+          "ddAtLeast60Pct": 75.3,
+          "equityAtOrBelowTenUsdPct": 0
+        },
+        {
+          "paths": 1000,
+          "calendarDaysPerBlock": 60,
+          "seed": 28011260,
+          "endingUsdP05P50P95": [
+            4980792.894293472,
+            931215671.7979239,
+            354905593451.9374
+          ],
+          "equityDDPctP05P50P95": [
+            53.792915237394055,
+            65.20402948971011,
+            80.7998239387237
+          ],
+          "ddAtLeast60Pct": 76.2,
+          "equityAtOrBelowTenUsdPct": 0
+        }
+      ]
+    }
+  },
+  "monteCarloMethod": "1000 paths, resampled 20- and 60-calendar-day blocks of full native daily equity marks, seeds 28011220 and 28011260; this resamples equity returns and does not rerun C# orders per path.",
+  "dataCutoffUTC": "2026-11-13T03:00:00Z",
+  "limitations": [
+    "R28 original Fixed Basket kernel and 104 tape registry have not been recovered.",
+    "This is a strategy candidate with existing C# entry logic, not an identical R28 replica.",
+    "Synthetic M1 intrabar paths and model costs; broker ticks, stop-out and market impact not certified.",
+    "Native receipt files are retained outside public GitHub; SHA256 identifies exact local receipts.",
+    "Historical floating drawdown below 60% does not imply Monte Carlo drawdown remains below 60%.",
+    "Target 1000 trillion USD was not reached; no LIVE strategy modifications."
+  ]
+}
