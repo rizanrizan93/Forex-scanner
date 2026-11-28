@@ -1,0 +1,18 @@
+{
+  "AsOfWIB": "2026-11-28T15:00:00+07:00",
+  "CompletedFinancialReplaysAdded": 0,
+  "CountedAsCompleted": false,
+  "ExitCode": 137,
+  "Cases": [
+    "V7_SELL6_H24",
+    "V7_SELL8_H16",
+    "V7_SELL8_H24",
+    "V7_EUR_T12_BE2"
+  ],
+  "ObservedHostRAMGiB": 9.7,
+  "SwapGiB": 0,
+  "Cause": "Concurrent memory pressure is strongly indicated by exit 137 and observed memory saturation; a kernel OOM record was not available, so the exact killer is not claimed as proven.",
+  "Mitigation": "Gateway concurrency reduced from two to one native financial child. The 3GiB managed heap and 4GiB MemAvailable admission reserve are unchanged.",
+  "FinancialEngineBytesChanged": false,
+  "DatasetChanged": false
+}

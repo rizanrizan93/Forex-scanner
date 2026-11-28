@@ -32,7 +32,11 @@ def main():
  # Prefer the simpler identifier when two native receipts are financially exact.
  # This keeps a proven no-op policy from being promoted as part of the lock.
  ranked=sorted([r for r in rows if r['Path']=='B' and r['Cost']==1 and 'CONTROL' not in r['Profile']['Id']],key=lambda r:(r['Summary']['EndingBalance'],-len(r['Profile']['Id'])),reverse=True)
- eligible=[r for r in ranked if r['Summary']['MaxEquityDDPct']<60 and baseline is not None and r['Summary']['EndingBalance']>baseline['Summary']['EndingBalance']]
+ eligible=[r for r in ranked if r['Summary']['MaxEquityDDPct']<60
+  and r['Summary'].get('TerminalForcedCloses',0)==0
+  and not r['Summary'].get('AccountingBlock',False)
+  and r['Summary'].get('ErrorCount',0)==0
+  and baseline is not None and r['Summary']['EndingBalance']>baseline['Summary']['EndingBalance']]
  selected=([baseline] if baseline else [])+ranked
  details={}
  detaildir=ROOT/'detail_cache';detaildir.mkdir(exist_ok=True)
@@ -91,13 +95,13 @@ def main():
  table=[]
  for r in rows:
   s=r['Summary'];accept=r in eligible
-  status='B1_IMPROVEMENT_ROBUSTNESS_PENDING' if accept else ('CONTROL' if 'CONTROL' in r['Profile']['Id'] else ('REJECT_DD' if s['MaxEquityDDPct']>=60 else 'NO_B1_IMPROVEMENT_OR_STRESS_REVIEW'))
+  status='B1_IMPROVEMENT_ROBUSTNESS_PENDING' if accept else ('CONTROL' if 'CONTROL' in r['Profile']['Id'] else ('REJECT_TERMINAL_FORCED_CLOSE' if s.get('TerminalForcedCloses',0)>0 else ('REJECT_DD' if s['MaxEquityDDPct']>=60 else 'NO_B1_IMPROVEMENT_OR_STRESS_REVIEW')))
   table.append([r['Profile']['Id'],r['Path'],r['Cost'],100,s['EndingBalance'],s['MaxEquityDDPct'],s['MaxClosedDDPct'],s['PF'],s['Baskets'],s['Orders'],s['MinimumEquity'],s['MaxObservedMarginPct'],s['MaxObservedOpenRiskPct'],status])
  with (ROOT/'NATIVE_RESULTS_V8.csv').open('w') as f:
   w=csv.writer(f);w.writerow(columns);w.writerows(table)
  lines=['# RIZAN V8 — actual native replay evidence',f'As of {stamp}. Research in progress; target USD10 billion remains unchanged.','',f'Completed full continuous native replays: {len(fullreceipts)}. Unique B1 challengers: {len(ranked)}. New module screens: 0. New annual-reset simulations: {len(annualrows)}.','', '| Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |','|---|---:|---:|---:|---:|---:|---:|---|']
  for r in selected:
-  s=r['Summary'];status='B1 improvement; robustness pending' if r in eligible else ('REJECT: floating DD >=60%' if s['MaxEquityDDPct']>=60 else 'REJECT: no balance improvement')
+  s=r['Summary'];status='B1 improvement; robustness pending' if r in eligible else ('REJECT: terminal forced close' if s.get('TerminalForcedCloses',0)>0 else ('REJECT: floating DD >=60%' if s['MaxEquityDDPct']>=60 else 'REJECT: no balance improvement'))
   if 'CONTROL' in r['Profile']['Id']:status='CONTROL'
   lines.append(f'| {r["Profile"]["Id"]} | 100 | {s["EndingBalance"]:,.2f} | {s["MaxEquityDDPct"]:.6f}% | {s["PF"]:.4f} | {s["Baskets"]} | {s["Orders"]} | {status} |')
  if ranked:
@@ -127,7 +131,12 @@ def main():
  if (ROOT/'NATIVE_ATTEMPT_FAILURES.json').exists():
   failures=json.loads((ROOT/'NATIVE_ATTEMPT_FAILURES.json').read_text());data['InterruptedNativeAttempts']=failures
   (ROOT/'RESULTS_V8.json').write_text(json.dumps(data,indent=2))
-  lines+=['',f'Interrupted startup attempts: {len(failures)}; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway now preserves the exact parity-verified DLL bytes, serializes input loading and limits gated native children to2 with3GiB heaps and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.']
+  lines+=['',f'Interrupted startup attempts: {len(failures)}; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway preserves the exact parity-verified DLL bytes, serializes input loading and now limits gated native children to1 with a3GiB heap and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.']
+ if (ROOT/'RESOURCE_RUNTIME_FAILURES_20261128.json').exists():
+  runtime_failures=json.loads((ROOT/'RESOURCE_RUNTIME_FAILURES_20261128.json').read_text())
+  data['RuntimeResourceFailures']=runtime_failures
+  (ROOT/'RESULTS_V8.json').write_text(json.dumps(data,indent=2))
+  lines+=['',f'Additional incomplete exit-137 attempts on 28 Nov: {len(runtime_failures["Cases"])}. They are excluded from completed replay counts. Concurrency was reduced from2 to1; financial engine and dataset bytes are unchanged. Memory pressure is strongly indicated, but without a kernel OOM record the exact killer is not claimed as proven.']
  if (ROOT/'BEST_B1_RESEARCH_LOCK.json').exists():
   lock=json.loads((ROOT/'BEST_B1_RESEARCH_LOCK.json').read_text())
   lines+=['',f'Provisional B1 research lock: {lock["Id"]}; cash USD{lock["EndingBalanceUSD"]:,.2f}, floating DD{lock["MaxFloatingDDPct"]:.6f}%. Prior-best gain USD{lock["GainVsPreviousBestUSD"]:,.2f}, DD change {lock["DDChangeVsPreviousBestPoints"]:.6f}points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation are incomplete; only completed receipts are financial results. No LIVE approval.']
