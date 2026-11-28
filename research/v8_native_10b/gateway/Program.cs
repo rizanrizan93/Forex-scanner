@@ -13,7 +13,7 @@ while(slot==null){for(int i=0;i<1;i++){slot=TryLock(Path.Combine(root,$"slot{i}.
 using(slot){
  FileStream? init=null;
  while(init==null){init=TryLock(Path.Combine(root,"initialization.lock"));if(init==null)Thread.Sleep(1000);}
- while(Available()<4L*1024*1024*1024)Thread.Sleep(1000);
+ while(Available()<6L*1024*1024*1024)Thread.Sleep(1000);
  var releaseLock=new object();
  void ReleaseInit(){lock(releaseLock){init?.Dispose();init=null;}}
  var start=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true};

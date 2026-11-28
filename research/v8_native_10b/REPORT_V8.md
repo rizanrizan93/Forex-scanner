@@ -1,7 +1,7 @@
 # RIZAN V8 — actual native replay evidence
-As of 2026-11-28T15:02:58.774476+07:00. Research in progress; target USD10 billion remains unchanged.
+As of 2026-11-28T20:10:40.663103+07:00. Research in progress; target USD10 billion remains unchanged.
 
-Completed full continuous native replays: 21. Unique B1 challengers: 18. New module screens: 0. New annual-reset simulations: 0.
+Completed full continuous native replays: 22. Unique B1 challengers: 19. New module screens: 0. New annual-reset simulations: 0.
 
 | Candidate | Initial USD | Ending USD | Floating DD | PF | Baskets | Requests | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -15,6 +15,7 @@ Completed full continuous native replays: 21. Unique B1 challengers: 18. New mod
 | V7_LOCK_BTC18_ALL | 100 | 1,839,227,158.78 | 58.753694% | 2.2000 | 1058 | 212816 | B1 improvement; robustness pending |
 | V7_R1_LOCK | 100 | 1,838,731,373.84 | 58.908457% | 2.2023 | 1040 | 212102 | B1 improvement; robustness pending |
 | V7_R1_BEST_DD | 100 | 1,838,731,373.84 | 58.908457% | 2.2023 | 1040 | 212102 | B1 improvement; robustness pending |
+| V7_SELL8_H8 | 100 | 1,838,577,161.03 | 58.653026% | 2.1131 | 1057 | 208311 | B1 improvement; robustness pending |
 | V7_SELL6_H8 | 100 | 1,833,074,917.28 | 58.653026% | 2.1135 | 1057 | 207235 | B1 improvement; robustness pending |
 | V7_SELL4_H16 | 100 | 1,826,840,492.54 | 59.167688% | 2.1002 | 1057 | 206020 | B1 improvement; robustness pending |
 | V7_SELL6_H16 | 100 | 1,793,990,004.49 | 59.167688% | 2.0816 | 1057 | 206080 | REJECT: terminal forced close |
@@ -44,6 +45,7 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_LOCK_BTC18_ALL | 52.765743% | 98.88 | 54.212345% | 27.273177% | 8 |
 | V7_R1_LOCK | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
 | V7_R1_BEST_DD | 52.940241% | 98.88 | 54.158354% | 27.258661% | 8 |
+| V7_SELL8_H8 | 53.036884% | 98.88 | 54.160708% | 27.225451% | 8 |
 | V7_SELL6_H8 | 53.041715% | 98.88 | 54.160708% | 27.225451% | 8 |
 | V7_SELL4_H16 | 53.272942% | 98.88 | 54.080092% | 27.223524% | 8 |
 | V7_SELL6_H16 | 53.233215% | 98.88 | 54.080092% | 27.223524% | 8 |
@@ -66,6 +68,7 @@ Previous B1 native benchmark below60% is retained: USD1,838,731,373.84, floating
 | V7_LOCK_BTC18_ALL | 1,784,606,423.21 | 13,452,806.16 | 41,167,829.41 |
 | V7_R1_LOCK | 1,784,274,096.07 | 13,395,719.66 | 41,061,458.11 |
 | V7_R1_BEST_DD | 1,784,274,096.07 | 13,395,719.66 | 41,061,458.11 |
+| V7_SELL8_H8 | 1,742,550,956.46 | 12,997,086.36 | 83,029,018.21 |
 | V7_SELL6_H8 | 1,737,637,759.09 | 12,880,485.29 | 82,556,572.89 |
 | V7_SELL4_H16 | 1,700,398,145.17 | 12,966,306.85 | 113,475,940.52 |
 | V7_SELL6_H16 | 1,695,108,932.12 | 13,076,686.40 | 85,804,285.97 |
@@ -121,9 +124,9 @@ Milestones require both balance and floating equity to reach the level. Times be
 
 P0 actual comparison: USD-43,918.17 /-0.002642% against control; all1047 core entry keys retained, 618 common baskets have changed integer units and 736 changed PnL. Native-minus-fixed-ledger reference: USD-429,041,580.18. The cash gate rejects this upgrade. No V5 estimate is promoted as native.
 
-Interrupted startup attempts: 4; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway preserves the exact parity-verified DLL bytes, serializes input loading and now limits gated native children to1 with a3GiB heap and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.
+Interrupted startup attempts: 4; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway preserves the exact parity-verified DLL bytes, serializes input loading and now limits gated native children to1 with a5GiB heap and a6GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.
 
-Additional incomplete exit-137 attempts on 28 Nov: 4. They are excluded from completed replay counts. Concurrency was reduced from2 to1; financial engine and dataset bytes are unchanged. Memory pressure is strongly indicated, but without a kernel OOM record the exact killer is not claimed as proven.
+Additional incomplete exit-137 attempts on 28 Nov: 4. They are excluded from completed replay counts. Concurrency was reduced from2 to1; after one long-holding case still failed under3GiB, the single-child heap cap/admission reserve were raised to5/6GiB. Financial engine DLL and dataset bytes are unchanged. Without a kernel OOM record the exact killer is not claimed as proven.
 
 Provisional B1 research lock: V8_B1_1914512336_RESEARCH_LOCK_20261124; cash USD1,914,512,335.85, floating DD58.908457%. Prior-best gain USD75,780,962.02, DD change 0.000000points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation are incomplete; only completed receipts are financial results. No LIVE approval.
 

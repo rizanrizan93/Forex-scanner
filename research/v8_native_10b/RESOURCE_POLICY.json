@@ -1,7 +1,7 @@
 {
   "AppliesTo": "subsequent legacy and indexed worker starts",
-  "ManagedHeapHardLimitBytes": 3221225472,
-  "Reason": "bound memory after concurrent 3GiB children produced exit code 137 on the research host",
+  "ManagedHeapHardLimitBytes": 5368709120,
+  "Reason": "allow long-holding single-child profiles to complete after exit137 under the3GiB cap while retaining a conservative host reserve",
   "EconomicModelChange": false,
   "NoNewInfrastructure": true,
   "InterruptedAttempt": "V7_R1_BEST_DD: process SIGKILL -9 during concurrent input initialization; financial replay incomplete",
@@ -10,9 +10,9 @@
   "IndexedBatchWorkers": 1,
   "FailedMitigation": "1.5GiB managed cap was too small for native input initialization; both initial indexed batch starts aborted before replay",
   "MaximumGatedNativeChildren": 1,
-  "InputLoading": "serialized globally with 4GiB pre-load RAM reserve",
+  "InputLoading": "serialized globally with 6GiB pre-load RAM reserve",
   "FinancialModelChange": false,
-  "RevisionWIB": "2026-11-28T15:00:00+07:00",
+  "RevisionWIB": "2026-11-28T19:55:00+07:00",
   "RecentIncompleteExit137Cases": [
     "V7_SELL6_H24",
     "V7_SELL8_H16",

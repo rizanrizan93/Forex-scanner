@@ -131,12 +131,12 @@ def main():
  if (ROOT/'NATIVE_ATTEMPT_FAILURES.json').exists():
   failures=json.loads((ROOT/'NATIVE_ATTEMPT_FAILURES.json').read_text());data['InterruptedNativeAttempts']=failures
   (ROOT/'RESULTS_V8.json').write_text(json.dumps(data,indent=2))
-  lines+=['',f'Interrupted startup attempts: {len(failures)}; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway preserves the exact parity-verified DLL bytes, serializes input loading and now limits gated native children to1 with a3GiB heap and a4GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.']
+  lines+=['',f'Interrupted startup attempts: {len(failures)}; these are not completed financial replays. One direct process received SIGKILL (OS cause unconfirmed); three indexed batch starts ran out of managed memory before market replay. A resource-only gateway preserves the exact parity-verified DLL bytes, serializes input loading and now limits gated native children to1 with a5GiB heap and a6GiB pre-load available-memory reserve. Retry status must be read from logs, not inferred from queue configuration.']
  if (ROOT/'RESOURCE_RUNTIME_FAILURES_20261128.json').exists():
   runtime_failures=json.loads((ROOT/'RESOURCE_RUNTIME_FAILURES_20261128.json').read_text())
   data['RuntimeResourceFailures']=runtime_failures
   (ROOT/'RESULTS_V8.json').write_text(json.dumps(data,indent=2))
-  lines+=['',f'Additional incomplete exit-137 attempts on 28 Nov: {len(runtime_failures["Cases"])}. They are excluded from completed replay counts. Concurrency was reduced from2 to1; financial engine and dataset bytes are unchanged. Memory pressure is strongly indicated, but without a kernel OOM record the exact killer is not claimed as proven.']
+  lines+=['',f'Additional incomplete exit-137 attempts on 28 Nov: {len(runtime_failures["Cases"])}. They are excluded from completed replay counts. Concurrency was reduced from2 to1; after one long-holding case still failed under3GiB, the single-child heap cap/admission reserve were raised to5/6GiB. Financial engine DLL and dataset bytes are unchanged. Without a kernel OOM record the exact killer is not claimed as proven.']
  if (ROOT/'BEST_B1_RESEARCH_LOCK.json').exists():
   lock=json.loads((ROOT/'BEST_B1_RESEARCH_LOCK.json').read_text())
   lines+=['',f'Provisional B1 research lock: {lock["Id"]}; cash USD{lock["EndingBalanceUSD"]:,.2f}, floating DD{lock["MaxFloatingDDPct"]:.6f}%. Prior-best gain USD{lock["GainVsPreviousBestUSD"]:,.2f}, DD change {lock["DDChangeVsPreviousBestPoints"]:.6f}points. A1/A2/B2 validation and one-parameter EarlyRiskMask paired ablation are incomplete; only completed receipts are financial results. No LIVE approval.']

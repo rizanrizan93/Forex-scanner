@@ -3,21 +3,21 @@
     "build": {
       "FinancialEngineDLL": "/workspace/scratch/fb2f958312ec/build_engine/NovemberReplay.dll",
       "FinancialEngineSHA256": "30e50338cb624a823a1fc35b37648d3b9a73f700e9fbd63288770ad021e3dd63",
-      "GatewaySHA256": "44aeeb4e767a9b7f59df532f2e45eaa2e4c3e58f7ae21b8f5838915acf171a48",
+      "GatewaySHA256": "2f0e03f3dc4292c53cd37da25c254d2a6c8020b5d8d8fd109b4e448c38daec81",
       "FinancialBytesUnchanged": true
     },
     "build_diagnostics": {
       "FinancialEngineDLL": "/workspace/scratch/fb2f958312ec/build_diagnostics_engine/NovemberReplay.dll",
       "FinancialEngineSHA256": "7bf764cf7cf7d77174be338fdd1758ecf30e5d2b4172eec98662449bae532f3d",
-      "GatewaySHA256": "44aeeb4e767a9b7f59df532f2e45eaa2e4c3e58f7ae21b8f5838915acf171a48",
+      "GatewaySHA256": "2f0e03f3dc4292c53cd37da25c254d2a6c8020b5d8d8fd109b4e448c38daec81",
       "FinancialBytesUnchanged": true
     }
   },
   "MaximumGatewayNativeProcesses": 1,
   "InputLoading": "serialized until compression features prepared",
-  "MinimumAvailableRAMBeforeLoadBytes": 4294967296,
-  "ManagedHeapLimitPerNativeChildBytes": 3221225472,
+  "MinimumAvailableRAMBeforeLoadBytes": 6442450944,
+  "ManagedHeapLimitPerNativeChildBytes": 5368709120,
   "FinancialModelChanges": false,
-  "PolicyRevisionWIB": "2026-11-28T15:00:00+07:00",
-  "RevisionReason": "Concurrent 3GiB children produced exit code 137 under current host memory pressure; incomplete attempts are excluded."
+  "PolicyRevisionWIB": "2026-11-28T19:55:00+07:00",
+  "RevisionReason": "Concurrency was reduced to one; a single long-holding profile still exited 137 under the 3GiB managed cap, so the single-child cap was raised to5GiB with a6GiB admission reserve. Incomplete attempts are excluded."
 }
