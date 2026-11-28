@@ -1,0 +1,1114 @@
+{
+  "status": "CONFIG_RECOVERY_ONLY_NOT_REPLICATED",
+  "initialUSD": 100,
+  "leverageResearch": 200,
+  "continuousWallet": true,
+  "noDeposits": true,
+  "originalFinancialReplaysExecuted": 0,
+  "nativeReplaysExecuted": 0,
+  "sourceBranch": "research/r9-r10-100b-local-20261125",
+  "sourceFiles": [
+    {
+      "path": "research/r9_r10_local/R9_FROZEN_PROFILES.json",
+      "blobSHA": "35b57b24ea7a8d270d6c60594a7b1130f4c2ca45",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R9_FROZEN_PROFILES.json",
+      "archive": "RIZAN_Combined_Compounding_Screen_20261125.zip",
+      "archiveSHA256": null
+    },
+    {
+      "path": "research/r9_r10_local/R10_SCREENING_CANDIDATES.json",
+      "blobSHA": "6a00611bc9f77aed68d77d06170d962be2ebd7b0",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R10_SCREENING_CANDIDATES.json",
+      "archive": null,
+      "archiveSHA256": null
+    },
+    {
+      "path": "research/r9_r10_local/R12_BTC_STRESS_GUARD.json",
+      "blobSHA": "ab8702483079eaeabb9ef642d97b5a3f75edab43",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R12_BTC_STRESS_GUARD.json",
+      "archive": null,
+      "archiveSHA256": null
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R17_ADDITIONAL_ALPHA_EVIDENCE.json",
+      "blobSHA": "489d0732faa77bca1ac4d639cd959922994bfdfa",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R17_ADDITIONAL_ALPHA_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R17_Additional_Alpha_20261126.zip",
+      "archiveSHA256": "73f259040e3bb1617b547bc40ee755fff9be0229e547066cbf397dd15d57bc00"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "blobSHA": "6ceba6ce8186b28d2a851a8733fdf80b40442221",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R18_Dynamic_DD_20261126.zip",
+      "archiveSHA256": "2cc35648a547b6e9d093d696c2330b861fd33c11cbc4ce0c66d639b93df482b4"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "blobSHA": "464b9751a3222c9839781a25e0de45900a131b76",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R20_Robustness_DD_20261126.zip",
+      "archiveSHA256": "f865802bc45f66224287afcc47ddd5c72a4b61fbfb626f4160a32620c17872ba"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "blobSHA": "480e82db665b970d553a22d98dd16c7d550e2496",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R21_Balance_Robustness_20261126.zip",
+      "archiveSHA256": "023e5adb91f7cb75e4ebe2d59bd097b2fb86a256f5d61f2335e8f952941fcddb"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "blobSHA": "e965f76eadd243f9eeaf56245092610eaefdcd3b",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R28_Bootstrap_Hybrid_20261126.zip",
+      "archiveSHA256": "eb3d272de4fae722e5e8b4e0d4ead28bb48f237fb37d39d0fc9caf684419b1fb"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R37_V1_ENGINE_EVIDENCE.json",
+      "blobSHA": "8fd585b0227456f090016bd605c3d8fb45d51536",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R37_V1_ENGINE_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R37_V1_Engine_20261126.zip",
+      "archiveSHA256": "28170a2f2aebc963ea49dc04c7c01689ae4ebdcbfdc331574399976f4bd183e6"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+      "blobSHA": "3b572d19c84280e0ab8d3c6fda2d40845b6b0b23",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R38_Multi_Asset_Compounding_20261126.zip",
+      "archiveSHA256": "dd7fbb543be76ce9c7ae250bf63e993f8515655502f09b54a1f3e795c9ea507c"
+    },
+    {
+      "path": "research/r9_r10_local/R48_MODULE_REGIME_20261127.json",
+      "blobSHA": "da7372b7cdc0e4c48188fc99c13a439d70aa291a",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R48_MODULE_REGIME_20261127.json",
+      "archive": null,
+      "archiveSHA256": null
+    }
+  ],
+  "parameterOrder32": [
+    "XauScale",
+    "EurScale",
+    "BtcScale",
+    "PhaseBelow1000",
+    "Phase1000To100000",
+    "PhaseAbove100000",
+    "ClosedDrawdownGuardThreshold",
+    "GuardScale",
+    "ExtraBtcRisk",
+    "ExtraBtcAdmissionDrawdown",
+    "XauExtraRisk",
+    "EurExtraRisk",
+    "BtcExtraRisk",
+    "EarlyLimitUSD",
+    "LateRiskMultiplier",
+    "Phase100to125Factor",
+    "Phase125to250Factor",
+    "Phase250to500Factor",
+    "Phase500to1000Factor",
+    "EarlyXauFactor",
+    "EarlyEurFactor",
+    "EarlyBtcFactor",
+    "BootstrapScale",
+    "BootstrapClosedDDThreshold",
+    "BootstrapGuardScale",
+    "R17_additional_BTC_risk",
+    "R18_closed_DD_threshold",
+    "R18_reduction_slope",
+    "R18_min_factor",
+    "R18_per_open_basket_factor_max_exponent_3",
+    "R18_factor_at_or_above_1000_USD",
+    "R18_factor_below_1000_USD"
+  ],
+  "parameterOrderQualification": "Names for indices 25-31 are transcriptions of R17/R18 manifest descriptions; implementation and exact semantics must be verified against original kernel.",
+  "metricOrder": [
+    "normalEndingUSD",
+    "normalClosedDDPct",
+    "cost2EndingUSD",
+    "cost2ClosedDDPct"
+  ],
+  "profiles": [
+    {
+      "id": "R18_BALANCED_MAX_STRESS",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        0.988,
+        0.90815445,
+        1.0401,
+        0.504,
+        0.6,
+        0.0263925,
+        0.19,
+        0.0475,
+        0.00296875,
+        0.052851562500000004,
+        1000,
+        1.25,
+        1.58631,
+        1.62,
+        1.8711000000000004,
+        1.4625,
+        0.49725,
+        1.5299999999999998,
+        1.4107500000000002,
+        0.5808000000000001,
+        0.2413125,
+        0.385,
+        0.02,
+        0.15,
+        2,
+        0.7474999999999999,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          95056721877107.52,
+          57.22873675780815,
+          22209436561290.707,
+          59.368625937256716
+        ],
+        "cap2": [
+          1864360202.4702058,
+          63.78313123058199,
+          71520246.57144922,
+          69.78188948905037
+        ],
+        "cap4": [
+          2832482582.97436,
+          63.82014016921887,
+          100161546.37707973,
+          69.02000760858374
+        ],
+        "perturbed": [
+          49733344.94417574,
+          65.76736206379957,
+          15913916.72549216,
+          70.70129766638867
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R18_MAX_GROWTH",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "vector": [
+        0.8160119,
+        2.1945,
+        1.5750000000000002,
+        0.988,
+        1.068417,
+        1.0401,
+        0.504,
+        0.51,
+        0.02295,
+        0.2,
+        0.0475,
+        0.00296875,
+        0.052851562500000004,
+        500,
+        1.1875,
+        1.58631,
+        1.62,
+        1.7775450000000004,
+        1.4625,
+        0.4723875,
+        1.7099999999999997,
+        1.4812875000000003,
+        0.5808000000000001,
+        0.2413125,
+        0.385,
+        0.022000000000000002,
+        0.1425,
+        2,
+        0.65,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          136984401690878.06,
+          56.607550506056995,
+          11926923861706.633,
+          59.78353173883805
+        ],
+        "cap2": [
+          1924698924.4445286,
+          63.56120931411161,
+          67206265.906336,
+          68.17774235205914
+        ],
+        "cap4": [
+          3083551596.3271546,
+          63.56188400165581,
+          119697743.79929961,
+          68.17975200214667
+        ],
+        "perturbed": [
+          38008131.916959085,
+          64.16323963957716,
+          17277373.876718946,
+          68.90838386571576
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R18_ALL_DD_UNDER50",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "vector": [
+        0.79839346125,
+        2.05,
+        1.4625,
+        1.2349999999999999,
+        1.18713,
+        1.064802375,
+        0.42,
+        0.6149999999999999,
+        0.025876125000000003,
+        0.24375,
+        0.056925,
+        0.003125,
+        0.04218750000000001,
+        1000,
+        1.4716406249999998,
+        1.3320450000000001,
+        1.5795000000000001,
+        1.743525,
+        1.5750000000000002,
+        0.524875,
+        1.89,
+        1.8646031250000001,
+        0.43890000000000007,
+        0.2925,
+        0.42,
+        0.042,
+        0.15,
+        2,
+        0.2,
+        1,
+        1.05,
+        0.9
+      ],
+      "metrics": {
+        "fixed": [
+          7039682901478.328,
+          47.4928138404794,
+          1074042489858.469,
+          49.43152448611164
+        ],
+        "cap2": [
+          55368670.89662953,
+          52.63371848543936,
+          9178488.735712102,
+          53.93640254410652
+        ],
+        "cap4": [
+          64966277.954294875,
+          52.63376662068957,
+          20914964.041617237,
+          53.93703798678602
+        ],
+        "perturbed": [
+          14258750.88186666,
+          52.93191492726778,
+          2364025.1420635963,
+          54.20721254748961
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R18_CAP_STRESS",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "vector": [
+        0.7603747249999999,
+        2.05,
+        1.4625,
+        1.17325,
+        1.1277735,
+        1.064802375,
+        0.42,
+        0.6149999999999999,
+        0.024830625,
+        0.24375,
+        0.045000000000000005,
+        0.003125,
+        0.04218750000000001,
+        1000,
+        1.2796874999999999,
+        1.4652495000000003,
+        1.5795000000000001,
+        1.6604999999999999,
+        1.5750000000000002,
+        0.55111875,
+        1.89,
+        1.69125,
+        0.4620000000000001,
+        0.307125,
+        0.441,
+        0.04,
+        0.3,
+        2,
+        0.35,
+        1,
+        0.9,
+        0.9
+      ],
+      "metrics": {
+        "fixed": [
+          7101071188060.906,
+          45.843214653808516,
+          869883967338.5425,
+          51.80759994687774
+        ],
+        "cap2": [
+          55159931.152921535,
+          55.785228349446605,
+          11534672.808352519,
+          58.470458669614715
+        ],
+        "cap4": [
+          1189253655.1717958,
+          55.784549209927036,
+          24659103.982508495,
+          58.47097044623142
+        ],
+        "perturbed": [
+          23666088.28325386,
+          56.06263043684978,
+          5324434.468118701,
+          58.66308370555294
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R18_CAP_MAX",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "vector": [
+        0.6981424125,
+        1.9,
+        1.21125,
+        1.22923125,
+        1.1559678375,
+        1.2313483875000002,
+        0.43049999999999994,
+        0.5775000000000001,
+        0.026775000000000004,
+        0.55,
+        0.045000000000000005,
+        0.0025,
+        0.052500000000000005,
+        500,
+        1.025,
+        1.203345,
+        1.4175000000000002,
+        1.4904000000000002,
+        1.233375,
+        0.7200000000000001,
+        1.5675000000000001,
+        1.0237500000000002,
+        0.63375,
+        0.13500000000000004,
+        0.8794500000000001,
+        0.0315,
+        0.15,
+        3,
+        0.5,
+        1,
+        1.05,
+        1.1
+      ],
+      "metrics": {
+        "fixed": [
+          3680344447930.9575,
+          48.055164735276634,
+          969833608505.3824,
+          50.384896632520416
+        ],
+        "cap2": [
+          484348777.5981023,
+          54.95938010726774,
+          39565150.98356052,
+          57.034312105815864
+        ],
+        "cap4": [
+          2115566477.942525,
+          54.53141051674536,
+          70236243.14649622,
+          57.03606523842997
+        ],
+        "perturbed": [
+          171458698.19077805,
+          55.74971844527974,
+          2107204.539956158,
+          58.61488403444124
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R20_DD_CONTROL",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "vector": [
+        0.79839346125,
+        2.05,
+        1.4625,
+        1.2349999999999999,
+        1.18713,
+        1.064802375,
+        0.45,
+        0.5,
+        0.025876125000000003,
+        0.24375,
+        0.056925,
+        0.003125,
+        0.04218750000000001,
+        1000,
+        1.4716406249999998,
+        1.3320450000000001,
+        1.5795000000000001,
+        1.743525,
+        1.5750000000000002,
+        0.524875,
+        1.89,
+        1.8646031250000001,
+        0.43890000000000007,
+        0.2925,
+        0.42,
+        0.042,
+        0.1,
+        1,
+        0.65,
+        1,
+        1.1025,
+        0.9
+      ],
+      "metrics": {
+        "fixed": [
+          27109639508124.668,
+          49.733768664430855,
+          3429949177569.785,
+          54.07382570601121
+        ],
+        "cap2": [
+          1351705793.3173606,
+          56.73205872429944,
+          25187289.81698851,
+          61.50992220985889
+        ],
+        "perturbed": [
+          8132408.530234905,
+          58.82346211278552,
+          8988625.234352557,
+          61.17228772921906
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R20_LOWEST_DD",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "vector": [
+        0.741829,
+        2.09,
+        1.535625,
+        1.2349999999999999,
+        1.18713,
+        0.95149648125,
+        0.42,
+        0.63,
+        0.020655000000000003,
+        0.225,
+        0.04950000000000001,
+        0.0028125000000000003,
+        0.04218750000000001,
+        1000,
+        1.6891874999999998,
+        1.298743875,
+        1.42549875,
+        1.6604999999999999,
+        1.5710625000000003,
+        0.55111875,
+        1.89,
+        1.3656843749999998,
+        0.4620000000000001,
+        0.24,
+        0.3142125,
+        0.021,
+        0.15,
+        2,
+        0.35,
+        1,
+        0.9,
+        0.9
+      ],
+      "metrics": {
+        "fixed": [
+          1252286022976.5017,
+          45.04270562530826,
+          260065649442.8474,
+          48.0281920700566
+        ],
+        "cap2": [
+          6471459.518769223,
+          51.34090171947285,
+          2945792.3334368235,
+          52.571285759459776
+        ],
+        "perturbed": [
+          2957770.541387289,
+          51.941820903477684,
+          281362.3249128779,
+          53.394772426927595
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R20_JOINT_STRESS",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        1.0868,
+        0.90815445,
+        1.0401,
+        0.3,
+        0.7,
+        0.0263925,
+        0.19,
+        0.0475,
+        0.00296875,
+        0.052851562500000004,
+        1000,
+        1.25,
+        1.58631,
+        1.4580000000000002,
+        1.8711000000000002,
+        2.1937499999999996,
+        0.5469750000000001,
+        1.5299999999999998,
+        1.7634375000000002,
+        0.5227200000000001,
+        0.36196875,
+        0.34650000000000003,
+        0.02,
+        0.3,
+        3,
+        0.2,
+        1,
+        1.4300000000000002,
+        0.8
+      ],
+      "metrics": {
+        "fixed": [
+          19673682982928.027,
+          55.69899878069192,
+          180948569578.91614,
+          58.03382503869544
+        ],
+        "cap2": [
+          101312251.23887123,
+          56.2617626720587,
+          50766849.32238611,
+          58.08360554386645
+        ],
+        "perturbed": [
+          124892373.84435685,
+          56.46592901055949,
+          11487821.504537502,
+          58.391015470293354
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R21_MAX_GROWTH",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "vector": [
+        0.8160119,
+        2.1945,
+        1.6537500000000003,
+        0.988,
+        1.068417,
+        1.0401,
+        0.504,
+        0.51,
+        0.030351374999999996,
+        0.2,
+        0.0475,
+        0.00296875,
+        0.0515302734375,
+        1000,
+        1.1875,
+        1.5069945,
+        1.4580000000000002,
+        1.9552995000000006,
+        1.4625,
+        0.4723875,
+        1.7099999999999997,
+        1.4812875000000003,
+        0.5808000000000001,
+        0.2413125,
+        0.385,
+        0.02255,
+        0.1425,
+        2,
+        0.65,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          187805402649277.8,
+          56.599299268557345,
+          15859144896364.94,
+          59.920838936858885
+        ],
+        "cap2": [
+          1949457861.7335305,
+          63.06656044011669,
+          76173123.71562475,
+          68.15996013706021
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R21_MAX_STRESS",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        2.0448749999999998,
+        1.5750000000000002,
+        1.0868,
+        0.90815445,
+        1.0401,
+        0.504,
+        0.6,
+        0.0263925,
+        0.19,
+        0.0475,
+        0.0032656250000000003,
+        0.052851562500000004,
+        250,
+        1.25,
+        1.58631,
+        1.4580000000000002,
+        1.8711000000000004,
+        2.413125,
+        0.5469750000000001,
+        1.6829999999999998,
+        1.4989218750000002,
+        0.5227200000000001,
+        0.37825734375000003,
+        0.34650000000000003,
+        0.02,
+        0.1575,
+        1.71,
+        0.7474999999999999,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          121445431910237.66,
+          57.321848632809356,
+          36345366761306.68,
+          59.96039029859107
+        ],
+        "cap2": [
+          1906622000.5907564,
+          64.1242081885173,
+          77887959.33081272,
+          70.09168146624654
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R21_BALANCED_HIGH",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        1.0868,
+        0.90815445,
+        1.0661025,
+        0.4914,
+        0.6,
+        0.030351374999999996,
+        0.1615,
+        0.0475,
+        0.00296875,
+        0.052851562500000004,
+        1000,
+        1.25,
+        1.58631,
+        1.4580000000000002,
+        1.8711000000000004,
+        2.413125,
+        0.5469750000000001,
+        1.8513,
+        1.7634375000000002,
+        0.5227200000000001,
+        0.398165625,
+        0.36382500000000007,
+        0.02,
+        0.15,
+        2,
+        0.7474999999999999,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          169651977275131.72,
+          57.15362827402581,
+          34060978464995.875,
+          59.737408324813025
+        ],
+        "cap2": [
+          2008016542.079289,
+          64.08696147980703,
+          76437944.51130466,
+          69.46301820650206
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R21_R19_BOOTSTRAP_GUARD",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        1.05963,
+        0.90815445,
+        1.0401,
+        0.504,
+        0.6,
+        0.0263925,
+        0.19,
+        0.0475,
+        0.00296875,
+        0.060779296875,
+        1000,
+        1.25,
+        1.58631,
+        1.4580000000000002,
+        1.8711000000000004,
+        2.1937499999999996,
+        0.5469750000000001,
+        1.6064999999999998,
+        1.4989218750000002,
+        0.5227200000000001,
+        0.3076734375,
+        0.34650000000000003,
+        0.022000000000000002,
+        0.15,
+        2,
+        0.7474999999999999,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          109975759727953.48,
+          57.21746697873662,
+          26775343608705.51,
+          59.36858513680639
+        ],
+        "cap2": [
+          1843642481.0575745,
+          63.823428335569176,
+          77483799.10429975,
+          69.27679223343068
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R21_R19_CONTINUOUS_DD_GUARD",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        1.11397,
+        0.90815445,
+        1.0401,
+        0.504,
+        0.54,
+        0.025072874999999998,
+        0.19,
+        0.0475,
+        0.0032656250000000003,
+        0.052851562500000004,
+        125,
+        1.25,
+        1.58631,
+        1.4580000000000002,
+        1.9646550000000005,
+        2.29246875,
+        0.5469750000000001,
+        1.6829999999999998,
+        1.4989218750000002,
+        0.5227200000000001,
+        0.398165625,
+        0.34650000000000003,
+        0.02,
+        0.15,
+        1.8,
+        0.7474999999999999,
+        1,
+        1.3,
+        1
+      ],
+      "metrics": {
+        "fixed": [
+          105229983052075.75,
+          57.09007002248252,
+          25745791578224.23,
+          58.909534296949374
+        ],
+        "cap2": [
+          1425836434.8248427,
+          63.186098874692654,
+          65161408.66656943,
+          68.72837141405188
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R21_BOTH_RECORDS",
+      "scope": "2019-2026 fixed basket",
+      "source": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        2.1945,
+        1.5750000000000002,
+        1.0868,
+        0.90815445,
+        1.0401,
+        0.4788,
+        0.6,
+        0.030351374999999996,
+        0.19,
+        0.045125,
+        0.00296875,
+        0.052851562500000004,
+        500,
+        1.25,
+        1.58631,
+        1.4580000000000002,
+        1.8711000000000004,
+        2.1937499999999996,
+        0.5469750000000001,
+        1.5299999999999998,
+        1.7634375000000002,
+        0.5227200000000001,
+        0.36196875,
+        0.38115000000000004,
+        0.02,
+        0.15,
+        2,
+        0.7474999999999999,
+        1,
+        1.3,
+        0.95
+      ],
+      "metrics": {
+        "fixed": [
+          154033452602336.88,
+          56.653406779788426,
+          26050472123278.21,
+          59.57239297129308
+        ],
+        "cap2": [
+          1985336539.2004175,
+          62.22075994807936,
+          72410910.33238007,
+          68.07396639108656
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R28_BALANCED",
+      "scope": "2012-2018 bootstrap then R21 core",
+      "source": "ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "vector": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        0.988,
+        0.8854505887499999,
+        1.0401,
+        0.504,
+        0.6,
+        0.0263925,
+        0.19474999999999998,
+        0.0475,
+        0.002671875,
+        0.044923828125,
+        500,
+        1.25,
+        1.9828875000000001,
+        1.7820000000000003,
+        2.3388750000000007,
+        1.4625,
+        0.49725,
+        1.5299999999999998,
+        1.3754812500000002,
+        0.7260000000000001,
+        0.36196875,
+        0.5775,
+        0.02,
+        0.15,
+        2,
+        0.7101249999999999,
+        1,
+        1.365,
+        0.8
+      ],
+      "bootstrap": [
+        [
+          3,
+          6,
+          22,
+          26
+        ],
+        [
+          7,
+          19,
+          23,
+          25
+        ],
+        1000,
+        [
+          0.045,
+          0.05
+        ],
+        1.25,
+        3
+      ],
+      "seed": [
+        3450.1305981681467,
+        3294.784308942294
+      ],
+      "peak": [
+        4959.270394431626,
+        4904.653126774042
+      ],
+      "priorDD": [
+        42.39599698105828,
+        32.82329608680428
+      ],
+      "metrics": {
+        "fixed": [
+          468751669458472.4,
+          57.50191810975171,
+          138595134457147.42,
+          59.93113940836954
+        ],
+        "cap2": [
+          1514485465.7394514,
+          63.86072574387233,
+          75188594.95385134,
+          68.643921115913
+        ],
+        "perturbed": [
+          1002101919.2870284,
+          65.9341789739552,
+          21772831.581359476,
+          70.3811325259475
+        ]
+      },
+      "status": "VECTOR_RECOVERED_ORIGINAL_KERNEL_AND_TAPES_MISSING"
+    },
+    {
+      "id": "R28_MAXIMUM_GROWTH",
+      "scope": "2012-2018 bootstrap then R21 core",
+      "source": "ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "vector": null,
+      "metrics": {
+        "fixed": [
+          1071467984116123.6,
+          56.46402900334506,
+          83164348247496.9,
+          59.984134949144384
+        ]
+      },
+      "status": "MISSING_EXACT_VECTOR_AND_BOOTSTRAP"
+    },
+    {
+      "id": "R28_LOWER_DD",
+      "scope": "2012-2018 bootstrap then R21 core",
+      "source": "ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "vector": null,
+      "metrics": {
+        "fixed": [
+          621003593704994.1,
+          56.563474454752125,
+          100306932370870.38,
+          59.03693557800994
+        ]
+      },
+      "status": "MISSING_EXACT_VECTOR_AND_BOOTSTRAP"
+    }
+  ],
+  "reportedNotRecovered": [
+    {
+      "id": "UNCAPPED_MAXIMUM",
+      "endingUSDApprox": "27728270000000000"
+    },
+    {
+      "id": "UNCAPPED_ROBUST",
+      "endingUSDApprox": "46630000000000"
+    }
+  ],
+  "requiredArtifacts": [
+    "RIZAN_INCREMENTAL_CONTROLLED_RESEARCH_20261128.zip",
+    "RIZAN_ALGO_R28_Bootstrap_Hybrid_20261126.zip",
+    "RIZAN_ALGO_R21_Balance_Robustness_20261126.zip",
+    "RIZAN_ALGO_R37_V1_Engine_20261126.zip",
+    "RIZAN_ALGO_R38_Multi_Asset_Compounding_20261126.zip",
+    "Original 2019-2026 normal and cost2 incumbent and add-on tapes, bootstrap module registry, original kernel and event ordering, exact data hashes"
+  ],
+  "limitations": [
+    "R21 and R18 fixed-basket results are 2019-2026, not 2012-2026.",
+    "R28 hybrid handoff is calendar-based; not causal adaptive regime selection.",
+    "Closed drawdown is not floating drawdown.",
+    "All R21 high-balance finalists fail cap2; R28 has zero all-cap passes.",
+    "No exact reproduction claimed; no LIVE modifications."
+  ]
+}
