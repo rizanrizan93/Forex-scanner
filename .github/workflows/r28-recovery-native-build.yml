@@ -1,0 +1,28 @@
+name: R28 recovery - isolated native baseline build
+on:
+  push:
+    branches: ['research/fixed-basket-replication-20261128']
+    paths:
+      - 'research/fixed_basket_replication/native_baseline/**'
+      - '.github/workflows/r28-recovery-native-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  baseline-build-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Verify immutable source, apply original V8 patch and build
+        run: bash research/fixed_basket_replication/native_baseline/build_isolated.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r28-recovery-v8-baseline-build-only
+          path: recovery-build/
+          if-no-files-found: error
