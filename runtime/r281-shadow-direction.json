@@ -2,7 +2,7 @@
   "contract": "RIZAN_R281_DIRECTION_SHADOW_SNAPSHOT_V1",
   "symbol": "XAUUSD",
   "source": "CTRADER_MARKET_DATA_READ_ONLY",
-  "as_of": "2026-11-27T21:41:33.421613+00:00",
+  "as_of": "2026-11-28T03:36:10.027157+00:00",
   "model_lineage": "R28.1_RECONSTRUCTED_SHADOW_NOT_FROZEN_LIVE",
   "historical_parity": "PASS_ALL_FOUR_2025",
   "execution_authority": false,
