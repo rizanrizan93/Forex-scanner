@@ -1,0 +1,115 @@
+{
+  "status": "R9_PARTIAL_NUMERICAL_PARITY_EXECUTED",
+  "classification": "documented fixed historical tape rescaling; not original kernel, no native execution or floating DD",
+  "scope": "2019-2026",
+  "execution": "local Python on recovered private archives; no fabricated data; source committed is cleaned formatting of locally executed reconstruction",
+  "metricOrder": [
+    "profile",
+    "cost",
+    "balance",
+    "closedDDPct",
+    "baskets",
+    "extraAccepted",
+    "archivedBalance",
+    "balanceParity"
+  ],
+  "scenarios": [
+    [
+      "R9_DEFENSIVE",
+      1,
+      19834124349.457977,
+      49.3774686633836,
+      1320,
+      269,
+      19834124349.457973,
+      true
+    ],
+    [
+      "R9_BALANCED",
+      1,
+      79905620743.48404,
+      57.113865429801336,
+      1320,
+      269,
+      79905620743.48389,
+      true
+    ],
+    [
+      "R9_GROWTH",
+      1,
+      91727608297.55418,
+      56.6963147053916,
+      1320,
+      269,
+      91727608297.55418,
+      true
+    ],
+    [
+      "R9_AGGRESSIVE",
+      1,
+      102816895587.451,
+      53.95003442533891,
+      1320,
+      269,
+      102720206210.24275,
+      false
+    ],
+    [
+      "R9_DEFENSIVE",
+      2,
+      10164244141.887169,
+      50.85211273607657,
+      1319,
+      269,
+      10164244141.887169,
+      true
+    ],
+    [
+      "R9_BALANCED",
+      2,
+      35583981985.402756,
+      59.979377712050066,
+      1319,
+      269,
+      35583981985.40277,
+      true
+    ],
+    [
+      "R9_GROWTH",
+      2,
+      48447118957.962326,
+      58.378826086967884,
+      1316,
+      266,
+      48447118957.962395,
+      true
+    ],
+    [
+      "R9_AGGRESSIVE",
+      2,
+      29268760685.022022,
+      59.842295868909304,
+      1313,
+      263,
+      28915077365.888878,
+      false
+    ]
+  ],
+  "pass": 6,
+  "fail": 2,
+  "baselineBuild": {
+    "run": 46180026046,
+    "artifact": 15277536035,
+    "digest": "sha256:49be0cf0137bc30340187554ddad7a503a6e9c0379c0be01eed2f21426813dc8",
+    "status": "success",
+    "nativeFinancialReplay": false
+  },
+  "recoveredArchives": {
+    "RIZAN_BTC2325_REPLAY_REPRODUCIBLE_2019_2026.zip": "c82e2d7688461669dc6ff2932ab3b1022e3ce7e33d2a2a8ea52aa417f8ffc01f",
+    "RIZAN_BTC_RAW_20261113_PART_1.zip": "3f71fc9d81b6fc894321f451f3afd92f6ed6d4910eec4ac7cc79e189ae4afa79",
+    "RIZAN_BTC_RAW_20261113_PART_2.zip": "9f3659e3fb82a4cfb8eeb1aed1cb241194c500e4004f44ce652aa0ecc3e62e99",
+    "RIZAN_NOVEMBER_REPLAY_AND_ENTRY_AUDIT_20261113.zip": "16664fc84da965b7a39a11056fd90eb707cf4b6cc16c2004cb3a48971636a56c",
+    "RIZAN_REPLAY_SETTLEMENT_2016_2026_20261017.zip": "8aede88d0be49ac8f134ad983d00ae67313fca35edd676f903b7d6b6016a3ecb"
+  },
+  "qualification": "Archive hashes computed locally; R9 four internal tape hashes matched manifest. Original price CSV reconstruction not yet executed. R9 aggressive discrepancies unresolved; R10+ add-on tapes, R28 kernel and exact max vector unavailable. No live change."
+}
