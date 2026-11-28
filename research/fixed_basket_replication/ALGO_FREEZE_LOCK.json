@@ -1,0 +1,161 @@
+{
+  "freezeId": "RIZAN_FIXED_BASKET_CONFIG_FREEZE_20261128",
+  "state": "CONFIG_FROZEN_BUILD_BLOCKED",
+  "baseCommit": "0245d96c78cc42c077b68a8d3b562667a792c35d",
+  "profileManifest": {
+    "path": "research/fixed_basket_replication/RECOVERED_PROFILES.json",
+    "gitBlobSHA": "f4b856e675b6a307d36b735fe23f70ab9037b927"
+  },
+  "sourceFiles": [
+    {
+      "path": "research/r9_r10_local/R9_FROZEN_PROFILES.json",
+      "blobSHA": "35b57b24ea7a8d270d6c60594a7b1130f4c2ca45",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R9_FROZEN_PROFILES.json",
+      "archive": "RIZAN_Combined_Compounding_Screen_20261125.zip",
+      "archiveSHA256": null
+    },
+    {
+      "path": "research/r9_r10_local/R10_SCREENING_CANDIDATES.json",
+      "blobSHA": "6a00611bc9f77aed68d77d06170d962be2ebd7b0",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R10_SCREENING_CANDIDATES.json",
+      "archive": null,
+      "archiveSHA256": null
+    },
+    {
+      "path": "research/r9_r10_local/R12_BTC_STRESS_GUARD.json",
+      "blobSHA": "ab8702483079eaeabb9ef642d97b5a3f75edab43",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R12_BTC_STRESS_GUARD.json",
+      "archive": null,
+      "archiveSHA256": null
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R17_ADDITIONAL_ALPHA_EVIDENCE.json",
+      "blobSHA": "489d0732faa77bca1ac4d639cd959922994bfdfa",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R17_ADDITIONAL_ALPHA_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R17_Additional_Alpha_20261126.zip",
+      "archiveSHA256": "73f259040e3bb1617b547bc40ee755fff9be0229e547066cbf397dd15d57bc00"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "blobSHA": "6ceba6ce8186b28d2a851a8733fdf80b40442221",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R18_DYNAMIC_DD_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R18_Dynamic_DD_20261126.zip",
+      "archiveSHA256": "2cc35648a547b6e9d093d696c2330b861fd33c11cbc4ce0c66d639b93df482b4"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "blobSHA": "464b9751a3222c9839781a25e0de45900a131b76",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R20_ROBUSTNESS_DD_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R20_Robustness_DD_20261126.zip",
+      "archiveSHA256": "f865802bc45f66224287afcc47ddd5c72a4b61fbfb626f4160a32620c17872ba"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "blobSHA": "480e82db665b970d553a22d98dd16c7d550e2496",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R21_Balance_Robustness_20261126.zip",
+      "archiveSHA256": "023e5adb91f7cb75e4ebe2d59bd097b2fb86a256f5d61f2335e8f952941fcddb"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "blobSHA": "e965f76eadd243f9eeaf56245092610eaefdcd3b",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R28_Bootstrap_Hybrid_20261126.zip",
+      "archiveSHA256": "eb3d272de4fae722e5e8b4e0d4ead28bb48f237fb37d39d0fc9caf684419b1fb"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R37_V1_ENGINE_EVIDENCE.json",
+      "blobSHA": "8fd585b0227456f090016bd605c3d8fb45d51536",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R37_V1_ENGINE_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R37_V1_Engine_20261126.zip",
+      "archiveSHA256": "28170a2f2aebc963ea49dc04c7c01689ae4ebdcbfdc331574399976f4bd183e6"
+    },
+    {
+      "path": "research/r9_r10_local/ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+      "blobSHA": "3b572d19c84280e0ab8d3c6fda2d40845b6b0b23",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R38_Multi_Asset_Compounding_20261126.zip",
+      "archiveSHA256": "dd7fbb543be76ce9c7ae250bf63e993f8515655502f09b54a1f3e795c9ea507c"
+    },
+    {
+      "path": "research/r9_r10_local/R48_MODULE_REGIME_20261127.json",
+      "blobSHA": "da7372b7cdc0e4c48188fc99c13a439d70aa291a",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/R48_MODULE_REGIME_20261127.json",
+      "archive": null,
+      "archiveSHA256": null
+    }
+  ],
+  "frozenProfileIDs": [
+    "R18_BALANCED_MAX_STRESS",
+    "R18_MAX_GROWTH",
+    "R18_ALL_DD_UNDER50",
+    "R18_CAP_STRESS",
+    "R18_CAP_MAX",
+    "R20_DD_CONTROL",
+    "R20_LOWEST_DD",
+    "R20_JOINT_STRESS",
+    "R21_MAX_GROWTH",
+    "R21_MAX_STRESS",
+    "R21_BALANCED_HIGH",
+    "R21_R19_BOOTSTRAP_GUARD",
+    "R21_R19_CONTINUOUS_DD_GUARD",
+    "R21_BOTH_RECORDS",
+    "R28_BALANCED"
+  ],
+  "missingProfileIDs": [
+    "R28_MAXIMUM_GROWTH",
+    "R28_LOWER_DD",
+    "UNCAPPED_MAXIMUM",
+    "UNCAPPED_ROBUST"
+  ],
+  "requiredArchives": [
+    "RIZAN_INCREMENTAL_CONTROLLED_RESEARCH_20261128.zip",
+    "RIZAN_ALGO_R28_Bootstrap_Hybrid_20261126.zip",
+    "RIZAN_ALGO_R21_Balance_Robustness_20261126.zip",
+    "RIZAN_ALGO_R37_V1_Engine_20261126.zip",
+    "RIZAN_ALGO_R38_Multi_Asset_Compounding_20261126.zip",
+    "Original 2019-2026 normal and cost2 incumbent and add-on tapes, bootstrap module registry, original kernel and event ordering, exact data hashes"
+  ],
+  "componentCoverage": {
+    "coreXAU": "SOURCE_NOT_RECOVERED",
+    "coreEUR": "SOURCE_NOT_RECOVERED",
+    "coreBTC": "SOURCE_NOT_RECOVERED",
+    "oldBTCExtra": "SOURCE_NOT_RECOVERED",
+    "newXAU": "SOURCE_NOT_RECOVERED",
+    "newEUR": "SOURCE_NOT_RECOVERED",
+    "newBTC": "SOURCE_NOT_RECOVERED",
+    "R28Bootstrap": "PARTIAL_CONFIG_ONLY",
+    "R21SizingAndCompounding": "VECTOR_ONLY",
+    "moduleRegistry104": "NOT_RECOVERED",
+    "originalFixedBasketKernel": "NOT_RECOVERED",
+    "tapeNormalAndCost2": "NOT_RECOVERED"
+  },
+  "artifact": {
+    "requestedFilename": "RizanFixedBasketComplete.algo",
+    "built": false,
+    "fullStrategyParity": false,
+    "nativeReplayCount": 0,
+    "releaseApproved": false
+  },
+  "buildRequirements": [
+    "Recover SHA-pinned original archives, exact max and robust profiles, bootstrap and full module registry; resolve all strategy dependencies without substitutes.",
+    "Run original financial replay and reconcile normal/cost2 benchmarks, trade IDs, event ordering, annual balance and closed drawdown; preserve distinct 2019-2026 and 2012-2026 scopes.",
+    "Implement native C# from recovered source; causal entry, exit, risk and shared wallet; validate full module coverage and no future data; compile actual .algo with cTrader toolchain.",
+    "Emit source manifest with SHA256 for each original and ported module, profile mapping and build artifact; compare module IDs for zero missing entries; native replay and Monte Carlo before LIVE eligibility."
+  ],
+  "execution": {
+    "initialUSD": 100,
+    "leverageModel": 200,
+    "continuousSharedWallet": true,
+    "noReset": true,
+    "noDeposit": true,
+    "assets": [
+      "XAUUSD",
+      "EURUSD",
+      "BTCUSD"
+    ],
+    "researchOnly": true,
+    "targetFloatingDDPctExclusive": 60
+  },
+  "noLiveChange": true
+}
