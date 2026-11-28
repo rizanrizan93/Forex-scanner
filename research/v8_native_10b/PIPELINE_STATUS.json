@@ -1,9 +1,9 @@
 {
-  "AsOfWIB": "2026-11-28T20:10:40.663103+07:00",
-  "CompletedFullNativeReplays": 22,
-  "CompletedPriorityChallengers": 19,
+  "AsOfWIB": "2026-11-29T02:08:43.928205+07:00",
+  "CompletedFullNativeReplays": 23,
+  "CompletedPriorityChallengers": 20,
   "PriorityChallengersTotal": 45,
-  "UniqueCompletedParameterConfigurationsExcludingId": 20,
+  "UniqueCompletedParameterConfigurationsExcludingId": 21,
   "CompletedAnnualNativeCases": 0,
   "CompletedNewModuleScreens": 0,
   "BestB1": "V7_R1_CAP",
