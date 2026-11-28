@@ -1,0 +1,1260 @@
+{
+  "status": "PARTIAL_ORIGINAL_PARAMETER_RECOVERY_ONLY",
+  "asOf": "2026-11-29",
+  "priorFreeze": "c9c166cb408b13b01b8e37fecf5ee4e6b32f7948",
+  "scope": "R26-R28 original manifest parameters and R29 extension; R35/R38 104-tape registry membership not proven",
+  "sourcePins": [
+    {
+      "file": "ALGO_R26_MULTI_ASSET_EVIDENCE.json",
+      "blob": "01226010b5728f212c1bd3f5d49eda85c96990fc",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R26_MULTI_ASSET_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R26_Multi_Asset_20261126.zip",
+      "archiveSHA256": "229bd4adee016d2337e2f2fbe5e8071a1723874019a858ffe0cd8be41a00154a"
+    },
+    {
+      "file": "ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "blob": "e965f76eadd243f9eeaf56245092610eaefdcd3b",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R28_BOOTSTRAP_HYBRID_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R28_Bootstrap_Hybrid_20261126.zip",
+      "archiveSHA256": "eb3d272de4fae722e5e8b4e0d4ead28bb48f237fb37d39d0fc9caf684419b1fb"
+    },
+    {
+      "file": "ALGO_R29_REGIME_STRESS_EVIDENCE.json",
+      "blob": "66d9b869a6f2e8495a74a06c495dca6820da7458",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R29_REGIME_STRESS_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R29_Regime_Stress_20261126.zip",
+      "archiveSHA256": "9366ed38ba8f9ff1e9aadc68df921a10cc49e4fa54c5b738db46823670316e68"
+    },
+    {
+      "file": "ALGO_R35_BOOTSTRAP_RISK_TILT_EVIDENCE.json",
+      "blob": "1bb8953669465eecbb685a505c81ba80b12df3ff",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R35_BOOTSTRAP_RISK_TILT_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R35_Bootstrap_RiskTilt_20261126.zip",
+      "archiveSHA256": "a4ff8aad6b6c47f682d4ea3294a761f3ff3cebd365e609bb956a9059a3fbd7de"
+    },
+    {
+      "file": "ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+      "blob": "3b572d19c84280e0ab8d3c6fda2d40845b6b0b23",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R38_MULTI_ASSET_COMPOUNDING_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R38_Multi_Asset_Compounding_20261126.zip",
+      "archiveSHA256": "dd7fbb543be76ce9c7ae250bf63e993f8515655502f09b54a1f3e795c9ea507c"
+    },
+    {
+      "file": "ALGO_R27_SWITCHING_EVIDENCE.json",
+      "blob": "7e72507dfd24b038637a67c26f4c0a40ca3eb8d3",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R27_SWITCHING_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R27_Switching_20261126.zip",
+      "archiveSHA256": "5e85b021b485ceab54d7350650aa254fafb45d2bdcbd3e23175f1ecfefe28592"
+    },
+    {
+      "file": "ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "blob": "480e82db665b970d553a22d98dd16c7d550e2496",
+      "url": "https://github.com/rizanrizan93/Forex-scanner/blob/research/r9-r10-100b-local-20261125/research/r9_r10_local/ALGO_R21_BALANCE_ROBUSTNESS_EVIDENCE.json",
+      "archive": "RIZAN_ALGO_R21_Balance_Robustness_20261126.zip",
+      "archiveSHA256": "023e5adb91f7cb75e4ebe2d59bd097b2fb86a256f5d61f2335e8f952941fcddb"
+    }
+  ],
+  "modelOrder": [
+    "symbol(0 EUR,1 XAU,2 BTC)",
+    "tf",
+    "look",
+    "ema",
+    "family",
+    "regime",
+    "side",
+    "slATR",
+    "tpATR",
+    "holdSignalBars"
+  ],
+  "r26RecoveredDefinitions": {
+    "3": [
+      0,
+      "4h",
+      15,
+      50,
+      "counter_sweep",
+      "compression",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "6": [
+      0,
+      "4h",
+      10,
+      150,
+      "sweep",
+      "expansion",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "7": [
+      0,
+      "4h",
+      20,
+      80,
+      "breakout",
+      "expansion",
+      0,
+      1,
+      6,
+      36
+    ],
+    "15": [
+      0,
+      "4h",
+      10,
+      50,
+      "breakout",
+      "compression",
+      0,
+      1,
+      3,
+      12
+    ],
+    "19": [
+      1,
+      "4h",
+      10,
+      50,
+      "pullback",
+      "compression",
+      0,
+      0.6,
+      2,
+      12
+    ],
+    "22": [
+      1,
+      "4h",
+      10,
+      50,
+      "sweep",
+      "expansion",
+      0,
+      0.6,
+      2,
+      12
+    ],
+    "25": [
+      1,
+      "4h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      0.6,
+      2,
+      12
+    ],
+    "26": [
+      1,
+      "4h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      1,
+      5,
+      24
+    ],
+    "34": [
+      2,
+      "4h",
+      10,
+      150,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "37": [
+      2,
+      "4h",
+      10,
+      50,
+      "sweep",
+      "all",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "38": [
+      2,
+      "4h",
+      10,
+      50,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      36
+    ],
+    "40": [
+      2,
+      "4h",
+      12,
+      120,
+      "sweep",
+      "all",
+      -1,
+      0.75,
+      4,
+      6
+    ]
+  },
+  "r29AdditionalXauDefinitionsNormalized": {
+    "50": [
+      1,
+      "1h",
+      10,
+      50,
+      "pullback",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "51": [
+      1,
+      "1h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "52": [
+      1,
+      "1h",
+      10,
+      50,
+      "breakout",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "53": [
+      1,
+      "1h",
+      10,
+      150,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "54": [
+      1,
+      "1h",
+      10,
+      50,
+      "breakout",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "55": [
+      1,
+      "1h",
+      10,
+      150,
+      "breakout",
+      "compression",
+      0,
+      1,
+      3,
+      12
+    ],
+    "56": [
+      1,
+      "1h",
+      10,
+      50,
+      "breakout",
+      "compression",
+      0,
+      1,
+      3,
+      12
+    ],
+    "57": [
+      1,
+      "30min",
+      10,
+      150,
+      "counter_sweep",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "58": [
+      1,
+      "30min",
+      10,
+      50,
+      "counter_sweep",
+      "expansion",
+      0,
+      1.5,
+      4,
+      24
+    ],
+    "59": [
+      1,
+      "1h",
+      10,
+      50,
+      "sweep",
+      "compression",
+      0,
+      1.5,
+      4,
+      24
+    ]
+  },
+  "normalization": "R29 explicitly names XAU models; prepend symbol code 1 from R26 modelOrder. No other fields changed.",
+  "r28Hybrid": {
+    "metricOrder": [
+      "balanceNormal",
+      "closedDDNormal",
+      "balanceCost2",
+      "closedDDCost2"
+    ],
+    "balanced": {
+      "boot": [
+        [
+          3,
+          6,
+          22,
+          26
+        ],
+        [
+          7,
+          19,
+          23,
+          25
+        ],
+        1000,
+        [
+          0.045,
+          0.05
+        ],
+        1.25,
+        3
+      ],
+      "seed": [
+        3450.1305981681467,
+        3294.784308942294
+      ],
+      "peak": [
+        4959.270394431626,
+        4904.653126774042
+      ],
+      "priorDD": [
+        42.39599698105828,
+        32.82329608680428
+      ],
+      "params": [
+        0.6676461,
+        1.9949999999999999,
+        1.5750000000000002,
+        0.988,
+        0.8854505887499999,
+        1.0401,
+        0.504,
+        0.6,
+        0.0263925,
+        0.19474999999999998,
+        0.0475,
+        0.002671875,
+        0.044923828125,
+        500,
+        1.25,
+        1.9828875000000001,
+        1.7820000000000003,
+        2.3388750000000007,
+        1.4625,
+        0.49725,
+        1.5299999999999998,
+        1.3754812500000002,
+        0.7260000000000001,
+        0.36196875,
+        0.5775,
+        0.02,
+        0.15,
+        2,
+        0.7101249999999999,
+        1,
+        1.365,
+        0.8
+      ],
+      "fixed": [
+        468751669458472.4,
+        57.50191810975171,
+        138595134457147.42,
+        59.93113940836954
+      ],
+      "cap2": [
+        1514485465.7394514,
+        63.86072574387233,
+        75188594.95385134,
+        68.643921115913
+      ],
+      "perturbed": [
+        1002101919.2870284,
+        65.9341789739552,
+        21772831.581359476,
+        70.3811325259475
+      ]
+    },
+    "balancedBootstrapRequiredIds": [
+      3,
+      6,
+      7,
+      19,
+      22,
+      23,
+      25,
+      26
+    ],
+    "balancedBootstrapDefinitionsFound": [
+      3,
+      6,
+      7,
+      19,
+      22,
+      25,
+      26
+    ],
+    "balancedBootstrapDefinitionsMissing": [
+      23
+    ],
+    "maximumGrowth": {
+      "metrics": [
+        1071467984116123.6,
+        56.46402900334506,
+        83164348247496.9,
+        59.984134949144384
+      ],
+      "exactConfiguration": null
+    },
+    "lowerDD": {
+      "metrics": [
+        621003593704994.1,
+        56.563474454752125,
+        100306932370870.38,
+        59.03693557800994
+      ],
+      "exactConfiguration": null
+    },
+    "limitations": "Hybrid stops entries on 2018-12-01 for flat handoff; calendar switch, not deployable causal regime trigger. R21 fixed basket core remains rescaled and incomplete margin, no native. Cap2 uses archived child counts as proxy. Continuous OHLC through 2026-03-31, BTC from 2019 only, same 50 tapes, no new signal families. No independent holdout, aggregate stop-risk budget 5%, entry margin 50% closed balance, assumed volume caps, excursion DD not actual mark-to-market. Bootstrap first compile failed missing globals corrected before completed runs. Prior frozen benchmarks and LIVE unchanged. Exact vectors, outputs and code in archive, upstream inputs required."
+  },
+  "r28Continuous": {
+    "metricOrder": [
+      "balance",
+      "closedDD",
+      "equityExcursionDDProxy",
+      "trades",
+      "end2018"
+    ],
+    "configOrder": [
+      "bootstrapIds",
+      "midIds",
+      "growthIds",
+      "balanceThresholds",
+      "phaseRisks",
+      "guard",
+      "maxPositions"
+    ],
+    "growth": {
+      "config": [
+        [
+          0,
+          6,
+          18,
+          19,
+          22
+        ],
+        [
+          5,
+          7,
+          15,
+          19
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37,
+          40
+        ],
+        [
+          2000,
+          3500
+        ],
+        [
+          0.05,
+          0.05,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          924540.0981577706,
+          32.650518942681806,
+          36.2854288221906,
+          956,
+          4911.873809760975
+        ],
+        [
+          282328.68552582874,
+          43.75152723833454,
+          45.08830728136202,
+          967,
+          3682.3409931342694
+        ],
+        [
+          178.94161956361793,
+          87.80789060652594,
+          88.21982215654205,
+          445,
+          958.7215269926846
+        ]
+      ]
+    },
+    "balanced": {
+      "config": [
+        [
+          0,
+          13,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          15,
+          19,
+          20,
+          25
+        ],
+        [
+          5,
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        [
+          750,
+          3500
+        ],
+        [
+          0.045,
+          0.045,
+          0.05
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          875672.4607613954,
+          39.24696985476908,
+          41.764862292095565,
+          922,
+          4506.15955733575
+        ],
+        [
+          292247.37270236237,
+          44.57354195319909,
+          45.2036351858468,
+          918,
+          3376.3798021356406
+        ],
+        [
+          116.76813714544545,
+          79.13798674885501,
+          79.97186223345285,
+          430,
+          447.2775541512636
+        ]
+      ]
+    }
+  },
+  "r27Profiles": [
+    {
+      "id": "R27_GROWTH",
+      "config": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          19,
+          34,
+          37
+        ],
+        1000,
+        [
+          0.05,
+          0.05
+        ],
+        1,
+        1
+      ],
+      "metrics": [
+        [
+          538507.7272491,
+          40.573427206619314,
+          42.131444595826395,
+          831,
+          3645.3948554615167
+        ],
+        [
+          83939.1205621911,
+          41.31651355844612,
+          42.84633178217656,
+          818,
+          2201.1420720691026
+        ],
+        [
+          19577.7332917475,
+          44.86294153445461,
+          47.91888603517809,
+          805,
+          1374.8683705304838
+        ]
+      ],
+      "capSensitivityNormal": [
+        538507.7272491,
+        821090.376228361,
+        1577679.4821968984,
+        1174134.537939353
+      ],
+      "capSensitivityCost2": [
+        83939.1205621911,
+        162803.2144161825,
+        100497.32626148139,
+        100497.32626148139
+      ]
+    },
+    {
+      "id": "R27_COST2",
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22,
+          39
+        ],
+        [
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        1250,
+        [
+          0.05,
+          0.04
+        ],
+        0.5,
+        1
+      ],
+      "metrics": [
+        [
+          331508.66150342947,
+          42.24873974914979,
+          44.425821479389604,
+          805,
+          2009.9109765852284
+        ],
+        [
+          140211.9700018707,
+          43.18358273083499,
+          44.19628218095005,
+          815,
+          2552.2561001475324
+        ],
+        [
+          265.3881110205003,
+          56.22371238935112,
+          56.43610259253191,
+          466,
+          226.4303529043443
+        ]
+      ]
+    },
+    {
+      "id": "R27_ROBUST",
+      "config": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          19,
+          25,
+          34,
+          37
+        ],
+        1000,
+        [
+          0.05,
+          0.05
+        ],
+        1.5,
+        1
+      ],
+      "metrics": [
+        [
+          357025.79553173314,
+          41.46192960724747,
+          42.03455546621837,
+          845,
+          2494.2162926013375
+        ],
+        [
+          89913.55880841667,
+          44.91463405641911,
+          45.59343016937063,
+          868,
+          1914.4746424924012
+        ],
+        [
+          26981.035808703007,
+          47.39508930114393,
+          50.070263706295925,
+          835,
+          1418.0779876404856
+        ]
+      ]
+    },
+    {
+      "id": "R27_BOOTSTRAP",
+      "config": [
+        [
+          3,
+          6,
+          22,
+          26,
+          38
+        ],
+        [
+          7,
+          15,
+          25,
+          34,
+          37
+        ],
+        1250,
+        [
+          0.05,
+          0.03
+        ],
+        2.5,
+        3
+      ],
+      "metrics": [
+        [
+          34927.18014870099,
+          34.00379588174185,
+          36.222425083482854,
+          1133,
+          2503.8763677236157
+        ],
+        [
+          5845.759668443041,
+          41.32921551647046,
+          43.31193192584968,
+          1128,
+          1890.786237349655
+        ],
+        [
+          205.91978051325992,
+          39.06948387148871,
+          41.86367707835104,
+          278,
+          240.31174195119124
+        ]
+      ]
+    }
+  ],
+  "r35Profiles": {
+    "oldBalanced": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          7,
+          10,
+          11,
+          15,
+          25,
+          55,
+          73,
+          87
+        ],
+        [
+          7,
+          15,
+          25,
+          50,
+          91,
+          97
+        ],
+        [
+          900,
+          10000
+        ],
+        [
+          0.05,
+          0.05,
+          0.04
+        ],
+        1.25,
+        3,
+        [
+          1.75,
+          1.75,
+          1
+        ]
+      ],
+      "old": [
+        [
+          17812.97529574902,
+          49.534256119268484,
+          53.175097511846815,
+          629,
+          1.5701554632318062
+        ],
+        [
+          15433.48320269589,
+          35.59676402933458,
+          41.734914070412245,
+          582,
+          1.4329746496909825
+        ]
+      ],
+      "full": [
+        [
+          23587.0770975337,
+          80.83083160059095,
+          81.4334949492128,
+          1817,
+          1.0883562667508715
+        ],
+        [
+          1554.8939028212144,
+          96.23895276141718,
+          96.40530276826503,
+          1757,
+          1.0111383702882486
+        ]
+      ]
+    },
+    "oldMax": {
+      "config": [
+        [
+          0,
+          18,
+          21,
+          22,
+          75
+        ],
+        [
+          7,
+          11,
+          15,
+          25,
+          51,
+          55,
+          73,
+          77
+        ],
+        [
+          7,
+          15,
+          25,
+          50,
+          91,
+          94
+        ],
+        [
+          3000,
+          15000
+        ],
+        [
+          0.0425,
+          0.05,
+          0.045
+        ],
+        0.5,
+        3,
+        [
+          1.3,
+          1.75,
+          1
+        ]
+      ],
+      "old": [
+        [
+          24810.05737794704,
+          48.20939484192124,
+          50.82876091489656,
+          522,
+          1.7722304356580914
+        ],
+        [
+          1521.2237058196554,
+          49.957069895324636,
+          53.02294726952592,
+          292,
+          1.215413854273368
+        ]
+      ]
+    },
+    "stage1FullBest": {
+      "config": [
+        [
+          0,
+          18,
+          19,
+          22
+        ],
+        [
+          0,
+          7,
+          11,
+          25,
+          55,
+          73,
+          77
+        ],
+        [
+          7,
+          8,
+          15,
+          25
+        ],
+        [
+          1000,
+          10000
+        ],
+        [
+          0.0425,
+          0.045,
+          0.045
+        ],
+        0,
+        1,
+        [
+          1.3,
+          1.3,
+          1
+        ]
+      ],
+      "full": [
+        [
+          30563.82014703909,
+          44.06623189698613,
+          45.76937327079374,
+          644,
+          1.4845995609786389
+        ],
+        [
+          22197.911211937873,
+          48.10039329147209,
+          48.68159833654416,
+          618,
+          1.3430284254668432
+        ]
+      ],
+      "end2018": [
+        12476.312529715438,
+        11554.083585298104
+      ]
+    }
+  },
+  "r38Profiles": {
+    "oldOriginalMax": {
+      "old": [
+        [
+          27461.781757761422,
+          37.561616982655806,
+          46.44133017020767,
+          539,
+          118
+        ],
+        [
+          3195.8727885196486,
+          39.9931922904141,
+          48.828459770715405,
+          325,
+          37
+        ]
+      ]
+    },
+    "oldOriginalBalanced": {
+      "old": [
+        [
+          23801.111618224913,
+          42.59697427523134,
+          47.348619760114616,
+          533,
+          99
+        ],
+        [
+          22223.743308461086,
+          42.26648084466493,
+          46.69645443747227,
+          511,
+          103
+        ]
+      ]
+    },
+    "oldCap40Max": {
+      "old": [
+        [
+          390384.6201136322,
+          41.69070861506204,
+          48.05769811717289,
+          569,
+          107
+        ],
+        [
+          2881.1086846060125,
+          46.089350800017726,
+          49.278604531973855,
+          356,
+          33
+        ]
+      ]
+    },
+    "oldCap40Balanced": {
+      "config": [
+        [
+          0,
+          18,
+          21,
+          22,
+          75
+        ],
+        [
+          7,
+          11,
+          15,
+          25,
+          51,
+          55,
+          73,
+          77
+        ],
+        [
+          7,
+          15,
+          25,
+          50,
+          91,
+          94
+        ],
+        [
+          3000,
+          20000
+        ],
+        [
+          0.04,
+          0.05,
+          0.0475
+        ],
+        1,
+        2,
+        [
+          1.1,
+          2,
+          1.25
+        ],
+        [
+          0.8,
+          0.65,
+          0.8,
+          0.5,
+          0.65,
+          1.25,
+          1
+        ],
+        0.35,
+        0.5
+      ],
+      "seed": [
+        64,
+        1,
+        1.75,
+        2,
+        0.05
+      ],
+      "cap": 40,
+      "assetRiskShares": [
+        0.8,
+        1,
+        1
+      ],
+      "old": [
+        [
+          240025.02936056894,
+          33.413711587249395,
+          41.61725670306724,
+          549,
+          100
+        ],
+        [
+          112961.72501065079,
+          41.43506595432509,
+          43.64744368996838,
+          529,
+          99
+        ]
+      ],
+      "continuous": [
+        [
+          113958.38825925393,
+          85.71899223719517,
+          86.35416391189511,
+          1745,
+          377
+        ],
+        [
+          18809.6884388754,
+          95.3132917450336,
+          95.5607578823971,
+          1725,
+          376
+        ],
+        [
+          766.9169250352796,
+          57.665883565593255,
+          59.02733271267833,
+          609,
+          88
+        ]
+      ]
+    },
+    "continuousCap40Overlap": {
+      "continuous": [
+        [
+          1552523.5336839214,
+          54.77888630404168,
+          56.71275735959609,
+          1209,
+          334
+        ],
+        [
+          786808.6272608722,
+          56.85337599606925,
+          58.73717146588273,
+          1182,
+          323
+        ],
+        [
+          53449.945993227404,
+          70.31009311628453,
+          73.13807006904354,
+          1185,
+          315
+        ]
+      ]
+    },
+    "continuousOriginalRobustOverlap": {
+      "continuous": [
+        [
+          108543.00827725437,
+          27.722545233090624,
+          35.248971254376436,
+          1078,
+          246
+        ],
+        [
+          48997.70961565456,
+          30.312985991475927,
+          34.840425893167485,
+          1045,
+          242
+        ],
+        [
+          19880.563597842174,
+          32.28648361255274,
+          36.12878229976151,
+          1109,
+          253
+        ]
+      ]
+    }
+  },
+  "unrecovered": [
+    "R28 exact max/lowerDD vectors and bootstrap profile",
+    "R28 original kernel and signal-generation source",
+    "R26 full registry of 50 model tapes",
+    "R35/R38 registry of 104 and all tape contents",
+    "R21 incumbent and add-on normal/cost2 tapes, core XAU EUR BTC strategy source, original event kernel",
+    "UNCAPPED_MAXIMUM and UNCAPPED_ROBUST original configs"
+  ],
+  "archiveSearch": {
+    "sourceEvidenceDirectory": "GitHub contains evidence manifests, not ZIPs",
+    "releaseListEmpty": true,
+    "sourceBranchWorkflowRunsReported": 0,
+    "replicationBranchWorkflowRunsReported": 0,
+    "artifactList": "endpoint unavailable",
+    "libraryExactSearch": "no matches; not proof of absence"
+  },
+  "gates": {
+    "sourceParity": false,
+    "algoBuilt": false,
+    "nativeReplayCount": 0,
+    "monteCarloExecuted": false,
+    "liveChange": false
+  }
+}
